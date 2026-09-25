@@ -7,12 +7,17 @@ import { Route, Routes } from 'react-router';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PortfolioPage } from './pages/PortfolioPage';
+import { PortfoliosPage } from './pages/PortfoliosPage';
+import { paths } from './paths';
 
 export function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
+        <Route path={paths.portfolios} element={<PortfoliosPage />} />
+        <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

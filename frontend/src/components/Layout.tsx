@@ -2,9 +2,10 @@
 // <Outlet /> is where React Router puts the page for the current address.
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
-// PORTFOLIO_NAV_ITEMS in navigation.ts.
+// PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a header naming the open portfolio, with a switcher.
 import { NavLink, Outlet, useMatch } from 'react-router';
 import { NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
+import { PortfolioSwitcher } from './PortfolioSwitcher';
 
 export function Layout() {
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
@@ -35,6 +36,7 @@ export function Layout() {
         </nav>
       </aside>
       <main className="content">
+        {portfolioId && <PortfolioSwitcher portfolioId={portfolioId} />}
         <Outlet />
       </main>
     </div>
