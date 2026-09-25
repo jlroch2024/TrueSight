@@ -297,3 +297,17 @@ table.holdings th {
   color: var(--muted);
   font-weight: 500;
 }
+
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.page-heading h1 { margin-bottom: 4px; }
+.page-heading p { margin-top: 0; }
+.table-card { overflow-x: auto; }
+.status { white-space: nowrap; }
+.status-reason { display: block; margin-top: 4px; font-size: 12px; }
+.status-failed, .status-no_report_found { color: var(--danger); }

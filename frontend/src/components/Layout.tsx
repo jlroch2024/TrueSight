@@ -34,7 +34,7 @@ export function Layout() {
             </NavLink>
           ))}
           {portfolioId && portfolioItems.length > 0 && (
-            <div className="nav-section" aria-label="Open Portfolio">
+            <div className="nav-section" aria-label="Portfolio Pages">
               {portfolioItems.map((item) => (
                 <NavLink key={item.label} to={item.path(portfolioId)} end className="nav-link">
                   {item.label}
