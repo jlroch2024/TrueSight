@@ -92,6 +92,83 @@ a {
   color: var(--muted);
 }
 
+.small {
+  font-size: 13px;
+}
+
+/* Forms */
+label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 14px;
+}
+
+input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+button {
+  padding: 9px 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Log In and Sign Up */
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.auth-card h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.auth-card button[type='submit'] {
+  width: 100%;
+  margin-top: 18px;
+}
+
+/* The sidebar's Log Out, pinned under the links */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar nav {
+  flex: 1;
+}
+
+.log-out {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
 .error {
   color: var(--danger);
 }

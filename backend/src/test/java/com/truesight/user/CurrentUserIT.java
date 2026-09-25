@@ -1,29 +1,44 @@
 package com.truesight.user;
 
 import com.truesight.support.IntegrationTest;
+import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Proves the placeholder works in tests: the demo user exists, and {@link CurrentUser} answers with it.
- *
- * <p>The Sign Up and Log In story replaces {@link CurrentUser} with the real logged-in user, and rewrites this test.
+ * Proves {@link CurrentUser} answers with whoever the token belongs to, not with a fixed user, and that the demo
+ * account can log in on laptops and in tests.
  */
 @IntegrationTest
 class CurrentUserIT {
 
     @Autowired
-    CurrentUser currentUser;
+    MockMvc mockMvc;
 
     @Autowired
-    UserRepository users;
+    TestLogins logins;
 
     @Test
-    void theCurrentUserIsTheDemoUserUntilRealLoginsExist() {
-        User demo = users.findByEmail(DemoUserSeeder.DEMO_EMAIL).orElseThrow();
+    void theCurrentUserIsWhoeverTheTokenBelongsTo() throws Exception {
+        mockMvc.perform(get("/api/auth/me").header("Authorization", logins.bearer("first@example.com")))
+                .andExpect(jsonPath("$.email").value("first@example.com"));
 
-        assertThat(currentUser.id()).isEqualTo(demo.getId());
+        mockMvc.perform(get("/api/auth/me").header("Authorization", logins.bearer("second@example.com")))
+                .andExpect(jsonPath("$.email").value("second@example.com"));
+    }
+
+    @Test
+    void theDemoAccountCanLogIn() throws Exception {
+        mockMvc.perform(post("/api/auth/login").contentType("application/json")
+                        .content("{\"email\":\"" + DemoUserSeeder.DEMO_EMAIL + "\",\"password\":\""
+                                + DemoUserSeeder.DEMO_PASSWORD + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(DemoUserSeeder.DEMO_EMAIL));
     }
 }

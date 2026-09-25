@@ -2,6 +2,7 @@ package com.truesight.health;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -15,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>{@code @WebMvcTest} starts only the web layer for the controller named, and {@code MockMvc} sends it requests
  * without a real network. Copy this for any endpoint whose logic can be checked without the database.
  */
+@AutoConfigureMockMvc(addFilters = false) // security is tested separately, in AuthIT
 @WebMvcTest(HealthController.class)
 class HealthControllerTest {
 

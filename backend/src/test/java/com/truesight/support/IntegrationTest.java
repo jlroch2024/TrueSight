@@ -23,13 +23,15 @@ import java.lang.annotation.Target;
  *
  * <p>This annotation bundles four: start the whole app ({@code @SpringBootTest}), allow requests without a real
  * network ({@code @AutoConfigureMockMvc}), use the "test" settings, which also creates the demo user
- * ({@code @ActiveProfiles}), and start the database ({@code @Import}).
+ * ({@code @ActiveProfiles}), and start the database and the {@link TestLogins} helper ({@code @Import}).
+ *
+ * <p>Every {@code /api/} address except health, sign up and log in needs a logged-in user: use {@link TestLogins}.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, TestLogins.class})
 public @interface IntegrationTest {
 }
