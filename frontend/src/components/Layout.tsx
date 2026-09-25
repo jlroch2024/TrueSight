@@ -3,12 +3,21 @@
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
 // PORTFOLIO_NAV_ITEMS in navigation.ts.
-import { NavLink, Outlet, useMatch } from 'react-router';
+import { NavLink, Outlet, useMatch, useNavigate } from 'react-router';
+import { tokenStore } from '../api/client';
 import { NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
+import { paths } from '../paths';
 
 export function Layout() {
+  const navigate = useNavigate();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
   const portfolioItems = portfolioId ? PORTFOLIO_NAV_ITEMS : [];
+
+  // Logging out only forgets the token: the backend keeps nothing to undo.
+  function logOut() {
+    tokenStore.clear();
+    navigate(paths.logIn, { replace: true });
+  }
 
   return (
     <div className="layout">
@@ -33,6 +42,9 @@ export function Layout() {
             </div>
           )}
         </nav>
+        <button type="button" className="log-out" onClick={logOut}>
+          Log Out
+        </button>
       </aside>
       <main className="content">
         <Outlet />

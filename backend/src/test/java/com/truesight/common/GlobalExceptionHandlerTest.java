@@ -2,6 +2,7 @@ package com.truesight.common;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>It uses a small controller that exists only in this test and throws on purpose.
  */
+@AutoConfigureMockMvc(addFilters = false) // security is tested separately, in AuthIT
 @WebMvcTest(GlobalExceptionHandlerTest.ThrowingController.class)
 @Import(GlobalExceptionHandlerTest.ThrowingController.class)
 class GlobalExceptionHandlerTest {
