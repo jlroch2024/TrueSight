@@ -1,0 +1,9 @@
+# What `gcloud run deploy --source .` must never upload to Google Cloud. Secrets stay on this computer, and build
+# output and downloaded packages are rebuilt there anyway, so leaving them out also makes the upload much smaller.
+.env
+.env.*
+.git
+.github
+**/node_modules
+**/dist
+**/target

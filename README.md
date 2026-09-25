@@ -6,6 +6,14 @@ Upload a portfolio, and TrueSight reads each company's latest annual report from
 and customers it names, checks every claim against the report's own words, and draws the result as a graph. Every
 relationship links to the sentence in the report it came from.
 
+## Live Site
+
+**https://truesight-1088051639519.asia-southeast1.run.app** (the Swagger page is at
+[/swagger-ui.html](https://truesight-1088051639519.asia-southeast1.run.app/swagger-ui.html))
+
+Every merge into `main` updates it automatically, once the tests pass. [docs/deployment.md](docs/deployment.md) says
+what runs where on Google Cloud, and every step used to set it up.
+
 ## Getting It Running
 
 Install these first: **Git**, **Java 21**, **Node.js** (the LTS version) and **Docker Desktop**. Docker Desktop must be
@@ -41,6 +49,10 @@ Both run automatically on every pull request.
 | Testcontainers | Starts a real PostgreSQL in Docker for the tests | Tests check the real database, not an imitation |
 | GitHub Actions | Runs every test on every pull request | Catches breakage before it is merged |
 | Docker Compose | Starts the database with one command | Nobody installs PostgreSQL by hand |
+| Docker image (`Dockerfile`) | Packages the website and backend together | The live site is one service with one address |
+| Google Cloud Run | Runs the live site | No server to look after, and it costs almost nothing when idle |
+| Google Cloud SQL | The live site's PostgreSQL | A managed database with backups |
+| Google Secret Manager | Holds the live site's keys and passwords | Secrets never go in the repository |
 
 ## How We Work
 
