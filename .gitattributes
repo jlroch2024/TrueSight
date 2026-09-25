@@ -3,3 +3,7 @@
 mvnw text eol=lf
 *.sh text eol=lf
 mvnw.cmd text eol=crlf
+
+# Keep the sample data with Unix line endings, exactly as it came from the SEC and Gemini. Tests count its
+# characters, and Windows line endings would add one to every line.
+docs/examples/** text eol=lf
