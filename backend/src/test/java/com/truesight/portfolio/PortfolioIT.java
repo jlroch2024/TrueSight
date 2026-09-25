@@ -2,9 +2,7 @@ package com.truesight.portfolio;
 
 import com.jayway.jsonpath.JsonPath;
 import com.truesight.support.IntegrationTest;
-import com.truesight.user.CurrentUser;
-import com.truesight.user.User;
-import com.truesight.user.UserRepository;
+import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Manage My Portfolios, through the whole app and a real database. One test (or more) per Acceptance Criterion.
  *
- * <p>Until Sign Up and Log In is merged, every request is made as the demo user. Each test starts with the demo user
- * owning no portfolios.
+ * <p>Each test logs in as a brand-new user, so it starts with no portfolios and never sees another test's data.
  */
 @IntegrationTest
 class PortfolioIT {
@@ -43,19 +40,23 @@ class PortfolioIT {
     HoldingRepository holdings;
 
     @Autowired
-    UserRepository users;
+    TestLogins logins;
 
-    @Autowired
-    CurrentUser currentUser;
+    String me;
 
     @BeforeEach
-    void startWithNoPortfolios() {
-        portfolios.deleteAll(portfolios.findByUserIdOrderByNameAsc(currentUser.id()));
+    void logInAsANewUser() {
+        me = logins.bearer("pm-" + UUID.randomUUID() + "@example.com");
+    }
+
+    @Test
+    void nobodyCanUseThePortfoliosWithoutLoggingIn() throws Exception {
+        mockMvc.perform(get("/api/portfolios")).andExpect(status().isUnauthorized());
     }
 
     @Test
     void aNewUserHasNoPortfolios() throws Exception {
-        mockMvc.perform(get("/api/portfolios"))
+        mockMvc.perform(get("/api/portfolios").header("Authorization", me))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
@@ -68,7 +69,7 @@ class PortfolioIT {
                 .andExpect(jsonPath("$.name").value("Tech Book"))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty());
 
-        mockMvc.perform(get("/api/portfolios"))
+        mockMvc.perform(get("/api/portfolios").header("Authorization", me))
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].name").value("Tech Book"));
     }
@@ -113,7 +114,7 @@ class PortfolioIT {
         long id = createdId("Tech Book");
         holdings.save(new Holding(id, "NVDA", new BigDecimal("60")));
 
-        mockMvc.perform(delete("/api/portfolios/" + id)).andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/portfolios/" + id).header("Authorization", me)).andExpect(status().isNoContent());
 
         assertThat(portfolios.findById(id)).isEmpty();
         assertThat(holdings.findByPortfolioIdOrderByTickerAsc(id)).isEmpty();
@@ -134,31 +135,33 @@ class PortfolioIT {
 
     @Test
     void anotherUsersPortfolioCannotBeSeenRenamedOrDeleted() throws Exception {
-        User other = users.save(new User("other-" + UUID.randomUUID() + "@example.com", "not-a-real-hash"));
-        long theirs = portfolios.save(new Portfolio(other.getId(), "Their Book")).getId();
+        Long other = logins.user("other-" + UUID.randomUUID() + "@example.com").getId();
+        long theirs = portfolios.save(new Portfolio(other, "Their Book")).getId();
 
-        mockMvc.perform(get("/api/portfolios")).andExpect(jsonPath("$", hasSize(0)));
+        mockMvc.perform(get("/api/portfolios").header("Authorization", me)).andExpect(jsonPath("$", hasSize(0)));
         rename(theirs, "Mine Now").andExpect(status().isNotFound());
-        mockMvc.perform(delete("/api/portfolios/" + theirs)).andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/portfolios/" + theirs).header("Authorization", me)).andExpect(status().isNotFound());
 
         assertThat(portfolios.findById(theirs).orElseThrow().getName()).isEqualTo("Their Book");
     }
 
     @Test
     void aPortfolioThatDoesNotExistIsNotFound() throws Exception {
-        mockMvc.perform(delete("/api/portfolios/999999999"))
+        mockMvc.perform(delete("/api/portfolios/999999999").header("Authorization", me))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Portfolio not found."));
     }
 
     private ResultActions create(String name) throws Exception {
         return mockMvc.perform(post("/api/portfolios")
+                .header("Authorization", me)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"" + name + "\"}"));
     }
 
     private ResultActions rename(long id, String name) throws Exception {
         return mockMvc.perform(put("/api/portfolios/" + id)
+                .header("Authorization", me)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\": \"" + name + "\"}"));
     }

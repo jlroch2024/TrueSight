@@ -56,6 +56,11 @@ public class User {
         return passwordHash;
     }
 
+    /** Takes a hash, never the password as typed. */
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

@@ -28,6 +28,16 @@ export const tokenStore = {
   clear: (): void => localStorage.removeItem(TOKEN_KEY),
 };
 
+/**
+ * What to do when the backend says "please log in" (401) to a request that sent a token: the token has expired or is
+ * no longer valid. App.tsx sets this to go to the Log In page. The token is cleared first.
+ */
+let onLoggedOut: () => void = () => {};
+
+export function setLoggedOutHandler(handler: () => void): void {
+  onLoggedOut = handler;
+}
+
 export async function api<T = void>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   const token = tokenStore.get();
@@ -47,7 +57,12 @@ export async function api<T = void>(path: string, options: RequestInit = {}): Pr
   }
 
   if (!response.ok) {
-    throw new ApiError(await readMessage(response), response.status);
+    const error = new ApiError(await readMessage(response), response.status);
+    if (response.status === 401 && token) {
+      tokenStore.clear();
+      onLoggedOut();
+    }
+    throw error;
   }
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;

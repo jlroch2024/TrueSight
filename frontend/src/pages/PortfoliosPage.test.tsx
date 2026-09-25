@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { tokenStore } from '../api/client';
 
 type Stored = { id: number; name: string; createdAt: string };
 let stored: Stored[];
@@ -49,6 +50,7 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  tokenStore.set('a-token');
   stored = [];
   vi.stubGlobal('fetch', vi.fn(fakeBackend));
 });

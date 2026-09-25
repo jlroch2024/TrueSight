@@ -104,7 +104,7 @@ export function PortfoliosPage() {
                     <button type="submit" disabled={busy || !renameTo.trim()}>
                       Save
                     </button>
-                    <button type="button" onClick={() => setRenamingId(null)} disabled={busy}>
+                    <button type="button" className="secondary" onClick={() => setRenamingId(null)} disabled={busy}>
                       Cancel
                     </button>
                   </form>
@@ -114,6 +114,7 @@ export function PortfoliosPage() {
                     <span className="actions">
                       <button
                         type="button"
+                        className="secondary"
                         disabled={busy}
                         onClick={() => {
                           setRenamingId(portfolio.id);
