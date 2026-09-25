@@ -80,6 +80,17 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!--
+            On the live site: Google's connector for reaching Cloud SQL from Cloud Run. It connects securely using
+            the Cloud Run service's own Google identity, so no database address has to be opened to the internet.
+            Only used when DATABASE_URL names it; on a laptop and in tests it does nothing.
+        -->
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>1.28.4</version>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- Tests: fast endpoint tests, and slower tests against a real PostgreSQL started in Docker -->
         <dependency>

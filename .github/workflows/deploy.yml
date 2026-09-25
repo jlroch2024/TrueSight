@@ -1,0 +1,44 @@
+# Updates the live site after something is merged into main, but only once every test has passed.
+# It waits for the CI workflow to finish on main. If CI failed, it does nothing, and the live site keeps the last
+# working version.
+#
+# It logs in to Google Cloud with a key kept in GitHub's encrypted secrets (GCP_SA_KEY), never in this repository.
+# The live site's settings and secrets stay on Cloud Run, which keeps them from one deploy to the next.
+# docs/deployment.md explains the one-time setup.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Two quick merges deploy one after the other, never at the same time.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: truesight-509715
+  REGION: asia-southeast1
+  SERVICE: truesight
+
+jobs:
+  deploy:
+    name: Deploy
+    # Only after CI passed, and only for a merge into main (not for a pull request).
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # The exact version CI tested, even if something else was merged in the meantime.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      # Google Cloud builds the image from the Dockerfile, then starts it in place of the old one. The old version
+      # keeps answering until the new one is ready, so the site never goes down.
+      - name: Build and deploy
+        run: gcloud run deploy "$SERVICE" --source . --project "$PROJECT_ID" --region "$REGION" --quiet
