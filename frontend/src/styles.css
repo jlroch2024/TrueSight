@@ -1,0 +1,97 @@
+/* TrueSight's look: dark, square corners, Space Grotesk. Colours are named once here and reused everywhere. */
+:root {
+  --bg: #0c0e12;
+  --panel: #151920;
+  --border: #262c36;
+  --text: #e6e8eb;
+  --muted: #8a94a3;
+  --accent: #5b8cff;
+  --danger: #ff6b6b;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.nav-link {
+  display: block;
+  padding: 8px 10px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--text);
+  background: var(--border);
+}
+
+.nav-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.content {
+  flex: 1;
+  padding: 32px;
+}
+
+.card {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
+}

@@ -1,0 +1,359 @@
+[
+  {
+    "id": 1,
+    "company": {
+      "id": 1,
+      "name": "NVIDIA Corporation",
+      "ticker": "NVDA"
+    },
+    "counterparty": {
+      "id": 11,
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "ticker": "TSM"
+    },
+    "type": "SUPPLIER",
+    "provides": "semiconductor wafers",
+    "evidence": "We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-02-25",
+      "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+    }
+  },
+  {
+    "id": 2,
+    "company": {
+      "id": 1,
+      "name": "NVIDIA Corporation",
+      "ticker": "NVDA"
+    },
+    "counterparty": {
+      "id": 12,
+      "name": "Samsung Electronics Co., Ltd.",
+      "ticker": null
+    },
+    "type": "SUPPLIER",
+    "provides": "semiconductor wafers",
+    "evidence": "We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-02-25",
+      "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+    }
+  },
+  {
+    "id": 3,
+    "company": {
+      "id": 2,
+      "name": "Advanced Micro Devices, Inc.",
+      "ticker": "AMD"
+    },
+    "counterparty": {
+      "id": 11,
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "ticker": "TSM"
+    },
+    "type": "SUPPLIER",
+    "provides": "wafers for HPC, FPGA and adaptive SoC products",
+    "evidence": "We utilize Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of wafers for our HPC, FPGA and adaptive SoC products and GLOBALFOUNDRIES Inc. (GF), with respect to wafer purchases for our HPC products at the 12 nm and 14 nm technology nodes.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-02-04",
+      "url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm"
+    }
+  },
+  {
+    "id": 4,
+    "company": {
+      "id": 2,
+      "name": "Advanced Micro Devices, Inc.",
+      "ticker": "AMD"
+    },
+    "counterparty": {
+      "id": 13,
+      "name": "GLOBALFOUNDRIES Inc.",
+      "ticker": "GFS"
+    },
+    "type": "SUPPLIER",
+    "provides": "wafers for HPC products",
+    "evidence": "We utilize Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of wafers for our HPC, FPGA and adaptive SoC products and GLOBALFOUNDRIES Inc. (GF), with respect to wafer purchases for our HPC products at the 12 nm and 14 nm technology nodes.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-02-04",
+      "url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm"
+    }
+  },
+  {
+    "id": 5,
+    "company": {
+      "id": 3,
+      "name": "QUALCOMM Incorporated",
+      "ticker": "QCOM"
+    },
+    "counterparty": {
+      "id": 11,
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "ticker": "TSM"
+    },
+    "type": "SUPPLIER",
+    "provides": "integrated circuits",
+    "evidence": "The primary foundry suppliers for our various digital, analog/mixed-signal, RF and PM integrated circuits include Taiwan Semiconductor Manufacturing Company (TSMC), Samsung Electronics and Global Foundries.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2025-11-05",
+      "url": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm"
+    }
+  },
+  {
+    "id": 6,
+    "company": {
+      "id": 3,
+      "name": "QUALCOMM Incorporated",
+      "ticker": "QCOM"
+    },
+    "counterparty": {
+      "id": 12,
+      "name": "Samsung Electronics Co., Ltd.",
+      "ticker": null
+    },
+    "type": "SUPPLIER",
+    "provides": "integrated circuits",
+    "evidence": "The primary foundry suppliers for our various digital, analog/mixed-signal, RF and PM integrated circuits include Taiwan Semiconductor Manufacturing Company (TSMC), Samsung Electronics and Global Foundries.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2025-11-05",
+      "url": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm"
+    }
+  },
+  {
+    "id": 7,
+    "company": {
+      "id": 3,
+      "name": "QUALCOMM Incorporated",
+      "ticker": "QCOM"
+    },
+    "counterparty": {
+      "id": 13,
+      "name": "GLOBALFOUNDRIES Inc.",
+      "ticker": "GFS"
+    },
+    "type": "SUPPLIER",
+    "provides": "integrated circuits",
+    "evidence": "The primary foundry suppliers for our various digital, analog/mixed-signal, RF and PM integrated circuits include Taiwan Semiconductor Manufacturing Company (TSMC), Samsung Electronics and Global Foundries.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2025-11-05",
+      "url": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm"
+    }
+  },
+  {
+    "id": 8,
+    "company": {
+      "id": 4,
+      "name": "Tesla, Inc.",
+      "ticker": "TSLA"
+    },
+    "counterparty": {
+      "id": 14,
+      "name": "Panasonic",
+      "ticker": null
+    },
+    "type": "SUPPLIER",
+    "provides": "battery cells",
+    "evidence": "Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-01-29",
+      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm"
+    }
+  },
+  {
+    "id": 9,
+    "company": {
+      "id": 4,
+      "name": "Tesla, Inc.",
+      "ticker": "TSLA"
+    },
+    "counterparty": {
+      "id": 15,
+      "name": "Contemporary Amperex Technology Co. Limited",
+      "ticker": null
+    },
+    "type": "SUPPLIER",
+    "provides": "battery cells",
+    "evidence": "Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-01-29",
+      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm"
+    }
+  },
+  {
+    "id": 10,
+    "company": {
+      "id": 5,
+      "name": "Broadcom Inc.",
+      "ticker": "AVGO"
+    },
+    "counterparty": {
+      "id": 11,
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "ticker": "TSM"
+    },
+    "type": "SUPPLIER",
+    "provides": "front-end wafer manufacturing",
+    "evidence": "The majority of our front-end wafer manufacturing operations is outsourced to external foundries, including Taiwan Semiconductor Manufacturing Company Limited (“TSMC”).",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2025-12-18",
+      "url": "https://www.sec.gov/Archives/edgar/data/1730168/000173016825000121/avgo-20251102.htm"
+    }
+  },
+  {
+    "id": 11,
+    "company": {
+      "id": 6,
+      "name": "Lam Research Corporation",
+      "ticker": "LRCX"
+    },
+    "counterparty": {
+      "id": 16,
+      "name": "Micron Technology, Inc.",
+      "ticker": "MU"
+    },
+    "type": "CUSTOMER",
+    "provides": null,
+    "evidence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-08-07",
+      "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
+    }
+  },
+  {
+    "id": 12,
+    "company": {
+      "id": 6,
+      "name": "Lam Research Corporation",
+      "ticker": "LRCX"
+    },
+    "counterparty": {
+      "id": 12,
+      "name": "Samsung Electronics Co., Ltd.",
+      "ticker": null
+    },
+    "type": "CUSTOMER",
+    "provides": null,
+    "evidence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-08-07",
+      "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
+    }
+  },
+  {
+    "id": 13,
+    "company": {
+      "id": 6,
+      "name": "Lam Research Corporation",
+      "ticker": "LRCX"
+    },
+    "counterparty": {
+      "id": 17,
+      "name": "SK hynix Inc.",
+      "ticker": null
+    },
+    "type": "CUSTOMER",
+    "provides": null,
+    "evidence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-08-07",
+      "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
+    }
+  },
+  {
+    "id": 14,
+    "company": {
+      "id": 6,
+      "name": "Lam Research Corporation",
+      "ticker": "LRCX"
+    },
+    "counterparty": {
+      "id": 11,
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "ticker": "TSM"
+    },
+    "type": "CUSTOMER",
+    "provides": null,
+    "evidence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-08-07",
+      "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
+    }
+  },
+  {
+    "id": 15,
+    "company": {
+      "id": 7,
+      "name": "Cirrus Logic, Inc.",
+      "ticker": "CRUS"
+    },
+    "counterparty": {
+      "id": 18,
+      "name": "Apple Inc.",
+      "ticker": "AAPL"
+    },
+    "type": "CUSTOMER",
+    "provides": null,
+    "evidence": "For fiscal years 2026, 2025, and 2024, we had one end customer, Apple Inc., who purchased through multiple contract manufacturers and represented approximately 91 percent, 89 percent, and 87 percent, of the Company’s total net sales, respectively.",
+    "report": {
+      "form": "10-K",
+      "filingDate": "2026-05-21",
+      "url": "https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/crus-20260328.htm"
+    }
+  },
+  {
+    "id": 16,
+    "company": {
+      "id": 8,
+      "name": "ASML Holding N.V.",
+      "ticker": "ASML"
+    },
+    "counterparty": {
+      "id": 19,
+      "name": "Carl Zeiss SMT",
+      "ticker": null
+    },
+    "type": "SUPPLIER",
+    "provides": "lenses, mirrors, illuminators, collectors and other optical components",
+    "evidence": "The number of lithography systems we are able to produce is limited by the production capacity of one of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators, collectors and other critical optical components (which we refer to as optics).",
+    "report": {
+      "form": "20-F",
+      "filingDate": "2026-02-25",
+      "url": "https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm"
+    }
+  },
+  {
+    "id": 17,
+    "company": {
+      "id": 9,
+      "name": "STMicroelectronics N.V.",
+      "ticker": "STM"
+    },
+    "counterparty": {
+      "id": 18,
+      "name": "Apple Inc.",
+      "ticker": "AAPL"
+    },
+    "type": "CUSTOMER",
+    "provides": null,
+    "evidence": "In 2025 our largest customer, Apple, accounted for 17.7% of our total revenues.",
+    "report": {
+      "form": "20-F",
+      "filingDate": "2026-02-26",
+      "url": "https://www.sec.gov/Archives/edgar/data/932787/000093278726000009/stm-20251231.htm"
+    }
+  }
+]
