@@ -4,6 +4,8 @@ import com.truesight.common.ApiException;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
+import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.RelationshipFinder;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.ReportTextExtractor;
@@ -24,10 +26,11 @@ public class AnalysisService {
     private final CompanyRepository companyRepository;
     private final ReportRepository reports;
     private final SecClient sec;
+    private final RelationshipFinder relationshipFinder;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyDirectory companies, CompanyRepository companyRepository,
-                          ReportRepository reports, SecClient sec) {
+                          ReportRepository reports, SecClient sec, RelationshipFinder relationshipFinder) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
@@ -35,6 +38,7 @@ public class AnalysisService {
         this.companyRepository = companyRepository;
         this.reports = reports;
         this.sec = sec;
+        this.relationshipFinder = relationshipFinder;
     }
 
     @Transactional
@@ -81,19 +85,20 @@ public class AnalysisService {
             }
             Company company = companies.findOrCreate(secCompany.name(), secCompany.cik(), secCompany.ticker(), List.of());
             holding.setCompanyId(company.getId());
-            if (reports.findFirstByCompanyIdOrderByFilingDateDesc(company.getId()).isPresent()) {
-                holding.setStatus(HoldingStatus.DONE);
-                return;
+            Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(company.getId()).orElse(null);
+            if (report == null) {
+                SecClient.SecFiling filing = sec.latestAnnualFiling(secCompany.cik());
+                if (filing == null) {
+                    holding.setStatus(HoldingStatus.NO_REPORT_FOUND);
+                    return;
+                }
+                String text = ReportTextExtractor.extract(sec.download(filing.url()));
+                report = reports.save(new Report(company.getId(), filing.form(), filing.accessionNumber(), filing.filingDate(), filing.url(), text));
             }
-            SecClient.SecFiling filing = sec.latestAnnualFiling(secCompany.cik());
-            if (filing == null) {
-                holding.setStatus(HoldingStatus.NO_REPORT_FOUND);
-                return;
-            }
-            String text = ReportTextExtractor.extract(sec.download(filing.url()));
-            reports.save(new Report(company.getId(), filing.form(), filing.accessionNumber(), filing.filingDate(), filing.url(), text));
+            // Does nothing if this report's relationships were found before, for any portfolio.
+            relationshipFinder.findIn(report, company);
             holding.setStatus(HoldingStatus.DONE);
-        } catch (SecClient.SecAccessException exception) {
+        } catch (SecClient.SecAccessException | GeminiClient.GeminiException exception) {
             holding.fail(exception.getMessage());
         } catch (RuntimeException exception) {
             holding.fail("The annual report could not be processed.");

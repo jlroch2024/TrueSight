@@ -1,8 +1,10 @@
 package com.truesight.portfolio;
 
 import com.truesight.company.CompanyRepository;
+import com.truesight.relationship.GeminiClient;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
+import com.truesight.support.Examples;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,9 +35,13 @@ class AnnualReportAnalysisIT {
     @Autowired ReportRepository reports;
 
     @MockitoBean SecClient sec;
+    // Analysis goes on to ask the AI for each report. Tests never call Gemini: this fake gives its real NVIDIA answer,
+    // whose quotes are not in these tests' short reports, so no relationships are saved.
+    @MockitoBean GeminiClient gemini;
 
     @BeforeEach
     void clearSavedReportsForSampleCompanies() {
+        when(gemini.generate(anyString())).thenReturn(Examples.geminiNvidia());
         companies.findByCik("0001045810").ifPresent(company -> reports.deleteByCompanyId(company.getId()));
         companies.findByCik("0000937966").ifPresent(company -> reports.deleteByCompanyId(company.getId()));
     }
