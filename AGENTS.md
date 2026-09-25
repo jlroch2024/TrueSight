@@ -95,10 +95,18 @@ parameter. Broken rules become a 400 automatically.
 `portfolios.findByIdAndUserId(id, currentUser.id())`, never `findById`. Another user's portfolio is "not found" (404),
 never 403: saying "not allowed" would confirm it exists.
 
-Until the Sign Up and Log In story is merged, `CurrentUser` is a placeholder that returns a demo user
-(`demo@truesight.local`), and every endpoint is open. On a laptop the demo user also has one empty portfolio,
-"Demo Portfolio" (usually id 1), so portfolio pages can be built before Manage My Portfolios exists. Once Sign Up and
-Log In is merged, endpoints need a token: integration tests then log in using the test helper that story adds.
+Every `/api/` address except `/api/health`, `/api/auth/signup` and `/api/auth/login` needs a login token.
+`CurrentUser` reads the user from that token.
+
+- **On a laptop,** log in as `demo@truesight.local` with the password `truesight-demo`. That account owns an empty
+  portfolio, "Demo Portfolio" (usually id 1), so portfolio pages can be built before Manage My Portfolios exists. It is
+  created only on laptops and in tests, never on the live site.
+- **In integration tests,** log in with `TestLogins`:
+  `mockMvc.perform(get("/api/portfolios").header("Authorization", logins.bearer("pm@example.com")))`. Use a different
+  email in each test, so tests never see each other's data.
+- **In quick `@WebMvcTest` tests,** add `@AutoConfigureMockMvc(addFilters = false)`: security is tested in `AuthIT`,
+  not in every endpoint test.
+- **On the Swagger page,** log in with `POST /api/auth/login`, then paste the token into **Authorize**.
 
 **Companies.** Get every company, whether a holding or a supplier the AI found, through
 `CompanyDirectory.findOrCreate(name, cik, ticker, otherNames)`. Never create a `Company` directly. That way the same
@@ -138,7 +146,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   | `/` | Home | Set Up the Project |
   | `/login`, `/signup` | Log In, Sign Up | Sign Up and Log In |
   | `/portfolios` | Portfolios: list, create, rename, delete | Manage My Portfolios |
-  | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Upload a Portfolio CSV, then the annual report story adds Analyse |
+  | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds holdings and upload, then the annual report story adds Analyse. |
   | `/portfolios/:portfolioId/supply-chain` | Supply Chain: the graph | See the Supply Chain as a Graph |
 
 - **The open portfolio is the one in the address.** A page reads it with `const { portfolioId } = useParams()`.
@@ -183,7 +191,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 - Change the shared pieces (`ApiException`, `GlobalExceptionHandler`, `CurrentUser`, `CompanyDirectory`, `api()`,
   `paths.ts`, `Layout.tsx`, the entities and `V1`) unless the story's Technical Notes say to.
 - Run the live site without `SPRING_PROFILES_ACTIVE=prod`. Without it, the app runs in `local` mode and creates the
-  demo user and Demo Portfolio in the real database.
+  demo account, with its publicly known password, in the real database.
 - Copy code from any other folder on this computer. Build the story here, from this repository.
 - Commit `.env`, keys, `node_modules`, `target` or `dist`.
 

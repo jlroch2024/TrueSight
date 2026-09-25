@@ -49,6 +49,19 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!--
+            Logging in: Spring Security checks every request, and the resource-server part reads and checks the
+            signed token (JWT) the browser sends. It also signs new tokens, and hashes passwords with BCrypt.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+
         <!-- The database: saving Java objects (JPA), creating the tables (Flyway), and the PostgreSQL driver -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -72,6 +85,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

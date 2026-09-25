@@ -2,13 +2,23 @@
 // <Outlet /> is where React Router puts the page for the current address.
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
-// PORTFOLIO_NAV_ITEMS in navigation.ts.
-import { NavLink, Outlet, useMatch } from 'react-router';
+// PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a header naming the open portfolio, with a switcher.
+import { NavLink, Outlet, useMatch, useNavigate } from 'react-router';
+import { tokenStore } from '../api/client';
 import { NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
+import { paths } from '../paths';
+import { PortfolioSwitcher } from './PortfolioSwitcher';
 
 export function Layout() {
+  const navigate = useNavigate();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
   const portfolioItems = portfolioId ? PORTFOLIO_NAV_ITEMS : [];
+
+  // Logging out only forgets the token: the backend keeps nothing to undo.
+  function logOut() {
+    tokenStore.clear();
+    navigate(paths.logIn, { replace: true });
+  }
 
   return (
     <div className="layout">
@@ -24,7 +34,7 @@ export function Layout() {
             </NavLink>
           ))}
           {portfolioId && portfolioItems.length > 0 && (
-            <div className="nav-section" aria-label="Open Portfolio">
+            <div className="nav-section" aria-label="Portfolio Pages">
               {portfolioItems.map((item) => (
                 <NavLink key={item.label} to={item.path(portfolioId)} end className="nav-link">
                   {item.label}
@@ -33,8 +43,12 @@ export function Layout() {
             </div>
           )}
         </nav>
+        <button type="button" className="log-out" onClick={logOut}>
+          Log Out
+        </button>
       </aside>
       <main className="content">
+        {portfolioId && <PortfolioSwitcher portfolioId={portfolioId} />}
         <Outlet />
       </main>
     </div>

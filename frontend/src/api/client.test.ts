@@ -1,6 +1,6 @@
 // Tests for api(). fetch is replaced with a fake, so no backend is needed.
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, api, tokenStore } from './client';
+import { ApiError, api, setLoggedOutHandler, tokenStore } from './client';
 
 function fakeFetch(status: number, body: unknown) {
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -34,6 +34,28 @@ describe('api', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.message).toBe('The file needs a ticker column.');
     expect(error.status).toBe(400);
+  });
+
+  it('forgets an expired login and says so, when the backend answers 401', async () => {
+    fakeFetch(401, { message: 'Please log in.' });
+    tokenStore.set('expired-token');
+    const loggedOut = vi.fn();
+    setLoggedOutHandler(loggedOut);
+
+    await expect(api('/portfolios')).rejects.toThrow('Please log in.');
+
+    expect(tokenStore.get()).toBeNull();
+    expect(loggedOut).toHaveBeenCalledOnce();
+  });
+
+  it('does not treat a wrong password as an expired login', async () => {
+    fakeFetch(401, { message: 'Wrong email or password' });
+    const loggedOut = vi.fn();
+    setLoggedOutHandler(loggedOut);
+
+    await expect(api('/auth/login', { method: 'POST', body: '{}' })).rejects.toThrow('Wrong email or password');
+
+    expect(loggedOut).not.toHaveBeenCalled();
   });
 
   it('explains when the backend cannot be reached at all', async () => {

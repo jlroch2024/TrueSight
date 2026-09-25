@@ -4,7 +4,7 @@ import com.truesight.company.CompanyRepository;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
 import com.truesight.support.IntegrationTest;
-import com.truesight.user.CurrentUser;
+import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AnnualReportAnalysisIT {
 
     @Autowired MockMvc mockMvc;
-    @Autowired CurrentUser currentUser;
+    @Autowired TestLogins logins;
     @Autowired PortfolioRepository portfolios;
     @Autowired HoldingRepository holdings;
     @Autowired CompanyRepository companies;
@@ -42,26 +42,27 @@ class AnnualReportAnalysisIT {
 
     @Test
     void analysisFindsNvidia10KAndAsml20FAndShowsTheirReports() throws Exception {
-        Portfolio portfolio = portfolioWith("NVDA", "ASML");
+        String email = "annual-report-analysis@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA", "ASML");
         mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021", "2026-02-25",
                 "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
         mockCompanyAndReport("ASML", "ASML Holding N.V.", "0000937966", "20-F", "0001628280-26-011378", "2026-02-25",
                 "https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm");
 
-        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()))
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isAccepted());
         awaitStatuses(portfolio.getId(), 2, HoldingStatus.DONE);
 
-        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()))
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].companyName").value("ASML Holding N.V."))
                 .andExpect(jsonPath("$[0].status").value("DONE"))
                 .andExpect(jsonPath("$[0].reportType").value("20-F"))
-                .andExpect(jsonPath("$[0].filingDate").value("2026-02-25"))
-                .andExpect(jsonPath("$[0].reportUrl").value("https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm"))
+                .andExpect(jsonPath("$[0].reportDate").value("2026-02-25"))
+                .andExpect(jsonPath("$[0].reportLink").value("https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm"))
                 .andExpect(jsonPath("$[1].companyName").value("NVIDIA Corporation"))
                 .andExpect(jsonPath("$[1].reportType").value("10-K"))
-                .andExpect(jsonPath("$[1].filingDate").value("2026-02-25"));
+                .andExpect(jsonPath("$[1].reportDate").value("2026-02-25"));
 
         Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
         Long asmlId = companies.findByCik("0000937966").orElseThrow().getId();
@@ -71,26 +72,28 @@ class AnnualReportAnalysisIT {
 
     @Test
     void anUnknownTickerShowsNoReportFound() throws Exception {
-        Portfolio portfolio = portfolioWith("UNKNOWN");
+        String email = "annual-report-no-filing@example.com";
+        Portfolio portfolio = portfolioWith(email, "UNKNOWN");
         when(sec.companyForTicker("UNKNOWN")).thenReturn(null);
 
-        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()))
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isAccepted());
         awaitStatuses(portfolio.getId(), 1, HoldingStatus.NO_REPORT_FOUND);
-        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()))
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$[0].status").value("NO_REPORT_FOUND"));
     }
 
     @Test
     void pressingAnalyseAgainReusesTheSavedCompanyReport() throws Exception {
-        Portfolio first = portfolioWith("NVDA");
+        String email = "annual-report-reuse@example.com";
+        Portfolio first = portfolioWith(email, "NVDA");
         mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021", "2026-02-25",
                 "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
-        mockMvc.perform(post("/api/portfolios/{id}/analysis", first.getId())).andExpect(status().isAccepted());
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", first.getId()).header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
         awaitStatuses(first.getId(), 1, HoldingStatus.DONE);
 
-        Portfolio second = portfolioWith("NVDA");
-        mockMvc.perform(post("/api/portfolios/{id}/analysis", second.getId())).andExpect(status().isAccepted());
+        Portfolio second = portfolioWith(email, "NVDA");
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", second.getId()).header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
         awaitStatuses(second.getId(), 1, HoldingStatus.DONE);
 
         verify(sec, times(1)).download("https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
@@ -100,21 +103,22 @@ class AnnualReportAnalysisIT {
 
     @Test
     void secFailureIsSavedAndBlocksAnotherAnalyseRequest() throws Exception {
-        Portfolio portfolio = portfolioWith("NVDA");
+        String email = "annual-report-failure@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
         when(sec.companyForTicker("NVDA")).thenThrow(new SecClient.SecAccessException("The SEC could not be reached.", new RuntimeException()));
 
-        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())).andExpect(status().isAccepted());
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
         awaitStatuses(portfolio.getId(), 1, HoldingStatus.FAILED);
-        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()))
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$[0].status").value("FAILED"))
                 .andExpect(jsonPath("$[0].statusReason").value("The SEC could not be reached."));
-        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()))
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isConflict());
         verify(sec, times(1)).companyForTicker("NVDA");
     }
 
-    private Portfolio portfolioWith(String... tickers) {
-        Portfolio portfolio = portfolios.save(new Portfolio(currentUser.id(), "Report Test " + System.nanoTime()));
+    private Portfolio portfolioWith(String email, String... tickers) {
+        Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "Report Test " + System.nanoTime()));
         for (String ticker : tickers) holdings.save(new Holding(portfolio.getId(), ticker, new BigDecimal("10")));
         return portfolio;
     }
