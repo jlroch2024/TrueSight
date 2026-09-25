@@ -146,7 +146,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   | `/` | Home | Set Up the Project |
   | `/login`, `/signup` | Log In, Sign Up | Sign Up and Log In |
   | `/portfolios` | Portfolios: list, create, rename, delete | Manage My Portfolios |
-  | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Upload a Portfolio CSV, then the annual report story adds Analyse |
+  | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds holdings and upload, then the annual report story adds Analyse. |
   | `/portfolios/:portfolioId/supply-chain` | Supply Chain: the graph | See the Supply Chain as a Graph |
 
 - **The open portfolio is the one in the address.** A page reads it with `const { portfolioId } = useParams()`.

@@ -9,8 +9,11 @@
 // | /                                    | Home                                      | Set Up the Project         |
 // | /login, /signup                      | Log In, Sign Up                           | Sign Up and Log In         |
 // | /portfolios                          | Portfolios: list, create, rename, delete  | Manage My Portfolios       |
-// | /portfolios/:portfolioId             | Portfolio: holdings, Upload CSV, Analyse  | Upload a Portfolio CSV     |
+// | /portfolios/:portfolioId             | Portfolio: holdings, Upload CSV, Analyse  | See below                  |
 // | /portfolios/:portfolioId/supply-chain| Supply Chain: the graph                   | See the Supply Chain...    |
+//
+// /portfolios/:portfolioId is built by: Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds
+// holdings and upload, then the annual report story adds Analyse.
 export const paths = {
   home: '/',
   logIn: '/login',

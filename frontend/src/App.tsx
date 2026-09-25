@@ -13,6 +13,8 @@ import { RequireLogIn } from './components/RequireLogIn';
 import { HomePage } from './pages/HomePage';
 import { LogInPage } from './pages/LogInPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PortfolioPage } from './pages/PortfolioPage';
+import { PortfoliosPage } from './pages/PortfoliosPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { paths } from './paths';
 
@@ -31,6 +33,8 @@ export function App() {
       <Route element={<RequireLogIn />}>
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
+          <Route path={paths.portfolios} element={<PortfoliosPage />} />
+          <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
