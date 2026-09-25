@@ -21,6 +21,9 @@ function fakeBackend(url: string, init: RequestInit = {}): Promise<Response> {
   const clash = (name: string, except?: number) => stored.some((p) => p.name === name && p.id !== except);
   const inUse = json({ message: 'You already have a portfolio with this name.' }, 409);
 
+  if (url.endsWith('/holdings')) {
+    return Promise.resolve(json([]));
+  }
   if (method === 'GET') {
     return Promise.resolve(json([...stored].sort((a, b) => a.name.localeCompare(b.name))));
   }

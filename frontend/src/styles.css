@@ -242,3 +242,58 @@ button.danger {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
+
+/* The portfolio page's Upload CSV: a label that looks like a button, for a file input kept off screen. */
+.upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.file-button {
+  display: inline-block;
+  margin: 0;
+  padding: 9px 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.file-button.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The input is off screen, so show keyboard focus on the button that stands in for it. */
+.upload-row:focus-within .file-button {
+  outline: 2px solid var(--text);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+table.holdings {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.holdings th,
+table.holdings td {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+table.holdings th {
+  color: var(--muted);
+  font-weight: 500;
+}
