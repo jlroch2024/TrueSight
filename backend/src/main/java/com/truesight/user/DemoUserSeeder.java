@@ -3,6 +3,7 @@ package com.truesight.user;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Profile({"local", "test"})
+@Order(1)
 public class DemoUserSeeder implements ApplicationRunner {
 
     public static final String DEMO_EMAIL = "demo@truesight.local";

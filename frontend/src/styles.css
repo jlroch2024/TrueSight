@@ -65,6 +65,12 @@ a {
   background: var(--border);
 }
 
+.nav-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 .content {
   flex: 1;
   padding: 32px;

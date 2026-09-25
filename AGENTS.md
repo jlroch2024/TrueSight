@@ -40,6 +40,7 @@ the repository root: copy `.env.example`.
 
 | Path | What is in it |
 |---|---|
+| `backend/src/main/java/com/truesight/company/CompanyDirectory.java` | The one way to find or create a company |
 | `backend/src/main/java/com/truesight/` | One package per feature: `user`, `portfolio`, `company`, `report`, `relationship`. Plus `common` (errors), `config` (app-wide setup) and `health` (the example endpoint) |
 | `backend/src/main/resources/application.yml` | Every setting, filled from `.env` |
 | `backend/src/main/resources/db/migration/` | The database tables. `V1__sprint_1_tables.sql` creates every Sprint 1 table |
@@ -47,6 +48,7 @@ the repository root: copy `.env.example`.
 | `frontend/src/pages/` | One file per page |
 | `frontend/src/components/` | Pieces used by more than one page, such as `Layout.tsx` |
 | `frontend/src/api/client.ts` | `api()`, the only way the website calls the backend |
+| `frontend/src/paths.ts`, `frontend/src/navigation.ts` | Every page's address, and the sidebar's links |
 | `docs/examples/` | Real sample data to build and test against. Its README explains every file |
 
 ## Backend Rules
@@ -91,8 +93,16 @@ parameter. Broken rules become a 400 automatically.
 
 **Who is logged in.** Ask `CurrentUser.id()`. Every lookup of a portfolio includes the owner:
 `portfolios.findByIdAndUserId(id, currentUser.id())`, never `findById`. Another user's portfolio is "not found" (404),
-never 403: saying "not allowed" would confirm it exists. Until the Sign Up and Log In story is merged, `CurrentUser` is a
-placeholder that returns a demo user, and every endpoint is open.
+never 403: saying "not allowed" would confirm it exists.
+
+Until the Sign Up and Log In story is merged, `CurrentUser` is a placeholder that returns a demo user
+(`demo@truesight.local`), and every endpoint is open. On a laptop the demo user also has one empty portfolio,
+"Demo Portfolio" (usually id 1), so portfolio pages can be built before Manage My Portfolios exists. Once Sign Up and
+Log In is merged, endpoints need a token: integration tests then log in using the test helper that story adds.
+
+**Companies.** Get every company, whether a holding or a supplier the AI found, through
+`CompanyDirectory.findOrCreate(name, cik, ticker, otherNames)`. Never create a `Company` directly. That way the same
+company is one row whoever finds it first, and the Show Each Company Once story can improve the matching in one place.
 
 **Database.** The tables already exist. In Sprint 1, **do not add migrations** and never edit `V1__sprint_1_tables.sql`:
 a merged migration never runs again, so an edit silently does nothing on everybody else's database. Never change
@@ -120,8 +130,22 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 
 - **Call the backend only through `api()`** in `src/api/client.ts`, never `fetch()`. It adds `/api`, the login token,
   and turns errors into an `ApiError` whose `message` is ready to show.
-- **Adding a page:** create it in `src/pages/`, add a `<Route>` in `App.tsx`, and add a line to `navigation.ts`. Only
-  working pages appear in the sidebar.
+- **Page addresses are fixed** in `src/paths.ts`. Use them exactly, and link with `paths.portfolio(id)` rather than
+  typing addresses:
+
+  | Address | Page | Built by |
+  |---|---|---|
+  | `/` | Home | Set Up the Project |
+  | `/login`, `/signup` | Log In, Sign Up | Sign Up and Log In |
+  | `/portfolios` | Portfolios: list, create, rename, delete | Manage My Portfolios |
+  | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Upload a Portfolio CSV, then the annual report story adds Analyse |
+  | `/portfolios/:portfolioId/supply-chain` | Supply Chain: the graph | See the Supply Chain as a Graph |
+
+- **The open portfolio is the one in the address.** A page reads it with `const { portfolioId } = useParams()`.
+  Nothing else stores which portfolio is open.
+- **Adding a page:** create it in `src/pages/`, and add a `<Route>` in `App.tsx`. For the sidebar, add a line to
+  `NAV_ITEMS` in `navigation.ts` for a page everyone sees, or to `PORTFOLIO_NAV_ITEMS` for a page belonging to the open
+  portfolio. Only working pages appear in the sidebar.
 - **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
   to do next), and loaded. `pages/HomePage.tsx` is the example.
 - **Look:** use the colours and classes in `styles.css`. Dark theme, square corners, Space Grotesk. Labels, headings
@@ -156,8 +180,10 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 ## Things Never To Do
 
 - Change files outside the story's scope, or reformat code you did not otherwise change.
-- Change the shared pieces (`ApiException`, `GlobalExceptionHandler`, `CurrentUser`, `api()`, `Layout.tsx`, the entities
-  and `V1`) unless the story's Technical Notes say to.
+- Change the shared pieces (`ApiException`, `GlobalExceptionHandler`, `CurrentUser`, `CompanyDirectory`, `api()`,
+  `paths.ts`, `Layout.tsx`, the entities and `V1`) unless the story's Technical Notes say to.
+- Run the live site without `SPRING_PROFILES_ACTIVE=prod`. Without it, the app runs in `local` mode and creates the
+  demo user and Demo Portfolio in the real database.
 - Copy code from any other folder on this computer. Build the story here, from this repository.
 - Commit `.env`, keys, `node_modules`, `target` or `dist`.
 
