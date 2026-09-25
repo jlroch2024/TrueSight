@@ -1,6 +1,7 @@
 package com.truesight.report;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -11,4 +12,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     /** The company's newest saved report, if any. */
     Optional<Report> findFirstByCompanyIdOrderByFilingDateDesc(Long companyId);
+
+    @Transactional
+    void deleteByCompanyId(Long companyId);
 }

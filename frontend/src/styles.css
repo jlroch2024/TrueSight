@@ -95,3 +95,29 @@ a {
 .error {
   color: var(--danger);
 }
+
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.page-heading h1 { margin-bottom: 4px; }
+.page-heading p { margin-top: 0; }
+button {
+  padding: 10px 16px;
+  border: 1px solid var(--accent);
+  color: var(--text);
+  background: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.table-card { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+.ticker, .status-reason { display: block; margin-top: 4px; font-size: 12px; }
+.status { white-space: nowrap; }
+.status-failed, .status-no_report_found { color: var(--danger); }
