@@ -8,9 +8,10 @@
 # It listens on port 5530, not PostgreSQL's usual 5432, so it never clashes with another PostgreSQL on your computer.
 # Need a different port? Put DB_PORT=5531 and DATABASE_URL=jdbc:postgresql://localhost:5531/truesight in your .env.
 
-# Docker names the database and its saved data after this project name. Without it, Docker uses the folder's name,
-# and any other project in a folder called "truesight" would share, and overwrite, the same database.
-name: truesight-cs203
+# Docker names the database and its saved data after this project name, whatever the folder is called. Docker only
+# allows lowercase. If another project on your computer already uses "truesight", put COMPOSE_PROJECT_NAME=something-else
+# in your .env: it takes priority over this line, and only affects your computer.
+name: truesight
 
 services:
   db:
