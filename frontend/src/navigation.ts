@@ -17,4 +17,5 @@ export const NAV_ITEMS: NavItem[] = [
 
 export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
   { label: 'Open Portfolio', path: paths.portfolio },
+  { label: 'Supply Chain', path: paths.supplyChain },
 ];
