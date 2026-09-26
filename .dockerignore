@@ -1,0 +1,8 @@
+# What the Dockerfile must never see. Secrets stay on this computer, and build output and downloaded packages are
+# rebuilt inside the image, so copies from a laptop cannot sneak in.
+.env
+.env.*
+.git
+**/node_modules
+**/dist
+**/target

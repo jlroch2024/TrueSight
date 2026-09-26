@@ -2,6 +2,8 @@
 // talk to each other. It is also the example page: load data with api(), and show loading, errors and results.
 import { useEffect, useState } from 'react';
 import { ApiError, api } from '../api/client';
+import { Link } from 'react-router';
+import { paths } from '../paths';
 
 type Health = { status: string };
 
@@ -29,6 +31,7 @@ export function HomePage() {
           <p className="muted">Checking…</p>
         )}
       </div>
+      <p><Link to={paths.portfolio(1)}>Open Demo Portfolio</Link></p>
     </section>
   );
 }

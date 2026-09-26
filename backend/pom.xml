@@ -26,6 +26,12 @@
     </properties>
 
     <dependencies>
+        <!-- Parses SEC filing HTML into paragraph-preserving plain text. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.23.2</version>
+        </dependency>
         <!-- The web server and REST endpoints -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -41,6 +47,19 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!--
+            Logging in: Spring Security checks every request, and the resource-server part reads and checks the
+            signed token (JWT) the browser sends. It also signs new tokens, and hashes passwords with BCrypt.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
 
         <!-- The database: saving Java objects (JPA), creating the tables (Flyway), and the PostgreSQL driver -->
@@ -61,11 +80,27 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!--
+            On the live site: Google's connector for reaching Cloud SQL from Cloud Run. It connects securely using
+            the Cloud Run service's own Google identity, so no database address has to be opened to the internet.
+            Only used when DATABASE_URL names it; on a laptop and in tests it does nothing.
+        -->
+        <dependency>
+            <groupId>com.google.cloud.sql</groupId>
+            <artifactId>postgres-socket-factory</artifactId>
+            <version>1.28.4</version>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- Tests: fast endpoint tests, and slower tests against a real PostgreSQL started in Docker -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

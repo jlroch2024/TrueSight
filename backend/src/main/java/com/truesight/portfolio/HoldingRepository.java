@@ -12,5 +12,7 @@ public interface HoldingRepository extends JpaRepository<Holding, Long> {
 
     List<Holding> findByPortfolioIdOrderByTickerAsc(Long portfolioId);
 
+    long countByPortfolioId(Long portfolioId);
+
     void deleteByPortfolioId(Long portfolioId);
 }

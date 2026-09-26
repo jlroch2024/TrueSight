@@ -92,6 +92,222 @@ a {
   color: var(--muted);
 }
 
+.small {
+  font-size: 13px;
+}
+
+/* Forms */
+label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 14px;
+}
+
+input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+button {
+  padding: 9px 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Log In and Sign Up */
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.auth-card h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.auth-card button[type='submit'] {
+  width: 100%;
+  margin-top: 18px;
+}
+
+/* The sidebar's Log Out, pinned under the links */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar nav {
+  flex: 1;
+}
+
+.log-out {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
 .error {
   color: var(--danger);
 }
+
+/* Portfolios */
+select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-form label,
+.portfolio-header label {
+  display: inline;
+  margin: 0;
+}
+
+.inline-form input {
+  flex: 1;
+  width: auto;
+  min-width: 160px;
+}
+
+/* Rename, Cancel and Delete are quieter than the main button on the page. */
+button.secondary {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+button.danger {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+.portfolio-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portfolio-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.portfolio-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The portfolio page's Upload CSV: a label that looks like a button, for a file input kept off screen. */
+.upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.file-button {
+  display: inline-block;
+  margin: 0;
+  padding: 9px 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.file-button.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The input is off screen, so show keyboard focus on the button that stands in for it. */
+.upload-row:focus-within .file-button {
+  outline: 2px solid var(--text);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+table.holdings {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.holdings th,
+table.holdings td {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+table.holdings th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.page-heading h1 { margin-bottom: 4px; }
+.page-heading p { margin-top: 0; }
+.table-card { overflow-x: auto; }
+.status { white-space: nowrap; }
+.status-reason { display: block; margin-top: 4px; font-size: 12px; }
+.status-failed, .status-no_report_found { color: var(--danger); }
