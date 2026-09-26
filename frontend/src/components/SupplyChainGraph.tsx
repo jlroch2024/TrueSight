@@ -42,7 +42,7 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
     const cy = cytoscape({
       container,
       elements,
-      layout: { name: 'preset' }, // the real layout is chosen and run just below
+      layout: { name: 'circle', fit: true, padding: 40 }, // the real layout is chosen and run just below
       wheelSensitivity: 0.2,
       style: [
         {
