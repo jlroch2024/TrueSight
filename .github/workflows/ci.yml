@@ -1,5 +1,5 @@
 # Runs every test on every pull request, and again when something is merged into main.
-# A pull request whose tests fail cannot be merged (once the main ruleset requires these two checks).
+# A pull request whose tests fail cannot be merged (once the main ruleset requires these checks).
 name: CI
 
 on:
@@ -39,3 +39,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  # Builds the live site's Docker image, exactly as the deploy will, without publishing it. The image only copies part
+  # of the repository, so something that passes the two jobs above can still fail here: better to find out before
+  # merging than when the deploy fails.
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build .
