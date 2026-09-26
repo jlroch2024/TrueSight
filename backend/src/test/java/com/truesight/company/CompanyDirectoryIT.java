@@ -9,8 +9,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Proves the simple matching every story relies on. The Show Each Company Once story adds its own tests for the
- * smarter matching, such as ignoring "Inc." and "Ltd.".
+ * Proves a company is found however its name is written: by SEC company number, by a short name such as "TSMC",
+ * or by ignoring capitals, punctuation and endings such as "Inc." and "Ltd.".
  */
 @IntegrationTest
 class CompanyDirectoryIT {
@@ -52,5 +52,67 @@ class CompanyDirectoryIT {
         Company applied = directory.findOrCreate("Applied Materials, Inc.", null, null, List.of());
 
         assertThat(applied.getId()).isNotEqualTo(apple.getId());
+    }
+
+    @Test
+    void tsmcsFullNameShortNameAndNameWithoutLimitedAreOneCompany() {
+        Company fullName = directory.findOrCreate(
+                "Taiwan Semiconductor Manufacturing Company Limited", null, null, List.of("TSMC"));
+
+        Company withoutLimited = directory.findOrCreate(
+                "Taiwan Semiconductor Manufacturing Company", null, null, List.of());
+        Company shortName = directory.findOrCreate("TSMC", null, null, List.of());
+
+        assertThat(withoutLimited.getId()).isEqualTo(fullName.getId());
+        assertThat(shortName.getId()).isEqualTo(fullName.getId());
+    }
+
+    @Test
+    void samsungElectronicsWithAndWithoutItsEndingsAreOneCompany() {
+        Company withEndings = directory.findOrCreate("Samsung Electronics Co., Ltd.", null, null, List.of());
+
+        Company withoutEndings = directory.findOrCreate("Samsung Electronics", null, null, List.of());
+
+        assertThat(withoutEndings.getId()).isEqualTo(withEndings.getId());
+    }
+
+    @Test
+    void aHoldingNamedAsAnotherHoldingsSupplierIsTheSameCompanyAndAppearsOnce() {
+        // The holding is analysed first, with its SEC number and ticker.
+        Company asHolding = directory.findOrCreate("Broadcom Inc.", "0001730168", "AVGO", List.of());
+
+        // A different holding's report later names it as a supplier, written slightly differently.
+        Company asSupplier = directory.findOrCreate("Broadcom", null, null, List.of());
+
+        assertThat(asSupplier.getId()).isEqualTo(asHolding.getId());
+        assertThat(asSupplier.getCik()).isEqualTo("0001730168");
+        assertThat(asSupplier.getTicker()).isEqualTo("AVGO");
+    }
+
+    @Test
+    void appleAndAppliedMaterialsStaySeparate() {
+        Company apple = directory.findOrCreate("Apple", null, null, List.of());
+
+        Company applied = directory.findOrCreate("Applied Materials", null, null, List.of());
+
+        assertThat(applied.getId()).isNotEqualTo(apple.getId());
+    }
+
+    @Test
+    void anEndingIsOnlyRemovedFromTheEndOfAName() {
+        Company groupDynamics = directory.findOrCreate("Group Dynamics", null, null, List.of());
+
+        Company group = directory.findOrCreate("Group", null, null, List.of());
+
+        assertThat(group.getId()).isNotEqualTo(groupDynamics.getId());
+    }
+
+    @Test
+    void anNvEndingIsIgnored() {
+        Company withEnding = directory.findOrCreate("Koninklijke Philips N.V.", null, null, List.of());
+
+        Company withoutEnding = directory.findOrCreate("Koninklijke Philips", null, null, List.of());
+
+        assertThat(withoutEnding.getId()).isEqualTo(withEnding.getId());
     }
 }
