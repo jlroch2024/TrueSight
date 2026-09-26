@@ -11,10 +11,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CompanyDirectoryTest {
 
     @Test
-    void tsmcsThreeNamesTidyToTheSameKey() {
+    void tsmcsNameWithAndWithoutLimitedTidiesToTheSameKey() {
         assertThat(CompanyDirectory.nameKey("Taiwan Semiconductor Manufacturing Company Limited"))
-                .isEqualTo(CompanyDirectory.nameKey("Taiwan Semiconductor Manufacturing Company"))
-                .isEqualTo(CompanyDirectory.nameKey("TSMC"));
+                .isEqualTo(CompanyDirectory.nameKey("Taiwan Semiconductor Manufacturing Company"));
+    }
+
+    /** "TSMC" is a short name, matched by storing it, not by tidying: see {@code CompanyDirectoryIT}. */
+    @Test
+    void aShortNameDoesNotTidyToTheSameKeyAsTheFullName() {
+        assertThat(CompanyDirectory.nameKey("TSMC"))
+                .isNotEqualTo(CompanyDirectory.nameKey("Taiwan Semiconductor Manufacturing Company Limited"));
     }
 
     @Test
