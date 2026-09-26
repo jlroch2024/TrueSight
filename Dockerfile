@@ -8,6 +8,9 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# The build's type check also reads the tests, and some tests use the shared sample data in docs/examples. Put it
+# where it sits in the repository, next to the frontend folder, or the build fails. It is only used while building.
+COPY docs/examples /docs/examples
 RUN npm run build
 
 # Step 2: build the backend, with the website copied into its static folder, so the backend serves both.
