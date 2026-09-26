@@ -16,6 +16,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { PortfolioPage } from './pages/PortfolioPage';
 import { PortfoliosPage } from './pages/PortfoliosPage';
 import { SignUpPage } from './pages/SignUpPage';
+import { SupplyChainPage } from './pages/SupplyChainPage';
 import { paths } from './paths';
 
 export function App() {
@@ -35,6 +36,7 @@ export function App() {
           <Route index element={<HomePage />} />
           <Route path={paths.portfolios} element={<PortfoliosPage />} />
           <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
+          <Route path={paths.supplyChain(':portfolioId')} element={<SupplyChainPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
