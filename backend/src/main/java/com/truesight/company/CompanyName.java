@@ -57,4 +57,9 @@ public class CompanyName {
     public String getNameKey() {
         return nameKey;
     }
+
+    /** Only for {@link CompanyNameKeys}, when the way names are tidied changes. */
+    void setNameKey(String nameKey) {
+        this.nameKey = nameKey;
+    }
 }

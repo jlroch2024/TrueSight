@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * The one way to get a company: finds it if TrueSight already knows it, otherwise creates it. Never create a
@@ -30,9 +31,21 @@ public class CompanyDirectory {
      * word once punctuation and capitals are gone, e.g. "N.V." becomes "nv". Only ever removed from the end of a
      * name, one word at a time, so "Group Dynamics" keeps "Group": "Dynamics" is not one of these, so nothing is
      * removed.
+     *
+     * <p>They cover both ways a company is written: the SEC's own list of companies, which holdings are named from
+     * ("NVIDIA CORP", "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD"), and the names reports use for suppliers and
+     * customers ("NVIDIA Corporation", "Taiwan Semiconductor Manufacturing Company Limited"). "Group" and "Holding"
+     * are kept: they can tell two different companies apart, and when unsure, names are kept apart.
      */
-    private static final Set<String> IGNORED_ENDINGS =
-            Set.of("inc", "ltd", "co", "corporation", "limited", "nv", "plc");
+    private static final Set<String> IGNORED_ENDINGS = Set.of(
+            "inc", "incorporated", "corp", "corporation", "co", "company", "ltd", "limited",
+            "plc", "nv", "sa", "ag", "se", "llc", "lp");
+
+    /**
+     * What the SEC writes after a slash at the end of a name: where the company is registered ("QUALCOMM INC/DE",
+     * "/MD", "/CAN"), or that the shares are American depositary receipts ("/ADR"). Never part of the name itself.
+     */
+    private static final Pattern SEC_REGISTRATION_MARK = Pattern.compile("\\s*/\\s*[A-Za-z]+\\s*/?\\s*$");
 
     private final CompanyRepository companies;
     private final CompanyNameRepository names;
@@ -80,12 +93,13 @@ public class CompanyDirectory {
     }
 
     /**
-     * A name tidied for comparison: capitals and punctuation are ignored, and an ending such as "Inc.", "Ltd.",
-     * "Co.", "Corporation", "Limited" or "N.V." is dropped from the end, one word at a time (so "Co., Ltd." loses
-     * both). Two names with the same key are the same company.
+     * A name tidied for comparison: capitals and punctuation are ignored, the SEC's registration mark after a slash
+     * is dropped, and an ending such as "Inc.", "Corp", "Company", "Ltd.", "Limited" or "N.V." is dropped from the
+     * end, one word at a time (so "Co., Ltd." loses both). Two names with the same key are the same company.
      */
     static String nameKey(String name) {
-        String cleaned = name.toLowerCase(Locale.ROOT)
+        String cleaned = SEC_REGISTRATION_MARK.matcher(name).replaceFirst("")
+                .toLowerCase(Locale.ROOT)
                 .replace(".", "")
                 .replaceAll("[^a-z0-9\\s]", " ")
                 .trim()

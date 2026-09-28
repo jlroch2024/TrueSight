@@ -89,6 +89,29 @@ class CompanyDirectoryIT {
         assertThat(asSupplier.getTicker()).isEqualTo("AVGO");
     }
 
+    /** The Sprint 1 audit's real case: holding NVDA and TSM, where NVIDIA's report names TSMC as a supplier. */
+    @Test
+    void aHoldingNamedByTheSecIsTheSameCompanyAsTheSupplierAReportNames() {
+        Company tsmAsHolding = directory.findOrCreate(
+                "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD", "0001046179", "TSM", List.of());
+
+        Company tsmcAsSupplier = directory.findOrCreate(
+                "Taiwan Semiconductor Manufacturing Company Limited", null, null, List.of("TSMC"));
+
+        assertThat(tsmcAsSupplier.getId()).isEqualTo(tsmAsHolding.getId());
+        assertThat(tsmcAsSupplier.getTicker()).isEqualTo("TSM");
+    }
+
+    @Test
+    void aSupplierFoundFirstIsTheSameCompanyWhenItIsLaterAnalysedAsAHolding() {
+        Company asSupplier = directory.findOrCreate("Lam Research Corporation", null, null, List.of());
+
+        Company asHolding = directory.findOrCreate("LAM RESEARCH CORP", "0000707549", "LRCX", List.of());
+
+        assertThat(asHolding.getId()).isEqualTo(asSupplier.getId());
+        assertThat(asHolding.getCik()).isEqualTo("0000707549");
+    }
+
     @Test
     void appleAndAppliedMaterialsStaySeparate() {
         Company apple = directory.findOrCreate("Apple", null, null, List.of());
