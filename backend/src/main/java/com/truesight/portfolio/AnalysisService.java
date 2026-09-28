@@ -41,22 +41,26 @@ public class AnalysisService {
         this.relationshipFinder = relationshipFinder;
     }
 
+    /**
+     * Starts analysing the portfolio's holdings that are Waiting, and tries again those that Failed: a failure is
+     * usually the SEC or the AI being briefly unreachable, so pressing Analyse again should retry it rather than
+     * leave the portfolio stuck. Holdings already Done or with No Report Found are left alone. Refused only while an
+     * analysis is already running for this portfolio.
+     */
     @Transactional
     public List<Long> start(Long portfolioId) {
         requirePortfolio(portfolioId);
         List<Holding> rows = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId);
-        if (rows.stream().anyMatch(h -> h.getStatus() == HoldingStatus.FAILED)) {
-            throw ApiException.conflict("Analysis cannot start while a holding has Failed status.");
-        }
         if (rows.stream().anyMatch(h -> h.getStatus() == HoldingStatus.ANALYSING)) {
             throw ApiException.conflict("Analysis is already running for this portfolio.");
         }
-        List<Long> queued = rows.stream().filter(h -> h.getStatus() == HoldingStatus.WAITING)
-                .map(Holding::getId).toList();
-        rows.stream().filter(h -> h.getStatus() == HoldingStatus.WAITING)
-                .forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
-        holdings.saveAll(rows);
-        return queued;
+        List<Holding> toAnalyse = rows.stream()
+                .filter(h -> h.getStatus() == HoldingStatus.WAITING || h.getStatus() == HoldingStatus.FAILED)
+                .toList();
+        // setStatus also clears a failed holding's old reason.
+        toAnalyse.forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
+        holdings.saveAll(toAnalyse);
+        return toAnalyse.stream().map(Holding::getId).toList();
     }
 
     @Transactional(readOnly = true)

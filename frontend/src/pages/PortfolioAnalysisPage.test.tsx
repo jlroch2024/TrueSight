@@ -49,7 +49,8 @@ describe('Portfolio annual report analysis', () => {
     expect(screen.getByRole('link', { name: 'Show in Report' })).toHaveAttribute('href', reportUrl);
   });
 
-  it('shows the SEC failure reason and disables Analyse after failure', async () => {
+  // TS-90: a failure is usually the SEC or the AI being briefly unreachable, so Analyse stays available to retry it.
+  it('shows the SEC failure reason, and keeps Analyse available to try again', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
       url.endsWith('/holdings') ? [row('FAILED', { statusReason: 'The SEC could not be reached.' })] : [portfolio],
     ))));
@@ -58,7 +59,8 @@ describe('Portfolio annual report analysis', () => {
 
     expect(await screen.findByText('Failed')).toBeInTheDocument();
     expect(screen.getByText('The SEC could not be reached.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Analyse' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Analyse' })).toBeEnabled();
+    expect(screen.getByText('Some holdings failed. Press Analyse to try them again.')).toBeInTheDocument();
   });
 
   it('starts analysis for the portfolio shown in the page address', async () => {

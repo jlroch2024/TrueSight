@@ -117,7 +117,7 @@ export function PortfolioPage() {
           <h1>{portfolio.name}</h1>
           <p className="muted">Annual reports for each company in this portfolio.</p>
         </div>
-        <button type="button" onClick={startAnalysis} disabled={starting || running || failed || !holdings.length}>
+        <button type="button" onClick={startAnalysis} disabled={starting || running || !holdings.length}>
           {starting ? 'Starting…' : 'Analyse'}
         </button>
       </div>
@@ -132,7 +132,7 @@ export function PortfolioPage() {
 
       {error && <p role="alert" className="error">{error}</p>}
       {uploadError && <p role="alert" className="error">{uploadError}</p>}
-      {failed && <p className="error">Analyse is unavailable while a holding has Failed status.</p>}
+      {failed && <p className="muted">Some holdings failed. Press Analyse to try them again.</p>}
 
       <div className="card">
         <h2>Holdings</h2>

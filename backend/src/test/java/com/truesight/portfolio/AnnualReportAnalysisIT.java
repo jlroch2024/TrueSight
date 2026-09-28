@@ -108,7 +108,7 @@ class AnnualReportAnalysisIT {
     }
 
     @Test
-    void secFailureIsSavedAndBlocksAnotherAnalyseRequest() throws Exception {
+    void secFailureIsSavedWithTheReason() throws Exception {
         String email = "annual-report-failure@example.com";
         Portfolio portfolio = portfolioWith(email, "NVDA");
         when(sec.companyForTicker("NVDA")).thenThrow(new SecClient.SecAccessException("The SEC could not be reached.", new RuntimeException()));
@@ -118,9 +118,42 @@ class AnnualReportAnalysisIT {
         mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$[0].status").value("FAILED"))
                 .andExpect(jsonPath("$[0].statusReason").value("The SEC could not be reached."));
+    }
+
+    /** TS-90: a failure is usually the SEC or the AI being briefly unreachable, so Analyse tries it again. */
+    @Test
+    void pressingAnalyseAgainRetriesAFailedHolding() throws Exception {
+        String email = "annual-report-retry@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        when(sec.companyForTicker("NVDA")).thenThrow(new SecClient.SecAccessException("The SEC could not be reached.", new RuntimeException()));
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.FAILED);
+
+        // The SEC is reachable again.
+        reset(sec);
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021", "2026-02-25",
+                "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
         mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
-                .andExpect(status().isConflict());
-        verify(sec, times(1)).companyForTicker("NVDA");
+                .andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(jsonPath("$[0].status").value("DONE"))
+                .andExpect(jsonPath("$[0].statusReason").isEmpty())
+                .andExpect(jsonPath("$[0].reportType").value("10-K"));
+    }
+
+    @Test
+    void analyseIsRefusedWhileAnAnalysisIsAlreadyRunning() throws Exception {
+        String email = "annual-report-running@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
+        holding.setStatus(HoldingStatus.ANALYSING);
+        holdings.save(holding);
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Analysis is already running for this portfolio."));
     }
 
     private Portfolio portfolioWith(String email, String... tickers) {
