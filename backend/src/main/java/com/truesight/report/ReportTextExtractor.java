@@ -46,7 +46,8 @@ public final class ReportTextExtractor {
 
     private static void append(Node node, StringBuilder output) {
         if (node instanceof TextNode text) {
-            output.append(text.getWholeText());
+            // As in a browser, a line break in the HTML source is just a space: only elements start new lines.
+            output.append(text.getWholeText().replace('\r', ' ').replace('\n', ' '));
             return;
         }
         if (!(node instanceof Element element)) return;
@@ -67,8 +68,23 @@ public final class ReportTextExtractor {
                     "thead", "tr", "ul" -> true;
             default -> false;
         };
-        if (block) output.append(paragraphBoundary ? "\n\n" : "\n");
+        if (block) endLine(output, paragraphBoundary ? 2 : 1);
         for (Node child : node.childNodes()) append(child, output);
-        if (block) output.append(paragraphBoundary ? "\n\n" : "\n");
+        if (block) endLine(output, paragraphBoundary ? 2 : 1);
+    }
+
+    /**
+     * Makes the text so far end with at least {@code newlines} line breaks, adding only what is missing. A paragraph
+     * ends in a blank line (2); any other block, such as a {@code <div>}, in one line break (1). Adding them blindly
+     * would turn two {@code <div>}s in a row into a blank line: some reports, such as ASML's 20-F, put every printed
+     * line in its own {@code <div>}, so each line would become a paragraph of its own, and a sentence broken across
+     * lines could never be joined back together.
+     */
+    private static void endLine(StringBuilder output, int newlines) {
+        int present = 0;
+        while (present < newlines && present < output.length() && output.charAt(output.length() - 1 - present) == '\n') {
+            present++;
+        }
+        output.append("\n".repeat(newlines - present));
     }
 }
