@@ -18,7 +18,7 @@
     <artifactId>truesight</artifactId>
     <version>0.1.0</version>
     <name>TrueSight</name>
-    <description>Supply-chain risk for portfolio managers, from companies' own annual reports</description>
+    <description>Supplier Risk Intelligence for Portfolio Managers, from companies' own annual reports</description>
 
     <properties>
         <java.version>21</java.version>

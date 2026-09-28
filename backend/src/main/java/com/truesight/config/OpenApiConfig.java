@@ -26,7 +26,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("TrueSight API")
                         .version("0.1.0")
-                        .description("Supply-chain risk for portfolio managers, from companies' own annual reports."))
+                        .description("Supplier Risk Intelligence for Portfolio Managers, from companies' own annual reports."))
                 .components(new Components().addSecuritySchemes(BEARER, new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
