@@ -106,8 +106,8 @@ class AnnualReportAnalysisIT {
     void aHoldingWithASavedReportButNoCompletedAnalysisHasNoLastAnalysedTime() throws Exception {
         String email = "annual-report-not-done@example.com";
         Portfolio portfolio = portfolioWith(email, "TS96");
-        String nonce = UUID.randomUUID().toString();
-        var company = companyDirectory.findOrCreate("TS96 Example Company " + nonce, "TS96-" + nonce, "TS96", List.of());
+        String nonce = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        var company = companyDirectory.findOrCreate("TS96 Example Company " + nonce, null, "TS96", List.of());
         reports.saveAndFlush(new Report(company.getId(), "10-K", "TS96-" + nonce, LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/example", "Report text."));
         Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
