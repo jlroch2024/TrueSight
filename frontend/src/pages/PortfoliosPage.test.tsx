@@ -72,7 +72,7 @@ describe('Portfolios page', () => {
     await userEvent.type(await screen.findByLabelText('New Portfolio Name'), 'Tech Book');
     await userEvent.click(screen.getByRole('button', { name: 'Create Portfolio' }));
 
-    expect(await screen.findByRole('link', { name: 'Tech Book' })).toHaveAttribute('href', '/portfolios/10');
+    expect(await screen.findByRole('button', { name: 'Tech Book' })).toBeInTheDocument();
   });
 
   it('refuses a name the user already uses', async () => {
@@ -95,7 +95,7 @@ describe('Portfolios page', () => {
     await userEvent.type(input, 'Energy Book');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByRole('link', { name: 'Energy Book' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Energy Book' })).toBeInTheDocument();
   });
 
   it('refuses renaming to a name the user already uses', async () => {
@@ -105,7 +105,7 @@ describe('Portfolios page', () => {
     ];
     renderAt('/portfolios');
 
-    const tech = (await screen.findByRole('link', { name: 'Tech Book' })).closest('li')!;
+    const tech = (await screen.findByRole('button', { name: 'Tech Book' })).closest('li')!;
     await userEvent.click(within(tech).getByRole('button', { name: 'Rename' }));
     const input = screen.getByLabelText('New Name');
     await userEvent.clear(input);
@@ -122,7 +122,7 @@ describe('Portfolios page', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
     expect(confirm).toHaveBeenCalledOnce();
-    expect(screen.getByRole('link', { name: 'Tech Book' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tech Book' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(await screen.findByText('You have no portfolios yet. Create one above to get started.')).toBeInTheDocument();

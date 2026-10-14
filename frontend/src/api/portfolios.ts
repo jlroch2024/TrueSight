@@ -24,6 +24,7 @@ export type Holding = {
   reportType: string | null;
   reportDate: string | null;
   reportLink: string | null;
+  lastAnalysed: string | null;
 };
 
 export const holdingApi = {

@@ -1,10 +1,10 @@
-// Tests for buildGraphElements and showInReportUrl. The graph-building test uses docs/examples/relationships.json,
+// Tests for buildGraphElements. The graph-building test uses docs/examples/relationships.json,
 // the real sample data every AI story test uses.
 import { describe, expect, it } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
-import { buildGraphElements, showInReportUrl } from './supplyChain';
+import { buildGraphElements } from './supplyChain';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
 
@@ -33,6 +33,7 @@ function sampleHoldings(): Holding[] {
     reportType: '10-K',
     reportDate: '2026-01-01',
     reportLink: 'https://www.sec.gov/example',
+    lastAnalysed: null,
   }));
 }
 
@@ -111,39 +112,6 @@ describe('buildGraphElements', () => {
   });
 });
 
-describe('showInReportUrl', () => {
-  const url = 'https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm';
-
-  it('uses the evidence whole when it is 10 words or fewer', () => {
-    const evidence = 'Our top supplier is a ten-word example sentence here.';
-
-    expect(showInReportUrl(url, evidence)).toBe(
-      `${url}#:~:text=Our%20top%20supplier%20is%20a%20ten%2Dword%20example%20sentence%20here.`,
-    );
-  });
-
-  it('uses the first 5 and last 5 words, comma-separated, for longer evidence', () => {
-    const evidence =
-      'The number of lithography systems we are able to produce is limited by the production capacity of one ' +
-      'of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators, collectors and ' +
-      'other critical optical components (which we refer to as optics).';
-
-    expect(showInReportUrl(url, evidence)).toBe(
-      `${url}#:~:text=The%20number%20of%20lithography%20systems,we%20refer%20to%20as%20optics).`,
-    );
-  });
-
-  it('writes a hyphen inside the evidence as %2D, not the "-" encodeURIComponent leaves it as', () => {
-    const evidence =
-      'Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) ' +
-      'for these battery-grade cells.';
-
-    expect(showInReportUrl(url, evidence)).toBe(
-      `${url}#:~:text=Currently%2C%20we%20rely%20on%20suppliers,(CATL)%20for%20these%20battery%2Dgrade%20cells.`,
-    );
-  });
-});
-
 function relationship(
   id: number,
   company: Relationship['company'],
@@ -172,5 +140,6 @@ function holding(id: number, ticker: string, companyName: string | null): Holdin
     reportType: null,
     reportDate: null,
     reportLink: null,
+    lastAnalysed: null,
   };
 }

@@ -4,7 +4,7 @@
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
 // PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a header naming the open portfolio, with a switcher.
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useMatch, useNavigate } from 'react-router';
+import { Outlet, useLocation, useMatch, useNavigate } from 'react-router';
 import { api, tokenStore } from '../api/client';
 import { ANALYST_NAV_ITEMS, NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
 import { paths } from '../paths';
@@ -13,6 +13,7 @@ import { PortfolioSwitcher } from './PortfolioSwitcher';
 export function Layout() {
   const [role, setRole] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
   const portfolioItems = portfolioId ? PORTFOLIO_NAV_ITEMS : [];
 
@@ -36,21 +37,21 @@ export function Layout() {
         </div>
         <nav aria-label="Main">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.path} to={item.path} end className="nav-link">
+            <button key={item.path} type="button" className={`nav-link${location.pathname === item.path ? ' active' : ''}`} aria-current={location.pathname === item.path ? 'page' : undefined} onClick={() => navigate(item.path)}>
               {item.label}
-            </NavLink>
+            </button>
           ))}
           {role === 'ANALYST' && ANALYST_NAV_ITEMS.map((item) => (
-            <NavLink key={item.path} to={item.path} end className="nav-link">
+            <button key={item.path} type="button" className={`nav-link${location.pathname === item.path ? ' active' : ''}`} aria-current={location.pathname === item.path ? 'page' : undefined} onClick={() => navigate(item.path)}>
               {item.label}
-            </NavLink>
+            </button>
           ))}
           {portfolioId && portfolioItems.length > 0 && (
             <div className="nav-section" aria-label="Portfolio Pages">
               {portfolioItems.map((item) => (
-                <NavLink key={item.label} to={item.path(portfolioId)} end className="nav-link">
+                <button key={item.label} type="button" className={`nav-link${location.pathname === item.path(portfolioId) ? ' active' : ''}`} aria-current={location.pathname === item.path(portfolioId) ? 'page' : undefined} onClick={() => navigate(item.path(portfolioId))}>
                   {item.label}
-                </NavLink>
+                </button>
               ))}
             </div>
           )}

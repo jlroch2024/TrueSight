@@ -1,13 +1,14 @@
 // The Supply Chain page: the open portfolio's holdings and their suppliers and customers, as a graph. Clicking an
 // edge shows the evidence it stands for.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { type Holding, holdingApi } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
 import { SupplyChainGraph } from '../components/SupplyChainGraph';
 import { paths } from '../paths';
-import { buildGraphElements, showInReportUrl } from './supplyChain';
+import { buildGraphElements } from './supplyChain';
+import { openInNewTab } from '../format';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -15,6 +16,7 @@ function messageOf(e: unknown): string {
 
 export function SupplyChainPage() {
   const { portfolioId = '' } = useParams();
+  const navigate = useNavigate();
   // undefined while loading.
   const [relationships, setRelationships] = useState<Relationship[] | undefined>(undefined);
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -59,12 +61,12 @@ export function SupplyChainPage() {
           This portfolio has no relationships yet.{' '}
           {holdings.length === 0 ? (
             <>
-              Upload holdings on the <Link to={paths.portfolio(portfolioId)}>Portfolio page</Link>, then run Analyse
+              Upload holdings on the <button type="button" className="inline-action" onClick={() => navigate(paths.portfolio(portfolioId))}>Portfolio page</button>, then run Analyse
               to find suppliers and customers in their annual reports.
             </>
           ) : (
             <>
-              Run Analyse on the <Link to={paths.portfolio(portfolioId)}>Portfolio page</Link> to find suppliers and
+              Run Analyse on the <button type="button" className="inline-action" onClick={() => navigate(paths.portfolio(portfolioId))}>Portfolio page</button> to find suppliers and
               customers in this portfolio's holdings' annual reports.
             </>
           )}
@@ -97,9 +99,7 @@ export function SupplyChainPage() {
           <p className="muted small">
             {selected.report.form}, filed {selected.report.filingDate}
           </p>
-          <a href={showInReportUrl(selected.report.url, selected.evidence)} target="_blank" rel="noreferrer">
-            Show in Report
-          </a>
+          <button type="button" onClick={() => openInNewTab(selected.report.url)}>Show Report</button>
         </div>
       )}
     </section>

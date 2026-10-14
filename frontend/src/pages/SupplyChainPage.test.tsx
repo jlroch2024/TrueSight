@@ -68,6 +68,7 @@ function holding(overrides: Partial<Holding> = {}): Holding {
     reportType: '10-K',
     reportDate: '2026-02-25',
     reportLink: 'https://www.sec.gov/example',
+    lastAnalysed: null,
     ...overrides,
   };
 }
@@ -118,7 +119,7 @@ describe('Supply Chain page', () => {
     renderAt('/portfolios/7/supply-chain');
 
     expect(await screen.findByText(/Run Analyse on the/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Portfolio page' })).toHaveAttribute('href', '/portfolios/7');
+    expect(screen.getByRole('button', { name: 'Portfolio page' })).toBeInTheDocument();
   });
 
   it('says to upload holdings first when the portfolio has none at all', async () => {
@@ -139,7 +140,7 @@ describe('Supply Chain page', () => {
     expect(screen.getByTestId('edge-count')).toHaveTextContent('1');
   });
 
-  it('shows the evidence, the report and its date, and a Show in Report link, when an edge is clicked', async () => {
+  it('shows the evidence, report and date, and a Show Report button when an edge is clicked', async () => {
     vi.stubGlobal('fetch', fakeFetch([relationship()], [holding()]));
     renderAt('/portfolios/7/supply-chain');
     await screen.findByTestId('fake-graph');
@@ -148,13 +149,13 @@ describe('Supply Chain page', () => {
 
     expect(screen.getByText(tsmcSentence)).toBeInTheDocument();
     expect(screen.getByText('10-K, filed 2026-02-25')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: 'Show in Report' });
-    expect(link).toHaveAttribute(
-      'href',
-      'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm' +
-        '#:~:text=We%20utilize%20foundries%2C%20such%20as,to%20produce%20our%20semiconductor%20wafers.',
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    await userEvent.click(screen.getByRole('button', { name: 'Show Report' }));
+    expect(open).toHaveBeenCalledWith(
+      'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm',
+      '_blank',
+      'noopener,noreferrer',
     );
-    expect(link).toHaveAttribute('target', '_blank');
   });
 
   it('switches the evidence shown when a different edge is clicked', async () => {
