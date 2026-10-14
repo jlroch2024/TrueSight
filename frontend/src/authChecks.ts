@@ -1,0 +1,18 @@
+// Client-side checks for authentication forms. The server remains authoritative.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function checkEmail(email: string): string | null {
+  if (!EMAIL_PATTERN.test(email.trim())) return 'Enter a valid email address.';
+  return null;
+}
+
+export function checkLoginPassword(password: string): string | null {
+  return password.trim() ? null : 'Enter your password.';
+}
+
+export function checkSignUpPassword(password: string): string | null {
+  if (password.length < 8) return 'Password should be at least 8 characters';
+  if (!password.trim()) return 'Enter a password.';
+  if (password.length > 72) return 'Password must be 72 characters or fewer.';
+  return null;
+}

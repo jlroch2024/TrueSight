@@ -1,7 +1,9 @@
 // The Log In page, at /login. On success the token is kept in the browser, and the user goes to Home.
 import { type FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
+import { FormField } from '../components/FormField';
+import { checkEmail, checkLoginPassword } from '../authChecks';
 import { paths } from '../paths';
 
 type AuthResponse = { token: string; email: string };
@@ -10,13 +12,21 @@ export function LogInPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailChecked, setEmailChecked] = useState(false);
+  const [passwordChecked, setPasswordChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const emailError = emailChecked ? checkEmail(email) : null;
+  const passwordError = passwordChecked ? checkLoginPassword(password) : null;
 
   async function logIn(event: FormEvent) {
     event.preventDefault();
-    setSending(true);
     setError(null);
+    setEmailChecked(true);
+    setPasswordChecked(true);
+    if (checkEmail(email) || checkLoginPassword(password)) return;
+
+    setSending(true);
     try {
       const answer = await api<AuthResponse>('/auth/login', {
         method: 'POST',
@@ -33,30 +43,37 @@ export function LogInPage() {
 
   return (
     <main className="auth-page">
-      <form className="auth-card" onSubmit={logIn}>
+      <form className="auth-card" noValidate onSubmit={logIn}>
         <div className="brand">
           <img src="/eye-logo.png" alt="" className="brand-logo" />
           <span>TrueSight</span>
         </div>
         <h1>Log In</h1>
-        <label htmlFor="email">Email</label>
-        <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <label htmlFor="password">Password</label>
-        <input
+        <FormField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          error={emailError}
+          onBlur={() => setEmailChecked(true)}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <FormField
           id="password"
+          label="Password"
           type="password"
           autoComplete="current-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
+          error={passwordError}
+          onBlur={() => setPasswordChecked(true)}
+          onChange={(event) => setPassword(event.target.value)}
         />
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={sending}>
           {sending ? 'Logging In…' : 'Log In'}
         </button>
-        <p className="muted">
-          No account yet? <Link to={paths.signUp}>Sign Up</Link>
-        </p>
+        <button type="button" className="auth-switch" onClick={() => navigate(paths.signUp)}>Sign Up</button>
       </form>
     </main>
   );

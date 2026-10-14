@@ -1,8 +1,10 @@
 // The Sign Up page, at /signup. A new account is logged in straight away, and goes to Home.
-// The backend checks the email and the 8-character minimum, and its message is shown as it is.
+// Client checks give early feedback; the backend remains authoritative.
 import { type FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
+import { checkEmail, checkSignUpPassword } from '../authChecks';
+import { FormField } from '../components/FormField';
 import { paths } from '../paths';
 
 type AuthResponse = { token: string; email: string };
@@ -11,13 +13,22 @@ export function SignUpPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailChecked, setEmailChecked] = useState(false);
+  const [passwordChecked, setPasswordChecked] = useState(false);
+  const [registeredEmailError, setRegisteredEmailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const emailError = registeredEmailError ?? (emailChecked ? checkEmail(email) : null);
+  const passwordError = passwordChecked ? checkSignUpPassword(password) : null;
 
   async function signUp(event: FormEvent) {
     event.preventDefault();
-    setSending(true);
     setError(null);
+    setEmailChecked(true);
+    setPasswordChecked(true);
+    if (registeredEmailError || checkEmail(email) || checkSignUpPassword(password)) return;
+
+    setSending(true);
     try {
       const answer = await api<AuthResponse>('/auth/signup', {
         method: 'POST',
@@ -26,7 +37,9 @@ export function SignUpPage() {
       tokenStore.set(answer.token);
       navigate(paths.home, { replace: true });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong.');
+      const message = e instanceof ApiError ? e.message : 'Something went wrong.';
+      if (message === 'This email is already registered') setRegisteredEmailError(message);
+      else setError(message);
     } finally {
       setSending(false);
     }
@@ -34,31 +47,41 @@ export function SignUpPage() {
 
   return (
     <main className="auth-page">
-      <form className="auth-card" onSubmit={signUp}>
+      <form className="auth-card" noValidate onSubmit={signUp}>
         <div className="brand">
           <img src="/eye-logo.png" alt="" className="brand-logo" />
           <span>TrueSight</span>
         </div>
         <h1>Sign Up</h1>
-        <label htmlFor="email">Email</label>
-        <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <label htmlFor="password">Password</label>
-        <input
+        <FormField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          error={emailError}
+          onBlur={() => setEmailChecked(true)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setRegisteredEmailError(null);
+          }}
+        />
+        <FormField
           id="password"
+          label="Password"
           type="password"
           autoComplete="new-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
+          error={passwordError}
+          hint="Password should be at least 8 characters"
+          onBlur={() => setPasswordChecked(true)}
+          onChange={(event) => setPassword(event.target.value)}
         />
-        <p className="muted small">At least 8 characters.</p>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={sending}>
           {sending ? 'Signing Up…' : 'Sign Up'}
         </button>
-        <p className="muted">
-          Already have an account? <Link to={paths.logIn}>Log In</Link>
-        </p>
+        <button type="button" className="auth-switch" onClick={() => navigate(paths.logIn)}>Log In</button>
       </form>
     </main>
   );
