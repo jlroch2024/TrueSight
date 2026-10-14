@@ -1,6 +1,7 @@
 package com.truesight.portfolio;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 /**
@@ -8,6 +9,7 @@ import java.time.LocalDate;
  *
  * <p>The company and report fields are empty until the analysis has matched the ticker to a company and found its
  * annual report. {@code reportType} is the form, e.g. "10-K"; {@code reportLink} opens it on the SEC website.
+ * {@code lastAnalysed} is the saved report's creation time and is present only when the holding is Done.
  */
 public record HoldingResponse(
         Long id,
@@ -18,5 +20,6 @@ public record HoldingResponse(
         String statusReason,
         String reportType,
         LocalDate reportDate,
-        String reportLink) {
+        String reportLink,
+        Instant lastAnalysed) {
 }

@@ -1,6 +1,6 @@
 // The Portfolios page: every portfolio the user has, with Create, Rename and Delete. Choosing one opens it.
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { type Portfolio, portfolioApi } from '../api/portfolios';
 import { paths } from '../paths';
@@ -10,6 +10,7 @@ function messageOf(e: unknown): string {
 }
 
 export function PortfoliosPage() {
+  const navigate = useNavigate();
   const [portfolios, setPortfolios] = useState<Portfolio[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -110,7 +111,9 @@ export function PortfoliosPage() {
                   </form>
                 ) : (
                   <>
-                    <Link to={paths.portfolio(portfolio.id)}>{portfolio.name}</Link>
+                    <button type="button" className="portfolio-open" onClick={() => navigate(paths.portfolio(portfolio.id))}>
+                      {portfolio.name}
+                    </button>
                     <span className="actions">
                       <button
                         type="button"

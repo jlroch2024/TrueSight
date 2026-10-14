@@ -1,9 +1,10 @@
 // One portfolio's holdings, CSV upload, and annual report analysis.
-import { type ChangeEvent, useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../api/client';
 import { type Holding, type HoldingStatus, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
 import { paths } from '../paths';
+import { formatDateTime, openInNewTab } from '../format';
 
 const STATUS_LABELS: Record<HoldingStatus, string> = {
   WAITING: 'Waiting',
@@ -19,6 +20,7 @@ function messageOf(e: unknown): string {
 
 export function PortfolioPage() {
   const { portfolioId = '' } = useParams();
+  const navigate = useNavigate();
   // undefined while loading; null when the user has no portfolio with this id.
   const [portfolio, setPortfolio] = useState<Portfolio | null | undefined>(undefined);
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -26,6 +28,7 @@ export function PortfolioPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [starting, setStarting] = useState(false);
+  const uploadInput = useRef<HTMLInputElement>(null);
 
   const loadHoldings = useCallback(async () => {
     try {
@@ -105,7 +108,7 @@ export function PortfolioPage() {
     return (
       <section>
         <h1>Portfolio Not Found</h1>
-        <p className="muted">This portfolio does not exist. <Link to={paths.portfolios}>Go to Portfolios</Link></p>
+        <p className="muted">This portfolio does not exist. <button type="button" className="inline-action" onClick={() => navigate(paths.portfolios)}>Go to Portfolios</button></p>
       </section>
     );
   }
@@ -123,10 +126,10 @@ export function PortfolioPage() {
       </div>
 
       <div className="upload-row">
-        <label htmlFor="upload-csv" className={uploading ? 'file-button disabled' : 'file-button'}>
+        <button type="button" className="file-button" onClick={() => uploadInput.current?.click()} disabled={uploading}>
           {uploading ? 'Uploading…' : 'Upload CSV'}
-        </label>
-        <input id="upload-csv" type="file" accept=".csv,text/csv" onChange={upload} disabled={uploading} className="visually-hidden" />
+        </button>
+        <input ref={uploadInput} id="upload-csv" aria-label="CSV file" type="file" accept=".csv,text/csv" onChange={upload} disabled={uploading} className="visually-hidden" />
         <span className="muted small">A CSV with a ticker or symbol column, and optionally a weight column. Up to 5 MB.</span>
       </div>
 
@@ -140,7 +143,7 @@ export function PortfolioPage() {
           <p className="muted">This portfolio has no holdings yet. Upload a CSV to add them.</p>
         ) : (
           <table className="holdings">
-            <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Report Type</th><th>Filing Date</th><th></th></tr></thead>
+            <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Last Analysed</th><th>Report Type</th><th>Filing Date</th><th></th></tr></thead>
             <tbody>
               {holdings.map((h) => (
                 <tr key={h.id}>
@@ -151,9 +154,10 @@ export function PortfolioPage() {
                     <span className={`status status-${h.status.toLowerCase()}`}>{STATUS_LABELS[h.status]}</span>
                     {h.statusReason && <span className="status-reason">{h.statusReason}</span>}
                   </td>
+                  <td>{h.status === 'DONE' && h.lastAnalysed ? formatDateTime(h.lastAnalysed) : '—'}</td>
                   <td>{h.reportType ?? '—'}</td>
                   <td>{h.reportDate ?? '—'}</td>
-                  <td>{h.reportLink && <a href={h.reportLink} target="_blank" rel="noreferrer">Show in Report</a>}</td>
+                  <td>{h.status === 'DONE' && h.reportLink && <button type="button" onClick={() => openInNewTab(h.reportLink!)}>Show Report</button>}</td>
                 </tr>
               ))}
             </tbody>

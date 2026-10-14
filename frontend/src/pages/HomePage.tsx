@@ -1,13 +1,14 @@
 // The first page. For now it only checks the backend is running, which proves the two halves of the project can
 // talk to each other. It is also the example page: load data with api(), and show loading, errors and results.
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { ApiError, api } from '../api/client';
-import { Link } from 'react-router';
 import { paths } from '../paths';
 
 type Health = { status: string };
 
 export function HomePage() {
+  const navigate = useNavigate();
   const [health, setHealth] = useState<Health | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +32,7 @@ export function HomePage() {
           <p className="muted">Checking…</p>
         )}
       </div>
-      <p><Link to={paths.portfolio(1)}>Open Demo Portfolio</Link></p>
+      <button type="button" onClick={() => navigate(paths.portfolio(1))}>Open Demo Portfolio</button>
     </section>
   );
 }

@@ -93,6 +93,7 @@ public class HoldingService {
                 holding.getStatusReason(),
                 report == null ? null : report.getForm(),
                 report == null ? null : report.getFilingDate(),
-                report == null ? null : report.getUrl());
+                report == null ? null : report.getUrl(),
+                holding.getStatus() == HoldingStatus.DONE && report != null ? report.getCreatedAt() : null);
     }
 }

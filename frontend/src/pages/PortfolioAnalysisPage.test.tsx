@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tokenStore } from '../api/client';
+import { formatDateTime } from '../format';
 import { PortfolioPage } from './PortfolioPage';
 
 const portfolio = { id: 7, name: 'Demo Portfolio', createdAt: '' };
@@ -18,6 +19,7 @@ function row(status: string, extra: Record<string, unknown> = {}) {
     reportType: status === 'DONE' ? '10-K' : null,
     reportDate: status === 'DONE' ? '2026-02-25' : null,
     reportLink: status === 'DONE' ? reportUrl : null,
+    lastAnalysed: status === 'DONE' ? '2026-03-01T09:30:00Z' : null,
     ...extra,
   };
 }
@@ -35,7 +37,7 @@ beforeEach(() => {
 });
 
 describe('Portfolio annual report analysis', () => {
-  it('shows the company status, report details, and SEC link', async () => {
+  it('shows last analysed time and opens the report without a text fragment', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
       url.endsWith('/holdings') ? [row('DONE')] : [portfolio],
     ))));
@@ -46,7 +48,24 @@ describe('Portfolio annual report analysis', () => {
     expect(screen.getByText('Done')).toBeInTheDocument();
     expect(screen.getByText('10-K')).toBeInTheDocument();
     expect(screen.getByText('2026-02-25')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Show in Report' })).toHaveAttribute('href', reportUrl);
+    expect(screen.getByRole('columnheader', { name: 'Last Analysed' })).toBeInTheDocument();
+    expect(screen.getByText(formatDateTime('2026-03-01T09:30:00Z'))).toBeInTheDocument();
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    fireEvent.click(screen.getByRole('button', { name: 'Show Report' }));
+    expect(open).toHaveBeenCalledWith(reportUrl, '_blank', 'noopener,noreferrer');
+  });
+
+  it('shows neither the analysis time nor report button before a holding is done', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.endsWith('/holdings') ? [row('ANALYSING', { reportLink: reportUrl, lastAnalysed: '2026-03-01T09:30:00Z' })] : [portfolio],
+    ))));
+
+    renderPage();
+
+    expect(await screen.findByText('Analysing')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show Report' })).not.toBeInTheDocument();
+    const rowElement = screen.getByRole('row', { name: /NVIDIA Corporation/ });
+    expect(rowElement.querySelectorAll('td')[4]).toHaveTextContent('—');
   });
 
   // TS-90: a failure is usually the SEC or the AI being briefly unreachable, so Analyse stays available to retry it.

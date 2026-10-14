@@ -1,5 +1,5 @@
-// Every page's address, defined once. Use these instead of typing addresses, so a link can never point at a page
-// that does not exist.
+// Every page's address, defined once. Use these instead of typing addresses, so navigation buttons always point at an
+// existing page.
 //
 // The open portfolio is always the one in the address: /portfolios/7 is portfolio 7. A page reads it with
 // useParams(), e.g. const { portfolioId } = useParams(). Nothing else remembers which portfolio is open.

@@ -1,5 +1,5 @@
-// Turns a portfolio's holdings and relationships into a graph, and builds the "Show in Report" link. Kept apart from
-// SupplyChainGraph.tsx (which draws it with Cytoscape) so this logic can be tested on its own, in milliseconds.
+// Turns a portfolio's holdings and relationships into graph elements. Kept apart from SupplyChainGraph.tsx (which
+// draws it with Cytoscape) so this logic can be tested on its own, in milliseconds.
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 
@@ -59,27 +59,4 @@ export function buildGraphElements(
   }
 
   return { nodes: [...nodes.values()], edges };
-}
-
-/**
- * The link that opens the report on the SEC website, scrolled to and highlighting the evidence, with a
- * {@link https://wicg.github.io/scroll-to-text-fragment/ Text Fragment}. Chrome and Edge support it; other browsers
- * just open the report at the top.
- *
- * Evidence of 10 words or fewer is used whole. Longer evidence uses only its first 5 and last 5 words, so the
- * fragment still matches even if the SEC's own formatting puts something unexpected in between.
- */
-export function showInReportUrl(reportUrl: string, evidence: string): string {
-  const words = evidence.trim().split(/\s+/);
-  const fragment =
-    words.length <= 10
-      ? encodeForFragment(evidence)
-      : `${encodeForFragment(words.slice(0, 5).join(' '))},${encodeForFragment(words.slice(-5).join(' '))}`;
-  return `${reportUrl}#:~:text=${fragment}`;
-}
-
-// encodeURIComponent leaves "-" as it is, but a Text Fragment uses "-" to separate a prefix or suffix from the quoted
-// text, so a hyphen inside the quote itself must be escaped too, or Chrome and Edge misread where the quote ends.
-function encodeForFragment(text: string): string {
-  return encodeURIComponent(text).replaceAll('-', '%2D');
 }

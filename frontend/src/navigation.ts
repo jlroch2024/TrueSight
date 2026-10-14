@@ -1,9 +1,9 @@
-// The sidebar's links, in order. Labels are in Title Case. Only pages that work are listed.
+// The sidebar's navigation buttons, in order. Labels are in Title Case. Only pages that work are listed.
 //
 // NAV_ITEMS are always shown. A story that adds a page for everybody (e.g. Portfolios) adds one line here, and its
 // <Route> in App.tsx.
 //
-// PORTFOLIO_NAV_ITEMS are shown only while a portfolio is open (its id is in the address), and link to that
+// PORTFOLIO_NAV_ITEMS are shown only while a portfolio is open (its id is in the address), and navigate to that
 // portfolio's pages. A story that adds a portfolio page (e.g. Supply Chain) adds one line here instead.
 import { paths } from './paths';
 
@@ -20,5 +20,5 @@ export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
   { label: 'Supply Chain', path: paths.supplyChain },
 ];
 
-// Analyst pages are registered here as they become available. Do not link unfinished pages.
+// Analyst pages are registered here as they become available. Do not add buttons for unfinished pages.
 export const ANALYST_NAV_ITEMS: NavItem[] = [];

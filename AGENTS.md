@@ -138,7 +138,9 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 
 - **Call the backend only through `api()`** in `src/api/client.ts`, never `fetch()`. It adds `/api`, the login token,
   and turns errors into an `ApiError` whose `message` is ready to show.
-- **Page addresses are fixed** in `src/paths.ts`. Use them exactly, and link with `paths.portfolio(id)` rather than
+- **The website has no links.** Do not render anchors, `Link` or `NavLink`; use buttons for navigation and actions.
+  Open external destinations with `openInNewTab()` from `src/format.ts`.
+- **Page addresses are fixed** in `src/paths.ts`. Use them exactly, and navigate with `paths.portfolio(id)` rather than
   typing addresses:
 
   | Address | Page | Built by |
@@ -157,7 +159,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 - **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
   to do next), and loaded. `pages/HomePage.tsx` is the example.
 - **Look:** use the colours and classes in `styles.css`. Dark theme, square corners, Space Grotesk. Labels, headings
-  and buttons are in Title Case, e.g. "Upload CSV", "Show in Report".
+  and buttons are in Title Case, e.g. "Upload CSV", "Show Report".
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
 - **Forms:** every input has a visible label. Disable the button while a request is running, so it cannot be sent
   twice.
@@ -220,7 +222,7 @@ file in the demo. Then they open the pull request.
 | Relationship | A supplier or customer connection stated in an annual report |
 | Evidence | The report's own sentence that supports a relationship. Shown to users |
 | Quote | What the AI gives as its source. Checked against the report, then replaced by the evidence. Never shown |
-| Show in Report | The link that opens the annual report on the SEC website at the evidence |
+| Show Report | The button that opens the annual report on the SEC website without highlighting text |
 | Node, Edge | On the graph only: a company is a node, a relationship is an edge, pointing from supplier to customer |
 | Status | Where a holding's analysis is: Waiting, Analysing, Done, Failed or No Report Found |
 | Role | A user's access level: Portfolio Manager or Analyst. Authorization reads the current database value |

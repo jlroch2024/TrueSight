@@ -1,7 +1,9 @@
 package com.truesight.portfolio;
 
+import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
 import com.truesight.support.Examples;
@@ -16,8 +18,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +36,7 @@ class AnnualReportAnalysisIT {
     @Autowired PortfolioRepository portfolios;
     @Autowired HoldingRepository holdings;
     @Autowired CompanyRepository companies;
+    @Autowired CompanyDirectory companyDirectory;
     @Autowired ReportRepository reports;
 
     @MockitoBean SecClient sec;
@@ -66,14 +71,21 @@ class AnnualReportAnalysisIT {
                 .andExpect(jsonPath("$[0].reportType").value("20-F"))
                 .andExpect(jsonPath("$[0].reportDate").value("2026-02-25"))
                 .andExpect(jsonPath("$[0].reportLink").value("https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm"))
+                .andExpect(jsonPath("$[0].lastAnalysed").isNotEmpty())
                 .andExpect(jsonPath("$[1].companyName").value("NVIDIA Corporation"))
                 .andExpect(jsonPath("$[1].reportType").value("10-K"))
-                .andExpect(jsonPath("$[1].reportDate").value("2026-02-25"));
+                .andExpect(jsonPath("$[1].reportDate").value("2026-02-25"))
+                .andExpect(jsonPath("$[1].lastAnalysed").isNotEmpty());
 
         Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
         Long asmlId = companies.findByCik("0000937966").orElseThrow().getId();
-        assertThat(reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getForm()).isEqualTo("10-K");
-        assertThat(reports.findFirstByCompanyIdOrderByFilingDateDesc(asmlId).orElseThrow().getForm()).isEqualTo("20-F");
+        Report nvidiaReport = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow();
+        Report asmlReport = reports.findFirstByCompanyIdOrderByFilingDateDesc(asmlId).orElseThrow();
+        assertThat(nvidiaReport.getForm()).isEqualTo("10-K");
+        assertThat(asmlReport.getForm()).isEqualTo("20-F");
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(jsonPath("$[0].lastAnalysed").value(asmlReport.getCreatedAt().toString()))
+                .andExpect(jsonPath("$[1].lastAnalysed").value(nvidiaReport.getCreatedAt().toString()));
     }
 
     @Test
@@ -86,7 +98,27 @@ class AnnualReportAnalysisIT {
                 .andExpect(status().isAccepted());
         awaitStatuses(portfolio.getId(), 1, HoldingStatus.NO_REPORT_FOUND);
         mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
-                .andExpect(jsonPath("$[0].status").value("NO_REPORT_FOUND"));
+                .andExpect(jsonPath("$[0].status").value("NO_REPORT_FOUND"))
+                .andExpect(jsonPath("$[0].lastAnalysed").value(nullValue()));
+    }
+
+    @Test
+    void aHoldingWithASavedReportButNoCompletedAnalysisHasNoLastAnalysedTime() throws Exception {
+        String email = "annual-report-not-done@example.com";
+        Portfolio portfolio = portfolioWith(email, "TS96");
+        String nonce = UUID.randomUUID().toString();
+        var company = companyDirectory.findOrCreate("TS96 Example Company " + nonce, "TS96-" + nonce, "TS96", List.of());
+        reports.saveAndFlush(new Report(company.getId(), "10-K", "TS96-" + nonce, LocalDate.parse("2026-02-25"),
+                "https://www.sec.gov/example", "Report text."));
+        Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
+        holding.setCompanyId(company.getId());
+        holding.setStatus(HoldingStatus.ANALYSING);
+        holdings.saveAndFlush(holding);
+
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].reportLink").value("https://www.sec.gov/example"))
+                .andExpect(jsonPath("$[0].lastAnalysed").value(nullValue()));
     }
 
     @Test

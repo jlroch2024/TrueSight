@@ -31,6 +31,7 @@ function asHoldings(tickers: string[]) {
     reportType: null,
     reportDate: null,
     reportLink: null,
+    lastAnalysed: null,
   }));
 }
 
@@ -79,7 +80,7 @@ describe('Portfolio page', () => {
     renderAt('/portfolios/1');
 
     expect(await screen.findByText('This portfolio has no holdings yet. Upload a CSV to add them.')).toBeInTheDocument();
-    await userEvent.upload(screen.getByLabelText('Upload CSV'), csv('ticker,weight\nNVDA,10\nAMD,10\n'));
+    await userEvent.upload(screen.getByLabelText('CSV file'), csv('ticker,weight\nNVDA,10\nAMD,10\n'));
 
     expect(await screen.findByRole('cell', { name: 'NVDA' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'AMD' })).toBeInTheDocument();
@@ -91,7 +92,7 @@ describe('Portfolio page', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderAt('/portfolios/1');
 
-    await userEvent.upload(await screen.findByLabelText('Upload CSV'), csv('ticker\nNVDA\n'));
+    await userEvent.upload(await screen.findByLabelText('CSV file'), csv('ticker\nNVDA\n'));
 
     expect(confirm).toHaveBeenCalledWith('This replaces the 3 holdings in Tech.');
     expect(await screen.findByRole('cell', { name: 'NVDA' })).toBeInTheDocument();
@@ -103,7 +104,7 @@ describe('Portfolio page', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderAt('/portfolios/1');
 
-    await userEvent.upload(await screen.findByLabelText('Upload CSV'), csv('ticker\nNVDA\n'));
+    await userEvent.upload(await screen.findByLabelText('CSV file'), csv('ticker\nNVDA\n'));
 
     expect(uploads).toBe(0);
     expect(screen.getByRole('cell', { name: 'IBM' })).toBeInTheDocument();
@@ -112,7 +113,7 @@ describe('Portfolio page', () => {
   it("shows the backend's reason when a file is refused", async () => {
     renderAt('/portfolios/1');
 
-    await userEvent.upload(await screen.findByLabelText('Upload CSV'), csv('company,weight\nApple,10\n'));
+    await userEvent.upload(await screen.findByLabelText('CSV file'), csv('company,weight\nApple,10\n'));
 
     expect(await screen.findByText('The file needs a ticker column.')).toBeInTheDocument();
   });
