@@ -1,5 +1,5 @@
 // The Sign Up page's Acceptance Criteria, against a fake backend.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -41,24 +41,93 @@ describe('SignUpPage', () => {
     expect(tokenStore.get()).toBe('new-token');
   });
 
-  it("shows the backend's message for a password that is too short", async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(answer(400, { message: 'password must be between 8 and 72 characters' })),
-    );
+  it('shows the minimum password error before sending a request', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
     renderSignUp();
 
     await signUp('new@example.com', 'short');
 
-    expect(await screen.findByText('password must be between 8 and 72 characters')).toBeInTheDocument();
+    expect(await screen.findByText(/Password should be at least 8 characters/)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('shows "This email is already registered" for an email that has an account', async () => {
+  it('validates an email on blur and clears the error as the user corrects it', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderSignUp();
+
+    const email = screen.getByLabelText('Email');
+    await user.type(email, 'gtfsdege');
+    await user.tab();
+
+    expect(await screen.findByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.clear(email);
+    await user.type(email, 'new@example.com');
+    expect(screen.queryByText('Enter a valid email address.')).not.toBeInTheDocument();
+  });
+
+  it('clears the short-password error as the user fixes the password', async () => {
+    const user = userEvent.setup();
+    renderSignUp();
+
+    const password = screen.getByLabelText('Password');
+    await user.type(password, 'short');
+    await user.tab();
+    expect(await screen.findByText(/Password should be at least 8 characters/)).toBeInTheDocument();
+
+    await user.clear(password);
+    await user.type(password, 'long-enough');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows a maximum-length error for sign-up passwords over 72 characters', async () => {
+    const user = userEvent.setup();
+    renderSignUp();
+
+    const password = screen.getByLabelText('Password');
+    await user.type(password, 'a'.repeat(73));
+    await user.tab();
+
+    expect(await screen.findByText('Password must be 72 characters or fewer.')).toBeInTheDocument();
+  });
+
+  it('shows every field error and sends nothing when submitted with invalid values', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderSignUp();
+
+    await user.type(screen.getByLabelText('Email'), 'gtfsdege');
+    await user.type(screen.getByLabelText('Password'), 'short');
+    await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+
+    expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(screen.getByText(/Password should be at least 8 characters/)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the duplicate email response under the email field', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(409, { message: 'This email is already registered' })));
     renderSignUp();
 
     await signUp('taken@example.com', 'long-enough');
 
-    expect(await screen.findByText('This email is already registered')).toBeInTheDocument();
+    const email = screen.getByLabelText('Email');
+    expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(email).toHaveAttribute('aria-describedby', 'email-error');
+    expect(within(email.parentElement as HTMLElement).getByText('This email is already registered')).toBeInTheDocument();
+  });
+
+  it('switches to Log In with a button and has no account-switching link', async () => {
+    const user = userEvent.setup();
+    renderSignUp();
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Log In' }));
+    expect(await screen.findByRole('heading', { name: 'Log In' })).toBeInTheDocument();
   });
 });

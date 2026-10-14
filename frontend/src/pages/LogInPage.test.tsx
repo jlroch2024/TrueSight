@@ -50,4 +50,28 @@ describe('LogInPage', () => {
     expect(await screen.findByText('Wrong email or password')).toBeInTheDocument();
     expect(tokenStore.get()).toBeNull();
   });
+
+  it('shows email and required-password errors on submit without sending a request', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderLogIn();
+
+    await user.type(screen.getByLabelText('Email'), 'gtfsdege');
+    await user.click(screen.getByRole('button', { name: 'Log In' }));
+
+    expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(screen.getByText('Enter your password.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/characters/i)).not.toBeInTheDocument();
+  });
+
+  it('switches to Sign Up with a button and has no account-switching link', async () => {
+    const user = userEvent.setup();
+    renderLogIn();
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+    expect(await screen.findByRole('heading', { name: 'Sign Up' })).toBeInTheDocument();
+  });
 });

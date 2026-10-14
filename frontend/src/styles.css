@@ -148,9 +148,38 @@ button:disabled {
   font-size: 22px;
 }
 
+.auth-card .form-field label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-field input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.field-hint,
+.field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+
+.field-error {
+  color: var(--danger);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
 .auth-card button[type='submit'] {
   width: 100%;
   margin-top: 18px;
+}
+
+.auth-switch {
+  display: block;
+  margin: 12px auto 0;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
 }
 
 /* The sidebar's Log Out, pinned under the links */
