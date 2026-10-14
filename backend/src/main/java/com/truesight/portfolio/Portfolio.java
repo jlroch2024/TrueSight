@@ -30,6 +30,16 @@ public class Portfolio {
     @Column(nullable = false)
     private String name;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "news_status", nullable = false, length = 10)
+    private NewsStatus newsStatus = NewsStatus.IDLE;
+
+    @Column(name = "news_status_reason", length = 500)
+    private String newsStatusReason;
+
+    @Column(name = "news_checked_at")
+    private Instant newsCheckedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -62,4 +72,11 @@ public class Portfolio {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public NewsStatus getNewsStatus() { return newsStatus; }
+    public String getNewsStatusReason() { return newsStatusReason; }
+    public Instant getNewsCheckedAt() { return newsCheckedAt; }
+    public void setNewsStatus(NewsStatus newsStatus) { this.newsStatus = newsStatus; }
+    public void setNewsStatusReason(String newsStatusReason) { this.newsStatusReason = newsStatusReason; }
+    public void setNewsCheckedAt(Instant newsCheckedAt) { this.newsCheckedAt = newsCheckedAt; }
 }

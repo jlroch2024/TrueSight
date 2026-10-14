@@ -25,6 +25,16 @@ public final class Examples {
         return read("gemini-nvidia.json");
     }
 
+    /** A real Google News RSS response for the TSMC search used by Sprint 2. */
+    public static String googleNewsTsmc() {
+        return read("google-news-tsmc.xml");
+    }
+
+    /** Gemini's real assessment of the first 20 headlines in {@link #googleNewsTsmc()}. */
+    public static String geminiNewsAssessment() {
+        return read("gemini-news-assessment.json");
+    }
+
     private static String read(String name) {
         try {
             return Files.readString(Path.of("..", "docs", "examples", name), StandardCharsets.UTF_8);

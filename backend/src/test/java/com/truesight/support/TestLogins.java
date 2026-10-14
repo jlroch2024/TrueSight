@@ -3,6 +3,7 @@ package com.truesight.support;
 import com.truesight.auth.TokenService;
 import com.truesight.user.User;
 import com.truesight.user.UserRepository;
+import com.truesight.user.Role;
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -42,5 +43,12 @@ public class TestLogins {
     /** "Bearer ..." for this user: the value of an Authorization header that logs the request in. */
     public String bearer(String email) {
         return "Bearer " + tokens.issue(user(email));
+    }
+
+    /** Creates this test user's account as an Analyst and returns its bearer header. */
+    public String analystBearer(String email) {
+        User user = user(email);
+        user.setRole(Role.ANALYST);
+        return "Bearer " + tokens.issue(users.save(user));
     }
 }

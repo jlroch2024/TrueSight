@@ -112,10 +112,10 @@ Every `/api/` address except `/api/health`, `/api/auth/signup` and `/api/auth/lo
 `CompanyDirectory.findOrCreate(name, cik, ticker, otherNames)`. Never create a `Company` directly. That way the same
 company is one row whoever finds it first, and the Show Each Company Once story can improve the matching in one place.
 
-**Database.** The tables already exist. In Sprint 1, **do not add migrations** and never edit `V1__sprint_1_tables.sql`:
-a merged migration never runs again, so an edit silently does nothing on everybody else's database. Never change
-`ddl-auto: validate`. Entities refer to each other by id (`portfolioId`), not by object links. If a story truly needs a
-table change, stop and ask, so the team agrees one migration number.
+**Database.** Never edit `V1__sprint_1_tables.sql`: a merged migration never runs again, so an edit silently does
+nothing on everybody else's database. Sprint 2 table changes are all in `V2__sprint_2_tables.sql`; no Sprint 2 story
+adds another migration. Never change `ddl-auto: validate`. Entities refer to each other by id (`portfolioId`), not by
+object links. If a later sprint truly needs another table change, stop and agree the migration number first.
 
 **Relationships and reports are shared.** They come from public reports, so they belong to the report and the company,
 never to a portfolio. A company already analysed is never downloaded or sent to the AI again.
@@ -223,6 +223,22 @@ file in the demo. Then they open the pull request.
 | Show in Report | The link that opens the annual report on the SEC website at the evidence |
 | Node, Edge | On the graph only: a company is a node, a relationship is an edge, pointing from supplier to customer |
 | Status | Where a holding's analysis is: Waiting, Analysing, Done, Failed or No Report Found |
+| Role | A user's access level: Portfolio Manager or Analyst. Authorization reads the current database value |
+| Review Status | Whether a shared relationship is Unreviewed, Approved or Rejected |
+| News Status | Whether a portfolio news check is Idle, Checking or Failed |
+| News Assessment | The shared AI decision about whether an article describes a disruption event |
+| Alert | A disruption event that reaches a portfolio, with the affected holdings recorded |
+| Event Type | The kind of disruption reported, such as a supply shortage, labour action or cyber attack |
+| Severity, Confidence | How serious an event is, and how sure the assessment is, each Low, Medium or High |
+| Alert Status | Whether an alert is New, Acknowledged or Dismissed |
+
+## Sprint 2 Shared Rules
+
+- All Sprint 2 table changes belong in `V2__sprint_2_tables.sql`. No individual story adds another migration.
+- Get News calls `NewsCheckStepRunner.run(portfolioId)` after saving new articles. It runs each `NewsCheckStep` in `@Order`; Filter Out Noise is order 1 and See What a News Event Affects is order 2.
+- Use HTTP 403 only when the signed-in user's role cannot perform an action. A portfolio owned by somebody else remains 404.
+- Analyst decisions apply to every user because relationships and news articles are shared data.
+- User roles used for authorization are read from the database on every request; the token's role claim is for display only.
 
 ## Definition of Done
 

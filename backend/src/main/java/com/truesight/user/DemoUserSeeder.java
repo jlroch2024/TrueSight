@@ -22,6 +22,8 @@ public class DemoUserSeeder implements ApplicationRunner {
 
     public static final String DEMO_EMAIL = "demo@truesight.local";
     public static final String DEMO_PASSWORD = "truesight-demo";
+    public static final String ANALYST_EMAIL = "analyst@truesight.local";
+    public static final String ANALYST_PASSWORD = "truesight-demo";
 
     private final UserRepository users;
     private final PasswordEncoder passwords;
@@ -37,6 +39,15 @@ public class DemoUserSeeder implements ApplicationRunner {
         if (demo.getPasswordHash() == null) {
             demo.setPasswordHash(passwords.encode(DEMO_PASSWORD));
             users.save(demo);
+        }
+        User analyst = users.findByEmail(ANALYST_EMAIL).orElseGet(() -> {
+            User created = new User(ANALYST_EMAIL, passwords.encode(ANALYST_PASSWORD));
+            created.setRole(Role.ANALYST);
+            return users.save(created);
+        });
+        if (analyst.getRole() != Role.ANALYST) {
+            analyst.setRole(Role.ANALYST);
+            users.save(analyst);
         }
     }
 }

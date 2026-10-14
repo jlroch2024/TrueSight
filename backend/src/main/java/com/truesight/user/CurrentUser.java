@@ -16,6 +16,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class CurrentUser {
 
+    private final UserRepository users;
+
+    public CurrentUser(UserRepository users) {
+        this.users = users;
+    }
+
     /** The logged-in user's id. Throws a 401 if nobody is logged in. */
     public Long id() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -23,5 +29,11 @@ public class CurrentUser {
             return Long.valueOf(token.getToken().getSubject());
         }
         throw ApiException.unauthorized("Please log in.");
+    }
+
+    /** Reads the current role from the database, so a role change applies on the next request. */
+    public Role role() {
+        return users.findById(id()).map(User::getRole)
+                .orElseThrow(() -> ApiException.unauthorized("Please log in."));
     }
 }

@@ -50,7 +50,7 @@ public class AuthController {
     public record AuthResponse(String token, String email) {
     }
 
-    public record MeResponse(String email) {
+    public record MeResponse(String email, String role) {
     }
 
     @PostMapping("/signup")
@@ -72,7 +72,7 @@ public class AuthController {
     @Operation(summary = "Show who is logged in")
     public MeResponse me() {
         return users.findById(currentUser.id())
-                .map(user -> new MeResponse(user.getEmail()))
+                .map(user -> new MeResponse(user.getEmail(), currentUser.role().name()))
                 .orElseThrow(() -> ApiException.unauthorized("Please log in."));
     }
 }

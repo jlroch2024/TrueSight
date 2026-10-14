@@ -52,6 +52,19 @@ public class Relationship {
     @Column(nullable = false)
     private String evidence;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", nullable = false, length = 10)
+    private ReviewStatus reviewStatus = ReviewStatus.UNREVIEWED;
+
+    @Column(name = "reviewed_by")
+    private Long reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Column(name = "review_note", length = 500)
+    private String reviewNote;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -97,6 +110,16 @@ public class Relationship {
     public String getEvidence() {
         return evidence;
     }
+
+    public ReviewStatus getReviewStatus() { return reviewStatus; }
+    public Long getReviewedBy() { return reviewedBy; }
+    public Instant getReviewedAt() { return reviewedAt; }
+    public String getReviewNote() { return reviewNote; }
+
+    public void setReviewStatus(ReviewStatus reviewStatus) { this.reviewStatus = reviewStatus; }
+    public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
+    public void setReviewedAt(Instant reviewedAt) { this.reviewedAt = reviewedAt; }
+    public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
 
     public Instant getCreatedAt() {
         return createdAt;

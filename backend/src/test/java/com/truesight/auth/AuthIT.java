@@ -2,10 +2,15 @@ package com.truesight.auth;
 
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -28,6 +33,8 @@ class AuthIT {
 
     @Autowired
     TestLogins logins;
+
+    private final JsonMapper json = JsonMapper.builder().build();
 
     private String signUp(String email, String password) throws Exception {
         return mockMvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
@@ -52,6 +59,21 @@ class AuthIT {
                         .content("{\"email\":\"login@example.com\",\"password\":\"right-password\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void theLocalAnalystDemoAccountHasTheAnalystRole() throws Exception {
+        MvcResult login = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"analyst@truesight.local\",\"password\":\"truesight-demo\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andReturn();
+        String token = json.readTree(login.getResponse().getContentAsString()).get("token").asText();
+        String claimsJson = new String(Base64.getUrlDecoder().decode(token.split("\\.")[1]), StandardCharsets.UTF_8);
+        assertThat(json.readTree(claimsJson).get("role").asText()).isEqualTo("ANALYST");
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ANALYST"));
     }
 
     @Test
@@ -112,7 +134,17 @@ class AuthIT {
     void withATokenTheBackendKnowsWhoIsLoggedIn() throws Exception {
         mockMvc.perform(get("/api/auth/me").header("Authorization", logins.bearer("me@example.com")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("me@example.com"));
+                .andExpect(jsonPath("$.email").value("me@example.com"))
+                .andExpect(jsonPath("$.role").value("PORTFOLIO_MANAGER"));
+    }
+
+    @Test
+    void roleChangesTakeEffectForAnAlreadyIssuedTokenOnTheNextRequest() throws Exception {
+        String bearer = logins.bearer("role-change@example.com");
+        logins.analystBearer("role-change@example.com");
+        mockMvc.perform(get("/api/auth/me").header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ANALYST"));
     }
 
     @Test

@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
@@ -41,6 +43,18 @@ class GeminiClientTest {
                 .andRespond(withSuccess(Examples.geminiNvidia(), MediaType.APPLICATION_JSON));
 
         assertThat(client.generate("The prompt.")).isEqualTo(Examples.geminiNvidia());
+        server.verify();
+    }
+
+    @Test
+    void acceptsACallerProvidedResponseSchema() {
+        Map<String, Object> schema = Map.of("type", "ARRAY", "items", Map.of("type", "STRING"));
+        GeminiClient client = new GeminiClient(builder, "test-key", "gemini-test-model");
+        server.expect(requestTo(URL))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.type").value("STRING"))
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+        assertThat(client.generate("News prompt", schema)).isEqualTo("{\"ok\":true}");
         server.verify();
     }
 

@@ -36,6 +36,7 @@ public class TokenService {
                 .issuer("truesight")
                 .subject(String.valueOf(user.getId()))
                 .claim("email", user.getEmail())
+                .claim("role", user.getRole().name())
                 .issuedAt(now)
                 .expiresAt(now.plus(LIFETIME))
                 .build();

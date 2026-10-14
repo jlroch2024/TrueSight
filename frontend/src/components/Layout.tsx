@@ -3,16 +3,23 @@
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
 // PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a header naming the open portfolio, with a switcher.
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useMatch, useNavigate } from 'react-router';
-import { tokenStore } from '../api/client';
-import { NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
+import { api, tokenStore } from '../api/client';
+import { ANALYST_NAV_ITEMS, NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
 import { paths } from '../paths';
 import { PortfolioSwitcher } from './PortfolioSwitcher';
 
 export function Layout() {
+  const [role, setRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
   const portfolioItems = portfolioId ? PORTFOLIO_NAV_ITEMS : [];
+
+  useEffect(() => {
+    if (!tokenStore.get()) return;
+    api<{ role: string }>('/auth/me').then((me) => setRole(me.role)).catch(() => setRole(null));
+  }, []);
 
   // Logging out only forgets the token: the backend keeps nothing to undo.
   function logOut() {
@@ -29,6 +36,11 @@ export function Layout() {
         </div>
         <nav aria-label="Main">
           {NAV_ITEMS.map((item) => (
+            <NavLink key={item.path} to={item.path} end className="nav-link">
+              {item.label}
+            </NavLink>
+          ))}
+          {role === 'ANALYST' && ANALYST_NAV_ITEMS.map((item) => (
             <NavLink key={item.path} to={item.path} end className="nav-link">
               {item.label}
             </NavLink>
