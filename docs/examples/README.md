@@ -8,8 +8,69 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns | See the Supply Chain as a Graph, until the real endpoint exists |
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
+| `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |
+| `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
 
 ## Where It Came From
+
+`google-news-tsmc.xml` is the unmodified response retrieved from the Google News RSS URL below on 14 October 2026.
+
+```text
+https://news.google.com/rss/search?q=%22Taiwan%20Semiconductor%20Manufacturing%22+when:7d&hl=en-US&gl=US&ceid=US:en
+```
+
+## The Gemini News Assessment
+
+`gemini-news-assessment.json` is the complete, unchanged Gemini API response saved on 14 October 2026. It contains
+Gemini's assessment of headlines 1–20 from `google-news-tsmc.xml`, sent with the company name
+`Taiwan Semiconductor Manufacturing` and temperature 0.
+
+- **Model:** `gemini-3.8-flash`
+- **Usage:** 887 input tokens, 1,319 output tokens
+- **Result:** 20 indexed assessments; the API finished normally
+- **Response schema:** one object per headline, with `index`, `isEvent`, `eventType`, `severity`, `confidence`, `summary`, and `reason`
+
+The prompt, word for word:
+
+```
+You are screening news headlines for supply-chain risk. For each numbered headline, decide whether it reports an event
+that could disrupt the named company's ability to make, buy, ship or sell goods.
+
+Answer for every headline:
+- index: the headline's number
+- isEvent: true only for a real disruption; false for earnings, share prices, analyst opinions, product launches,
+  marketing, or general commentary
+- eventType: one of PRODUCTION_STOP, SUPPLY_SHORTAGE, LABOUR_ACTION, NATURAL_DISASTER, TRADE_RESTRICTION,
+  FINANCIAL_DISTRESS, LEGAL_OR_REGULATORY, CYBER_ATTACK, OTHER_DISRUPTION; empty when isEvent is false
+- severity: LOW, MEDIUM or HIGH; empty when isEvent is false
+- confidence: LOW, MEDIUM or HIGH, how sure you are from the headline alone
+- summary: one sentence saying what happened; empty when isEvent is false
+- reason: one sentence explaining your decision
+
+Use only the headline. Do not guess facts it does not state. Answer with JSON only.
+
+HEADLINES:
+1. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Manufacturing Just Dropped a Major Bombshell Investors Must Be Aware Of - Yahoo Finance
+2. [Taiwan Semiconductor Manufacturing] Should You Buy Taiwan Semiconductor Manufacturing Stock Before Oct. 15? History Is Crystal Clear on Where the Stock Is Headed Next. - The Motley Fool
+3. [Taiwan Semiconductor Manufacturing] TSMC expected to report sixth straight quarter of record profit thanks to AI boom - Reuters
+4. [Taiwan Semiconductor Manufacturing] Can Taiwan Semiconductor Manufacturing (NYSE:TSM) Justify A Premium On Cash Flow? - Simply Wall Street
+5. [Taiwan Semiconductor Manufacturing] FILE PHOTO: The logo of Taiwan Semiconductor Manufacturing Company (TSMC) at the company's second-quarter earnings conference in Taipei - The Daily News | Texas' Oldest Newspaper
+6. [Taiwan Semiconductor Manufacturing] Why October 15 Could Change Everything for Taiwan Semiconductor Stock - 24/7 Wall St.
+7. [Taiwan Semiconductor Manufacturing] Can Taiwan Semiconductor Manufacturing (NYSE:TSM) Justify Its Price On Cash Flow? - Yahoo Finance
+8. [Taiwan Semiconductor Manufacturing] Here's What a $1,400 Investment in Taiwan Semiconductor Manufacturing (TSMC) Stock Could Be Worth in 3 Years - The Motley Fool
+9. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Manufacturing (TSM) Nears Record Profit, Is The Stock Above Fair Value? - Simply Wall Street
+10. [Taiwan Semiconductor Manufacturing] GlobalFoundries to make key AI chip component for TSMC in $2 billion deal - Reuters
+11. [Taiwan Semiconductor Manufacturing] GlobalFoundries Signs $2 Billion Silicon Supply Deal With Taiwan Semiconductor Manufacturing - Yahoo Finance
+12. [Taiwan Semiconductor Manufacturing] ASML vs. Taiwan Semiconductor Manufacturing: Which Technology Stock Is a Better Buy in 2026? - The Motley Fool
+13. [Taiwan Semiconductor Manufacturing] Here's What a $1,400 Investment in Taiwan Semiconductor Manufacturing (TSMC) Stock Could Be Worth in 3 Years - Yahoo Finance
+14. [Taiwan Semiconductor Manufacturing] SK Hynix vs. Taiwan Semiconductor Manufacturing: Which Computer Chip Stock Is a Better Buy in 2026? - The Motley Fool
+15. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Manufacturing (TSM) Posted Record Q3 2026 Revenue - Yahoo Finance Singapore
+16. [Taiwan Semiconductor Manufacturing] Qualcomm vs. Taiwan Semiconductor Manufacturing: Which Technology Stock Is a Better Buy in 2026? - The Motley Fool
+17. [Taiwan Semiconductor Manufacturing] Why Taiwan Semiconductor (TSM) Became Essential to the Chip Industry - Yahoo Finance
+18. [Taiwan Semiconductor Manufacturing] Prediction: $5,000 Invested in Taiwan Semiconductor Could Be Worth This Much by 2030 - Yahoo Finance
+19. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Vs. ASML: If I Had to Choose One For the Next 5 Years, It’s This One - Yahoo Finance
+20. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Manufacturing Could Have Big News on Oct. 15 - The Globe and Mail
+```
 
 Every `evidence` sentence in `relationships.json` was copied from the company's real annual report, and checked word for
 word against it. The reports, all downloaded from the SEC on 25 September 2026:

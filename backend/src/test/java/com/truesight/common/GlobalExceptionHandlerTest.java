@@ -36,6 +36,11 @@ class GlobalExceptionHandlerTest {
             throw ApiException.badRequest("The file needs a ticker column.");
         }
 
+        @GetMapping("/test/forbidden")
+        void forbidden() {
+            throw ApiException.forbidden("This action requires an Analyst role.");
+        }
+
         @GetMapping("/test/bug")
         void bug() {
             throw new IllegalStateException("database password is hunter2");
@@ -54,6 +59,10 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/test/bad-request"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("The file needs a ticker column."));
+
+        mockMvc.perform(get("/test/forbidden"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("This action requires an Analyst role."));
     }
 
     @Test

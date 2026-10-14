@@ -34,6 +34,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.UNAUTHORIZED, message);
     }
 
+    /** 403: the signed-in user lacks the role required for this action. */
+    public static ApiException forbidden(String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, message);
+    }
+
     /**
      * 404: the thing does not exist, OR it belongs to another user. Both cases give the same answer on purpose, so
      * nobody can find out which portfolios exist by trying numbers.

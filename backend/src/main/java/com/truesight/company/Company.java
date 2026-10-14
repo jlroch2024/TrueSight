@@ -33,6 +33,9 @@ public class Company {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "news_checked_at")
+    private Instant newsCheckedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -78,4 +81,7 @@ public class Company {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public Instant getNewsCheckedAt() { return newsCheckedAt; }
+    public void setNewsCheckedAt(Instant newsCheckedAt) { this.newsCheckedAt = newsCheckedAt; }
 }

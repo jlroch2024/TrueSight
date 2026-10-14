@@ -19,3 +19,6 @@ export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
   { label: 'Open Portfolio', path: paths.portfolio },
   { label: 'Supply Chain', path: paths.supplyChain },
 ];
+
+// Analyst pages are registered here as they become available. Do not link unfinished pages.
+export const ANALYST_NAV_ITEMS: NavItem[] = [];

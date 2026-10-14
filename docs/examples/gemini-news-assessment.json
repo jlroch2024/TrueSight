@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "[\n  {\n    \"index\": 1,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"The headline is clickbait investment commentary and does not detail any specific supply chain disruption.\"\n  },\n  {\n    \"index\": 2,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is stock advice/financial speculation and not a supply chain disruption event.\"\n  },\n  {\n    \"index\": 3,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This reports financial performance expectations and profit records rather than a supply chain issue.\"\n  },\n  {\n    \"index\": 4,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is stock valuation and cash flow analysis.\"\n  },\n  {\n    \"index\": 5,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is a photo caption/credit referring to an earnings conference.\"\n  },\n  {\n    \"index\": 6,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is speculative market commentary regarding stock performance.\"\n  },\n  {\n    \"index\": 7,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is financial analysis regarding stock valuation and cash flow.\"\n  },\n  {\n    \"index\": 8,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is personal finance/investment advice and projection.\"\n  },\n  {\n    \"index\": 9,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This covers financial earnings and stock valuation.\"\n  },\n  {\n    \"index\": 10,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This reports a normal commercial supply agreement rather than a disruption.\"\n  },\n  {\n    \"index\": 11,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This reports a positive business deal for silicon supply rather than a supply disruption.\"\n  },\n  {\n    \"index\": 12,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is an investment comparison between two stocks.\"\n  },\n  {\n    \"index\": 13,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is financial commentary analyzing potential investment returns.\"\n  },\n  {\n    \"index\": 14,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is an investment comparison between two stocks.\"\n  },\n  {\n    \"index\": 15,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This reports quarterly financial revenue results.\"\n  },\n  {\n    \"index\": 16,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is an investment comparison between two technology stocks.\"\n  },\n  {\n    \"index\": 17,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is general commentary and background analysis on the company's industry position.\"\n  },\n  {\n    \"index\": 18,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is investment advice and stock price forecasting.\"\n  },\n  {\n    \"index\": 19,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is financial commentary comparing the investment potential of two stocks.\"\n  },\n  {\n    \"index\": 20,\n    \"isEvent\": false,\n    \"eventType\": \"\",\n    \"severity\": \"\",\n    \"confidence\": \"HIGH\",\n    \"summary\": \"\",\n    \"reason\": \"This is speculative market commentary regarding potential upcoming company announcements.\"\n  }\n]",
+            "thoughtSignature": "EmkKZwFpFH0TO5UI4ffG+B4AD9ZOMRNYQCSeelMxBu6ZVPWwKzCzjIjQFZH8W5Fr5czNPhXRebg1C/2FOq5ZEdz5OT6MX6pPMu2GA+1dcX0BMK1+r7XcA9VPgDEGoV0BhLyR6a6LWD3HeTw="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 887,
+    "candidatesTokenCount": 1319,
+    "totalTokenCount": 2206,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 887
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "gYnPatDfOMClg8UPp_e6-QM"
+}

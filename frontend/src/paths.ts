@@ -19,6 +19,8 @@ export const paths = {
   logIn: '/login',
   signUp: '/signup',
   portfolios: '/portfolios',
+  review: '/review',
   portfolio: (portfolioId: string | number) => `/portfolios/${portfolioId}`,
   supplyChain: (portfolioId: string | number) => `/portfolios/${portfolioId}/supply-chain`,
+  alerts: (portfolioId: string | number) => `/portfolios/${portfolioId}/alerts`,
 };

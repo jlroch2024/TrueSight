@@ -68,6 +68,11 @@ public class GeminiClient {
      * @throws GeminiException with a reason a user can read, if there is no key or Gemini cannot answer
      */
     public String generate(String prompt) {
+        return generate(prompt, RESPONSE_SCHEMA);
+    }
+
+    /** Sends the prompt with the caller's JSON response schema and returns Gemini's answer exactly as it arrived. */
+    public String generate(String prompt, Map<String, Object> responseSchema) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new GeminiException("The AI is not set up: there is no Gemini API key.", null);
         }
@@ -76,7 +81,7 @@ public class GeminiClient {
                 "generationConfig", Map.of(
                         "temperature", 0,
                         "responseMimeType", "application/json",
-                        "responseSchema", RESPONSE_SCHEMA));
+                        "responseSchema", responseSchema));
         log.info("Asking Gemini ({}) with a {}-character prompt.", model, prompt.length());
         try {
             return client.post()
