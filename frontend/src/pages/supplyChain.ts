@@ -60,3 +60,41 @@ export function buildGraphElements(
 
   return { nodes: [...nodes.values()], edges };
 }
+
+/** The part of the graph that stays lit while one company is in focus. */
+export type Focus = { nodeIds: Set<string>; edgeIds: Set<string> };
+
+/**
+ * What stays lit when the user points at one company: the company itself, its direct suppliers and customers, and the
+ * arrows that join them to it. Everything else is faded. A company with no arrows is lit on its own.
+ *
+ * Only arrows that touch the company are kept. An arrow between two of its neighbours is not one of the company's own
+ * connections, so it fades with the rest.
+ */
+export function focusOn(nodeId: string, edges: GraphEdge[]): Focus {
+  const nodeIds = new Set<string>([nodeId]);
+  const edgeIds = new Set<string>();
+  for (const edge of edges) {
+    if (edge.source !== nodeId && edge.target !== nodeId) continue;
+    edgeIds.add(edge.id);
+    nodeIds.add(edge.source);
+    nodeIds.add(edge.target);
+  }
+  return { nodeIds, edgeIds };
+}
+
+// The arrows are dashes that travel from supplier to customer: 8 px of line, then a 5 px gap, repeating.
+export const DASH_PATTERN = [8, 5];
+const DASH_PERIOD = 13; // 8 + 5
+const DASH_SPEED = 20; // pixels per second
+
+/**
+ * Where the dash pattern sits after {@code elapsedMs} of animation, as a value for Cytoscape's {@code line-dash-offset}.
+ *
+ * An edge is drawn from its source (the supplier) to its target (the customer). A larger offset slides the pattern
+ * back towards the source, so to make the dashes travel towards the customer the offset has to get smaller as time
+ * passes. It wraps around once a whole dash and gap has gone by, so it never grows without end.
+ */
+export function dashOffsetAt(elapsedMs: number): number {
+  return 0 - (((elapsedMs / 1000) * DASH_SPEED) % DASH_PERIOD);
+}
