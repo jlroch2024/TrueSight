@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
-import { buildGraphElements } from './supplyChain';
+import { buildGraphElements, dashOffsetAt, focusOn } from './supplyChain';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
 
@@ -143,3 +143,68 @@ function holding(id: number, ticker: string, companyName: string | null): Holdin
     lastAnalysed: null,
   };
 }
+
+describe('focusOn', () => {
+  const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
+  const idOf = (name: string) => nodes.find((n) => n.name === name)!.id;
+  const nameOf = (id: string) => nodes.find((n) => n.id === id)!.name;
+
+  it('keeps only NVIDIA, TSMC and Samsung, and their two arrows, when pointing at NVIDIA', () => {
+    const focus = focusOn(idOf('NVIDIA Corporation'), edges);
+
+    expect([...focus.nodeIds].map(nameOf).sort()).toEqual([
+      'NVIDIA Corporation',
+      'Samsung Electronics Co., Ltd.',
+      'Taiwan Semiconductor Manufacturing Company Limited',
+    ]);
+    expect([...focus.edgeIds].sort()).toEqual(['relationship-1', 'relationship-2']);
+  });
+
+  it('keeps every holding TSMC supplies and the one it buys from when pointing at TSMC', () => {
+    const focus = focusOn(idOf('Taiwan Semiconductor Manufacturing Company Limited'), edges);
+
+    expect([...focus.nodeIds].map(nameOf).sort()).toEqual([
+      'Advanced Micro Devices, Inc.',
+      'Broadcom Inc.',
+      'Lam Research Corporation',
+      'NVIDIA Corporation',
+      'QUALCOMM Incorporated',
+      'Taiwan Semiconductor Manufacturing Company Limited',
+    ]);
+    expect(focus.edgeIds.size).toBe(5);
+  });
+
+  it('does not light an arrow between two neighbours that does not touch the company', () => {
+    const a = { id: 'a', source: 'supplier', target: 'focus', relationshipId: 1 };
+    const b = { id: 'b', source: 'focus', target: 'customer', relationshipId: 2 };
+    const between = { id: 'between', source: 'supplier', target: 'customer', relationshipId: 3 };
+
+    const focus = focusOn('focus', [a, b, between]);
+
+    expect([...focus.edgeIds].sort()).toEqual(['a', 'b']);
+    expect([...focus.nodeIds].sort()).toEqual(['customer', 'focus', 'supplier']);
+  });
+
+  it('lights a company with no arrows on its own', () => {
+    const focus = focusOn('holding-10', edges);
+
+    expect([...focus.nodeIds]).toEqual(['holding-10']);
+    expect(focus.edgeIds.size).toBe(0);
+  });
+});
+
+describe('dashOffsetAt', () => {
+  // An edge is drawn from supplier to customer, and a smaller offset slides the dashes towards the customer.
+  it('gets smaller as time passes, so the dashes travel from supplier to customer', () => {
+    expect(dashOffsetAt(0)).toBe(0);
+    expect(dashOffsetAt(250)).toBeLessThan(dashOffsetAt(0));
+    expect(dashOffsetAt(500)).toBeLessThan(dashOffsetAt(250));
+  });
+
+  it('wraps around after one dash and gap, so it never grows without end', () => {
+    for (const elapsed of [0, 1_000, 123_456, 86_400_000]) {
+      expect(dashOffsetAt(elapsed)).toBeLessThanOrEqual(0);
+      expect(dashOffsetAt(elapsed)).toBeGreaterThan(-13);
+    }
+  });
+});

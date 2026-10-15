@@ -79,7 +79,7 @@ export function SupplyChainPage() {
     <section>
       <h1>Supply Chain</h1>
       <p className="muted">
-        Drag a company to rearrange the graph, scroll to zoom, and click an edge to see the evidence behind it.
+        Drag a company to rearrange the graph, scroll to zoom, point at a company to focus on its connections, and click an edge to see the evidence behind it.
       </p>
 
       <SupplyChainGraph nodes={nodes} edges={edges} onEdgeSelect={handleEdgeSelect} />
