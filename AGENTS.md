@@ -158,8 +158,9 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   portfolio. Only working pages appear in the sidebar.
 - **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
   to do next), and loaded. `pages/HomePage.tsx` is the example.
-- **Look:** use the colours and classes in `styles.css`. Dark theme, square corners, Space Grotesk. Labels, headings
-  and buttons are in Title Case, e.g. "Upload CSV", "Show Report".
+- **Look:** use the colours and classes in `styles.css`. Dark blueprint palette, hairline borders, square corners,
+  teal primary actions with one top-right chamfer, lime accents, Space Grotesk for text and JetBrains Mono for tickers
+  and numbers. Labels use small capitals; keep button labels in Title Case, e.g. "Upload CSV", "Show Report".
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
 - **Forms:** every input has a visible label. Disable the button while a request is running, so it cannot be sent
   twice.

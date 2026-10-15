@@ -1,13 +1,18 @@
-/* TrueSight's look: dark, square corners, Space Grotesk. Colours are named once here and reused everywhere. */
+/* Blueprint palette shared by every page. */
 :root {
-  --bg: #0c0e12;
-  --panel: #151920;
-  --border: #262c36;
-  --text: #e6e8eb;
-  --muted: #8a94a3;
-  --accent: #5b8cff;
-  --danger: #ff6b6b;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  color-scheme: dark;
+  --bg: #07141a;
+  --panel: #0b2028;
+  --panel-raised: #102a33;
+  --border: #25434b;
+  --text: #e4f3ef;
+  --muted: #8ba9a5;
+  --accent: #2dd4bf;
+  --lime: #c4f36a;
+  --danger: #ff7272;
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
 }
@@ -18,16 +23,107 @@
 }
 
 body {
+  min-width: 320px;
+  min-height: 100vh;
   margin: 0;
+  background-color: var(--bg);
+  background-image: linear-gradient(rgb(45 212 191 / 2.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(45 212 191 / 2.5%) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-a {
-  color: var(--accent);
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 40px;
+  padding: 9px 18px 9px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #041714;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--lime);
+  border-color: var(--lime);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgb(11 32 40 / 96%);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.brand-tile {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--accent);
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 3px var(--bg);
+}
+
+.brand-logo {
+  display: block;
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+}
+
+.header-account {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.account-email {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .layout {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - 76px);
 }
 
 .sidebar {
@@ -35,56 +131,68 @@ a {
   flex-shrink: 0;
   padding: 20px 16px;
   border-right: 1px solid var(--border);
-  background: var(--panel);
+  background: rgb(11 32 40 / 78%);
 }
 
-.brand {
+.sidebar nav {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 24px;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.brand-logo {
-  width: 28px;
-  height: 28px;
+  flex-direction: column;
+  gap: 7px;
 }
 
 .nav-link {
-  display: block;
   width: 100%;
   padding: 8px 10px;
-  border: 0;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
   text-align: left;
-  font: inherit;
+  clip-path: none;
 }
 
-.nav-link:hover,
+.nav-link:hover:not(:disabled),
 .nav-link.active {
+  border-color: var(--accent);
+  background: var(--panel-raised);
   color: var(--text);
-  background: var(--border);
+}
+
+.nav-link.active {
+  box-shadow: inset 2px 0 0 var(--lime);
 }
 
 .nav-section {
-  margin-top: 16px;
-  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
 }
 
 .content {
   flex: 1;
+  min-width: 0;
   padding: 32px;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text);
+  letter-spacing: -0.035em;
+}
+
+h1 {
+  font-size: clamp(25px, 3vw, 34px);
 }
 
 .card {
   margin-top: 24px;
-  padding: 16px 20px;
+  padding: 18px 20px;
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: rgb(11 32 40 / 90%);
+  box-shadow: 4px 4px 0 rgb(37 67 75 / 25%);
 }
 
 .card h2 {
@@ -100,61 +208,116 @@ a {
   font-size: 13px;
 }
 
-/* Forms */
 label {
   display: block;
   margin: 14px 0 6px;
-  font-size: 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
 }
 
-input {
-  width: 100%;
+input,
+select {
+  min-height: 40px;
   padding: 9px 10px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
-  font: inherit;
 }
 
-button {
-  padding: 9px 16px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  cursor: pointer;
+input:focus,
+select:focus {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
+/* The default button is the page's main action. */
+.secondary,
+.danger,
+.log-out,
+.nav-link,
+.portfolio-open,
+.inline-action,
+.file-button,
+.auth-switch,
+.holdings td button,
+.portfolio-list .inline-form button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  clip-path: none;
+}
+
+.secondary:hover:not(:disabled),
+.log-out:hover:not(:disabled),
+.portfolio-open:hover:not(:disabled),
+.inline-action:hover:not(:disabled),
+.file-button:hover:not(:disabled),
+.auth-switch:hover:not(:disabled),
+.holdings td button:hover:not(:disabled),
+.portfolio-list .inline-form button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: rgb(255 114 114 / 10%);
+  color: var(--danger);
+}
+
+.error {
+  color: var(--danger);
 }
 
 /* Log In and Sign Up */
 .auth-page {
   display: flex;
+  min-height: 100vh;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
   padding: 24px;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 380px;
-  padding: 28px;
+  max-width: 400px;
+  padding: 30px;
   border: 1px solid var(--border);
   background: var(--panel);
+  box-shadow: 6px 6px 0 rgb(37 67 75 / 28%);
+}
+
+.auth-card .brand {
+  margin-bottom: 28px;
+}
+
+.auth-card .brand-logo {
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  border: 1px solid var(--accent);
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 3px var(--bg);
 }
 
 .auth-card h1 {
   margin: 0 0 8px;
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .auth-card .form-field label {
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 .form-field input[aria-invalid='true'] {
@@ -169,8 +332,8 @@ button:disabled {
 
 .field-error {
   color: var(--danger);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
 }
 
 .auth-card button[type='submit'] {
@@ -181,37 +344,10 @@ button:disabled {
 .auth-switch {
   display: block;
   margin: 12px auto 0;
-  border-color: var(--border);
-  background: transparent;
-  color: var(--text);
 }
 
-/* The sidebar's Log Out, pinned under the links */
-.sidebar {
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar nav {
-  flex: 1;
-}
-
-.log-out {
-  border-color: var(--border);
-  background: transparent;
-  color: var(--muted);
-}
-
-.error {
-  color: var(--danger);
-}
-
-/* Portfolios */
+/* Portfolio pages */
 select {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
   font: inherit;
 }
 
@@ -234,19 +370,6 @@ select {
   min-width: 160px;
 }
 
-/* Rename, Cancel and Delete are quieter than the main button on the page. */
-button.secondary {
-  border-color: var(--border);
-  background: transparent;
-  color: var(--text);
-}
-
-button.danger {
-  border-color: var(--danger);
-  background: transparent;
-  color: var(--danger);
-}
-
 .portfolio-list {
   margin: 0;
   padding: 0;
@@ -263,23 +386,21 @@ button.danger {
 }
 
 .portfolio-open {
-  border-color: var(--border);
-  background: transparent;
   color: var(--text);
+  text-align: left;
 }
 
 .inline-action {
+  min-height: 30px;
   margin: 0 2px;
-  padding: 2px 6px;
-  border-color: var(--border);
-  background: transparent;
-  color: var(--text);
+  padding: 2px 7px;
   vertical-align: baseline;
   font-size: inherit;
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -292,7 +413,6 @@ button.danger {
   border-bottom: 1px solid var(--border);
 }
 
-/* The portfolio page's Upload CSV button opens a file input kept off screen. */
 .upload-row {
   display: flex;
   flex-wrap: wrap;
@@ -304,17 +424,12 @@ button.danger {
 .file-button {
   display: inline-block;
   margin: 0;
-  padding: 9px 16px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
   cursor: pointer;
 }
 
-/* The input is off screen, so show keyboard focus on the button that stands in for it. */
 .upload-row:focus-within .file-button {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
 }
 
 .visually-hidden {
@@ -333,14 +448,25 @@ table.holdings {
 
 table.holdings th,
 table.holdings td {
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-top: 1px solid var(--border);
   text-align: left;
 }
 
 table.holdings th {
   color: var(--muted);
+  font-size: 11px;
+  font-variant: small-caps;
   font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+table.holdings td:nth-child(2),
+table.holdings td:nth-child(3),
+table.holdings td:nth-child(5),
+table.holdings td:nth-child(7) {
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .page-heading {
@@ -356,9 +482,9 @@ table.holdings th {
 .status { white-space: nowrap; }
 .status-reason { display: block; margin-top: 4px; font-size: 12px; }
 .status-failed, .status-no_report_found { color: var(--danger); }
+.status-done { color: var(--lime); }
 
-/* Supply Chain: the graph, and the panel shown when an edge is clicked */
-/* The graph, with its Fit to Screen button floating over the top-right corner. */
+/* Supply-chain graph. Cytoscape draws to a canvas, so its colors are set in the component too. */
 .graph-frame {
   position: relative;
   margin-top: 16px;
@@ -388,4 +514,85 @@ table.holdings th {
   padding-left: 14px;
   border-left: 2px solid var(--accent);
   font-style: italic;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    min-height: 68px;
+    padding: 10px 16px;
+  }
+
+  .layout {
+    min-height: calc(100vh - 68px);
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .nav-link {
+    width: auto;
+  }
+
+  .nav-section {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-top: 2px;
+    padding-top: 10px;
+  }
+
+  .content {
+    padding: 24px 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-account {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .account-email {
+    max-width: calc(100vw - 140px);
+    font-size: 11px;
+  }
+
+  .page-heading,
+  .portfolio-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auth-card {
+    padding: 22px;
+  }
+
+  .card {
+    padding: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

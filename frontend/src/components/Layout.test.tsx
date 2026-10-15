@@ -1,6 +1,6 @@
 // Proves the sidebar shows a portfolio's own pages only while that portfolio is open.
 // The list of portfolio pages is replaced with a sample here, because the real one is empty until stories add pages.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { tokenStore } from '../api/client';
 import { MemoryRouter, Route, Routes } from 'react-router';
@@ -38,6 +38,7 @@ describe('Layout', () => {
 
   it('Log Out forgets the login and goes to the Log In page', async () => {
     tokenStore.set('a-token');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"email":"pm@example.com","role":"PORTFOLIO_MANAGER"}')));
     render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
@@ -47,7 +48,8 @@ describe('Layout', () => {
       </MemoryRouter>,
     );
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Log Out' }));
+    const header = screen.getByRole('banner');
+    await userEvent.setup().click(within(header).getByRole('button', { name: 'Log Out' }));
 
     expect(tokenStore.get()).toBeNull();
     expect(screen.getByRole('heading', { name: 'Log In' })).toBeInTheDocument();
@@ -69,6 +71,7 @@ describe('Layout', () => {
       headers: expect.any(Headers),
     })));
     expect(await screen.findByRole('button', { name: 'Analyst Review' })).toBeInTheDocument();
+    expect(await screen.findByText('analyst@example.com')).toBeInTheDocument();
     fetchMock.mockRestore();
     tokenStore.clear();
   });
