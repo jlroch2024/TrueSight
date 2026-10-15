@@ -20,7 +20,7 @@ FROM eclipse-temurin:21-jdk AS backend
 WORKDIR /backend
 COPY backend/.mvn .mvn
 COPY backend/mvnw backend/pom.xml ./
-RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
+RUN chmod +x mvnw && ./mvnw -B -q dependency:resolve-plugins dependency:resolve
 COPY backend/src src
 COPY --from=website /frontend/dist src/main/resources/static
 RUN ./mvnw -B -q package -DskipTests
