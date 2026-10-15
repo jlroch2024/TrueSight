@@ -1,8 +1,8 @@
-// The frame around every page: the TrueSight name and the sidebar on the left, the page itself on the right.
+// Shared authenticated frame: the TrueSight header, navigation sidebar and current page.
 // <Outlet /> is where React Router puts the page for the current address.
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
-// PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a header naming the open portfolio, with a switcher.
+// PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a switcher naming the open portfolio.
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate } from 'react-router';
 import { api, tokenStore } from '../api/client';
@@ -11,7 +11,7 @@ import { paths } from '../paths';
 import { PortfolioSwitcher } from './PortfolioSwitcher';
 
 export function Layout() {
-  const [role, setRole] = useState<string | null>(null);
+  const [me, setMe] = useState<{ email: string; role: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
@@ -19,7 +19,7 @@ export function Layout() {
 
   useEffect(() => {
     if (!tokenStore.get()) return;
-    api<{ role: string }>('/auth/me').then((me) => setRole(me.role)).catch(() => setRole(null));
+    api<{ email: string; role: string }>('/auth/me').then(setMe).catch(() => setMe(null));
   }, []);
 
   // Logging out only forgets the token: the backend keeps nothing to undo.
@@ -29,41 +29,64 @@ export function Layout() {
   }
 
   return (
-    <div className="layout">
-      <aside className="sidebar">
+    <div className="app-shell">
+      <header className="topbar">
         <div className="brand">
-          <img src="/eye-logo.png" alt="" className="brand-logo" />
+          <span className="brand-tile"><img src="/eye-logo.png" alt="" className="brand-logo" /></span>
           <span>TrueSight</span>
         </div>
-        <nav aria-label="Main">
-          {NAV_ITEMS.map((item) => (
-            <button key={item.path} type="button" className={`nav-link${location.pathname === item.path ? ' active' : ''}`} aria-current={location.pathname === item.path ? 'page' : undefined} onClick={() => navigate(item.path)}>
-              {item.label}
-            </button>
-          ))}
-          {role === 'ANALYST' && ANALYST_NAV_ITEMS.map((item) => (
-            <button key={item.path} type="button" className={`nav-link${location.pathname === item.path ? ' active' : ''}`} aria-current={location.pathname === item.path ? 'page' : undefined} onClick={() => navigate(item.path)}>
-              {item.label}
-            </button>
-          ))}
-          {portfolioId && portfolioItems.length > 0 && (
-            <div className="nav-section" aria-label="Portfolio Pages">
-              {portfolioItems.map((item) => (
-                <button key={item.label} type="button" className={`nav-link${location.pathname === item.path(portfolioId) ? ' active' : ''}`} aria-current={location.pathname === item.path(portfolioId) ? 'page' : undefined} onClick={() => navigate(item.path(portfolioId))}>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </nav>
-        <button type="button" className="log-out" onClick={logOut}>
-          Log Out
-        </button>
-      </aside>
-      <main className="content">
-        {portfolioId && <PortfolioSwitcher portfolioId={portfolioId} />}
-        <Outlet />
-      </main>
+        <div className="header-account">
+          {me && <span className="account-email">{me.email}</span>}
+          <button type="button" className="log-out" onClick={logOut}>Log Out</button>
+        </div>
+      </header>
+      <div className="layout">
+        <aside className="sidebar">
+          <nav aria-label="Main">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                className={`nav-link${location.pathname === item.path ? ' active' : ''}`}
+                aria-current={location.pathname === item.path ? 'page' : undefined}
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+              </button>
+            ))}
+            {me?.role === 'ANALYST' && ANALYST_NAV_ITEMS.map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                className={`nav-link${location.pathname === item.path ? ' active' : ''}`}
+                aria-current={location.pathname === item.path ? 'page' : undefined}
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+              </button>
+            ))}
+            {portfolioId && portfolioItems.length > 0 && (
+              <div className="nav-section" aria-label="Portfolio Pages">
+                {portfolioItems.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    className={`nav-link${location.pathname === item.path(portfolioId) ? ' active' : ''}`}
+                    aria-current={location.pathname === item.path(portfolioId) ? 'page' : undefined}
+                    onClick={() => navigate(item.path(portfolioId))}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </nav>
+        </aside>
+        <main className="content">
+          {portfolioId && <PortfolioSwitcher portfolioId={portfolioId} />}
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

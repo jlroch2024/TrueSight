@@ -3,6 +3,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GraphNode } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
 const made: { options?: Record<string, unknown>; layouts: Layout[]; animate: ReturnType<typeof vi.fn> } = {
@@ -42,8 +43,8 @@ vi.mock('cytoscape', () => {
 
 import { SupplyChainGraph } from './SupplyChainGraph';
 
-function drawGraph() {
-  return render(<SupplyChainGraph nodes={[]} edges={[]} onEdgeSelect={() => {}} />);
+function drawGraph(nodes: GraphNode[] = []) {
+  return render(<SupplyChainGraph nodes={nodes} edges={[]} onEdgeSelect={() => {}} />);
 }
 
 beforeEach(() => {
@@ -80,5 +81,24 @@ describe('SupplyChainGraph', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Fit to Screen' }));
 
     expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: 'every element', padding: 40 } }));
+  });
+
+  it('uses blueprint colors, square nodes and a mono font for tickers', () => {
+    drawGraph([{ id: 'holding-1', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true }]);
+
+    const options = made.options as { elements: Array<{ data: { label: string; ticker: number } }>; style: unknown[] };
+    expect(options.elements[0].data).toMatchObject({ label: 'NVDA', ticker: 1 });
+    expect(options.style).toContainEqual(expect.objectContaining({
+      selector: 'node',
+      style: expect.objectContaining({ shape: 'rectangle' }),
+    }));
+    expect(options.style).toContainEqual(expect.objectContaining({
+      selector: 'node[ticker = 1]',
+      style: { 'font-family': 'JetBrains Mono' },
+    }));
+    expect(options.style).toContainEqual(expect.objectContaining({
+      selector: 'edge:selected',
+      style: expect.objectContaining({ 'line-color': '#c4f36a' }),
+    }));
   });
 });

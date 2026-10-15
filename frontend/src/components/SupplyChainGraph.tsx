@@ -14,10 +14,11 @@ import type { GraphEdge, GraphNode } from '../pages/supplyChain';
 cytoscape.use(cola);
 
 // Matches styles.css: Cytoscape draws to a <canvas>, so it cannot read the CSS custom properties there.
-const ACCENT = '#5b8cff';
-const MUTED = '#8a94a3';
-const TEXT = '#e6e8eb';
-const BORDER = '#262c36';
+const ACCENT = '#2dd4bf';
+const LIME = '#c4f36a';
+const MUTED = '#8ba9a5';
+const TEXT = '#e4f3ef';
+const BORDER = '#25434b';
 
 // How far out and in the user can zoom: far enough to see a big portfolio whole, close enough to read any label.
 const MIN_ZOOM = 0.3;
@@ -49,7 +50,7 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
 
     const elements: ElementDefinition[] = [
       ...nodes.map((node) => ({
-        data: { id: node.id, label: node.ticker ?? node.name, holding: node.isHolding ? 1 : 0 },
+        data: { id: node.id, label: node.ticker ?? node.name, holding: node.isHolding ? 1 : 0, ticker: node.ticker ? 1 : 0 },
       })),
       ...edges.map((edge) => ({
         data: { id: edge.id, source: edge.source, target: edge.target, relationshipId: edge.relationshipId },
@@ -75,7 +76,7 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
             'text-wrap': 'wrap',
             'text-max-width': '70px',
             'background-color': MUTED,
-            shape: 'ellipse',
+            shape: 'rectangle',
             width: 46,
             height: 46,
             'border-width': 1,
@@ -85,7 +86,11 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
         // Holdings look different in shape as well as colour, so they stand out from suppliers and customers.
         {
           selector: 'node[holding = 1]',
-          style: { 'background-color': ACCENT, shape: 'round-rectangle', width: 60, height: 46 },
+          style: { 'background-color': ACCENT, color: '#041714', shape: 'rectangle', width: 60, height: 46 },
+        },
+        {
+          selector: 'node[ticker = 1]',
+          style: { 'font-family': 'JetBrains Mono' },
         },
         // Arrows in the muted grey, which shows on the dark panel (the border colour hardly did).
         {
@@ -101,7 +106,7 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
         },
         {
           selector: 'edge:selected',
-          style: { width: 3, 'line-color': ACCENT, 'target-arrow-color': ACCENT },
+          style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME },
         },
       ],
     });
