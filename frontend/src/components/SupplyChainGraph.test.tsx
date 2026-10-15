@@ -211,12 +211,12 @@ describe('SupplyChainGraph', () => {
       }));
 
       runFrame(1000); // the first frame starts the clock
+      runFrame(1250);
       runFrame(1500);
-      runFrame(2000);
 
       const offsets = made.style.mock.calls.map((call) => call[1] as number);
       expect(made.style.mock.calls.every((call) => call[0] === 'line-dash-offset')).toBe(true);
-      expect(offsets).toEqual([dashOffsetAt(0), dashOffsetAt(500), dashOffsetAt(1000)]);
+      expect(offsets).toEqual([dashOffsetAt(0), dashOffsetAt(250), dashOffsetAt(500)]);
       // A smaller offset slides the dashes along the edge from its source, the supplier, to its target, the customer.
       expect(offsets[2]).toBeLessThan(offsets[1]);
       expect(offsets[1]).toBeLessThan(offsets[0]);
