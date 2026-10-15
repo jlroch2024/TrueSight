@@ -5,11 +5,16 @@
 // more shortly after, unless the user has already zoomed, panned or dragged, and Fit to Screen brings everything back
 // into view at any time. Scrolling zooms at the normal speed, within limits.
 //
-// A visitor whose computer is set to reduce motion instead gets a layout computed once, still: cola never runs.
+// A visitor whose computer is set to reduce motion instead gets a layout computed once, still: cola never runs, and
+// the arrows are plain lines instead of moving dashes (the arrowheads still show which way goods flow).
+//
+// The arrows are dashes that travel from supplier to customer. Pointing at a company (hovering, or tapping it on a
+// touch screen) keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest;
+// moving off the company, or tapping the background, brings everything back.
 import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import { useEffect, useRef } from 'react';
-import type { GraphEdge, GraphNode } from '../pages/supplyChain';
+import { DASH_PATTERN, dashOffsetAt, focusOn, type GraphEdge, type GraphNode } from '../pages/supplyChain';
 
 cytoscape.use(cola);
 
@@ -19,6 +24,9 @@ const LIME = '#c4f36a';
 const MUTED = '#8ba9a5';
 const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
+
+// How faded the companies and arrows outside the focus are.
+const FADED_OPACITY = 0.15;
 
 // How far out and in the user can zoom: far enough to see a big portfolio whole, close enough to read any label.
 const MIN_ZOOM = 0.3;
@@ -56,6 +64,8 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
         data: { id: edge.id, source: edge.source, target: edge.target, relationshipId: edge.relationshipId },
       })),
     ];
+
+    const reducesMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
     const cy = cytoscape({
       container,
@@ -102,17 +112,21 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
             'target-arrow-shape': 'triangle',
             'arrow-scale': 1,
             'curve-style': 'bezier',
+            // Dashes that travel from supplier to customer; plain lines when the visitor asked for less motion.
+            'line-style': reducesMotion ? 'solid' : 'dashed',
+            'line-dash-pattern': DASH_PATTERN,
           },
         },
         {
           selector: 'edge:selected',
           style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME },
         },
+        // Last, so it wins: what is outside the focus fades.
+        { selector: '.faded', style: { opacity: FADED_OPACITY } },
       ],
     });
     cyRef.current = cy;
 
-    const reducesMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const running: Layouts[] = [];
     let refit: number | undefined;
     let userMoved = false;
@@ -147,7 +161,43 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
       onEdgeSelectRef.current(event.target.data('relationshipId') as number);
     });
 
+    // Focus: light one company and its direct connections, fade the rest.
+    const clearFocus = () => {
+      cy.nodes().removeClass('faded');
+      cy.edges().removeClass('faded');
+    };
+    const focus = (nodeId: string) => {
+      const { nodeIds, edgeIds } = focusOn(nodeId, edges);
+      cy.nodes().forEach((node) => {
+        node.toggleClass('faded', !nodeIds.has(node.id()));
+      });
+      cy.edges().forEach((edge) => {
+        edge.toggleClass('faded', !edgeIds.has(edge.id()));
+      });
+    };
+    cy.on('mouseover', 'node', (event) => focus(event.target.id()));
+    cy.on('mouseout', 'node', clearFocus);
+    // A touch screen has no hover: tapping a company focuses it, and tapping the background lets go.
+    cy.on('tap', 'node', (event) => focus(event.target.id()));
+    cy.on('tap', (event) => {
+      if (event.target === cy) clearFocus();
+    });
+
+    // Moving dashes. The offset gets smaller over time, which is what carries the dashes from supplier to customer.
+    let frame: number | undefined;
+    if (!reducesMotion && typeof window.requestAnimationFrame === 'function') {
+      let startedAt: number | undefined;
+      const step = (now: number) => {
+        if (cy.destroyed()) return;
+        startedAt ??= now;
+        cy.edges().style('line-dash-offset', dashOffsetAt(now - startedAt));
+        frame = window.requestAnimationFrame(step);
+      };
+      frame = window.requestAnimationFrame(step);
+    }
+
     return () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
       window.clearTimeout(refit);
       container.removeEventListener('pointerdown', noteUserMoved);
       container.removeEventListener('wheel', noteUserMoved);
