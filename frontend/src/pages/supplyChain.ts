@@ -167,14 +167,17 @@ const LOGO_HOST = 'https://img.logo.dev';
 const LOGO_OPTIONS = 'size=64&retina=true&fallback=404';
 
 /**
- * Where a company's logo is on Logo.dev: by ticker when it has one, otherwise by its plain name ("NVIDIA", not
+ * Where a company's logo is on Logo.dev: by ticker when it has one; otherwise by its website domain when one was found
+ * (see GET /api/logos/domains), which Logo.dev knows far better than names; otherwise by its plain name ("NVIDIA", not
  * "NVIDIA Corporation", which Logo.dev matches less well). Null without a Logo.dev token: the graph then shows letters.
  */
-export function logoUrl(node: Pick<GraphNode, 'name' | 'ticker'>, token: string): string | null {
+export function logoUrl(node: Pick<GraphNode, 'name' | 'ticker'>, token: string, domain?: string): string | null {
   if (!token) return null;
   const path = node.ticker
     ? `ticker/${encodeURIComponent(node.ticker)}`
-    : `name/${encodeURIComponent(plainName(node.name))}`;
+    : domain
+      ? encodeURIComponent(domain)
+      : `name/${encodeURIComponent(plainName(node.name))}`;
   return `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}`;
 }
 

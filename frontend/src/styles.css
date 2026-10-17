@@ -876,8 +876,187 @@ table.holdings td:nth-child(7) {
 
 .graph-controls {
   position: absolute;
+  z-index: 2;
   top: 10px;
   right: 10px;
+}
+
+/* While the companies settle, the graph is out of sight; then it fades in, already arranged and fitted. */
+.supply-chain-graph,
+.graph-overlay {
+  transition: opacity 350ms ease;
+}
+
+.graph-frame.settling .supply-chain-graph,
+.graph-frame.settling .graph-overlay {
+  opacity: 0;
+}
+
+.graph-arranging {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.graph-frame.settling .graph-arranging {
+  display: grid;
+}
+
+/* The label boxes, the chosen company's brackets and its crosshair: HTML and SVG over the graph's canvas, moved by
+   SupplyChainGraph to where each company is drawn. They never take the pointer, so the graph underneath does. */
+.graph-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.graph-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  min-width: 56px;
+  max-width: 170px;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 7px 4px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+  transform-origin: top center;
+  transition: opacity 150ms ease, border-color 150ms ease;
+}
+
+.graph-label.holding {
+  border-color: var(--accent);
+}
+
+.graph-label.shared {
+  border-color: var(--amber);
+}
+
+.graph-label.hover {
+  border-color: var(--lime);
+}
+
+.graph-label.faded {
+  opacity: 0.15;
+}
+
+.graph-label-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+}
+
+.graph-label-top b {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.graph-label-weight {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.graph-label-name {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+}
+
+.graph-label-shared {
+  color: var(--amber);
+  font-size: 10px;
+}
+
+.graph-crosshair {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.graph-crosshair line {
+  stroke: var(--lime);
+  stroke-dasharray: 4 6;
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+}
+
+.graph-brackets {
+  position: absolute;
+  opacity: 0;
+}
+
+.graph-crosshair.shown,
+.graph-brackets.shown {
+  opacity: 1;
+}
+
+/* The brackets close in around a newly chosen company. */
+.graph-brackets.shown.closing {
+  animation: brackets-close 260ms ease-out;
+}
+
+@keyframes brackets-close {
+  from {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.bracket {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 0 solid var(--lime);
+}
+
+.bracket.top-left {
+  top: 0;
+  left: 0;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+
+.bracket.top-right {
+  top: 0;
+  right: 0;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+
+.bracket.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+
+.bracket.bottom-right {
+  right: 0;
+  bottom: 0;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
 }
 
 /* The Supply Chain workspace: holdings on the left, the graph in the middle, the Inspector on the right. The page
@@ -931,6 +1110,7 @@ table.holdings td:nth-child(7) {
 
 .graph-hint {
   position: absolute;
+  z-index: 2;
   right: 12px;
   bottom: 8px;
   margin: 0;

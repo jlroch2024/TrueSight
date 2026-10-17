@@ -26,6 +26,7 @@ vi.mock('../components/SupplyChainGraph', () => ({
     selectedNodeId,
     selectedRelationshipId,
     logoToken,
+    logoDomains,
   }: {
     nodes: GraphNode[];
     edges: GraphEdge[];
@@ -34,8 +35,10 @@ vi.mock('../components/SupplyChainGraph', () => ({
     selectedNodeId?: string | null;
     selectedRelationshipId?: number | null;
     logoToken?: string;
+    logoDomains?: Record<string, string>;
   }) => (
     <div data-testid="fake-graph">
+      <span data-testid="logo-domains">{JSON.stringify(logoDomains ?? {})}</span>
       <span data-testid="logo-token">{logoToken}</span>
       <span data-testid="node-count">{nodes.length}</span>
       <span data-testid="edge-count">{edges.length}</span>
@@ -122,6 +125,7 @@ function fakeFetch(
     }
     if (url === '/api/portfolios') return new Response(JSON.stringify([portfolio]));
     if (url.endsWith('/news')) return new Response(JSON.stringify(news));
+    if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({}));
     return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
   });
 }
@@ -475,5 +479,26 @@ describe('Supply Chain news', () => {
 
     await userEvent.click(within(panel).getByRole('button', { name: 'Clear' }));
     expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
+  });
+});
+
+describe('Supply Chain logos', () => {
+  it('asks for the website domains of companies without a ticker, and gives them to the graph', async () => {
+    // Samsung has no ticker in this relationship; NVIDIA and TSMC have theirs. The domain is made up for the test.
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null };
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/settings')) return new Response(JSON.stringify({ logoToken: 'pk_test' }));
+      if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({ [samsung.name]: 'samsung.example' }));
+      if (url === '/api/portfolios') return new Response(JSON.stringify([PORTFOLIO]));
+      if (url.endsWith('/news')) return new Response('[]');
+      return new Response(JSON.stringify(url.endsWith('/relationships') ? [relationship(), relationship({ id: 2, counterparty: samsung })] : [holding()]));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderAt('/portfolios/7/supply-chain');
+
+    await screen.findByText(/samsung\.example/);
+    const asked = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.startsWith('/api/logos/domains'));
+    expect(asked).toEqual([`/api/logos/domains?names=${encodeURIComponent(samsung.name)}`]);
   });
 });

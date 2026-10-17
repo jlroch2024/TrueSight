@@ -47,6 +47,7 @@ next line. They need the Google Cloud CLI, logged in with `gcloud auth login`.
 | Start it again | `gcloud sql instances patch truesight-db --activation-policy=ALWAYS` |
 | Change a secret, e.g. a new Gemini key | Secret Manager, the secret, **New version**. Then redeploy (merge anything, or re-run the last Deploy) so the app reads it |
 | Set or change the Logo.dev token, for the graph's logos | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="LOGO_DEV_TOKEN=pk_..."`. This starts a new revision with it, keeping every other setting |
+| Add Logo.dev's secret key, for the logos of companies without a ticker (optional) | It is a real secret, so it goes in Secret Manager: `gcloud secrets create LOGO_DEV_SECRET_KEY --data-file=<file holding sk_...>`, then `gcloud secrets add-iam-policy-binding LOGO_DEV_SECRET_KEY --member="serviceAccount:truesight-app@truesight-509715.iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"`, then `gcloud run services update truesight --region asia-southeast1 --update-secrets="LOGO_DEV_SECRET_KEY=LOGO_DEV_SECRET_KEY:latest"`. Without it, those companies show their first letter |
 
 ## Setting It Up From Nothing
 

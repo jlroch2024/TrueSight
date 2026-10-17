@@ -53,3 +53,6 @@ truesight:
   # The supply chain graph's logos come from Logo.dev. Without a token, the graph shows letters instead.
   logo-dev:
     token: ${LOGO_DEV_TOKEN:}
+    # Logo.dev's secret key, for its brand search: finds the website domain of companies without a ticker, so their
+    # logos can be shown. Server only, never sent to the browser. Without it, those companies show a letter.
+    secret-key: ${LOGO_DEV_SECRET_KEY:}
