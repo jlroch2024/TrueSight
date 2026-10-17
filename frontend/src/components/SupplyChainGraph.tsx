@@ -1,31 +1,30 @@
 // Draws the supply chain as an interactive graph: Cytoscape.js, laid out with cytoscape-cola.
 //
-// Each company is a square tile with its logo from Logo.dev, or its first letter while the logo loads, when Logo.dev
-// does not know the company, or when there is no Logo.dev token. Its label sits underneath (a holding's ticker and
-// weight, otherwise its ticker or a short name), on a patch of the panel's colour, so it stays readable where an arrow
-// passes behind it. Holdings have a teal border, and are drawn bigger the bigger their weight (holdingSize).
+// Each company is a square tile with its logo from Logo.dev, on a white square with an even margin so every logo
+// looks the same size, or its first letter while the logo loads, when Logo.dev does not know the company, or when
+// there is no Logo.dev token. Under each tile is a label box (HTML, drawn over the graph): the ticker in bold and, for a
+// holding, its weight; then the company's name. Holdings have a teal border, and are drawn bigger the bigger their
+// weight (holdingSize). A supplier or customer that several holdings depend on (see sharedCompanies) is drawn bigger,
+// with an amber border, and its label box says what it supplies or buys, e.g. "Supplies 4 Holdings".
 //
-// Layout: first the companies settle while the view fits them all; then the physics keeps running, so connected
-// companies keep pulling together while the user drags one, and shared suppliers stand out. The view is fitted once
-// more shortly after, unless the user has already zoomed, panned or dragged, and Fit to Screen brings everything back
-// into view at any time. Scrolling zooms at the normal speed, within limits.
+// Layout: the companies settle out of sight, the view is fitted once, and then the finished graph fades in. From the
+// first time the user drags a company, the physics keeps running, so its neighbours follow it; the view is never moved
+// again on its own. Fit to Screen brings everything back into view at any time. A visitor whose computer
+// is set to reduce motion gets a layout computed once, still, and plain arrows instead of moving dashes.
 //
-// A supplier or customer that several holdings depend on (see sharedCompanies) is drawn bigger, with an amber border,
-// and its label says what it supplies or buys, e.g. "Supplies 4 holdings".
-//
-// A visitor whose computer is set to reduce motion instead gets a layout computed once, still: cola never runs, and
-// the arrows are plain lines instead of moving dashes (the arrowheads still show which way goods flow).
-//
-// The arrows are dashes that travel from supplier to customer. Pointing at a company (hovering, or tapping it on a
-// touch screen) keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest;
-// moving off the company, or tapping the background, brings everything back.
-import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions } from 'cytoscape';
+// It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
+// company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
+// Clicking a company chooses it: corner brackets close in around it and dashed crosshair lines run through it. Clicking
+// the background lets go. Cytoscape's own grey press circle and selection overlay are switched off.
+import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions, type NodeSingular } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import { useEffect, useRef } from 'react';
 import {
   DASH_PATTERN,
   dashOffsetAt,
+  displayName,
   focusOn,
+  formatWeight,
   holdingSize,
   type GraphEdge,
   type GraphNode,
@@ -44,13 +43,17 @@ const AMBER = '#f5b73b';
 const MUTED = '#8ba9a5';
 const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
-const PANEL = '#0b2028';
 const PANEL_RAISED = '#102a33';
+const WHITE = '#ffffff';
 
 // The teal border that marks a holding. Tile sizes live in supplyChain.ts, beside holdingSize.
 const HOLDING_BORDER_WIDTH = 3;
 // A supplier or customer several holdings depend on: a bigger tile with an amber border, so it stands out.
 const SHARED_TILE_SIZE = 58;
+// How much of its tile a logo fills, centred on a white square, so every logo has the same margin.
+const LOGO_SHARE = '72%';
+// How long, in seconds, a border or an arrow takes to change under the pointer.
+const HOVER_TRANSITION = 0.15;
 
 /**
  * A company's first letter on a tile, as a picture Cytoscape can draw where the logo would be. A canvas cannot use the
@@ -73,14 +76,23 @@ const FADED_OPACITY = 0.15;
 // How far out and in the user can zoom: far enough to see a big portfolio whole, close enough to read any label.
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3;
-const PADDING = 40;
+const PADDING = 48;
 
-// cola's settings for both phases: keep companies apart, and lay out unconnected groups side by side.
-const COLA = { avoidOverlap: true, handleDisconnected: true };
+// The label boxes grow and shrink with the zoom, so each fits the space the layout kept for it, but never below 75%,
+// where the text would be too small to read; on a small screen, zoomed far out, neighbouring boxes may then touch.
+const LABEL_SCALE_MIN = 0.75;
+// How far outside its tile the chosen company's corner brackets sit.
+const BRACKET_GAP = 7;
 
-// The live physics keeps pulling companies together after the first fit, so the view is fitted once more, shortly
-// after, unless the user has already zoomed, panned or dragged.
-const REFIT_AFTER_MS = 1500;
+// cola's settings for both phases: keep companies and their label boxes apart (each tile carries an invisible canvas
+// label the size of its box), and lay out unconnected groups side by side.
+const COLA = {
+  avoidOverlap: true,
+  handleDisconnected: true,
+  nodeDimensionsIncludeLabels: true,
+  nodeSpacing: 10,
+  edgeLength: 70,
+};
 
 type Props = {
   nodes: GraphNode[];
@@ -90,10 +102,13 @@ type Props = {
   onNodeSelect?: (nodeId: string | null) => void;
   // The company chosen on the page (from the graph or a list beside it): kept in focus and centred while set.
   selectedNodeId?: string | null;
-  // The relationship chosen on the page: its arrow is drawn selected.
+  // The relationship chosen on the page: its arrow is drawn chosen.
   selectedRelationshipId?: number | null;
   // The Logo.dev token from GET /api/settings. Empty when none is set: every company then shows its letter.
   logoToken?: string;
+  // Company name to website domain, for companies without a ticker (from GET /api/logos/domains). Logo.dev knows
+  // companies by domain far better than by name.
+  logoDomains?: Record<string, string>;
 };
 
 export function SupplyChainGraph({
@@ -104,9 +119,16 @@ export function SupplyChainGraph({
   selectedNodeId = null,
   selectedRelationshipId = null,
   logoToken = '',
+  logoDomains,
 }: Props) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
+  const labelRefs = useRef(new Map<string, HTMLDivElement>());
+  const crosshairRef = useRef<SVGSVGElement | null>(null);
+  const bracketsRef = useRef<HTMLDivElement | null>(null);
+  // Asks for the label boxes, brackets and crosshair to be put where the graph now draws its companies.
+  const placeOverlayRef = useRef<() => void>(() => {});
   const onEdgeSelectRef = useRef(onEdgeSelect);
   onEdgeSelectRef.current = onEdgeSelect;
   const onNodeSelectRef = useRef(onNodeSelect);
@@ -117,16 +139,19 @@ export function SupplyChainGraph({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const frame = frameRef.current;
+    if (!container || !frame) return;
 
     const elements: ElementDefinition[] = [
       ...nodes.map((node) => ({
         data: {
           id: node.id,
-          // A shared company carries what it supplies or buys under its label, e.g. "TSM" then "Supplies 4 holdings".
-          label: node.sharedSummary ? `${nodeLabel(node)}\n${node.sharedSummary}` : nodeLabel(node),
+          // The label box's lines. The canvas lays them out invisibly, only so the layout keeps every box clear of
+          // the others (see the node style); the box itself is HTML, over the graph.
+          label: labelLines(node).join('\n'),
           // The letter first; swapped for the logo once it has loaded (below).
           image: letterTile(node.name),
+          logo: 0,
           holding: node.isHolding ? 1 : 0,
           // A holding grows with its weight; other companies keep the usual size (shared ones are made bigger below).
           size: node.isHolding ? holdingSize(node.weight) : TILE_SIZE,
@@ -143,11 +168,17 @@ export function SupplyChainGraph({
     const cy = cytoscape({
       container,
       elements,
-      // Start from a circle that fits the box; the layouts below move the companies from there.
-      layout: { name: 'circle', fit: true, padding: PADDING },
+      // The companies start in a grid, out of sight; the layout below arranges them before the graph is shown.
+      layout: { name: 'grid', fit: true, padding: PADDING },
       minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
+      // No rubber-band selection, and no Cytoscape selection state: what is chosen is the page's, drawn with classes.
+      boxSelectionEnabled: false,
+      autounselectify: true,
       style: [
+        // No grey circle under the pointer while pressing or dragging.
+        // (Cytoscape's types list every core property as required, though each has a default.)
+        { selector: 'core', style: { 'active-bg-opacity': 0, 'selection-box-opacity': 0 } as unknown as cytoscape.Css.Core },
         {
           selector: 'node',
           style: {
@@ -159,20 +190,34 @@ export function SupplyChainGraph({
             'background-fit': 'contain',
             'border-width': 1,
             'border-color': BORDER,
-            // The label sits under the tile, on a patch of the panel's colour that hides any arrow behind it.
+            // The label box is HTML over the graph, in the app's own font. The canvas lays out the same lines,
+            // invisibly, at the box's size, so the layout (nodeDimensionsIncludeLabels) leaves room for each box.
             label: 'data(label)',
-            color: TEXT,
-            // The app's one font; a canvas only uses it once the page has loaded it, as index.html does.
             'font-family': 'Space Grotesk, system-ui, sans-serif',
             'font-size': 11,
+            'font-weight': 600,
+            'text-opacity': 0,
             'text-valign': 'bottom',
             'text-halign': 'center',
-            'text-margin-y': 5,
-            'text-wrap': 'none',
-            'text-background-color': PANEL,
-            'text-background-opacity': 1,
-            'text-background-padding': '2px',
-            'text-background-shape': 'rectangle',
+            'text-margin-y': 6,
+            'text-wrap': 'wrap',
+            'text-max-width': '170px',
+            'text-background-opacity': 0,
+            'text-background-padding': '6px',
+            // No translucent shape over a company while it is pressed or chosen.
+            'overlay-opacity': 0,
+            'transition-property': 'border-width, border-color',
+            'transition-duration': HOVER_TRANSITION,
+          },
+        },
+        // A logo sits on a white square, at the same share of every tile, so all logos look the same size.
+        {
+          selector: 'node[logo = 1]',
+          style: {
+            'background-color': WHITE,
+            'background-fit': 'none',
+            'background-width': LOGO_SHARE,
+            'background-height': LOGO_SHARE,
           },
         },
         // Holdings have a teal border, so they stand out from suppliers and customers.
@@ -180,7 +225,7 @@ export function SupplyChainGraph({
           selector: 'node[holding = 1]',
           style: { 'border-width': HOLDING_BORDER_WIDTH, 'border-color': ACCENT },
         },
-        // Shared suppliers and customers: amber-bordered, bigger, and their label wraps onto a second line.
+        // Shared suppliers and customers: amber-bordered and bigger.
         {
           selector: 'node[shared = 1]',
           style: {
@@ -188,10 +233,12 @@ export function SupplyChainGraph({
             height: SHARED_TILE_SIZE,
             'border-width': HOLDING_BORDER_WIDTH,
             'border-color': AMBER,
-            'text-wrap': 'wrap',
-            'text-max-width': '120px',
           },
         },
+        // Under the pointer: the border brightens and thickens.
+        { selector: 'node.hover', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
+        // Chosen on the page: a lime border (the brackets and crosshair are drawn over the graph).
+        { selector: 'node.chosen', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
         // Arrows in the muted grey, which shows on the dark panel (the border colour hardly did).
         {
           selector: 'edge',
@@ -205,129 +252,182 @@ export function SupplyChainGraph({
             // Dashes that travel from supplier to customer; plain lines when the visitor asked for less motion.
             'line-style': reducesMotion ? 'solid' : 'dashed',
             'line-dash-pattern': DASH_PATTERN,
+            'overlay-opacity': 0,
+            'transition-property': 'width, line-color, target-arrow-color',
+            'transition-duration': HOVER_TRANSITION,
           },
         },
-        {
-          selector: 'edge:selected',
-          style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME },
-        },
+        { selector: 'edge.hover', style: { width: 3, 'line-color': TEXT, 'target-arrow-color': TEXT } },
+        { selector: 'edge.chosen', style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME } },
         // Last, so it wins: what is outside the focus fades.
         { selector: '.faded', style: { opacity: FADED_OPACITY } },
       ],
     });
     cyRef.current = cy;
 
-    const running: Layouts[] = [];
-    let refit: number | undefined;
-    let userMoved = false;
-    const noteUserMoved = () => {
-      userMoved = true;
+    // The label boxes, brackets and crosshair are HTML and SVG over the canvas. They are moved to where the graph
+    // draws its companies whenever the companies or the view move, at most once a frame.
+    let placing = false;
+    const place = () => {
+      placing = false;
+      if (cy.destroyed()) return;
+      placeOverlay(cy, labelRefs.current, crosshairRef.current, bracketsRef.current, selectedNodeRef.current);
     };
-    container.addEventListener('pointerdown', noteUserMoved);
-    container.addEventListener('wheel', noteUserMoved, { passive: true });
+    const schedule = () => {
+      if (placing) return;
+      placing = true;
+      window.requestAnimationFrame(place);
+    };
+    placeOverlayRef.current = schedule;
+    cy.on('pan zoom resize position', schedule);
 
+    // The graph is hidden while it settles, then fitted once and faded in, so the arrangement never jumps in view.
+    frame.classList.add('settling');
+    const reveal = () => {
+      if (cy.destroyed()) return;
+      packGroups(cy, container.clientWidth / Math.max(1, container.clientHeight));
+      cy.fit(cy.elements(), PADDING);
+      frame.classList.remove('settling');
+      schedule();
+    };
+
+    const running: Layouts[] = [];
     if (reducesMotion) {
       cy.layout({ name: 'breadthfirst', animate: false, fit: true, padding: PADDING, spacingFactor: 1.4 }).run();
+      reveal();
     } else {
-      // Phase 1: settle, fitting the view as the companies move. Phase 2: keep the physics running, without moving
-      // the view, so the user's own zooming and panning are left alone.
+      // Phase 1: settle, out of sight, then show the graph fitted. Phase 2, only once the user first drags a company:
+      // keep the physics running, without moving the view, so its neighbours follow it. Starting it any earlier would
+      // rearrange the companies again after they were shown.
       const settle = cy.layout({ name: 'cola', ...COLA, fit: true, padding: PADDING, maxSimulationTime: 2500 } as LayoutOptions);
       settle.one('layoutstop', () => {
         if (cy.destroyed()) return;
-        const live = cy.layout({ name: 'cola', ...COLA, infinite: true, fit: false } as LayoutOptions);
-        running.push(live);
-        live.run();
-        refit = window.setTimeout(() => {
-          if (!userMoved && !cy.destroyed()) cy.animate({ fit: { eles: cy.elements(), padding: PADDING }, duration: 400 });
-        }, REFIT_AFTER_MS);
+        reveal();
+        cy.one('grab', 'node', () => {
+          if (cy.destroyed()) return;
+          const live = cy.layout({ name: 'cola', ...COLA, infinite: true, fit: false } as LayoutOptions);
+          running.push(live);
+          live.run();
+        });
       });
       running.push(settle);
       settle.run();
     }
 
-    // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
-    // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
-    // Logo.dev allows, so the check loads them the same way.
-    const logos: HTMLImageElement[] = [];
-    for (const node of nodes) {
-      const url = logoUrl(node, logoToken);
-      if (!url) continue;
-      const logo = new Image();
-      logo.crossOrigin = 'anonymous';
-      logo.onload = () => {
-        if (!cy.destroyed()) cy.getElementById(node.id).data('image', url);
-      };
-      logo.src = url;
-      logos.push(logo);
-    }
-
     cy.on('tap', 'edge', (event) => {
-      cy.edges().unselect();
-      event.target.select();
       onEdgeSelectRef.current(event.target.data('relationshipId') as number);
     });
 
-    // Focus: pointing at a company lights it and its direct connections, and fades the rest. Pointing away goes back
-    // to the chosen company, if there is one. Clicking a company chooses it; clicking the background lets go.
-    cy.on('mouseover', 'node', (event) => applyFocus(cy, edges, event.target.id()));
-    cy.on('mouseout', 'node', () => applyFocus(cy, edges, selectedNodeRef.current));
+    // Under the pointer: the company or arrow reacts, and a company lights its own connections.
+    const hover = (on: boolean) => (event: { target: NodeSingular }) => {
+      event.target.toggleClass('hover', on);
+      container.style.cursor = on ? 'pointer' : '';
+      schedule();
+    };
+    cy.on('mouseover', 'edge', hover(true));
+    cy.on('mouseout', 'edge', hover(false));
+    cy.on('mouseover', 'node', (event) => {
+      hover(true)(event);
+      applyFocus(cy, edges, event.target.id());
+    });
+    cy.on('mouseout', 'node', (event) => {
+      hover(false)(event);
+      applyFocus(cy, edges, selectedNodeRef.current);
+    });
     cy.on('tap', 'node', (event) => {
       applyFocus(cy, edges, event.target.id());
       onNodeSelectRef.current?.(event.target.id());
+      schedule();
     });
     cy.on('tap', (event) => {
       if (event.target !== cy) return;
       applyFocus(cy, edges, null);
-      cy.edges().unselect();
       onNodeSelectRef.current?.(null);
+      schedule();
     });
     applyFocus(cy, edges, selectedNodeRef.current);
 
     // Moving dashes. The offset gets smaller over time, which is what carries the dashes from supplier to customer.
-    let frame: number | undefined;
+    let dashFrame: number | undefined;
     if (!reducesMotion && typeof window.requestAnimationFrame === 'function') {
       let startedAt: number | undefined;
       const step = (now: number) => {
         if (cy.destroyed()) return;
         startedAt ??= now;
         cy.edges().style('line-dash-offset', dashOffsetAt(now - startedAt));
-        frame = window.requestAnimationFrame(step);
+        dashFrame = window.requestAnimationFrame(step);
       };
-      frame = window.requestAnimationFrame(step);
+      dashFrame = window.requestAnimationFrame(step);
     }
 
     return () => {
-      if (frame !== undefined) window.cancelAnimationFrame(frame);
-      logos.forEach((logo) => {
-        logo.onload = null;
-      });
-      window.clearTimeout(refit);
-      container.removeEventListener('pointerdown', noteUserMoved);
-      container.removeEventListener('wheel', noteUserMoved);
+      if (dashFrame !== undefined) window.cancelAnimationFrame(dashFrame);
       running.forEach((layout) => layout.stop());
+      placeOverlayRef.current = () => {};
       cy.destroy();
       cyRef.current = null;
     };
     // onEdgeSelect is deliberately left out: it is read through the ref above, so that selecting an edge (which
     // changes the page's state, and so gives onEdgeSelect a new identity) does not recreate the whole graph and
     // throw away its pan, zoom and node positions.
-  }, [nodes, edges, logoToken]);
+  }, [nodes, edges]);
 
-  // The company chosen on the page stays in focus, and is centred when it is chosen.
+  // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
+  // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
+  // Logo.dev allows, so the check loads them the same way. Kept apart from the graph itself, so domains arriving later
+  // swap in logos without rebuilding the graph.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const logos: HTMLImageElement[] = [];
+    for (const node of nodes) {
+      const url = logoUrl(node, logoToken, logoDomains?.[node.name]);
+      if (!url) continue;
+      const logo = new Image();
+      logo.crossOrigin = 'anonymous';
+      logo.onload = () => {
+        if (cy.destroyed()) return;
+        const element = cy.getElementById(node.id);
+        element.data('image', url);
+        element.data('logo', 1);
+      };
+      logo.src = url;
+      logos.push(logo);
+    }
+    return () => {
+      logos.forEach((logo) => {
+        logo.onload = null;
+      });
+    };
+  }, [nodes, logoToken, logoDomains]);
+
+  // The company chosen on the page stays in focus and is centred; its brackets and crosshair follow.
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy || cy.destroyed()) return;
     applyFocus(cy, edges, selectedNodeId);
+    cy.nodes().removeClass('chosen');
     const node = selectedNodeId ? cy.getElementById(selectedNodeId) : null;
-    if (node && node.nonempty()) cy.animate({ center: { eles: node }, duration: 300 });
+    if (node && node.nonempty()) {
+      node.addClass('chosen');
+      cy.animate({ center: { eles: node }, duration: 300 });
+    }
+    // Restarts the brackets' closing-in animation for the newly chosen company.
+    const brackets = bracketsRef.current;
+    if (brackets) {
+      brackets.classList.remove('closing');
+      void brackets.offsetWidth;
+      brackets.classList.add('closing');
+    }
+    placeOverlayRef.current();
   }, [selectedNodeId, edges]);
 
-  // The relationship chosen on the page has its arrow drawn selected.
+  // The relationship chosen on the page has its arrow drawn chosen.
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy || cy.destroyed()) return;
-    cy.edges().unselect();
-    if (selectedRelationshipId !== null) cy.edges(`[relationshipId = ${selectedRelationshipId}]`).select();
+    cy.edges().removeClass('chosen');
+    if (selectedRelationshipId !== null) cy.edges(`[relationshipId = ${selectedRelationshipId}]`).addClass('chosen');
   }, [selectedRelationshipId, nodes, edges]);
 
   // Brings every company back into view, however far the user has zoomed, panned or dragged.
@@ -337,8 +437,33 @@ export function SupplyChainGraph({
   }
 
   return (
-    <div className="graph-frame">
+    <div ref={frameRef} className="graph-frame">
       <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
+      <div className="graph-overlay" aria-hidden="true">
+        <svg ref={crosshairRef} className="graph-crosshair">
+          <line className="crosshair-x" />
+          <line className="crosshair-y" />
+        </svg>
+        <div ref={bracketsRef} className="graph-brackets">
+          <span className="bracket top-left" />
+          <span className="bracket top-right" />
+          <span className="bracket bottom-left" />
+          <span className="bracket bottom-right" />
+        </div>
+        {nodes.map((node) => (
+          <div
+            key={node.id}
+            ref={(element) => {
+              if (element) labelRefs.current.set(node.id, element);
+              else labelRefs.current.delete(node.id);
+            }}
+            className={`graph-label${node.isHolding ? ' holding' : ''}${node.sharedSummary ? ' shared' : ''}`}
+          >
+            <LabelBox node={node} />
+          </div>
+        ))}
+      </div>
+      <p className="graph-arranging">Arranging the Graph…</p>
       <div className="graph-controls">
         <button type="button" className="secondary" onClick={fitToScreen}>
           Fit to Screen
@@ -346,6 +471,120 @@ export function SupplyChainGraph({
       </div>
     </div>
   );
+}
+
+/** A company's label box, line by line: its ticker and weight (or its name), its name, and what a shared one supplies. */
+function labelLines(node: GraphNode): string[] {
+  const name = displayName(node.name);
+  const lines = [node.ticker ? nodeLabel(node) : name];
+  if (node.ticker) lines.push(name);
+  if (node.sharedSummary) lines.push(node.sharedSummary);
+  return lines;
+}
+
+/**
+ * What a company's label box says: its ticker in bold and, for a holding, its weight; then its name, muted. A company
+ * without a ticker shows its name in bold. A shared company adds what it supplies or buys.
+ */
+function LabelBox({ node }: { node: GraphNode }) {
+  const weight = node.isHolding ? formatWeight(node.weight) : null;
+  const name = displayName(node.name);
+  return (
+    <>
+      <span className="graph-label-top">
+        <b>{node.ticker ?? name}</b>
+        {weight && <span className="graph-label-weight">{weight}</span>}
+      </span>
+      {node.ticker && <span className="graph-label-name">{name}</span>}
+      {node.sharedSummary && <span className="graph-label-shared">{node.sharedSummary}</span>}
+    </>
+  );
+}
+
+/**
+ * Puts each label box under its company, and the brackets and crosshair on the chosen company, where the graph draws
+ * them now. Label boxes follow the zoom, and fade with their company.
+ */
+function placeOverlay(
+  cy: Core,
+  labels: Map<string, HTMLDivElement>,
+  crosshair: SVGSVGElement | null,
+  brackets: HTMLDivElement | null,
+  chosenId: string | null,
+): void {
+  const scale = Math.max(LABEL_SCALE_MIN, typeof cy.zoom === 'function' ? cy.zoom() : 1);
+  cy.nodes().forEach((node) => {
+    const label = labels.get(node.id());
+    if (!label || typeof node.renderedPosition !== 'function') return;
+    const position = node.renderedPosition();
+    const below = position.y + node.renderedOuterHeight() / 2 + 4;
+    label.style.transform = `translate(${position.x}px, ${below}px) translate(-50%, 0) scale(${scale})`;
+    label.classList.toggle('faded', node.hasClass('faded'));
+    label.classList.toggle('hover', node.hasClass('hover') || node.id() === chosenId);
+  });
+
+  const chosen = chosenId ? cy.getElementById(chosenId) : null;
+  const shown = Boolean(chosen && chosen.nonempty() && typeof chosen.renderedBoundingBox === 'function');
+  crosshair?.classList.toggle('shown', shown);
+  brackets?.classList.toggle('shown', shown);
+  if (!shown || !chosen) return;
+  const box = chosen.renderedBoundingBox({ includeLabels: false, includeOverlays: false });
+  const x = (box.x1 + box.x2) / 2;
+  const y = (box.y1 + box.y2) / 2;
+  if (crosshair) {
+    const across = crosshair.querySelector('.crosshair-x');
+    const down = crosshair.querySelector('.crosshair-y');
+    across?.setAttribute('x1', '0');
+    across?.setAttribute('x2', '100%');
+    across?.setAttribute('y1', String(y));
+    across?.setAttribute('y2', String(y));
+    down?.setAttribute('x1', String(x));
+    down?.setAttribute('x2', String(x));
+    down?.setAttribute('y1', '0');
+    down?.setAttribute('y2', '100%');
+  }
+  if (brackets) {
+    brackets.style.left = `${box.x1 - BRACKET_GAP}px`;
+    brackets.style.top = `${box.y1 - BRACKET_GAP}px`;
+    brackets.style.width = `${box.x2 - box.x1 + BRACKET_GAP * 2}px`;
+    brackets.style.height = `${box.y2 - box.y1 + BRACKET_GAP * 2}px`;
+  }
+}
+
+// The space between groups of companies that are not connected to each other.
+const GROUP_GAP = 30;
+
+/**
+ * Moves groups of companies that are not connected to each other (for example Tesla and its battery suppliers, apart
+ * from the chip makers) close together, in rows, so the whole graph roughly matches the frame's shape and the view can
+ * be fitted at a readable zoom. Each group keeps its own arrangement; groups are placed largest first.
+ */
+function packGroups(cy: Core, frameRatio: number): void {
+  if (typeof cy.elements !== 'function' || typeof cy.elements().components !== 'function') return;
+  const groups = cy
+    .elements()
+    .components()
+    .map((group) => ({ group, box: group.boundingBox({ includeLabels: true }) }))
+    .sort((a, b) => b.box.h - a.box.h || b.box.w - a.box.w);
+  if (groups.length < 2) return;
+  const area = groups.reduce((sum, { box }) => sum + (box.w + GROUP_GAP) * (box.h + GROUP_GAP), 0);
+  const widest = Math.max(...groups.map(({ box }) => box.w));
+  const rowWidth = Math.max(widest, Math.sqrt(area * frameRatio));
+  let x = 0;
+  let y = 0;
+  let rowHeight = 0;
+  for (const { group, box } of groups) {
+    if (x > 0 && x + box.w > rowWidth) {
+      x = 0;
+      y += rowHeight + GROUP_GAP;
+      rowHeight = 0;
+    }
+    const dx = x - box.x1;
+    const dy = y - box.y1;
+    group.nodes().positions((node) => ({ x: node.position('x') + dx, y: node.position('y') + dy }));
+    x += box.w + GROUP_GAP;
+    rowHeight = Math.max(rowHeight, box.h);
+  }
 }
 
 /** Lights one company and its direct suppliers and customers, and fades the rest; with none, lights everything. */

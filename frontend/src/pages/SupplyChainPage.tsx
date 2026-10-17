@@ -13,6 +13,7 @@ import { ApiError } from '../api/client';
 import { type NewsArticle, newsApi } from '../api/news';
 import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
+import { logoApi } from '../api/logos';
 import { settingsApi } from '../api/settings';
 import { HoldingsPanel } from '../components/HoldingsPanel';
 import { Inspector } from '../components/Inspector';
@@ -35,6 +36,8 @@ export function SupplyChainPage() {
   const [selection, setSelection] = useState<Selection>(null);
   // Empty until the settings arrive, or when no Logo.dev token is set: the graph then shows letters.
   const [logoToken, setLogoToken] = useState('');
+  // The website domains of companies without a ticker, so their logos can be found too.
+  const [logoDomains, setLogoDomains] = useState<Record<string, string>>({});
   const [searchParams] = useSearchParams();
   const [panel, setPanel] = useState<'holdings' | 'news'>(searchParams.get('panel') === 'news' ? 'news' : 'holdings');
   // The portfolio, for Check News and its status; null until it arrives.
@@ -113,6 +116,22 @@ export function SupplyChainPage() {
   const shared = useMemo(() => sharedCompanies(relationships ?? [], nodes), [relationships, nodes]);
   const graphNodes = useMemo(() => withSharedSummaries(nodes, shared), [nodes, shared]);
   const nodeIdByHolding = useMemo(() => holdingNodeIds(holdings, nodes), [holdings, nodes]);
+
+  // Only with a Logo.dev token, and only for companies without a ticker. A failure just leaves their letters.
+  useEffect(() => {
+    const names = nodes.filter((node) => !node.ticker).map((node) => node.name);
+    if (!logoToken || names.length === 0) return;
+    let active = true;
+    logoApi
+      .domains(names)
+      .then((found) => {
+        if (active) setLogoDomains(found);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [nodes, logoToken]);
 
   const selectNode = useCallback(
     (nodeId: string | null) => setSelection(nodeId ? { kind: 'company', nodeId } : null),
@@ -220,6 +239,7 @@ export function SupplyChainPage() {
             selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
             selectedRelationshipId={selection?.kind === 'relationship' ? selection.relationshipId : null}
             logoToken={logoToken}
+            logoDomains={logoDomains}
           />
           <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         </div>

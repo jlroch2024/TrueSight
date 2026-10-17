@@ -30,10 +30,15 @@ const made: {
   dataSet: Array<[string, string, unknown]>;
   // Every logo the graph started loading.
   images: FakeImage[];
-  // The selectors of the arrows the graph drew selected, e.g. "[relationshipId = 2]".
+  // The selectors of the arrows the graph drew chosen, e.g. "[relationshipId = 2]".
   selectedEdges: string[];
+  // The ids of the companies the graph drew chosen.
+  chosenNodes: string[];
+  fit: ReturnType<typeof vi.fn>;
 } = {
   selectedEdges: [],
+  chosenNodes: [],
+  fit: vi.fn(),
   dataSet: [],
   images: [],
   layouts: [],
@@ -77,9 +82,8 @@ function collection(items: Fake[], style?: ReturnType<typeof vi.fn>, selector?: 
   return {
     forEach: (fn: (item: Fake) => void) => items.forEach((item) => fn(item)),
     removeClass: (name: string) => items.forEach((item) => item.removeClass(name)),
-    unselect: vi.fn(),
-    select: () => {
-      if (selector) made.selectedEdges.push(selector);
+    addClass: (name: string) => {
+      if (selector && name === 'chosen') made.selectedEdges.push(selector);
     },
     style: style ?? vi.fn(),
   };
@@ -117,8 +121,13 @@ vi.mock('cytoscape', () => {
         if (typeof selectorOrHandler === 'string') made.handlers.set(`${event} ${selectorOrHandler}`, handler!);
         else made.handlers.set(event, selectorOrHandler);
       },
+      one: (event: string, selectorOrHandler: string | Handler, handler?: Handler) => {
+        if (typeof selectorOrHandler === 'string') made.handlers.set(`${event} ${selectorOrHandler}`, handler!);
+        else made.handlers.set(event, selectorOrHandler);
+      },
       animate: made.animate,
       elements: () => everyElement,
+      fit: made.fit,
       nodes: () => collection(made.nodes),
       edges: (selector?: string) => collection(made.edges, made.style, selector),
       getElementById: (id: string) => {
@@ -127,6 +136,9 @@ vi.mock('cytoscape', () => {
           data: (field: string, value: unknown) => made.dataSet.push([id, field, value]),
           empty: () => !exists,
           nonempty: () => exists,
+          addClass: (name: string) => {
+            if (name === 'chosen') made.chosenNodes.push(id);
+          },
         };
       },
       destroyed: () => false,
@@ -150,10 +162,9 @@ function setReducedMotion(reduces: boolean) {
   window.matchMedia = vi.fn().mockReturnValue({ matches: reduces }) as unknown as typeof window.matchMedia;
 }
 
-// Runs the next animation frame the graph asked for, as if {@code now} milliseconds had passed.
+// Runs the animation frames the graph has asked for so far, as if {@code now} milliseconds had passed.
 function runFrame(now: number) {
-  const next = made.frames.shift();
-  next?.(now);
+  made.frames.splice(0).forEach((frame) => frame(now));
 }
 
 // Three companies and two arrows that matter, and one that does not touch the focused company:
@@ -184,6 +195,8 @@ beforeEach(() => {
   made.style.mockClear();
   made.frames = [];
   made.selectedEdges = [];
+  made.chosenNodes = [];
+  made.fit.mockClear();
   made.dataSet = [];
   made.images = [];
   vi.stubGlobal('Image', FakeImage);
@@ -200,14 +213,22 @@ describe('SupplyChainGraph', () => {
     expect(made.options).toMatchObject({ minZoom: 0.3, maxZoom: 3 });
   });
 
-  it('settles first while fitting the view, then keeps the physics running without moving the view', () => {
-    drawGraph();
+  it('settles out of sight, shows the graph fitted, and starts the live physics only when a company is first dragged', () => {
+    const { container } = drawGraph();
+    const frame = container.querySelector('.graph-frame')!;
 
+    expect(frame).toHaveClass('settling');
+    expect(screen.getByText('Arranging the Graph…')).toBeInTheDocument();
     expect(made.layouts).toHaveLength(1);
-    expect(made.layouts[0].options).toMatchObject({ name: 'cola', fit: true, maxSimulationTime: 2500 });
-    expect(made.layouts[0].options).not.toHaveProperty('infinite');
+    expect(made.layouts[0].options).toMatchObject({ name: 'cola', fit: true, maxSimulationTime: 2500, nodeDimensionsIncludeLabels: true });
 
-    made.layouts[0].fire(); // the first phase has settled
+    made.layouts[0].fire(); // the companies have settled
+
+    expect(made.fit).toHaveBeenCalled();
+    expect(frame).not.toHaveClass('settling');
+    expect(made.layouts).toHaveLength(1); // nothing rearranges them once they are shown
+
+    made.handlers.get('grab node')!({ target: made.nodes[0] }); // the user starts dragging a company
 
     expect(made.layouts).toHaveLength(2);
     expect(made.layouts[1].options).toMatchObject({ name: 'cola', infinite: true, fit: false });
@@ -219,23 +240,61 @@ describe('SupplyChainGraph', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Fit to Screen' }));
 
-    expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: everyElement, padding: 40 } }));
+    expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: everyElement, padding: 48 } }));
   });
 
   it("uses blueprint colors, square nodes and the app's one font for every label, with no monospace", () => {
     drawGraph([{ id: 'holding-1', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true, weight: null }]);
 
-    const options = made.options as { elements: Array<{ data: { label: string } }>; style: unknown[] };
-    expect(options.elements[0].data).toMatchObject({ label: 'NVDA' });
+    const options = made.options as { style: unknown[] };
     expect(options.style).toContainEqual(expect.objectContaining({
       selector: 'node',
       style: expect.objectContaining({ shape: 'rectangle', 'font-family': expect.stringMatching(/^Space Grotesk/) }),
     }));
     expect(JSON.stringify(options.style)).not.toMatch(/Mono/);
     expect(options.style).toContainEqual(expect.objectContaining({
-      selector: 'edge:selected',
+      selector: 'edge.chosen',
       style: expect.objectContaining({ 'line-color': '#c4f36a' }),
     }));
+  });
+
+  it("shows none of Cytoscape's own press circle, selection box or selection overlay", () => {
+    drawGraph(FOCUS_NODES, FOCUS_EDGES);
+
+    const options = made.options as { boxSelectionEnabled: boolean; autounselectify: boolean; style: unknown[] };
+    expect(options).toMatchObject({ boxSelectionEnabled: false, autounselectify: true });
+    expect(options.style).toContainEqual({ selector: 'core', style: { 'active-bg-opacity': 0, 'selection-box-opacity': 0 } });
+    for (const selector of ['node', 'edge']) {
+      expect(options.style).toContainEqual(expect.objectContaining({
+        selector,
+        style: expect.objectContaining({ 'overlay-opacity': 0 }),
+      }));
+    }
+  });
+
+  it('reacts to the pointer: a company or an arrow under it brightens, with a short transition, and lets go after', () => {
+    drawGraph(FOCUS_NODES, FOCUS_EDGES);
+    const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
+
+    made.handlers.get('mouseover node')!({ target: made.nodes[1] });
+    made.handlers.get('mouseover edge')!({ target: made.edges[0] });
+    expect(made.nodes[1]!.classes.has('hover')).toBe(true);
+    expect(made.edges[0]!.classes.has('hover')).toBe(true);
+
+    made.handlers.get('mouseout node')!({ target: made.nodes[1] });
+    made.handlers.get('mouseout edge')!({ target: made.edges[0] });
+    expect(made.nodes[1]!.classes.has('hover')).toBe(false);
+    expect(made.edges[0]!.classes.has('hover')).toBe(false);
+
+    expect(options.style).toContainEqual(expect.objectContaining({
+      selector: 'node.hover',
+      style: expect.objectContaining({ 'border-color': '#c4f36a' }),
+    }));
+    expect(options.style).toContainEqual(expect.objectContaining({
+      selector: 'edge.hover',
+      style: expect.objectContaining({ width: 3 }),
+    }));
+    expect(options.style.find((rule) => rule.selector === 'node')!.style).toMatchObject({ 'transition-duration': 0.15 });
   });
 
   describe('the arrows', () => {
@@ -270,8 +329,10 @@ describe('SupplyChainGraph', () => {
         selector: 'edge',
         style: expect.objectContaining({ 'line-style': 'solid' }),
       }));
-      expect(window.requestAnimationFrame).not.toHaveBeenCalled();
-      expect(made.style).not.toHaveBeenCalled();
+      runFrame(1000);
+      runFrame(1500);
+      expect(made.style).not.toHaveBeenCalled(); // no dash offset is ever set
+      expect(made.fit).toHaveBeenCalled(); // laid out once, still, and shown at once
     });
 
     it('stop moving when the graph is taken off the page', () => {
@@ -313,11 +374,16 @@ describe('SupplyChainGraph', () => {
       expect(fadedIds()).toEqual([]);
     });
 
-    it('keeps the company chosen on the page in focus, and centres it', () => {
-      render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} selectedNodeId="holding" />);
+    it('keeps the company chosen on the page in focus, centres it, and draws it chosen, with its brackets', () => {
+      const { container } = render(
+        <SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} selectedNodeId="holding" />,
+      );
 
       expect(fadedIds()).toEqual(['other', 'relationship-3']);
       expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ center: expect.anything() }));
+      expect(made.chosenNodes).toEqual(['holding']);
+      expect(container.querySelector('.graph-brackets')).toHaveClass('closing');
+      expect(container.querySelectorAll('.graph-crosshair line')).toHaveLength(2);
     });
 
     it('goes back to the chosen company when the pointer moves off another one', () => {
@@ -376,10 +442,17 @@ describe('SupplyChainGraph', () => {
     const styles = () => (made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> }).style;
     const letterIn = (image: string) => decodeURIComponent(image).match(/>([^<]+)<\/text>/)?.[1];
 
-    it('labels every company: a holding with its ticker and weight, others with a ticker or a short name', () => {
-      drawGraph(TILE_NODES);
+    it("gives every company a label box: a holding's ticker and weight over its name, others' ticker over their name", () => {
+      const { container } = drawGraph(TILE_NODES);
 
-      expect(elementsDrawn().map((element) => element.data.label)).toEqual(['NVDA 18%', 'TSM', 'Samsung Elect\u2026']);
+      const boxes = [...container.querySelectorAll('.graph-label')];
+      expect(boxes.map((box) => [...box.children].map((line) => line.textContent))).toEqual([
+        ['NVDA18%', 'NVIDIA'],
+        ['TSM', 'Taiwan Semiconductor Manufacturing'],
+        ['Samsung Electronics'],
+      ]);
+      expect(boxes[0]).toHaveClass('holding');
+      expect(boxes[1]).not.toHaveClass('holding');
     });
 
     it('shows each company\'s first letter on its square tile until a logo arrives', () => {
@@ -404,17 +477,19 @@ describe('SupplyChainGraph', () => {
       expect(sizes.slice(1)).toEqual([44, 44]);
     });
 
-    it('puts the label under the tile, on a patch that hides any arrow passing behind it', () => {
+    it("keeps room for each label box: the canvas lays out the box's lines, invisibly, and the layout counts them", () => {
       drawGraph(TILE_NODES);
 
+      expect(elementsDrawn().map((element) => element.data.label)).toEqual([
+        'NVDA 18%\nNVIDIA',
+        'TSM\nTaiwan Semiconductor Manufacturing',
+        'Samsung Electronics',
+      ]);
       expect(styles()).toContainEqual(expect.objectContaining({
         selector: 'node',
-        style: expect.objectContaining({
-          'text-valign': 'bottom',
-          'text-background-color': '#0b2028',
-          'text-background-opacity': 1,
-        }),
+        style: expect.objectContaining({ label: 'data(label)', 'text-opacity': 0, 'text-valign': 'bottom' }),
       }));
+      expect(made.layouts[0]!.options).toMatchObject({ nodeDimensionsIncludeLabels: true, avoidOverlap: true });
     });
 
     it('gives holdings a teal border', () => {
@@ -438,7 +513,26 @@ describe('SupplyChainGraph', () => {
 
       made.images[0]!.onload!();
 
-      expect(made.dataSet).toEqual([['nvda', 'image', made.images[0]!.src]]);
+      expect(made.dataSet).toEqual([['nvda', 'image', made.images[0]!.src], ['nvda', 'logo', 1]]);
+      // A logo sits on a white square, at the same share of every tile.
+      expect(styles()).toContainEqual({
+        selector: 'node[logo = 1]',
+        style: { 'background-color': '#ffffff', 'background-fit': 'none', 'background-width': '72%', 'background-height': '72%' },
+      });
+    });
+
+    it("asks Logo.dev by website domain for a company without a ticker, when its domain is known", () => {
+      render(
+        <SupplyChainGraph
+          nodes={TILE_NODES}
+          edges={[]}
+          onEdgeSelect={() => {}}
+          logoToken="pk_test_token"
+          logoDomains={{ 'Samsung Electronics Co., Ltd.': 'samsung.com' }}
+        />,
+      );
+
+      expect(made.images.map((image) => new URL(image.src).pathname)).toEqual(['/ticker/NVDA', '/ticker/TSM', '/samsung.com']);
     });
 
     it('keeps the letter for a company Logo.dev does not know', () => {
@@ -454,7 +548,7 @@ describe('SupplyChainGraph', () => {
       drawGraph(TILE_NODES, [], '');
 
       expect(elementsDrawn()).toHaveLength(3);
-      expect(elementsDrawn().map((element) => element.data.label)).toEqual(['NVDA 18%', 'TSM', 'Samsung Elect\u2026']);
+      expect(document.querySelectorAll('.graph-label')).toHaveLength(3);
       expect(made.images).toEqual([]);
     });
 
@@ -478,32 +572,30 @@ describe('SupplyChainGraph', () => {
     };
 
     it('labels a company several holdings depend on with what it supplies, under its usual label', () => {
-      drawGraph([SHARED]);
+      const { container } = drawGraph([SHARED]);
 
+      const box = container.querySelector('.graph-label')!;
+      expect(box).toHaveClass('shared');
+      expect(box.lastElementChild).toHaveTextContent('Supplies 4 holdings');
       const options = made.options as { elements: Array<{ data: Record<string, unknown> }> };
-      expect(options.elements[0]!.data).toMatchObject({ label: 'TSM\nSupplies 4 holdings', shared: 1, holding: 0 });
+      expect(options.elements[0]!.data).toMatchObject({ shared: 1, holding: 0 });
     });
 
-    it('draws it bigger, with an amber border, and lets the two-line label wrap', () => {
+    it('draws it bigger, with an amber border', () => {
       drawGraph([SHARED]);
 
       const options = made.options as { style: unknown[] };
       expect(options.style).toContainEqual({
         selector: 'node[shared = 1]',
-        style: expect.objectContaining({
-          width: 58,
-          height: 58,
-          'border-color': '#f5b73b',
-          'text-wrap': 'wrap',
-        }),
+        style: expect.objectContaining({ width: 58, height: 58, 'border-color': '#f5b73b' }),
       });
     });
 
     it('labels a company that is not shared as before', () => {
-      drawGraph([{ ...SHARED, sharedSummary: undefined }]);
+      const { container } = drawGraph([{ ...SHARED, sharedSummary: undefined }]);
 
-      const options = made.options as { elements: Array<{ data: Record<string, unknown> }> };
-      expect(options.elements[0]!.data).toMatchObject({ label: 'TSM', shared: 0 });
+      expect(container.querySelector('.graph-label')).not.toHaveClass('shared');
+      expect(container.querySelector('.graph-label-shared')).toBeNull();
     });
   });
 });
