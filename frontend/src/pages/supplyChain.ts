@@ -5,7 +5,16 @@ import type { Relationship } from '../api/relationships';
 
 // weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
 // had no weight.
-export type GraphNode = { id: string; name: string; ticker: string | null; isHolding: boolean; weight: number | null };
+// sharedSummary is set (e.g. "Supplies 4 holdings") only on a company that several holdings depend on; see
+// sharedCompanies.
+export type GraphNode = {
+  id: string;
+  name: string;
+  ticker: string | null;
+  isHolding: boolean;
+  weight: number | null;
+  sharedSummary?: string;
+};
 export type GraphEdge = { id: string; source: string; target: string; relationshipId: number };
 
 /**
@@ -166,4 +175,84 @@ const DASH_SPEED = 20; // pixels per second
  */
 export function dashOffsetAt(elapsedMs: number): number {
   return 0 - (((elapsedMs / 1000) * DASH_SPEED) % DASH_PERIOD);
+}
+
+/**
+ * A company that is not a holding, but supplies, or buys from, several of the portfolio's holdings: where one
+ * company's trouble would hit several positions at once. The counts are of holdings, never of arrows.
+ */
+export type SharedCompany = {
+  id: string;
+  name: string;
+  ticker: string | null;
+  suppliesHoldings: number;
+  buysFromHoldings: number;
+};
+
+// A company is shared once two holdings depend on it, on either side.
+const SHARED_FROM = 2;
+
+/**
+ * The companies several holdings depend on, the most shared first.
+ *
+ * <ul>
+ *   <li>A holding is never listed, even when other holdings supply it: the highlight is for companies the portfolio
+ *       does not hold.</li>
+ *   <li>Holdings are counted, not arrows: one holding that names the same company twice counts once.</li>
+ *   <li>A company serving only one holding is not listed.</li>
+ * </ul>
+ *
+ * Companies of equal rank are put in alphabetical order, so the list never shuffles between visits.
+ */
+export function sharedCompanies(relationships: Relationship[], nodes: GraphNode[]): SharedCompany[] {
+  const holdingIds = new Set(nodes.filter((node) => node.isHolding).map((node) => node.id));
+  const supplies = new Map<string, Set<number>>();
+  const buysFrom = new Map<string, Set<number>>();
+  const companies = new Map<string, { name: string; ticker: string | null }>();
+
+  for (const relationship of relationships) {
+    const id = String(relationship.counterparty.id);
+    if (holdingIds.has(id)) continue;
+    companies.set(id, { name: relationship.counterparty.name, ticker: relationship.counterparty.ticker });
+    // SUPPLIER: the counterparty supplies the holding. CUSTOMER: the counterparty buys from the holding.
+    const side = relationship.type === 'SUPPLIER' ? supplies : buysFrom;
+    const held = side.get(id) ?? new Set<number>();
+    held.add(relationship.company.id);
+    side.set(id, held);
+  }
+
+  const shared: SharedCompany[] = [];
+  for (const [id, { name, ticker }] of companies) {
+    const suppliesHoldings = supplies.get(id)?.size ?? 0;
+    const buysFromHoldings = buysFrom.get(id)?.size ?? 0;
+    if (suppliesHoldings < SHARED_FROM && buysFromHoldings < SHARED_FROM) continue;
+    shared.push({ id, name, ticker, suppliesHoldings, buysFromHoldings });
+  }
+
+  // Only a side that is itself shared counts towards the rank: a company that supplies four holdings and buys from
+  // one is ranked as four.
+  const rank = (company: SharedCompany) =>
+    (company.suppliesHoldings >= SHARED_FROM ? company.suppliesHoldings : 0) +
+    (company.buysFromHoldings >= SHARED_FROM ? company.buysFromHoldings : 0);
+  return shared.sort((a, b) => rank(b) - rank(a) || a.name.localeCompare(b.name));
+}
+
+/**
+ * The label for a shared company, e.g. "Supplies 4 holdings" or "Buys from 2 holdings". A side held by only one
+ * holding is left out, so it never reads "Supplies 1 holdings"; a company shared on both sides gets both.
+ */
+export function sharedSummary(company: SharedCompany): string {
+  const parts: string[] = [];
+  if (company.suppliesHoldings >= SHARED_FROM) parts.push(`Supplies ${company.suppliesHoldings} holdings`);
+  if (company.buysFromHoldings >= SHARED_FROM) parts.push(`Buys from ${company.buysFromHoldings} holdings`);
+  return parts.join(' · ');
+}
+
+/** The graph's nodes, with each shared company carrying its summary so the graph can draw it amber and bigger. */
+export function withSharedSummaries(nodes: GraphNode[], shared: SharedCompany[]): GraphNode[] {
+  const summaryById = new Map(shared.map((company) => [company.id, sharedSummary(company)]));
+  return nodes.map((node) => {
+    const sharedSummaryText = summaryById.get(node.id);
+    return sharedSummaryText === undefined ? node : { ...node, sharedSummary: sharedSummaryText };
+  });
 }
