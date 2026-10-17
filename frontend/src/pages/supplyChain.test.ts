@@ -10,6 +10,7 @@ import {
   focusOn,
   formatWeight,
   type GraphNode,
+  logoUrl,
   nodeLabel,
   plainName,
   shortName,
@@ -325,5 +326,36 @@ describe('nodeLabel', () => {
     expect(nodeLabel(node({ name: 'Samsung Electronics Co., Ltd.', ticker: null, isHolding: false, weight: null }))).toBe(
       'Samsung Elect\u2026',
     );
+  });
+});
+
+describe('logoUrl', () => {
+  const token = 'pk_test_token';
+
+  it('looks a company up by its ticker when it has one', () => {
+    const url = new URL(logoUrl({ name: 'NVIDIA Corporation', ticker: 'NVDA' }, token)!);
+    expect(url.origin).toBe('https://img.logo.dev');
+    expect(url.pathname).toBe('/ticker/NVDA');
+    expect(url.searchParams.get('token')).toBe(token);
+  });
+
+  it('looks a company with no ticker up by its name without the legal ending', () => {
+    const url = new URL(logoUrl({ name: 'Samsung Electronics Co., Ltd.', ticker: null }, token)!);
+    expect(url.pathname).toBe('/name/Samsung%20Electronics');
+  });
+
+  it('asks Logo.dev for "not found" rather than its own letter, so the graph can show its own', () => {
+    const url = new URL(logoUrl({ name: 'Carl Zeiss SMT', ticker: null }, token)!);
+    expect(url.searchParams.get('fallback')).toBe('404');
+  });
+
+  it('keeps a name\'s other characters from breaking the address', () => {
+    const url = logoUrl({ name: 'AT&T Inc.', ticker: null }, token)!;
+    expect(new URL(url).pathname).toBe('/name/AT%26T');
+    expect(new URL(url).searchParams.get('token')).toBe(token);
+  });
+
+  it('is empty without a token, so the graph shows letters instead', () => {
+    expect(logoUrl({ name: 'NVIDIA Corporation', ticker: 'NVDA' }, '')).toBeNull();
   });
 });

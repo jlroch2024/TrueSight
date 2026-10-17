@@ -112,6 +112,23 @@ export function nodeLabel(node: GraphNode): string {
   return weight ? `${node.ticker} ${weight}` : node.ticker;
 }
 
+const LOGO_HOST = 'https://img.logo.dev';
+// A PNG twice the tile's size, so it stays sharp when zoomed in. fallback=404 makes Logo.dev answer "not found" for a
+// company it does not know, instead of drawing its own letter, so the graph can show its own.
+const LOGO_OPTIONS = 'size=64&retina=true&format=png&fallback=404';
+
+/**
+ * Where a company's logo is on Logo.dev: by ticker when it has one, otherwise by its plain name ("NVIDIA", not
+ * "NVIDIA Corporation", which Logo.dev matches less well). Null without a Logo.dev token: the graph then shows letters.
+ */
+export function logoUrl(node: Pick<GraphNode, 'name' | 'ticker'>, token: string): string | null {
+  if (!token) return null;
+  const path = node.ticker
+    ? `ticker/${encodeURIComponent(node.ticker)}`
+    : `name/${encodeURIComponent(plainName(node.name))}`;
+  return `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}`;
+}
+
 /** The part of the graph that stays lit while one company is in focus. */
 export type Focus = { nodeIds: Set<string>; edgeIds: Set<string> };
 
