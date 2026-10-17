@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 import { type Portfolio, portfolioApi } from '../api/portfolios';
 import { formatDateTime } from '../format';
@@ -10,13 +10,18 @@ type Props = {
   articleCount?: number | null;
   // Shows a See News button after a check, which opens the collected news.
   onSeeNews?: () => void;
+  // Buttons placed first in the same row, such as the Portfolio page's Analyse, so they all line up.
+  leading?: ReactNode;
+  // "main": a full-size main button (the Portfolio page). "compact": a small outlined button with the status beside it
+  // (the Supply Chain page's News tab).
+  variant?: 'main' | 'compact';
 };
 
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
 
-export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews }: Props) {
+export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews, leading, variant = 'main' }: Props) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,23 +53,31 @@ export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews }
 
   const checking = portfolio.newsStatus === 'CHECKING';
   return (
-    <div className="news-check">
-      <button type="button" onClick={start} disabled={starting || checking}>
-        {starting ? 'Starting…' : checking ? 'Checking news…' : 'Check News'}
-      </button>
+    <div className={`news-check ${variant}`}>
+      <div className="news-check-buttons">
+        {leading}
+        <button
+          type="button"
+          className={variant === 'compact' ? 'secondary small-button' : undefined}
+          onClick={start}
+          disabled={starting || checking}
+        >
+          {starting ? 'Starting…' : checking ? 'Checking News…' : 'Check News'}
+        </button>
+        {!checking && portfolio.newsCheckedAt && onSeeNews && (
+          <button type="button" className="secondary" onClick={onSeeNews}>
+            See News
+          </button>
+        )}
+      </div>
       {!checking && portfolio.newsStatus === 'FAILED' && portfolio.newsStatusReason && (
         <span role="alert" className="error small">{portfolio.newsStatusReason}</span>
       )}
       {!checking && portfolio.newsStatus !== 'FAILED' && portfolio.newsCheckedAt && (
         <span className="muted small">
-          News checked {formatDateTime(portfolio.newsCheckedAt)}
-          {typeof articleCount === 'number' && ` · ${articleCount} ${articleCount === 1 ? 'article' : 'articles'}`}
+          News Checked {formatDateTime(portfolio.newsCheckedAt)}
+          {typeof articleCount === 'number' && ` · ${articleCount} ${articleCount === 1 ? 'Article' : 'Articles'}`}
         </span>
-      )}
-      {!checking && portfolio.newsCheckedAt && onSeeNews && (
-        <button type="button" className="secondary" onClick={onSeeNews}>
-          See News
-        </button>
       )}
       {error && <span role="alert" className="error small">{error}</span>}
     </div>

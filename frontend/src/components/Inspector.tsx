@@ -12,9 +12,9 @@ import {
   type GraphNode,
   type Selection,
   connectionsOf,
+  displayName,
   formatWeight,
   relationshipSummary,
-  plainName,
 } from '../pages/supplyChain';
 import { NewsItem } from './NewsPanel';
 
@@ -95,15 +95,15 @@ function CompanyDetails({
   return (
     <div className="inspector">
       <p className="inspector-kind">Company</p>
-      <h2>{node.name}</h2>
+      <h2 title={node.name}>{displayName(node.name)}</h2>
       <p className="inspector-facts">
         {node.ticker && <span className="ticker">{node.ticker}</span>}
-        <span>{node.isHolding ? (weight ? `Holding · ${weight} of the portfolio` : 'Holding') : 'Not held'}</span>
+        <span>{node.isHolding ? (weight ? `Holding · ${weight} of the Portfolio` : 'Holding') : 'Not Held'}</span>
       </p>
       {holding?.reportType && holding.reportDate && (
         <div className="inspector-report">
           <p className="muted small">
-            {holding.reportType}, filed {holding.reportDate}
+            {holding.reportType}, Filed {holding.reportDate}
           </p>
           {holding.reportLink && (
             <button type="button" className="secondary" onClick={() => openInNewTab(holding.reportLink!)}>
@@ -156,7 +156,7 @@ function ConnectionList({
         {title} <span className="muted">({connections.length})</span>
       </h3>
       {connections.length === 0 ? (
-        <p className="muted small">None on this graph.</p>
+        <p className="muted small">None on This Graph</p>
       ) : (
         <ul className="panel-list">
           {connections.map(({ relationship, company }) => (
@@ -164,7 +164,7 @@ function ConnectionList({
               <button type="button" className="panel-row" onClick={() => onSelect(relationship.id)}>
                 <span className="panel-row-main">
                   {company.ticker && <span className="ticker">{company.ticker}</span>}
-                  <span className="panel-name">{plainName(company.name)}</span>
+                  <span className="panel-name">{displayName(company.name)}</span>
                 </span>
                 {relationship.provides && <span className="panel-row-detail">{relationship.provides}</span>}
               </button>
@@ -193,7 +193,7 @@ function RelationshipDetails({
       <h2>{relationshipSummary(relationship)}</h2>
       <blockquote>{relationship.evidence}</blockquote>
       <p className="muted small">
-        {relationship.report.form}, filed {relationship.report.filingDate}
+        {relationship.report.form}, Filed {relationship.report.filingDate}
       </p>
       <button type="button" onClick={() => openInNewTab(showInReportUrl(relationship.report.url, relationship.evidence))}>
         Show in Report
@@ -209,7 +209,7 @@ function RelationshipDetails({
               <button type="button" className="panel-row" onClick={() => onSelectNode(String(company.id))}>
                 <span className="panel-row-main">
                   {company.ticker && <span className="ticker">{company.ticker}</span>}
-                  <span className="panel-name">{plainName(company.name)}</span>
+                  <span className="panel-name">{displayName(company.name)}</span>
                 </span>
                 <span className="panel-row-detail">{role}</span>
               </button>

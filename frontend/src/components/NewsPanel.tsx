@@ -5,7 +5,7 @@
 import type { NewsArticle, NewsAssessment } from '../api/news';
 import type { Portfolio } from '../api/portfolios';
 import { formatAge, openInNewTab } from '../format';
-import { plainName } from '../pages/supplyChain';
+import { displayName } from '../pages/supplyChain';
 import { CheckNewsButton } from './CheckNewsButton';
 
 type Props = {
@@ -38,7 +38,7 @@ export function NewsItem({
   article: NewsArticle;
   onSelectCompany?: (companyName: string) => void;
 }) {
-  const companyLabel = article.company.ticker ?? plainName(article.company.name);
+  const companyLabel = article.company.ticker ?? displayName(article.company.name);
   return (
     <li className="news-item">
       {onSelectCompany && (
@@ -76,10 +76,10 @@ export function NewsPanel({
   const shown = companyFilter ? (articles ?? []).filter((a) => a.company.name === companyFilter) : (articles ?? []);
   return (
     <div className="news-panel">
-      {portfolio && <CheckNewsButton portfolio={portfolio} onChange={onPortfolioChange} />}
+      {portfolio && <CheckNewsButton portfolio={portfolio} onChange={onPortfolioChange} variant="compact" />}
       {companyFilter && (
         <p className="news-filter">
-          <span>Only {plainName(companyFilter)}</span>
+          <span>Only {displayName(companyFilter)}</span>
           <button type="button" className="secondary small-button" onClick={onClearFilter}>
             Clear
           </button>

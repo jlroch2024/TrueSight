@@ -222,19 +222,16 @@ describe('SupplyChainGraph', () => {
     expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: everyElement, padding: 40 } }));
   });
 
-  it('uses blueprint colors, square nodes and a mono font for tickers', () => {
+  it("uses blueprint colors, square nodes and the app's one font for every label, with no monospace", () => {
     drawGraph([{ id: 'holding-1', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true, weight: null }]);
 
-    const options = made.options as { elements: Array<{ data: { label: string; ticker: number } }>; style: unknown[] };
-    expect(options.elements[0].data).toMatchObject({ label: 'NVDA', ticker: 1 });
+    const options = made.options as { elements: Array<{ data: { label: string } }>; style: unknown[] };
+    expect(options.elements[0].data).toMatchObject({ label: 'NVDA' });
     expect(options.style).toContainEqual(expect.objectContaining({
       selector: 'node',
-      style: expect.objectContaining({ shape: 'rectangle' }),
+      style: expect.objectContaining({ shape: 'rectangle', 'font-family': expect.stringMatching(/^Space Grotesk/) }),
     }));
-    expect(options.style).toContainEqual(expect.objectContaining({
-      selector: 'node[ticker = 1]',
-      style: { 'font-family': 'JetBrains Mono' },
-    }));
+    expect(JSON.stringify(options.style)).not.toMatch(/Mono/);
     expect(options.style).toContainEqual(expect.objectContaining({
       selector: 'edge:selected',
       style: expect.objectContaining({ 'line-color': '#c4f36a' }),

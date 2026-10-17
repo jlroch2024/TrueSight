@@ -74,6 +74,13 @@ describe('LogInPage', () => {
     expect(message).toHaveClass('field-error');
   });
 
+  it("shows TrueSight's motto above Log In, and no welcome line", () => {
+    renderLogIn();
+
+    expect(screen.getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
+    expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument();
+  });
+
   it('offers Sign Up under the form, for someone new to TrueSight', () => {
     renderLogIn();
 

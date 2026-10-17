@@ -161,8 +161,13 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 - **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
   to do next), and loaded. `pages/PortfolioPage.tsx` is the example.
 - **Look:** use the colours and classes in `styles.css`. Dark blueprint palette, hairline borders, square corners,
-  teal primary actions with one top-right chamfer, lime accents, Space Grotesk for text and JetBrains Mono for tickers
-  and numbers. Labels use small capitals; keep button labels in Title Case, e.g. "Upload CSV", "Show Report".
+  teal primary actions with one top-right chamfer, lime accents.
+  - **One font: Space Grotesk, everywhere,** the graph included. Text differs only in size, weight and colour. No
+    monospace font and no small capitals. Numbers that must line up use `font-variant-numeric: tabular-nums`.
+  - **Title Case for everything that is not a full sentence:** labels, buttons, headings, tags, counts, times and
+    status lines ("7 of 7 Holdings Analysed", "3 Hours Ago", "0 Suppliers · 1 Customer"). Full sentences (subtitles,
+    explanations, empty states, error messages) are in sentence case.
+  - **Company names** are shown with `displayName()` from `pages/supplyChain.ts`, so every company reads the same way.
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
   `<select>`, checkbox or radio button.
