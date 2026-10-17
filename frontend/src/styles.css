@@ -478,6 +478,15 @@ table.holdings td:nth-child(7) {
 
 .page-heading h1 { margin-bottom: 4px; }
 .page-heading p { margin-top: 0; }
+.page-actions,
+.news-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.news-check {
+  flex-wrap: wrap;
+}
 .table-card { overflow-x: auto; }
 .status { white-space: nowrap; }
 .status-reason { display: block; margin-top: 4px; font-size: 12px; }

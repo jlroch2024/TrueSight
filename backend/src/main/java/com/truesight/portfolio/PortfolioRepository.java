@@ -1,7 +1,11 @@
 package com.truesight.portfolio;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +20,10 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
     List<Portfolio> findByUserIdOrderByNameAsc(Long userId);
 
     Optional<Portfolio> findByIdAndUserId(Long id, Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select portfolio from Portfolio portfolio where portfolio.id = :id and portfolio.userId = :userId")
+    Optional<Portfolio> findForUpdateByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
     boolean existsByUserIdAndName(Long userId, String name);
 }
