@@ -410,4 +410,44 @@ describe('SupplyChainGraph', () => {
       expect(made.images.every((image) => image.onload === null)).toBe(true);
     });
   });
+
+  describe('shared suppliers and customers', () => {
+    const SHARED: GraphNode = {
+      id: '11',
+      name: 'Taiwan Semiconductor Manufacturing Company Limited',
+      ticker: 'TSM',
+      isHolding: false,
+      weight: null,
+      sharedSummary: 'Supplies 4 holdings',
+    };
+
+    it('labels a company several holdings depend on with what it supplies, under its usual label', () => {
+      drawGraph([SHARED]);
+
+      const options = made.options as { elements: Array<{ data: Record<string, unknown> }> };
+      expect(options.elements[0]!.data).toMatchObject({ label: 'TSM\nSupplies 4 holdings', shared: 1, holding: 0 });
+    });
+
+    it('draws it bigger, with an amber border, and lets the two-line label wrap', () => {
+      drawGraph([SHARED]);
+
+      const options = made.options as { style: unknown[] };
+      expect(options.style).toContainEqual({
+        selector: 'node[shared = 1]',
+        style: expect.objectContaining({
+          width: 58,
+          height: 58,
+          'border-color': '#f5b73b',
+          'text-wrap': 'wrap',
+        }),
+      });
+    });
+
+    it('labels a company that is not shared as before', () => {
+      drawGraph([{ ...SHARED, sharedSummary: undefined }]);
+
+      const options = made.options as { elements: Array<{ data: Record<string, unknown> }> };
+      expect(options.elements[0]!.data).toMatchObject({ label: 'TSM', shared: 0 });
+    });
+  });
 });

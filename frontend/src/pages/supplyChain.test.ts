@@ -14,6 +14,9 @@ import {
   nodeLabel,
   plainName,
   shortName,
+  sharedCompanies,
+  sharedSummary,
+  withSharedSummaries,
 } from './supplyChain';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
@@ -357,5 +360,111 @@ describe('logoUrl', () => {
 
   it('is empty without a token, so the graph shows letters instead', () => {
     expect(logoUrl({ name: 'NVIDIA Corporation', ticker: 'NVDA' }, '')).toBeNull();
+  });
+});
+
+describe('sharedCompanies', () => {
+  const { nodes } = buildGraphElements(sampleRelationships, sampleHoldings());
+  const find = (name: string) => sharedCompanies(sampleRelationships, nodes).find((c) => c.name === name);
+
+  it('shows TSMC as supplying 4 holdings, and Apple as buying from 2 holdings, with the sample data', () => {
+    const tsmc = find('Taiwan Semiconductor Manufacturing Company Limited')!;
+    const apple = find('Apple Inc.')!;
+
+    expect(sharedSummary(tsmc)).toBe('Supplies 4 holdings');
+    expect(sharedSummary(apple)).toBe('Buys from 2 holdings');
+  });
+
+  it('lists the most shared first, and companies of equal rank in alphabetical order', () => {
+    const names = sharedCompanies(sampleRelationships, nodes).map((c) => c.name);
+
+    expect(names).toEqual([
+      'Taiwan Semiconductor Manufacturing Company Limited',
+      'Apple Inc.',
+      'GLOBALFOUNDRIES Inc.',
+      'Samsung Electronics Co., Ltd.',
+    ]);
+  });
+
+  it('does not list a company that serves only one holding', () => {
+    const names = sharedCompanies(sampleRelationships, nodes).map((c) => c.name);
+
+    // Micron, SK hynix, Panasonic, CATL and Carl Zeiss each appear for one holding only.
+    for (const single of ['Micron Technology, Inc.', 'SK hynix Inc.', 'Panasonic', 'Carl Zeiss SMT']) {
+      expect(names).not.toContain(single);
+    }
+    expect(names).not.toContain('Contemporary Amperex Technology Co. Limited');
+  });
+
+  it('never lists a holding, even when several other holdings name it', () => {
+    const [nvidiaRelationship] = sampleRelationships;
+    const nvidia = nvidiaRelationship!.company;
+    const namedByTwoHoldings: Relationship[] = [
+      { ...sampleRelationships[2]!, id: 101, counterparty: nvidia }, // AMD names NVIDIA as a supplier
+      { ...sampleRelationships[4]!, id: 102, counterparty: nvidia }, // QUALCOMM does too
+    ];
+
+    const names = sharedCompanies([...sampleRelationships, ...namedByTwoHoldings], nodes).map((c) => c.name);
+
+    expect(names).not.toContain('NVIDIA Corporation');
+  });
+
+  it('counts holdings, not arrows', () => {
+    // NVIDIA names TSMC twice (two arrows, one holding), and Tesla names Panasonic twice.
+    const doubled: Relationship[] = [
+      { ...sampleRelationships[0]!, id: 103 },
+      { ...sampleRelationships[7]!, id: 104 },
+    ];
+
+    const shared = sharedCompanies([...sampleRelationships, ...doubled], nodes);
+
+    expect(shared.find((c) => c.name === 'Taiwan Semiconductor Manufacturing Company Limited')!.suppliesHoldings).toBe(4);
+    expect(shared.map((c) => c.name)).not.toContain('Panasonic');
+  });
+
+  it('gives a company shared on both sides both labels, and counts each side on its own', () => {
+    const counterparty = { id: 900, name: 'Both Ways Ltd', ticker: null };
+    const holdingCompany = (i: number) => sampleRelationships[i]!.company;
+    const both: Relationship[] = [
+      { ...sampleRelationships[0]!, id: 201, counterparty, type: 'SUPPLIER', company: holdingCompany(0) },
+      { ...sampleRelationships[0]!, id: 202, counterparty, type: 'SUPPLIER', company: holdingCompany(2) },
+      { ...sampleRelationships[0]!, id: 203, counterparty, type: 'CUSTOMER', company: holdingCompany(7) },
+      { ...sampleRelationships[0]!, id: 204, counterparty, type: 'CUSTOMER', company: holdingCompany(9) },
+      { ...sampleRelationships[0]!, id: 205, counterparty, type: 'CUSTOMER', company: holdingCompany(12) },
+    ];
+
+    const bothWays = sharedCompanies(both, nodes).find((c) => c.name === 'Both Ways Ltd')!;
+
+    expect(bothWays).toMatchObject({ suppliesHoldings: 2, buysFromHoldings: 3 });
+    expect(sharedSummary(bothWays)).toBe('Supplies 2 holdings · Buys from 3 holdings');
+  });
+
+  it('leaves out the side held by only one holding', () => {
+    const tsmc = find('Taiwan Semiconductor Manufacturing Company Limited')!;
+
+    // TSMC also buys from Lam Research, but that is a single holding.
+    expect(tsmc.buysFromHoldings).toBe(1);
+    expect(sharedSummary(tsmc)).not.toContain('Buys from');
+  });
+
+  it('lists nothing when no company is shared', () => {
+    expect(sharedCompanies([sampleRelationships[0]!], buildGraphElements([sampleRelationships[0]!], []).nodes)).toEqual([]);
+  });
+});
+
+describe('withSharedSummaries', () => {
+  it('gives the summary to each shared company and leaves every other node as it was', () => {
+    const { nodes } = buildGraphElements(sampleRelationships, sampleHoldings());
+
+    const marked = withSharedSummaries(nodes, sharedCompanies(sampleRelationships, nodes));
+
+    const withSummary = marked.filter((n) => n.sharedSummary !== undefined).map((n) => n.name).sort();
+    expect(withSummary).toEqual([
+      'Apple Inc.',
+      'GLOBALFOUNDRIES Inc.',
+      'Samsung Electronics Co., Ltd.',
+      'Taiwan Semiconductor Manufacturing Company Limited',
+    ]);
+    expect(marked.find((n) => n.name === 'NVIDIA Corporation')).toBe(nodes.find((n) => n.name === 'NVIDIA Corporation'));
   });
 });
