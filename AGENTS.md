@@ -164,6 +164,8 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   teal primary actions with one top-right chamfer, lime accents, Space Grotesk for text and JetBrains Mono for tickers
   and numbers. Labels use small capitals; keep button labels in Title Case, e.g. "Upload CSV", "Show Report".
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
+- **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
+  `<select>`, checkbox or radio button.
 - **Forms:** every input has a visible label. Disable the button while a request is running, so it cannot be sent
   twice.
 

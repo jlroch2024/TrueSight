@@ -272,15 +272,15 @@ describe('Review page', () => {
     renderPage();
     await screen.findByText(/Nothing to review/);
     expect(calls.at(-1)!.url).toBe('/api/reviews?status=UNREVIEWED');
-    const filter = screen.getByLabelText('Show');
+    expect(screen.getByRole('group', { name: 'Show' })).toBeInTheDocument();
 
-    await userEvent.selectOptions(filter, 'Approved');
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved' }));
     expect(calls.at(-1)!.url).toBe('/api/reviews?status=APPROVED');
 
-    await userEvent.selectOptions(filter, 'Rejected');
+    await userEvent.click(screen.getByRole('radio', { name: 'Rejected' }));
     expect(calls.at(-1)!.url).toBe('/api/reviews?status=REJECTED');
 
-    await userEvent.selectOptions(filter, 'All');
+    await userEvent.click(screen.getByRole('radio', { name: 'All' }));
     expect(calls.at(-1)!.url).toBe('/api/reviews');
   });
 
@@ -293,7 +293,7 @@ describe('Review page', () => {
     });
     fakeBackend(() => [rejected], (id) => approvedBy(item(id)));
     renderPage();
-    await userEvent.selectOptions(await screen.findByLabelText('Show'), 'All');
+    await userEvent.click(await screen.findByRole('radio', { name: 'All' }));
 
     expect(await screen.findByText(/Rejected by analyst@firm.com.*Planned partner, not a supplier\./)).toBeInTheDocument();
 
