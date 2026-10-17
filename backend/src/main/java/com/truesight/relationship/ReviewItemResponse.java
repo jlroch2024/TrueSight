@@ -1,0 +1,19 @@
+package com.truesight.relationship;
+
+import java.time.Instant;
+
+/**
+ * One relationship on the Review page: the relationship itself, its review, and how many portfolios rely on it.
+ *
+ * <p>{@code reviewedBy} is the email of the Analyst who made the latest decision, and {@code reviewedAt} when. All
+ * three review fields are null while the relationship is {@code UNREVIEWED}. {@code usedByPortfolios} is only a count:
+ * it never says which portfolios, or whose.
+ */
+public record ReviewItemResponse(
+        RelationshipResponse relationship,
+        ReviewStatus reviewStatus,
+        String reviewNote,
+        String reviewedBy,
+        Instant reviewedAt,
+        long usedByPortfolios) {
+}

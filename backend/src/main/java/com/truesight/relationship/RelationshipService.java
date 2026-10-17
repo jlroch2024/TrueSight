@@ -56,9 +56,16 @@ public class RelationshipService {
         if (held.isEmpty()) {
             return List.of();
         }
+        // A rejected relationship is wrong, so it never reaches a graph. It is not deleted: a rejection can be undone.
         List<Relationship> found = relationships.findByCompanyIdIn(held).stream()
+                .filter(r -> r.getReviewStatus() != ReviewStatus.REJECTED)
                 .sorted(Comparator.comparing(Relationship::getId)).toList();
+        return toResponses(found);
+    }
 
+    /** Turns relationships into what the website sees, looking up their companies and reports in one go each. */
+    @Transactional(readOnly = true)
+    public List<RelationshipResponse> toResponses(List<Relationship> found) {
         Set<Long> companyIds = new HashSet<>();
         found.forEach(r -> {
             companyIds.add(r.getCompanyId());
@@ -78,7 +85,10 @@ public class RelationshipService {
                     r.getType(),
                     r.getProvides(),
                     r.getEvidence(),
-                    new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()));
+                    new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()),
+                    r.getReviewStatus(),
+                    r.getReviewedAt(),
+                    r.getReviewNote());
         }).toList();
     }
 
