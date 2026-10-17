@@ -6,14 +6,17 @@ import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import {
   buildGraphElements,
+  connectionsOf,
   dashOffsetAt,
   focusOn,
   formatWeight,
+  holdingNodeIds,
   holdingSize,
   type GraphNode,
   logoUrl,
   nodeLabel,
   plainName,
+  relationshipSummary,
   shortName,
   sharedCompanies,
   sharedSummary,
@@ -492,5 +495,70 @@ describe('withSharedSummaries', () => {
       'Taiwan Semiconductor Manufacturing Company Limited',
     ]);
     expect(marked.find((n) => n.name === 'NVIDIA Corporation')).toBe(nodes.find((n) => n.name === 'NVIDIA Corporation'));
+  });
+});
+
+describe('connectionsOf', () => {
+  const names = (list: { company: { name: string } }[]) => list.map((c) => c.company.name);
+
+  it("lists a holding's suppliers from its own report", () => {
+    const { suppliers, customers } = connectionsOf('1', sampleRelationships); // NVIDIA
+
+    expect(names(suppliers)).toEqual(['Taiwan Semiconductor Manufacturing Company Limited', 'Samsung Electronics Co., Ltd.']);
+    expect(customers).toEqual([]);
+  });
+
+  it("lists a holding's customers from its own report", () => {
+    const { suppliers, customers } = connectionsOf('7', sampleRelationships); // Cirrus Logic
+
+    expect(suppliers).toEqual([]);
+    expect(names(customers)).toEqual(['Apple Inc.']);
+  });
+
+  it('turns the relationship round for a company named in other reports', () => {
+    // TSMC supplies NVIDIA, AMD, QUALCOMM and Broadcom, and buys from Lam Research.
+    const { suppliers, customers } = connectionsOf('11', sampleRelationships);
+
+    expect(names(customers)).toEqual([
+      'NVIDIA Corporation',
+      'Advanced Micro Devices, Inc.',
+      'QUALCOMM Incorporated',
+      'Broadcom Inc.',
+    ]);
+    expect(names(suppliers)).toEqual(['Lam Research Corporation']);
+  });
+
+  it('lists a company once, even when two relationships link the same pair', () => {
+    const doubled = [...sampleRelationships, { ...sampleRelationships[0]!, id: 999 }];
+
+    expect(names(connectionsOf('1', doubled).suppliers)).toHaveLength(2);
+  });
+});
+
+describe('holdingNodeIds', () => {
+  it("finds each analysed holding's node, and leaves out one not on the graph", () => {
+    const holdings = [
+      ...sampleHoldings(),
+      { ...sampleHoldings()[0]!, id: 50, ticker: 'NEW', companyName: null, status: 'WAITING' as const },
+    ];
+    const { nodes } = buildGraphElements(sampleRelationships, holdings);
+
+    const ids = holdingNodeIds(holdings, nodes);
+
+    expect(ids.get(1)).toBe('1'); // NVIDIA, a company in the relationships
+    expect(ids.get(10)).toBe('holding-10'); // Sony, a holding with no relationships
+    expect(ids.has(50)).toBe(false);
+  });
+});
+
+describe('relationshipSummary', () => {
+  it('puts the supplier first, with plain names and what is supplied', () => {
+    expect(relationshipSummary(sampleRelationships[0]!)).toBe(
+      'Taiwan Semiconductor Manufacturing supplies NVIDIA: semiconductor wafers',
+    );
+  });
+
+  it('turns a customer relationship round, and leaves out what is supplied when the report does not say', () => {
+    expect(relationshipSummary(sampleRelationships[14]!)).toBe('Cirrus Logic supplies Apple');
   });
 });

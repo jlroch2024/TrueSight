@@ -1,15 +1,20 @@
-// The Supply Chain page: the open portfolio's holdings and their suppliers and customers, as a graph. Clicking an
-// edge shows the evidence it stands for.
+// The Supply Chain page: a workspace with the portfolio's holdings on the left, its suppliers and customers as a graph
+// in the middle, and the details of whatever is chosen on the right (the Inspector).
+//
+// One thing is chosen at a time: a company (from the graph, the holdings or the Inspector) or a relationship (an arrow,
+// or a supplier or customer in the Inspector). The graph keeps a chosen company in focus and centred, and draws a chosen
+// relationship's arrow selected. Clicking the graph's background lets go.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { type Holding, holdingApi } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
 import { settingsApi } from '../api/settings';
+import { HoldingsPanel } from '../components/HoldingsPanel';
+import { Inspector } from '../components/Inspector';
 import { SupplyChainGraph } from '../components/SupplyChainGraph';
 import { paths } from '../paths';
-import { buildGraphElements, sharedCompanies, sharedSummary, withSharedSummaries } from './supplyChain';
-import { openInNewTab, showInReportUrl } from '../format';
+import { type Selection, buildGraphElements, holdingNodeIds, sharedCompanies, withSharedSummaries } from './supplyChain';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -22,7 +27,7 @@ export function SupplyChainPage() {
   const [relationships, setRelationships] = useState<Relationship[] | undefined>(undefined);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selection, setSelection] = useState<Selection>(null);
   // Empty until the settings arrive, or when no Logo.dev token is set: the graph then shows letters.
   const [logoToken, setLogoToken] = useState('');
 
@@ -31,7 +36,7 @@ export function SupplyChainPage() {
     setRelationships(undefined);
     setHoldings([]);
     setError(null);
-    setSelectedId(null);
+    setSelection(null);
     Promise.all([
       relationshipApi.list(portfolioId),
       holdingApi.list(portfolioId),
@@ -56,11 +61,19 @@ export function SupplyChainPage() {
     () => buildGraphElements(relationships ?? [], holdings),
     [relationships, holdings],
   );
-  // The companies several holdings depend on: drawn amber on the graph, and listed under it, most shared first.
+  // The companies several holdings depend on: drawn amber on the graph, and listed in the left panel.
   const shared = useMemo(() => sharedCompanies(relationships ?? [], nodes), [relationships, nodes]);
   const graphNodes = useMemo(() => withSharedSummaries(nodes, shared), [nodes, shared]);
-  const handleEdgeSelect = useCallback((relationshipId: number) => setSelectedId(relationshipId), []);
-  const selected = relationships?.find((r) => r.id === selectedId) ?? null;
+  const nodeIdByHolding = useMemo(() => holdingNodeIds(holdings, nodes), [holdings, nodes]);
+
+  const selectNode = useCallback(
+    (nodeId: string | null) => setSelection(nodeId ? { kind: 'company', nodeId } : null),
+    [],
+  );
+  const selectRelationship = useCallback(
+    (relationshipId: number) => setSelection({ kind: 'relationship', relationshipId }),
+    [],
+  );
 
   if (error) return <p className="error">{error}</p>;
   if (relationships === undefined) return <p className="muted">Loading…</p>;
@@ -88,56 +101,46 @@ export function SupplyChainPage() {
   }
 
   return (
-    <section>
+    <section className="workspace-page">
       <h1>Supply Chain</h1>
-      <p className="muted">
-        Drag a company to rearrange the graph, scroll to zoom, point at a company to focus on its connections, and click an edge to see the evidence behind it.
-      </p>
+      <p className="muted">Who supplies your holdings and who buys from them, from their latest annual reports.</p>
 
-      <SupplyChainGraph nodes={graphNodes} edges={edges} onEdgeSelect={handleEdgeSelect} logoToken={logoToken} />
+      <div className="workspace">
+        <aside className="workspace-panel workspace-left" aria-label="Holdings">
+          <HoldingsPanel
+            holdings={holdings}
+            nodeIdByHolding={nodeIdByHolding}
+            relationships={relationships}
+            shared={shared}
+            selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
+            onSelect={selectNode}
+          />
+        </aside>
 
-      {selected && (
-        <div className="card evidence-panel">
-          <h2>
-            {selected.company.name} {selected.type === 'SUPPLIER' ? '\u2190' : '\u2192'} {selected.counterparty.name}
-          </h2>
-          <p className="muted small">
-            {selected.type === 'SUPPLIER'
-              ? `${selected.counterparty.name} supplies ${selected.company.name}`
-              : `${selected.counterparty.name} buys from ${selected.company.name}`}
-            {selected.provides ? `: ${selected.provides}.` : '.'}
-          </p>
-          <blockquote>{selected.evidence}</blockquote>
-          <p className="muted small">
-            {selected.report.form}, filed {selected.report.filingDate}
-          </p>
-          <button type="button" onClick={() => openInNewTab(showInReportUrl(selected.report.url, selected.evidence))}>
-            Show in Report
-          </button>
+        <div className="workspace-graph">
+          <SupplyChainGraph
+            nodes={graphNodes}
+            edges={edges}
+            onEdgeSelect={selectRelationship}
+            onNodeSelect={selectNode}
+            selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
+            selectedRelationshipId={selection?.kind === 'relationship' ? selection.relationshipId : null}
+            logoToken={logoToken}
+          />
+          <p className="graph-hint">Drag to move · Scroll to zoom · Click an arrow for its evidence</p>
         </div>
-      )}
 
-      <div className="card shared-companies">
-        <h2>Shared Suppliers and Customers</h2>
-        {shared.length === 0 ? (
-          <p className="muted small">No company outside your holdings supplies, or buys from, two or more of them.</p>
-        ) : (
-          <>
-            <p className="muted small">
-              Companies you do not hold that several of your holdings depend on, most shared first. If one runs into
-              trouble, all of those positions feel it.
-            </p>
-            <ol className="shared-list">
-              {shared.map((company) => (
-                <li key={company.id}>
-                  <span className="shared-name">{company.name}</span>
-                  {company.ticker && <span className="shared-ticker">{company.ticker}</span>}
-                  <span className="shared-summary">{sharedSummary(company)}</span>
-                </li>
-              ))}
-            </ol>
-          </>
-        )}
+        <aside className="workspace-panel workspace-inspector" aria-label="Inspector">
+          <Inspector
+            selection={selection}
+            nodes={graphNodes}
+            relationships={relationships}
+            holdings={holdings}
+            nodeIdByHolding={nodeIdByHolding}
+            onSelectNode={selectNode}
+            onSelectRelationship={selectRelationship}
+          />
+        </aside>
       </div>
     </section>
   );
