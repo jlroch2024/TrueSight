@@ -249,7 +249,7 @@ describe('Review page', () => {
   it("shows the backend's message when a decision is refused", async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string, init?: RequestInit) =>
+      vi.fn(async (_url: string, init?: RequestInit) =>
         init?.method === 'PUT'
           ? new Response(JSON.stringify({ message: 'Relationship not found.' }), { status: 404 })
           : new Response(JSON.stringify([item(1)])),
