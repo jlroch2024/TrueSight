@@ -16,3 +16,7 @@ export function checkSignUpPassword(password: string): string | null {
   if (password.length > 72) return 'Password must be 72 characters or fewer.';
   return null;
 }
+
+export function checkPasswordsMatch(password: string, confirm: string): string | null {
+  return password === confirm ? null : 'Passwords do not match.';
+}

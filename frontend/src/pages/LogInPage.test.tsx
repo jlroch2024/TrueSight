@@ -101,6 +101,6 @@ describe('LogInPage', () => {
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Sign Up' }));
-    expect(await screen.findByRole('heading', { name: 'Sign Up' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Create Your Account' })).toBeInTheDocument();
   });
 });
