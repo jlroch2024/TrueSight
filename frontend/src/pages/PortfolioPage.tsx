@@ -2,19 +2,11 @@
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../api/client';
-import { type Holding, type HoldingStatus, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
+import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
 import { paths } from '../paths';
-import { formatDateTime, openInNewTab } from '../format';
+import { STATUS_LABELS, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { portfolioSubtitle } from './portfolioSubtitle';
-
-const STATUS_LABELS: Record<HoldingStatus, string> = {
-  WAITING: 'Waiting',
-  ANALYSING: 'Analysing',
-  DONE: 'Done',
-  FAILED: 'Failed',
-  NO_REPORT_FOUND: 'No Report Found',
-};
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';

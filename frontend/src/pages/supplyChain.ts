@@ -271,3 +271,55 @@ export function withSharedSummaries(nodes: GraphNode[], shared: SharedCompany[])
     return sharedSummaryText === undefined ? node : { ...node, sharedSummary: sharedSummaryText };
   });
 }
+
+/** One of a company's suppliers or customers on the graph, with the relationship that links them. */
+export type Connection = { relationship: Relationship; company: Relationship['company'] };
+
+/**
+ * A company's suppliers and customers on the graph, each listed once, in the order the relationships came.
+ *
+ * The company can be either end of a relationship. As the relationship's own company: SUPPLIER means the counterparty
+ * supplies it, CUSTOMER that the counterparty buys from it. As the counterparty, the other way round.
+ */
+export function connectionsOf(nodeId: string, relationships: Relationship[]): { suppliers: Connection[]; customers: Connection[] } {
+  const suppliers = new Map<number, Connection>();
+  const customers = new Map<number, Connection>();
+  for (const relationship of relationships) {
+    const isCompany = String(relationship.company.id) === nodeId;
+    const isCounterparty = String(relationship.counterparty.id) === nodeId;
+    if (!isCompany && !isCounterparty) continue;
+    const other = isCompany ? relationship.counterparty : relationship.company;
+    const otherSupplies = (relationship.type === 'SUPPLIER') === isCompany;
+    const side = otherSupplies ? suppliers : customers;
+    if (!side.has(other.id)) side.set(other.id, { relationship, company: other });
+  }
+  return { suppliers: [...suppliers.values()], customers: [...customers.values()] };
+}
+
+/**
+ * Where each holding is on the graph: holding id to node id. A holding not on the graph (not analysed yet, or no
+ * report found) is missing. Matched by company name, as {@link buildGraphElements} does, because a holding does not
+ * carry a company id.
+ */
+export function holdingNodeIds(holdings: Holding[], nodes: GraphNode[]): Map<number, string> {
+  const nodeIdByName = new Map(nodes.map((node) => [node.name, node.id]));
+  const result = new Map<number, string>();
+  for (const holding of holdings) {
+    const nodeId = holding.companyName ? nodeIdByName.get(holding.companyName) : undefined;
+    if (nodeId) result.set(holding.id, nodeId);
+  }
+  return result;
+}
+
+/** A relationship in a sentence, supplier first: "Taiwan Semiconductor Manufacturing supplies NVIDIA: semiconductor wafers". */
+export function relationshipSummary(relationship: Relationship): string {
+  const [supplier, customer] =
+    relationship.type === 'SUPPLIER'
+      ? [relationship.counterparty, relationship.company]
+      : [relationship.company, relationship.counterparty];
+  const sentence = `${plainName(supplier.name)} supplies ${plainName(customer.name)}`;
+  return relationship.provides ? `${sentence}: ${relationship.provides}` : sentence;
+}
+
+/** What is chosen on the Supply Chain page: a company, a relationship, or nothing. */
+export type Selection = { kind: 'company'; nodeId: string } | { kind: 'relationship'; relationshipId: number } | null;
