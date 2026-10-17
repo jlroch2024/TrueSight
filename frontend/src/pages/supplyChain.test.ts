@@ -4,7 +4,16 @@ import { describe, expect, it } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
-import { buildGraphElements, dashOffsetAt, focusOn } from './supplyChain';
+import {
+  buildGraphElements,
+  dashOffsetAt,
+  focusOn,
+  formatWeight,
+  type GraphNode,
+  nodeLabel,
+  plainName,
+  shortName,
+} from './supplyChain';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
 
@@ -206,5 +215,115 @@ describe('dashOffsetAt', () => {
       expect(dashOffsetAt(elapsed)).toBeLessThanOrEqual(0);
       expect(dashOffsetAt(elapsed)).toBeGreaterThan(-13);
     }
+  });
+});
+
+describe('a holding\'s weight on the graph', () => {
+  it('is carried onto the holding\'s node, and left empty for other companies', () => {
+    const holdings = sampleHoldings().map((h) => (h.ticker === 'NVDA' ? { ...h, weight: 18 } : h));
+    const { nodes } = buildGraphElements(sampleRelationships, holdings);
+
+    expect(nodes.find((n) => n.name === 'NVIDIA Corporation')?.weight).toBe(18);
+    expect(nodes.find((n) => n.name === 'Taiwan Semiconductor Manufacturing Company Limited')?.weight).toBeNull();
+  });
+
+  it('is carried onto a holding with no relationships too', () => {
+    const holdings = sampleHoldings().map((h) => (h.ticker === 'SONY' ? { ...h, weight: 7.5 } : h));
+    const { nodes } = buildGraphElements(sampleRelationships, holdings);
+
+    expect(nodes.find((n) => n.name === 'Sony Group Corporation')?.weight).toBe(7.5);
+  });
+});
+
+// The names below are the real ones in docs/examples/relationships.json.
+describe('plainName', () => {
+  it('drops the legal ending', () => {
+    expect(plainName('NVIDIA Corporation')).toBe('NVIDIA');
+    expect(plainName('Apple Inc.')).toBe('Apple');
+    expect(plainName('QUALCOMM Incorporated')).toBe('QUALCOMM');
+    expect(plainName('STMicroelectronics N.V.')).toBe('STMicroelectronics');
+  });
+
+  it('drops the comma before the ending', () => {
+    expect(plainName('Advanced Micro Devices, Inc.')).toBe('Advanced Micro Devices');
+  });
+
+  it('drops endings one word at a time, so "Co., Ltd." and "Company Limited" both go', () => {
+    expect(plainName('Samsung Electronics Co., Ltd.')).toBe('Samsung Electronics');
+    expect(plainName('Taiwan Semiconductor Manufacturing Company Limited')).toBe('Taiwan Semiconductor Manufacturing');
+    expect(plainName('Contemporary Amperex Technology Co. Limited')).toBe('Contemporary Amperex Technology');
+  });
+
+  it('drops the SEC\'s registration mark after a slash', () => {
+    expect(plainName('QUALCOMM INC/DE')).toBe('QUALCOMM');
+  });
+
+  it('keeps words that can tell companies apart, such as "Holding"', () => {
+    expect(plainName('ASML Holding N.V.')).toBe('ASML Holding');
+  });
+
+  it('leaves a name with no legal ending as it is', () => {
+    expect(plainName('Carl Zeiss SMT')).toBe('Carl Zeiss SMT');
+    expect(plainName('Panasonic')).toBe('Panasonic');
+  });
+
+  it('never empties a name', () => {
+    expect(plainName('Company')).toBe('Company');
+  });
+});
+
+describe('shortName', () => {
+  it('is the plain name when that fits', () => {
+    expect(shortName('Broadcom Inc.')).toBe('Broadcom');
+    expect(shortName('SK hynix Inc.')).toBe('SK hynix');
+  });
+
+  it('cuts a long name with an ellipsis', () => {
+    const short = shortName('Contemporary Amperex Technology Co. Limited');
+    expect(short).toBe('Contemporary\u2026');
+    expect(short.length).toBeLessThanOrEqual(14);
+  });
+});
+
+describe('formatWeight', () => {
+  it('shows a weight as a percentage, without needless decimals', () => {
+    expect(formatWeight(18)).toBe('18%');
+    expect(formatWeight(12.5)).toBe('12.5%');
+    expect(formatWeight(3.333)).toBe('3.33%');
+  });
+
+  it('is empty when there is no weight', () => {
+    expect(formatWeight(null)).toBeNull();
+  });
+});
+
+describe('nodeLabel', () => {
+  const node = (overrides: Partial<GraphNode>): GraphNode => ({
+    id: 'n',
+    name: 'NVIDIA Corporation',
+    ticker: 'NVDA',
+    isHolding: true,
+    weight: 18,
+    ...overrides,
+  });
+
+  it('gives a holding its ticker and weight', () => {
+    expect(nodeLabel(node({}))).toBe('NVDA 18%');
+  });
+
+  it('gives a holding with no weight its ticker alone', () => {
+    expect(nodeLabel(node({ weight: null }))).toBe('NVDA');
+  });
+
+  it('gives another company with a ticker its ticker', () => {
+    expect(
+      nodeLabel(node({ name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM', isHolding: false, weight: null })),
+    ).toBe('TSM');
+  });
+
+  it('gives a company with no ticker a short name', () => {
+    expect(nodeLabel(node({ name: 'Samsung Electronics Co., Ltd.', ticker: null, isHolding: false, weight: null }))).toBe(
+      'Samsung Elect\u2026',
+    );
   });
 });

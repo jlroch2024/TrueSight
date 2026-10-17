@@ -3,7 +3,9 @@
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 
-export type GraphNode = { id: string; name: string; ticker: string | null; isHolding: boolean };
+// weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
+// had no weight.
+export type GraphNode = { id: string; name: string; ticker: string | null; isHolding: boolean; weight: number | null };
 export type GraphEdge = { id: string; source: string; target: string; relationshipId: number };
 
 /**
@@ -27,7 +29,7 @@ export function buildGraphElements(
       if (existing.ticker === null && ticker) existing.ticker = ticker;
       return;
     }
-    nodes.set(id, { id, name, ticker, isHolding });
+    nodes.set(id, { id, name, ticker, isHolding, weight: null });
   }
 
   const edges: GraphEdge[] = relationships.map((relationship) => {
@@ -50,15 +52,64 @@ export function buildGraphElements(
     if (!holding.companyName) continue; // not analysed yet, analysing, failed, or no report was found
     const existingId = nodeIdByName.get(holding.companyName);
     if (existingId) {
-      nodes.get(existingId)!.isHolding = true;
+      const existing = nodes.get(existingId)!;
+      existing.isHolding = true;
+      existing.weight = holding.weight;
       continue;
     }
     const id = `holding-${holding.id}`;
-    nodes.set(id, { id, name: holding.companyName, ticker: holding.ticker, isHolding: true });
+    nodes.set(id, { id, name: holding.companyName, ticker: holding.ticker, isHolding: true, weight: holding.weight });
     nodeIdByName.set(holding.companyName, id);
   }
 
   return { nodes: [...nodes.values()], edges };
+}
+
+// Endings that say nothing about which company it is, so the graph leaves them out. The same list the backend's
+// CompanyDirectory ignores when comparing names, so "Taiwan Semiconductor Manufacturing Co., Ltd." and
+// "... Company Limited" both become "Taiwan Semiconductor Manufacturing".
+const LEGAL_ENDINGS = new Set([
+  'inc', 'incorporated', 'corp', 'corporation', 'co', 'company', 'ltd', 'limited',
+  'plc', 'nv', 'sa', 'ag', 'se', 'llc', 'lp',
+]);
+
+/**
+ * A company's name without its legal ending: "NVIDIA Corporation" becomes "NVIDIA", "Advanced Micro Devices, Inc."
+ * becomes "Advanced Micro Devices". The SEC's registration mark after a slash ("QUALCOMM INC/DE") goes too. Endings
+ * are taken off the end one word at a time, so "Co., Ltd." loses both, and a name is never emptied: "Company" stays.
+ */
+export function plainName(name: string): string {
+  const words = name.replace(/\s*\/\s*[A-Za-z]+\s*\/?\s*$/, '').trim().split(/\s+/);
+  const ending = (word: string) => word.toLowerCase().replace(/[^a-z0-9]/g, '');
+  while (words.length > 1 && LEGAL_ENDINGS.has(ending(words[words.length - 1]!))) words.pop();
+  // The comma before a dropped ending ("Devices, Inc.") is left behind; remove it.
+  return words.join(' ').replace(/[\s,]+$/, '');
+}
+
+// The longest name that fits under a company's tile on the graph.
+export const SHORT_NAME_LENGTH = 14;
+
+/** A name short enough for the graph: its plain name, cut with an ellipsis if it is still too long. */
+export function shortName(name: string): string {
+  const plain = plainName(name);
+  if (plain.length <= SHORT_NAME_LENGTH) return plain;
+  return `${plain.slice(0, SHORT_NAME_LENGTH - 1).trimEnd()}\u2026`;
+}
+
+/** A holding's weight as a percentage: 18 becomes "18%", 12.5 "12.5%", 3.333 "3.33%". Null when there is none. */
+export function formatWeight(weight: number | null): string | null {
+  if (weight === null || !Number.isFinite(weight)) return null;
+  return `${Number(weight.toFixed(2))}%`;
+}
+
+/**
+ * The label under a company's tile: a holding's ticker and weight ("NVDA 18%"), otherwise its ticker, or a short
+ * name when it has no ticker.
+ */
+export function nodeLabel(node: GraphNode): string {
+  if (!node.ticker) return shortName(node.name);
+  const weight = node.isHolding ? formatWeight(node.weight) : null;
+  return weight ? `${node.ticker} ${weight}` : node.ticker;
 }
 
 /** The part of the graph that stays lit while one company is in focus. */

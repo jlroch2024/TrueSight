@@ -122,10 +122,10 @@ function runFrame(now: number) {
 // Three companies and two arrows that matter, and one that does not touch the focused company:
 //   supplier -> holding -> customer, and supplier -> other.
 const FOCUS_NODES: GraphNode[] = [
-  { id: 'supplier', name: 'Supplier', ticker: null, isHolding: false },
-  { id: 'holding', name: 'Holding', ticker: 'HLD', isHolding: true },
-  { id: 'customer', name: 'Customer', ticker: null, isHolding: false },
-  { id: 'other', name: 'Other', ticker: 'OTH', isHolding: true },
+  { id: 'supplier', name: 'Supplier', ticker: null, isHolding: false, weight: null },
+  { id: 'holding', name: 'Holding', ticker: 'HLD', isHolding: true, weight: null },
+  { id: 'customer', name: 'Customer', ticker: null, isHolding: false, weight: null },
+  { id: 'other', name: 'Other', ticker: 'OTH', isHolding: true, weight: null },
 ];
 const FOCUS_EDGES: GraphEdge[] = [
   { id: 'relationship-1', source: 'supplier', target: 'holding', relationshipId: 1 },
@@ -182,7 +182,7 @@ describe('SupplyChainGraph', () => {
   });
 
   it('uses blueprint colors, square nodes and a mono font for tickers', () => {
-    drawGraph([{ id: 'holding-1', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true }]);
+    drawGraph([{ id: 'holding-1', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true, weight: null }]);
 
     const options = made.options as { elements: Array<{ data: { label: string; ticker: number } }>; style: unknown[] };
     expect(options.elements[0].data).toMatchObject({ label: 'NVDA', ticker: 1 });
