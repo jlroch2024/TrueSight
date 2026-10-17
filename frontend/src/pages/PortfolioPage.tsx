@@ -5,6 +5,7 @@ import { ApiError, api } from '../api/client';
 import { type Holding, type HoldingStatus, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
 import { paths } from '../paths';
 import { formatDateTime, openInNewTab } from '../format';
+import { CheckNewsButton } from '../components/CheckNewsButton';
 
 const STATUS_LABELS: Record<HoldingStatus, string> = {
   WAITING: 'Waiting',
@@ -120,9 +121,12 @@ export function PortfolioPage() {
           <h1>{portfolio.name}</h1>
           <p className="muted">Annual reports for each company in this portfolio.</p>
         </div>
-        <button type="button" onClick={startAnalysis} disabled={starting || running || !holdings.length}>
-          {starting ? 'Starting…' : 'Analyse'}
-        </button>
+        <div className="page-actions">
+          <button type="button" onClick={startAnalysis} disabled={starting || running || !holdings.length}>
+            {starting ? 'Starting…' : 'Analyse'}
+          </button>
+          <CheckNewsButton portfolio={portfolio} onChange={setPortfolio} />
+        </div>
       </div>
 
       <div className="upload-row">
