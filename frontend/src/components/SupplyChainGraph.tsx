@@ -86,15 +86,34 @@ type Props = {
   nodes: GraphNode[];
   edges: GraphEdge[];
   onEdgeSelect: (relationshipId: number) => void;
+  // A company clicked on the graph, or null when the background is clicked.
+  onNodeSelect?: (nodeId: string | null) => void;
+  // The company chosen on the page (from the graph or a list beside it): kept in focus and centred while set.
+  selectedNodeId?: string | null;
+  // The relationship chosen on the page: its arrow is drawn selected.
+  selectedRelationshipId?: number | null;
   // The Logo.dev token from GET /api/settings. Empty when none is set: every company then shows its letter.
   logoToken?: string;
 };
 
-export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }: Props) {
+export function SupplyChainGraph({
+  nodes,
+  edges,
+  onEdgeSelect,
+  onNodeSelect,
+  selectedNodeId = null,
+  selectedRelationshipId = null,
+  logoToken = '',
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const onEdgeSelectRef = useRef(onEdgeSelect);
   onEdgeSelectRef.current = onEdgeSelect;
+  const onNodeSelectRef = useRef(onNodeSelect);
+  onNodeSelectRef.current = onNodeSelect;
+  // Read by the graph's own handlers: pointing away from a company goes back to the chosen one, not to nothing.
+  const selectedNodeRef = useRef(selectedNodeId);
+  selectedNodeRef.current = selectedNodeId;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -251,27 +270,21 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
       onEdgeSelectRef.current(event.target.data('relationshipId') as number);
     });
 
-    // Focus: light one company and its direct connections, fade the rest.
-    const clearFocus = () => {
-      cy.nodes().removeClass('faded');
-      cy.edges().removeClass('faded');
-    };
-    const focus = (nodeId: string) => {
-      const { nodeIds, edgeIds } = focusOn(nodeId, edges);
-      cy.nodes().forEach((node) => {
-        node.toggleClass('faded', !nodeIds.has(node.id()));
-      });
-      cy.edges().forEach((edge) => {
-        edge.toggleClass('faded', !edgeIds.has(edge.id()));
-      });
-    };
-    cy.on('mouseover', 'node', (event) => focus(event.target.id()));
-    cy.on('mouseout', 'node', clearFocus);
-    // A touch screen has no hover: tapping a company focuses it, and tapping the background lets go.
-    cy.on('tap', 'node', (event) => focus(event.target.id()));
-    cy.on('tap', (event) => {
-      if (event.target === cy) clearFocus();
+    // Focus: pointing at a company lights it and its direct connections, and fades the rest. Pointing away goes back
+    // to the chosen company, if there is one. Clicking a company chooses it; clicking the background lets go.
+    cy.on('mouseover', 'node', (event) => applyFocus(cy, edges, event.target.id()));
+    cy.on('mouseout', 'node', () => applyFocus(cy, edges, selectedNodeRef.current));
+    cy.on('tap', 'node', (event) => {
+      applyFocus(cy, edges, event.target.id());
+      onNodeSelectRef.current?.(event.target.id());
     });
+    cy.on('tap', (event) => {
+      if (event.target !== cy) return;
+      applyFocus(cy, edges, null);
+      cy.edges().unselect();
+      onNodeSelectRef.current?.(null);
+    });
+    applyFocus(cy, edges, selectedNodeRef.current);
 
     // Moving dashes. The offset gets smaller over time, which is what carries the dashes from supplier to customer.
     let frame: number | undefined;
@@ -303,6 +316,23 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
     // throw away its pan, zoom and node positions.
   }, [nodes, edges, logoToken]);
 
+  // The company chosen on the page stays in focus, and is centred when it is chosen.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || cy.destroyed()) return;
+    applyFocus(cy, edges, selectedNodeId);
+    const node = selectedNodeId ? cy.getElementById(selectedNodeId) : null;
+    if (node && node.nonempty()) cy.animate({ center: { eles: node }, duration: 300 });
+  }, [selectedNodeId, edges]);
+
+  // The relationship chosen on the page has its arrow drawn selected.
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy || cy.destroyed()) return;
+    cy.edges().unselect();
+    if (selectedRelationshipId !== null) cy.edges(`[relationshipId = ${selectedRelationshipId}]`).select();
+  }, [selectedRelationshipId, nodes, edges]);
+
   // Brings every company back into view, however far the user has zoomed, panned or dragged.
   function fitToScreen() {
     const cy = cyRef.current;
@@ -319,4 +349,19 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
       </div>
     </div>
   );
+}
+
+/** Lights one company and its direct suppliers and customers, and fades the rest; with none, lights everything. */
+function applyFocus(cy: Core, edges: GraphEdge[], nodeId: string | null): void {
+  if (!nodeId || cy.getElementById(nodeId).empty()) {
+    cy.elements().removeClass('faded');
+    return;
+  }
+  const { nodeIds, edgeIds } = focusOn(nodeId, edges);
+  cy.nodes().forEach((node) => {
+    node.toggleClass('faded', !nodeIds.has(node.id()));
+  });
+  cy.edges().forEach((edge) => {
+    edge.toggleClass('faded', !edgeIds.has(edge.id()));
+  });
 }

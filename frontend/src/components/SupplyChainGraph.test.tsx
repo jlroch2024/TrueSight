@@ -30,7 +30,10 @@ const made: {
   dataSet: Array<[string, string, unknown]>;
   // Every logo the graph started loading.
   images: FakeImage[];
+  // The selectors of the arrows the graph drew selected, e.g. "[relationshipId = 2]".
+  selectedEdges: string[];
 } = {
+  selectedEdges: [],
   dataSet: [],
   images: [],
   layouts: [],
@@ -70,14 +73,22 @@ function fake(id: string): Fake {
   return item;
 }
 
-function collection(items: Fake[], style?: ReturnType<typeof vi.fn>) {
+function collection(items: Fake[], style?: ReturnType<typeof vi.fn>, selector?: string) {
   return {
     forEach: (fn: (item: Fake) => void) => items.forEach((item) => fn(item)),
     removeClass: (name: string) => items.forEach((item) => item.removeClass(name)),
     unselect: vi.fn(),
+    select: () => {
+      if (selector) made.selectedEdges.push(selector);
+    },
     style: style ?? vi.fn(),
   };
 }
+
+// What cy.elements() answers: every company and arrow at once.
+const everyElement = {
+  removeClass: (name: string) => [...made.nodes, ...made.edges].forEach((item) => item.removeClass(name)),
+};
 
 vi.mock('cytoscape-cola', () => ({ default: {} }));
 vi.mock('cytoscape', () => {
@@ -107,12 +118,17 @@ vi.mock('cytoscape', () => {
         else made.handlers.set(event, selectorOrHandler);
       },
       animate: made.animate,
-      elements: () => 'every element',
+      elements: () => everyElement,
       nodes: () => collection(made.nodes),
-      edges: () => collection(made.edges, made.style),
-      getElementById: (id: string) => ({
-        data: (field: string, value: unknown) => made.dataSet.push([id, field, value]),
-      }),
+      edges: (selector?: string) => collection(made.edges, made.style, selector),
+      getElementById: (id: string) => {
+        const exists = made.nodes.some((node) => node.id() === id);
+        return {
+          data: (field: string, value: unknown) => made.dataSet.push([id, field, value]),
+          empty: () => !exists,
+          nonempty: () => exists,
+        };
+      },
       destroyed: () => false,
       destroy: vi.fn(),
     };
@@ -167,6 +183,7 @@ beforeEach(() => {
   made.edges = [];
   made.style.mockClear();
   made.frames = [];
+  made.selectedEdges = [];
   made.dataSet = [];
   made.images = [];
   vi.stubGlobal('Image', FakeImage);
@@ -202,7 +219,7 @@ describe('SupplyChainGraph', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Fit to Screen' }));
 
-    expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: 'every element', padding: 40 } }));
+    expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: everyElement, padding: 40 } }));
   });
 
   it('uses blueprint colors, square nodes and a mono font for tickers', () => {
@@ -297,6 +314,38 @@ describe('SupplyChainGraph', () => {
       made.handlers.get('tap')!({ target: made.cy });
 
       expect(fadedIds()).toEqual([]);
+    });
+
+    it('keeps the company chosen on the page in focus, and centres it', () => {
+      render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} selectedNodeId="holding" />);
+
+      expect(fadedIds()).toEqual(['other', 'relationship-3']);
+      expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ center: expect.anything() }));
+    });
+
+    it('goes back to the chosen company when the pointer moves off another one', () => {
+      render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} selectedNodeId="holding" />);
+      made.handlers.get('mouseover node')!({ target: made.nodes[3] }); // other
+
+      made.handlers.get('mouseout node')!({ target: made.nodes[3] });
+
+      expect(fadedIds()).toEqual(['other', 'relationship-3']);
+    });
+
+    it('reports a company clicked, and nothing chosen when the background is clicked', () => {
+      const onNodeSelect = vi.fn();
+      render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} onNodeSelect={onNodeSelect} />);
+
+      made.handlers.get('tap node')!({ target: made.nodes[0] });
+      made.handlers.get('tap')!({ target: made.cy });
+
+      expect(onNodeSelect.mock.calls).toEqual([['supplier'], [null]]);
+    });
+
+    it('draws the arrow of the relationship chosen on the page selected', () => {
+      render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} selectedRelationshipId={2} />);
+
+      expect(made.selectedEdges).toEqual(['[relationshipId = 2]']);
     });
 
     it('leaves the focus alone when something other than the background is tapped', () => {

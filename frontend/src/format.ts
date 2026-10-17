@@ -1,3 +1,14 @@
+import type { HoldingStatus } from './api/portfolios';
+
+// How each holding status reads on the page.
+export const STATUS_LABELS: Record<HoldingStatus, string> = {
+  WAITING: 'Waiting',
+  ANALYSING: 'Analysing',
+  DONE: 'Done',
+  FAILED: 'Failed',
+  NO_REPORT_FOUND: 'No Report Found',
+};
+
 export function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';

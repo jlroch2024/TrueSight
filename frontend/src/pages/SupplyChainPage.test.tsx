@@ -4,10 +4,11 @@
 // SupplyChainGraph.tsx). It is replaced here with a fake that renders one button per edge, so a click can be
 // simulated without a browser. What the real graph draws (nodes, shapes, colours) is Cytoscape's own job; what goes
 // into it is buildGraphElements, already tested on its own in supplyChain.test.ts.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { tokenStore } from '../api/client';
@@ -19,22 +20,36 @@ vi.mock('../components/SupplyChainGraph', () => ({
     nodes,
     edges,
     onEdgeSelect,
+    onNodeSelect,
+    selectedNodeId,
+    selectedRelationshipId,
     logoToken,
   }: {
     nodes: GraphNode[];
     edges: GraphEdge[];
     onEdgeSelect: (relationshipId: number) => void;
+    onNodeSelect?: (nodeId: string | null) => void;
+    selectedNodeId?: string | null;
+    selectedRelationshipId?: number | null;
     logoToken?: string;
   }) => (
     <div data-testid="fake-graph">
       <span data-testid="logo-token">{logoToken}</span>
       <span data-testid="node-count">{nodes.length}</span>
       <span data-testid="edge-count">{edges.length}</span>
+      <span data-testid="selected-node">{selectedNodeId ?? ''}</span>
+      <span data-testid="selected-relationship">{selectedRelationshipId ?? ''}</span>
       {edges.map((edge) => (
         <button key={edge.id} onClick={() => onEdgeSelect(edge.relationshipId)}>
           {`Select edge ${edge.relationshipId}`}
         </button>
       ))}
+      {nodes.map((node) => (
+        <button key={node.id} onClick={() => onNodeSelect?.(node.id)}>
+          {`Select company ${node.id}`}
+        </button>
+      ))}
+      <button onClick={() => onNodeSelect?.(null)}>Click the background</button>
     </div>
   ),
 }));
@@ -224,7 +239,7 @@ describe('Supply Chain page', () => {
       holding({ id: 3, ticker: 'QCOM', companyName: qualcomm.name }),
     ];
 
-    it('lists the companies several holdings depend on under the graph, most shared first', async () => {
+    it('lists the companies several holdings depend on in the left panel, most shared first', async () => {
       const relationships = [
         relationship({ id: 1, company: nvidia, counterparty: samsung }),
         relationship({ id: 2, company: amd, counterparty: samsung }),
@@ -238,22 +253,138 @@ describe('Supply Chain page', () => {
       renderAt('/portfolios/7/supply-chain');
 
       await screen.findByTestId('fake-graph');
-      const items = screen.getAllByRole('listitem').map((item) => item.textContent);
-      expect(items).toEqual([
-        'Taiwan Semiconductor Manufacturing Company LimitedTSMSupplies 3 holdings',
-        'Samsung Electronics Co., Ltd.Supplies 2 holdings',
+      const panel = screen.getByRole('complementary', { name: 'Holdings' });
+      expect(within(panel).getByRole('heading', { name: 'Shared Suppliers and Customers' })).toBeInTheDocument();
+      const shared = within(panel).getAllByRole('button').filter((button) => button.classList.contains('shared'));
+      expect(shared.map((button) => button.textContent)).toEqual([
+        'TSMTaiwan Semiconductor ManufacturingSupplies 3 holdings',
+        'Samsung ElectronicsSupplies 2 holdings',
       ]);
-      expect(screen.queryByText('Micron Technology, Inc.')).not.toBeInTheDocument();
+      expect(within(panel).queryByText(/Micron/)).not.toBeInTheDocument();
     });
 
-    it('says so when no company is shared', async () => {
+    it('chooses a shared company on the graph when it is clicked in the panel', async () => {
+      const relationships = [
+        relationship({ id: 1, company: nvidia, counterparty: samsung }),
+        relationship({ id: 2, company: amd, counterparty: samsung }),
+      ];
+      vi.stubGlobal('fetch', fakeFetch(relationships, holdings));
+      renderAt('/portfolios/7/supply-chain');
+      await screen.findByTestId('fake-graph');
+
+      await userEvent.click(screen.getByRole('button', { name: /Samsung Electronics/ }));
+
+      expect(screen.getByTestId('selected-node')).toHaveTextContent('12');
+    });
+
+    it('leaves the section out, with no empty card under the graph, when no company is shared', async () => {
       vi.stubGlobal('fetch', fakeFetch([relationship()], [holding()]));
 
       renderAt('/portfolios/7/supply-chain');
 
       await screen.findByTestId('fake-graph');
-      expect(screen.getByText(/supplies, or buys from, two or more of them/)).toBeInTheDocument();
-      expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+      expect(screen.queryByRole('heading', { name: 'Shared Suppliers and Customers' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/two or more of them/)).not.toBeInTheDocument();
     });
+  });
+});
+
+// The real samples: NVIDIA names TSMC as a supplier; Cirrus Logic names Apple as its customer.
+const sampleRelationships = sampleRelationshipsJson as Relationship[];
+
+describe('Supply Chain workspace', () => {
+  const relationships = [sampleRelationships[0]!, sampleRelationships[14]!];
+  const holdings = [
+    holding({ id: 1, ticker: 'NVDA', companyName: 'NVIDIA Corporation', weight: 18 }),
+    holding({ id: 2, ticker: 'CRUS', companyName: 'Cirrus Logic, Inc.', weight: null }),
+    holding({ id: 3, ticker: 'NEW', companyName: null, weight: 30, status: 'WAITING', reportType: null, reportLink: null }),
+  ];
+
+  async function openWorkspace() {
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+  }
+
+  const inspector = () => screen.getByRole('complementary', { name: 'Inspector' });
+  const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings' });
+
+  it('shows the holdings, the graph and the Inspector side by side, with nothing chosen yet', async () => {
+    await openWorkspace();
+
+    expect(holdingsPanel()).toBeInTheDocument();
+    expect(screen.getByTestId('fake-graph')).toBeInTheDocument();
+    expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Who supplies your holdings and who buys from them, from their latest annual reports.'),
+    ).toBeInTheDocument();
+  });
+
+  it('lists holdings largest first, each with its weight and how many suppliers and customers it has', async () => {
+    await openWorkspace();
+
+    const rows = within(holdingsPanel()).getAllByRole('listitem').map((row) => row.textContent);
+    expect(rows).toEqual([
+      'NEW30%Waiting',
+      'NVDANVIDIA18%1 supplier · 0 customers',
+      'CRUSCirrus Logic0 suppliers · 1 customer',
+    ]);
+  });
+
+  it('greys a holding without a report, with its status, and does not let it be chosen', async () => {
+    await openWorkspace();
+
+    const waiting = within(holdingsPanel()).getByText('NEW').closest('li')!;
+    expect(waiting).toHaveClass('unavailable');
+    expect(within(waiting).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('chooses a holding from the panel: the graph focuses it, and the Inspector shows it', async () => {
+    await openWorkspace();
+
+    await userEvent.click(within(holdingsPanel()).getByRole('button', { name: /NVDA/ }));
+
+    expect(screen.getByTestId('selected-node')).toHaveTextContent('1');
+    expect(within(inspector()).getByRole('heading', { name: 'NVIDIA Corporation' })).toBeInTheDocument();
+    expect(within(inspector()).getByText('Holding · 18% of the portfolio')).toBeInTheDocument();
+    expect(within(inspector()).getByText('10-K, filed 2026-02-25')).toBeInTheDocument();
+  });
+
+  it("shows a company clicked on the graph with its suppliers and customers, and opens one's relationship", async () => {
+    await openWorkspace();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 11' })); // TSMC
+
+    expect(within(inspector()).getByText('Not held')).toBeInTheDocument();
+    const customers = within(inspector()).getByRole('region', { name: 'Customers' });
+    await userEvent.click(within(customers).getByRole('button', { name: /NVDA/ }));
+
+    expect(
+      within(inspector()).getByRole('heading', { name: 'Taiwan Semiconductor Manufacturing supplies NVIDIA: semiconductor wafers' }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('selected-relationship')).toHaveTextContent('1');
+  });
+
+  it('shows an arrow clicked on the graph in the Inspector, with its evidence and Show in Report', async () => {
+    await openWorkspace();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 15' }));
+
+    expect(within(inspector()).getByRole('heading', { name: 'Cirrus Logic supplies Apple' })).toBeInTheDocument();
+    expect(within(inspector()).getByText(sampleRelationships[14]!.evidence)).toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: 'Show in Report' })).toBeInTheDocument();
+
+    await userEvent.click(within(inspector()).getByRole('button', { name: /AAPL/ }));
+    expect(screen.getByTestId('selected-node')).toHaveTextContent('18');
+  });
+
+  it('lets go of the choice when the background is clicked', async () => {
+    await openWorkspace();
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Click the background' }));
+
+    expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
+    expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
   });
 });
