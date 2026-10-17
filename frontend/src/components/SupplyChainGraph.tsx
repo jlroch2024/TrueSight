@@ -1,5 +1,10 @@
 // Draws the supply chain as an interactive graph: Cytoscape.js, laid out with cytoscape-cola.
 //
+// Each company is a square tile with its logo from Logo.dev, or its first letter while the logo loads, when Logo.dev
+// does not know the company, or when there is no Logo.dev token. Its label sits underneath (a holding's ticker and
+// weight, otherwise its ticker or a short name), on a patch of the panel's colour, so it stays readable where an arrow
+// passes behind it. Holdings have a teal border.
+//
 // Layout: first the companies settle while the view fits them all; then the physics keeps running, so connected
 // companies keep pulling together while the user drags one, and shared suppliers stand out. The view is fitted once
 // more shortly after, unless the user has already zoomed, panned or dragged, and Fit to Screen brings everything back
@@ -14,7 +19,16 @@
 import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import { useEffect, useRef } from 'react';
-import { DASH_PATTERN, dashOffsetAt, focusOn, type GraphEdge, type GraphNode } from '../pages/supplyChain';
+import {
+  DASH_PATTERN,
+  dashOffsetAt,
+  focusOn,
+  type GraphEdge,
+  type GraphNode,
+  logoUrl,
+  nodeLabel,
+  plainName,
+} from '../pages/supplyChain';
 
 cytoscape.use(cola);
 
@@ -24,6 +38,27 @@ const LIME = '#c4f36a';
 const MUTED = '#8ba9a5';
 const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
+const PANEL = '#0b2028';
+const PANEL_RAISED = '#102a33';
+
+// Each company's square tile, and the teal border that marks a holding.
+const TILE_SIZE = 44;
+const HOLDING_BORDER_WIDTH = 3;
+
+/**
+ * A company's first letter on a tile, as a picture Cytoscape can draw where the logo would be. A canvas cannot use the
+ * page's web fonts inside a picture, so it names the usual system fonts.
+ */
+function letterTile(name: string): string {
+  const letter = (plainName(name).match(/[A-Za-z0-9]/)?.[0] ?? '?').toUpperCase();
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
+    `<rect width="64" height="64" fill="${PANEL_RAISED}"/>` +
+    `<text x="32" y="33" text-anchor="middle" dominant-baseline="central" fill="${TEXT}" ` +
+    `font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="30" font-weight="600">` +
+    `${letter}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
 // How faded the companies and arrows outside the focus are.
 const FADED_OPACITY = 0.15;
@@ -44,9 +79,11 @@ type Props = {
   nodes: GraphNode[];
   edges: GraphEdge[];
   onEdgeSelect: (relationshipId: number) => void;
+  // The Logo.dev token from GET /api/settings. Empty when none is set: every company then shows its letter.
+  logoToken?: string;
 };
 
-export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
+export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const onEdgeSelectRef = useRef(onEdgeSelect);
@@ -58,7 +95,14 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
 
     const elements: ElementDefinition[] = [
       ...nodes.map((node) => ({
-        data: { id: node.id, label: node.ticker ?? node.name, holding: node.isHolding ? 1 : 0, ticker: node.ticker ? 1 : 0 },
+        data: {
+          id: node.id,
+          label: nodeLabel(node),
+          // The letter first; swapped for the logo once it has loaded (below).
+          image: letterTile(node.name),
+          holding: node.isHolding ? 1 : 0,
+          ticker: node.ticker ? 1 : 0,
+        },
       })),
       ...edges.map((edge) => ({
         data: { id: edge.id, source: edge.source, target: edge.target, relationshipId: edge.relationshipId },
@@ -78,25 +122,32 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
         {
           selector: 'node',
           style: {
+            shape: 'rectangle',
+            width: TILE_SIZE,
+            height: TILE_SIZE,
+            'background-color': PANEL_RAISED,
+            'background-image': 'data(image)',
+            'background-fit': 'contain',
+            'border-width': 1,
+            'border-color': BORDER,
+            // The label sits under the tile, on a patch of the panel's colour that hides any arrow behind it.
             label: 'data(label)',
             color: TEXT,
             'font-size': 11,
-            'text-valign': 'center',
+            'text-valign': 'bottom',
             'text-halign': 'center',
-            'text-wrap': 'wrap',
-            'text-max-width': '70px',
-            'background-color': MUTED,
-            shape: 'rectangle',
-            width: 46,
-            height: 46,
-            'border-width': 1,
-            'border-color': BORDER,
+            'text-margin-y': 5,
+            'text-wrap': 'none',
+            'text-background-color': PANEL,
+            'text-background-opacity': 1,
+            'text-background-padding': '2px',
+            'text-background-shape': 'rectangle',
           },
         },
-        // Holdings look different in shape as well as colour, so they stand out from suppliers and customers.
+        // Holdings have a teal border, so they stand out from suppliers and customers.
         {
           selector: 'node[holding = 1]',
-          style: { 'background-color': ACCENT, color: '#041714', shape: 'rectangle', width: 60, height: 46 },
+          style: { 'border-width': HOLDING_BORDER_WIDTH, 'border-color': ACCENT },
         },
         {
           selector: 'node[ticker = 1]',
@@ -155,6 +206,22 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
       settle.run();
     }
 
+    // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
+    // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
+    // Logo.dev allows, so the check loads them the same way.
+    const logos: HTMLImageElement[] = [];
+    for (const node of nodes) {
+      const url = logoUrl(node, logoToken);
+      if (!url) continue;
+      const logo = new Image();
+      logo.crossOrigin = 'anonymous';
+      logo.onload = () => {
+        if (!cy.destroyed()) cy.getElementById(node.id).data('image', url);
+      };
+      logo.src = url;
+      logos.push(logo);
+    }
+
     cy.on('tap', 'edge', (event) => {
       cy.edges().unselect();
       event.target.select();
@@ -198,6 +265,9 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
 
     return () => {
       if (frame !== undefined) window.cancelAnimationFrame(frame);
+      logos.forEach((logo) => {
+        logo.onload = null;
+      });
       window.clearTimeout(refit);
       container.removeEventListener('pointerdown', noteUserMoved);
       container.removeEventListener('wheel', noteUserMoved);
@@ -208,7 +278,7 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect }: Props) {
     // onEdgeSelect is deliberately left out: it is read through the ref above, so that selecting an edge (which
     // changes the page's state, and so gives onEdgeSelect a new identity) does not recreate the whole graph and
     // throw away its pan, zoom and node positions.
-  }, [nodes, edges]);
+  }, [nodes, edges, logoToken]);
 
   // Brings every company back into view, however far the user has zoomed, panned or dragged.
   function fitToScreen() {

@@ -19,12 +19,15 @@ vi.mock('../components/SupplyChainGraph', () => ({
     nodes,
     edges,
     onEdgeSelect,
+    logoToken,
   }: {
     nodes: GraphNode[];
     edges: GraphEdge[];
     onEdgeSelect: (relationshipId: number) => void;
+    logoToken?: string;
   }) => (
     <div data-testid="fake-graph">
+      <span data-testid="logo-token">{logoToken}</span>
       <span data-testid="node-count">{nodes.length}</span>
       <span data-testid="edge-count">{edges.length}</span>
       {edges.map((edge) => (
@@ -73,10 +76,16 @@ function holding(overrides: Partial<Holding> = {}): Holding {
   };
 }
 
-function fakeFetch(relationships: Relationship[], holdings: Holding[]) {
-  return vi.fn(async (url: string) =>
-    new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings)),
-  );
+// Answers the page's three calls. settings is GET /api/settings's answer, or a status code for it to fail with.
+function fakeFetch(relationships: Relationship[], holdings: Holding[], settings: { logoToken: string } | number = { logoToken: '' }) {
+  return vi.fn(async (url: string) => {
+    if (url.endsWith('/settings')) {
+      return typeof settings === 'number'
+        ? new Response(JSON.stringify({ message: 'Something went wrong.' }), { status: settings })
+        : new Response(JSON.stringify(settings));
+    }
+    return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
+  });
 }
 
 function renderAt(path: string) {
@@ -175,5 +184,26 @@ describe('Supply Chain page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Select edge 2' }));
     expect(screen.getByText('Samsung also supplies us with memory.')).toBeInTheDocument();
     expect(screen.queryByText(tsmcSentence)).not.toBeInTheDocument();
+  });
+
+  it('gives the graph the Logo.dev token from the settings', async () => {
+    const fetch = fakeFetch([relationship()], [holding()], { logoToken: 'pk_test_token' });
+    vi.stubGlobal('fetch', fetch);
+
+    renderAt('/portfolios/7/supply-chain');
+
+    expect(await screen.findByTestId('logo-token')).toHaveTextContent('pk_test_token');
+    expect(fetch).toHaveBeenCalledWith('/api/settings', expect.anything());
+  });
+
+  it('still shows the graph, without logos, when the settings cannot be fetched', async () => {
+    vi.stubGlobal('fetch', fakeFetch([relationship()], [holding()], 500));
+
+    renderAt('/portfolios/7/supply-chain');
+
+    expect(await screen.findByTestId('fake-graph')).toBeInTheDocument();
+    expect(screen.getByTestId('edge-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('logo-token')).toBeEmptyDOMElement();
+    expect(screen.queryByText('Something went wrong.')).not.toBeInTheDocument();
   });
 });
