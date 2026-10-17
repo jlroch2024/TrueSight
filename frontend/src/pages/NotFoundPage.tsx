@@ -7,9 +7,8 @@ export function NotFoundPage() {
   return (
     <section>
       <h1>Page Not Found</h1>
-      <p className="muted">
-        This page does not exist. <button type="button" className="inline-action" onClick={() => navigate(paths.home)}>Go to Home</button>
-      </p>
+      <p className="muted">This page does not exist.</p>
+      <button type="button" onClick={() => navigate(paths.portfolios)}>Open My Portfolios</button>
     </section>
   );
 }

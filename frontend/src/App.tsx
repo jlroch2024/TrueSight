@@ -10,9 +10,9 @@ import { Route, Routes, useNavigate } from 'react-router';
 import { setLoggedOutHandler } from './api/client';
 import { Layout } from './components/Layout';
 import { RequireLogIn } from './components/RequireLogIn';
-import { HomePage } from './pages/HomePage';
 import { LogInPage } from './pages/LogInPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { OpenFirstPortfolioPage } from './pages/OpenFirstPortfolioPage';
 import { PortfolioPage } from './pages/PortfolioPage';
 import { PortfoliosPage } from './pages/PortfoliosPage';
 import { SignUpPage } from './pages/SignUpPage';
@@ -33,7 +33,7 @@ export function App() {
       <Route path={paths.signUp} element={<SignUpPage />} />
       <Route element={<RequireLogIn />}>
         <Route element={<Layout />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<OpenFirstPortfolioPage />} />
           <Route path={paths.portfolios} element={<PortfoliosPage />} />
           <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
           <Route path={paths.supplyChain(':portfolioId')} element={<SupplyChainPage />} />
