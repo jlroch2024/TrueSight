@@ -1,5 +1,6 @@
 package com.truesight.news;
 
+import com.truesight.relationship.GeminiClient;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -51,6 +52,9 @@ public class NewsCheckJob {
             }
             steps.run(portfolioId);
             service.finish(portfolioId, Instant.now());
+        } catch (GeminiClient.GeminiException exception) {
+            // The articles the AI did not judge stay unassessed, so the next Check News sends them again.
+            service.fail(portfolioId, NewsAssessor.AI_FAILED);
         } catch (RuntimeException exception) {
             service.fail(portfolioId, "News could not be checked. Please try again later.");
         }

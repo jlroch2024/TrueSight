@@ -35,6 +35,16 @@ public final class Examples {
         return read("gemini-news-assessment.json");
     }
 
+    /** The team's hand labels, event or noise, for the 20 headlines in {@link #geminiNewsAssessment()}. */
+    public static String newsLabels() {
+        return read("news-labels.csv");
+    }
+
+    /** docs/examples/README.md, which states how often Gemini agreed with {@link #newsLabels()}. */
+    public static String readme() {
+        return read("README.md");
+    }
+
     private static String read(String name) {
         try {
             return Files.readString(Path.of("..", "docs", "examples", name), StandardCharsets.UTF_8);
