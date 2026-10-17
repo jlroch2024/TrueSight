@@ -18,14 +18,54 @@ function renderSignUp() {
   );
 }
 
-async function signUp(email: string, password: string) {
+async function signUp(email: string, password: string, confirm = password) {
   const user = userEvent.setup();
   await user.type(screen.getByLabelText('Email'), email);
   await user.type(screen.getByLabelText('Password'), password);
+  if (confirm) await user.type(screen.getByLabelText('Confirm Password'), confirm);
   await user.click(screen.getByRole('button', { name: 'Sign Up' }));
 }
 
 describe('SignUpPage', () => {
+  it('looks different from Log In: Create Your Account, beside what TrueSight gives you', () => {
+    renderSignUp();
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Create Your Account' })).toBeInTheDocument();
+    const panel = screen.getByRole('complementary', { name: 'What You Get' });
+    expect(within(panel).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Upload your holdings from a CSV.',
+      'See their suppliers and customers, found in their annual reports.',
+      "Check every link against the report's own sentence.",
+    ]);
+  });
+
+  it('refuses a Confirm Password that does not match, and sends nothing', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderSignUp();
+
+    await signUp('new@example.com', 'long-enough', 'long-enougj');
+
+    const confirm = screen.getByLabelText('Confirm Password');
+    expect(confirm).toHaveAttribute('aria-invalid', 'true');
+    expect(within(confirm.parentElement as HTMLElement).getByText('Passwords do not match.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('sends only the email and password when Confirm Password matches', async () => {
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(url === '/api/auth/signup' ? answer(201, { token: 't', email: 'new@example.com' }) : answer(200, [])),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    renderSignUp();
+
+    await signUp('new@example.com', 'long-enough');
+
+    await screen.findByText(/You have no portfolios yet/);
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === '/api/auth/signup') as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ email: 'new@example.com', password: 'long-enough' });
+  });
+
   it('signs up, is then logged in, and is asked to create a first portfolio', async () => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       if (url === '/api/auth/signup') return Promise.resolve(answer(201, { token: 'new-token', email: 'new@example.com' }));
@@ -79,7 +119,8 @@ describe('SignUpPage', () => {
 
     await user.clear(password);
     await user.type(password, 'long-enough');
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText('Password must be at least 8 characters.')).not.toBeInTheDocument();
+    expect(password).toHaveAttribute('aria-invalid', 'false');
   });
 
   it('shows a maximum-length error for sign-up passwords over 72 characters', async () => {
