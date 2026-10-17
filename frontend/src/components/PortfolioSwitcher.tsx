@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { type Portfolio, portfolioApi } from '../api/portfolios';
 import { paths } from '../paths';
+import { Select } from './Select';
 
 export function PortfolioSwitcher({ portfolioId }: { portfolioId: string }) {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -23,18 +24,13 @@ export function PortfolioSwitcher({ portfolioId }: { portfolioId: string }) {
 
   return (
     <div className="portfolio-header">
-      <label htmlFor="portfolio-switcher">Open Portfolio</label>
-      <select
+      <Select
         id="portfolio-switcher"
+        label="Open Portfolio"
         value={portfolioId}
-        onChange={(e) => navigate(paths.portfolio(e.target.value))}
-      >
-        {portfolios.map((p) => (
-          <option key={p.id} value={String(p.id)}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+        options={portfolios.map((p) => ({ value: String(p.id), label: p.name }))}
+        onChange={(id) => navigate(paths.portfolio(id))}
+      />
     </div>
   );
 }

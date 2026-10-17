@@ -436,6 +436,196 @@ select:focus {
   color: var(--accent);
 }
 
+/* TrueSight's own controls (Select, Checkbox, RadioGroup), used instead of the browser's. */
+.select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select label {
+  margin: 0;
+}
+
+.select-button {
+  display: inline-flex;
+  min-width: 200px;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  clip-path: none;
+  text-align: left;
+}
+
+.select-button:hover:not(:disabled),
+.select-button[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.select-chevron {
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg);
+  transition: transform 120ms ease;
+}
+
+.select-button[aria-expanded='true'] .select-chevron {
+  margin-top: 4px;
+  transform: rotate(-135deg);
+}
+
+.select-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 100%;
+  max-height: 280px;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  box-shadow: 6px 6px 0 rgb(0 0 0 / 35%);
+  list-style: none;
+}
+
+.select-list:focus {
+  outline: none;
+}
+
+.select-list li {
+  padding: 9px 14px 9px 12px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.select-list li.active {
+  background: var(--panel-raised);
+  outline: 1px solid var(--lime);
+  outline-offset: -1px;
+}
+
+.select-list li[aria-selected='true'] {
+  border-left-color: var(--accent);
+  color: var(--accent);
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-variant: normal;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.checkbox-box {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.checkbox input:checked + .checkbox-box {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.checkbox input:checked + .checkbox-box::after {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border-right: 2px solid var(--bg);
+  border-bottom: 2px solid var(--bg);
+  content: '';
+  transform: rotate(45deg);
+}
+
+.checkbox input:focus-visible + .checkbox-box,
+.radio-option input:focus-visible + span {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+.checkbox input:disabled + .checkbox-box {
+  opacity: 0.5;
+}
+
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.radio-group legend {
+  float: left;
+  margin-right: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+
+.radio-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-variant: normal;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.radio-option span {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.radio-option + .radio-option span {
+  border-left: 0;
+}
+
+.radio-option:hover span {
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.radio-option input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #041714;
+}
+
 /* Portfolio pages */
 select {
   font: inherit;

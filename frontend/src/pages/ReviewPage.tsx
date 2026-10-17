@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 import type { ReviewStatus } from '../api/relationships';
 import { type ReviewFilter, type ReviewItem, reviewApi } from '../api/reviews';
+import { RadioGroup } from '../components/RadioGroup';
 import { formatDateTime, openInNewTab, showInReportUrl } from '../format';
 
 const FILTERS: { value: ReviewFilter; label: string }[] = [
@@ -166,16 +167,13 @@ export function ReviewPage() {
       <h1>Review</h1>
       <p className="muted">Your decisions apply to every portfolio manager.</p>
 
-      <div className="inline-form">
-        <label htmlFor="review-filter">Show</label>
-        <select id="review-filter" value={filter} onChange={(event) => setFilter(event.target.value as ReviewFilter)}>
-          {FILTERS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <RadioGroup
+        name="review-filter"
+        label="Show"
+        value={filter}
+        options={FILTERS}
+        onChange={(chosen) => setFilter(chosen as ReviewFilter)}
+      />
 
       {error ? (
         <p className="error">{error}</p>
