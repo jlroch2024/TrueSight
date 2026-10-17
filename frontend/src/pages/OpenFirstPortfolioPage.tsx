@@ -39,7 +39,7 @@ export function OpenFirstPortfolioPage() {
   }
   return (
     <section>
-      <p className="muted">Opening your portfolio…</p>
+      <p className="muted">Opening Your Portfolio…</p>
     </section>
   );
 }

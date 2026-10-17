@@ -12,7 +12,6 @@
   --amber: #f5b73b;
   --danger: #ff7272;
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
   font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
@@ -21,6 +20,37 @@
 * {
   box-sizing: border-box;
   border-radius: 0;
+}
+
+/* One scroll bar for every scrolling area: thin and square, the thumb turning teal under the pointer. Chrome, Edge and
+   Safari use the ::-webkit-scrollbar rules; Firefox, which has no such rules, gets the same colours from scrollbar-color. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  background: var(--border) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent) padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
 }
 
 body {
@@ -124,14 +154,12 @@ button:disabled {
 
 .account-role {
   color: var(--lime);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .account-email {
   color: var(--muted);
-  font-family: var(--font-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -227,9 +255,8 @@ label {
   display: block;
   margin: 14px 0 6px;
   color: var(--muted);
-  font-size: 12px;
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 input,
@@ -331,10 +358,11 @@ select:focus {
   font-size: 24px;
 }
 
-.auth-subtitle {
-  margin: 0 0 18px;
-  color: var(--muted);
-  font-size: 14px;
+.auth-motto {
+  margin: -16px 0 24px;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* Every input fills the card, so the inputs and the main button line up exactly. */
@@ -352,13 +380,11 @@ select:focus {
 
 .field-error {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .field-error {
   color: var(--danger);
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
 }
 
 .auth-card button[type='submit'] {
@@ -386,31 +412,26 @@ select:focus {
 }
 
 .sign-up-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
   padding: 30px;
   border-right: 1px solid var(--border);
   background: linear-gradient(160deg, rgb(45 212 191 / 14%), rgb(45 212 191 / 3%));
 }
 
-.sign-up-intro h2 {
-  margin: 0 0 14px;
-  color: var(--accent);
-  font-size: 13px;
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
+.sign-up-intro .brand {
+  margin-bottom: 0;
 }
 
-.sign-up-intro ul {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sign-up-intro li {
-  padding-left: 14px;
-  border-left: 2px solid var(--accent);
-  line-height: 1.45;
+/* The motto fills the panel as a statement, centred in the space under the logo. */
+.sign-up-motto {
+  margin: auto 0;
+  color: var(--text);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 
 .sign-up-form {
@@ -448,9 +469,13 @@ select:focus {
   margin: 0;
 }
 
+.select-box {
+  position: relative;
+}
+
 .select-button {
   display: inline-flex;
-  min-width: 200px;
+  min-width: 160px;
   min-height: 38px;
   align-items: center;
   justify-content: space-between;
@@ -470,6 +495,20 @@ select:focus {
   color: var(--text);
 }
 
+.select-values {
+  display: grid;
+}
+
+.select-value,
+.select-sizer {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.select-sizer {
+  visibility: hidden;
+}
+
 .select-chevron {
   width: 8px;
   height: 8px;
@@ -480,7 +519,21 @@ select:focus {
   transition: transform 120ms ease;
 }
 
-.select-button[aria-expanded='true'] .select-chevron {
+.select-button[aria-expanded='true'] .select-values {
+  display: grid;
+}
+
+.select-value,
+.select-sizer {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.select-sizer {
+  visibility: hidden;
+}
+
+.select-chevron {
   margin-top: 4px;
   transform: rotate(-135deg);
 }
@@ -489,11 +542,11 @@ select:focus {
   position: absolute;
   z-index: 20;
   top: calc(100% + 4px);
-  right: 0;
-  min-width: 100%;
+  left: 0;
+  width: 100%;
   max-height: 280px;
   margin: 0;
-  padding: 4px 0;
+  padding: 0;
   overflow-y: auto;
   border: 1px solid var(--accent);
   background: var(--panel);
@@ -514,8 +567,6 @@ select:focus {
 
 .select-list li.active {
   background: var(--panel-raised);
-  outline: 1px solid var(--lime);
-  outline-offset: -1px;
 }
 
 .select-list li[aria-selected='true'] {
@@ -586,8 +637,6 @@ select:focus {
   margin-right: 10px;
   color: var(--muted);
   font-size: 12px;
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
 }
 
 .radio-options {
@@ -721,6 +770,11 @@ select {
   white-space: nowrap;
 }
 
+/* A wide table scrolls inside its card, so the page itself never scrolls sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
 table.holdings {
   width: 100%;
   border-collapse: collapse;
@@ -735,37 +789,71 @@ table.holdings td {
 
 table.holdings th {
   color: var(--muted);
-  font-size: 11px;
-  font-variant: small-caps;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 table.holdings td:nth-child(2),
 table.holdings td:nth-child(3),
 table.holdings td:nth-child(5),
 table.holdings td:nth-child(7) {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
 }
 
 .page-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px 20px;
+}
+
+/* The actions never shrink into a column: when there is no room beside the heading, the whole row moves under it. */
+.page-heading .page-actions {
+  flex: none;
 }
 
 .page-heading h1 { margin-bottom: 4px; }
 .page-heading p { margin-top: 0; }
-.page-actions,
-.news-check {
+/* Analyse, Check News and See News sit in one row of equal-height buttons, with the news status on its own line under
+   them. Narrow screens wrap the row as a whole. */
+.page-actions {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
 }
 .news-check {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.news-check-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+}
+.news-check-buttons > button {
+  flex: none;
+  min-height: 40px;
+  white-space: nowrap;
+}
+.news-check .small {
+  text-align: right;
+}
+/* In the News tab: a small outlined Check News with its status beside it. */
+.news-check.compact {
+  flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.news-check.compact .news-check-buttons > button {
+  min-height: 0;
+}
+.news-check.compact .small {
+  text-align: left;
 }
 .table-card { overflow-x: auto; }
 .status { white-space: nowrap; }
@@ -901,7 +989,7 @@ button.panel-row.chosen {
 .panel-row .ticker,
 .inspector-facts .ticker {
   color: var(--accent);
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
 }
 
@@ -915,7 +1003,7 @@ button.panel-row.chosen {
 .panel-weight {
   flex: none;
   margin-left: auto;
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
 }
 
@@ -937,8 +1025,6 @@ button.panel-row.chosen {
   margin: 0 0 6px;
   color: var(--muted);
   font-size: 12px;
-  font-variant: small-caps;
-  letter-spacing: 0.08em;
 }
 
 .inspector-facts {
@@ -1007,10 +1093,6 @@ button.panel-row.chosen {
 
 /* The News tab, and a company's headlines in the Inspector. */
 .news-panel .news-check {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
   margin-bottom: 14px;
 }
 
@@ -1063,7 +1145,7 @@ button.panel-row.chosen {
   background: var(--panel-raised);
   color: var(--text);
   clip-path: none;
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
 }
 
@@ -1088,8 +1170,6 @@ button.panel-row.chosen {
   padding: 1px 6px;
   border: 1px solid currentColor;
   font-size: 11px;
-  font-variant: small-caps;
-  letter-spacing: 0.06em;
 }
 
 .news-tag.not-event {
@@ -1242,6 +1322,20 @@ button.panel-row.chosen {
   .portfolio-list li {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .page-actions,
+  .news-check {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .news-check-buttons {
+    flex-wrap: wrap;
+  }
+
+  .news-check .small {
+    text-align: left;
   }
 
   .auth-card {

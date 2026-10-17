@@ -131,7 +131,6 @@ export function SupplyChainGraph({
           // A holding grows with its weight; other companies keep the usual size (shared ones are made bigger below).
           size: node.isHolding ? holdingSize(node.weight) : TILE_SIZE,
           shared: node.sharedSummary ? 1 : 0,
-          ticker: node.ticker ? 1 : 0,
         },
       })),
       ...edges.map((edge) => ({
@@ -163,6 +162,8 @@ export function SupplyChainGraph({
             // The label sits under the tile, on a patch of the panel's colour that hides any arrow behind it.
             label: 'data(label)',
             color: TEXT,
+            // The app's one font; a canvas only uses it once the page has loaded it, as index.html does.
+            'font-family': 'Space Grotesk, system-ui, sans-serif',
             'font-size': 11,
             'text-valign': 'bottom',
             'text-halign': 'center',
@@ -190,10 +191,6 @@ export function SupplyChainGraph({
             'text-wrap': 'wrap',
             'text-max-width': '120px',
           },
-        },
-        {
-          selector: 'node[ticker = 1]',
-          style: { 'font-family': 'JetBrains Mono' },
         },
         // Arrows in the muted grey, which shows on the dark panel (the border colour hardly did).
         {

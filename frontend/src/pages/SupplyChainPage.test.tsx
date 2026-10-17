@@ -166,7 +166,7 @@ describe('Supply Chain page', () => {
     renderAt('/portfolios/7/supply-chain');
 
     expect(await screen.findByText(/Run Analyse on the/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Portfolio page' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Portfolio Page' })).toBeInTheDocument();
   });
 
   it('says to upload holdings first when the portfolio has none at all', async () => {
@@ -195,7 +195,7 @@ describe('Supply Chain page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
 
     expect(screen.getByText(tsmcSentence)).toBeInTheDocument();
-    expect(screen.getByText('10-K, filed 2026-02-25')).toBeInTheDocument();
+    expect(screen.getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     await userEvent.click(screen.getByRole('button', { name: 'Show in Report' }));
     expect(open).toHaveBeenCalledWith(
@@ -277,8 +277,8 @@ describe('Supply Chain page', () => {
       expect(within(panel).getByRole('heading', { name: 'Shared Suppliers and Customers' })).toBeInTheDocument();
       const shared = within(panel).getAllByRole('button').filter((button) => button.classList.contains('shared'));
       expect(shared.map((button) => button.textContent)).toEqual([
-        'TSMTaiwan Semiconductor ManufacturingSupplies 3 holdings',
-        'Samsung ElectronicsSupplies 2 holdings',
+        'TSMTaiwan Semiconductor ManufacturingSupplies 3 Holdings',
+        'Samsung ElectronicsSupplies 2 Holdings',
       ]);
       expect(within(panel).queryByText(/Micron/)).not.toBeInTheDocument();
     });
@@ -335,9 +335,7 @@ describe('Supply Chain workspace', () => {
     expect(holdingsPanel()).toBeInTheDocument();
     expect(screen.getByTestId('fake-graph')).toBeInTheDocument();
     expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
-    expect(
-      screen.getByText('Who supplies your holdings and who buys from them, from their latest annual reports.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/Who supplies your holdings/)).not.toBeInTheDocument();
   });
 
   it('lists holdings largest first, each with its weight and how many suppliers and customers it has', async () => {
@@ -346,8 +344,8 @@ describe('Supply Chain workspace', () => {
     const rows = within(holdingsPanel()).getAllByRole('listitem').map((row) => row.textContent);
     expect(rows).toEqual([
       'NEW30%Waiting',
-      'NVDANVIDIA18%1 supplier · 0 customers',
-      'CRUSCirrus Logic0 suppliers · 1 customer',
+      'NVDANVIDIA18%1 Supplier · 0 Customers',
+      'CRUSCirrus Logic0 Suppliers · 1 Customer',
     ]);
   });
 
@@ -365,9 +363,9 @@ describe('Supply Chain workspace', () => {
     await userEvent.click(within(holdingsPanel()).getByRole('button', { name: /NVDA/ }));
 
     expect(screen.getByTestId('selected-node')).toHaveTextContent('1');
-    expect(within(inspector()).getByRole('heading', { name: 'NVIDIA Corporation' })).toBeInTheDocument();
-    expect(within(inspector()).getByText('Holding · 18% of the portfolio')).toBeInTheDocument();
-    expect(within(inspector()).getByText('10-K, filed 2026-02-25')).toBeInTheDocument();
+    expect(within(inspector()).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
+    expect(within(inspector()).getByText('Holding · 18% of the Portfolio')).toBeInTheDocument();
+    expect(within(inspector()).getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
   });
 
   it("shows a company clicked on the graph with its suppliers and customers, and opens one's relationship", async () => {
@@ -375,7 +373,7 @@ describe('Supply Chain workspace', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Select company 11' })); // TSMC
 
-    expect(within(inspector()).getByText('Not held')).toBeInTheDocument();
+    expect(within(inspector()).getByText('Not Held')).toBeInTheDocument();
     const customers = within(inspector()).getByRole('region', { name: 'Customers' });
     await userEvent.click(within(customers).getByRole('button', { name: /NVDA/ }));
 
@@ -438,7 +436,7 @@ describe('Supply Chain news', () => {
       return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
     }));
     renderAt('/portfolios/7/supply-chain?panel=news');
-    expect(await screen.findByRole('button', { name: 'Checking news…' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Checking News…' })).toBeDisabled();
 
     finished = true;
 

@@ -39,16 +39,16 @@ describe('formatAge', () => {
   const now = Date.parse('2026-10-13T12:00:00Z');
 
   it('says how long ago, in the largest whole unit', () => {
-    expect(formatAge('2026-10-13T11:59:40Z', now)).toBe('Just now');
-    expect(formatAge('2026-10-13T11:59:00Z', now)).toBe('1 minute ago');
-    expect(formatAge('2026-10-13T11:15:00Z', now)).toBe('45 minutes ago');
-    expect(formatAge('2026-10-13T11:00:00Z', now)).toBe('1 hour ago');
-    expect(formatAge('2026-10-12T17:07:00Z', now)).toBe('18 hours ago');
-    expect(formatAge('2026-10-09T17:00:00Z', now)).toBe('3 days ago');
+    expect(formatAge('2026-10-13T11:59:40Z', now)).toBe('Just Now');
+    expect(formatAge('2026-10-13T11:59:00Z', now)).toBe('1 Minute Ago');
+    expect(formatAge('2026-10-13T11:15:00Z', now)).toBe('45 Minutes Ago');
+    expect(formatAge('2026-10-13T11:00:00Z', now)).toBe('1 Hour Ago');
+    expect(formatAge('2026-10-12T17:07:00Z', now)).toBe('18 Hours Ago');
+    expect(formatAge('2026-10-09T17:00:00Z', now)).toBe('3 Days Ago');
   });
 
   it('gives the date itself past a week, and a dash for a bad date', () => {
-    expect(formatAge('2026-09-01T00:00:00Z', now)).not.toMatch(/ago/);
+    expect(formatAge('2026-09-01T00:00:00Z', now)).not.toMatch(/Ago/);
     expect(formatAge('not a date', now)).toBe('—');
   });
 });

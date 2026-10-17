@@ -143,12 +143,12 @@ export function SupplyChainPage() {
           This portfolio has no relationships yet.{' '}
           {holdings.length === 0 ? (
             <>
-              Upload holdings on the <button type="button" className="inline-action" onClick={() => navigate(paths.portfolio(portfolioId))}>Portfolio page</button>, then run Analyse
+              Upload holdings on the <button type="button" className="inline-action" onClick={() => navigate(paths.portfolio(portfolioId))}>Portfolio Page</button>, then run Analyse
               to find suppliers and customers in their annual reports.
             </>
           ) : (
             <>
-              Run Analyse on the <button type="button" className="inline-action" onClick={() => navigate(paths.portfolio(portfolioId))}>Portfolio page</button> to find suppliers and
+              Run Analyse on the <button type="button" className="inline-action" onClick={() => navigate(paths.portfolio(portfolioId))}>Portfolio Page</button> to find suppliers and
               customers in this portfolio's holdings' annual reports.
             </>
           )}
@@ -160,7 +160,6 @@ export function SupplyChainPage() {
   return (
     <section className="workspace-page">
       <h1>Supply Chain</h1>
-      <p className="muted">Who supplies your holdings and who buys from them, from their latest annual reports.</p>
 
       <div className="workspace">
         <aside className="workspace-panel workspace-left" aria-label="Holdings and News">
@@ -222,7 +221,7 @@ export function SupplyChainPage() {
             selectedRelationshipId={selection?.kind === 'relationship' ? selection.relationshipId : null}
             logoToken={logoToken}
           />
-          <p className="graph-hint">Drag to move · Scroll to zoom · Click an arrow for its evidence</p>
+          <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         </div>
 
         <aside className="workspace-panel workspace-inspector" aria-label="Inspector">
