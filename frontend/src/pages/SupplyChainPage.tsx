@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { type Holding, holdingApi } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
+import { settingsApi } from '../api/settings';
 import { SupplyChainGraph } from '../components/SupplyChainGraph';
 import { paths } from '../paths';
 import { buildGraphElements } from './supplyChain';
@@ -22,6 +23,8 @@ export function SupplyChainPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Empty until the settings arrive, or when no Logo.dev token is set: the graph then shows letters.
+  const [logoToken, setLogoToken] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -29,11 +32,17 @@ export function SupplyChainPage() {
     setHoldings([]);
     setError(null);
     setSelectedId(null);
-    Promise.all([relationshipApi.list(portfolioId), holdingApi.list(portfolioId)])
-      .then(([foundRelationships, foundHoldings]) => {
+    Promise.all([
+      relationshipApi.list(portfolioId),
+      holdingApi.list(portfolioId),
+      // The logos are a nicety: if the settings cannot be fetched, the graph still shows, with letters.
+      settingsApi.get().catch(() => ({ logoToken: '' })),
+    ])
+      .then(([foundRelationships, foundHoldings, settings]) => {
         if (!active) return;
         setRelationships(foundRelationships);
         setHoldings(foundHoldings);
+        setLogoToken(settings.logoToken ?? '');
       })
       .catch((e: unknown) => {
         if (active) setError(messageOf(e));
@@ -82,7 +91,7 @@ export function SupplyChainPage() {
         Drag a company to rearrange the graph, scroll to zoom, point at a company to focus on its connections, and click an edge to see the evidence behind it.
       </p>
 
-      <SupplyChainGraph nodes={nodes} edges={edges} onEdgeSelect={handleEdgeSelect} />
+      <SupplyChainGraph nodes={nodes} edges={edges} onEdgeSelect={handleEdgeSelect} logoToken={logoToken} />
 
       {selected && (
         <div className="card evidence-panel">
