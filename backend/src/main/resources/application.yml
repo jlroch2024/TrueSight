@@ -45,3 +45,6 @@ truesight:
   sec:
     user-agent: ${SEC_USER_AGENT:TrueSight contact@truesight.com}
     requests-per-second: 10
+  # The supply chain graph's logos come from Logo.dev. Without a token, the graph shows letters instead.
+  logo-dev:
+    token: ${LOGO_DEV_TOKEN:}
