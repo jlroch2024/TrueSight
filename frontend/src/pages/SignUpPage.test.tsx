@@ -26,18 +26,16 @@ async function signUp(email: string, password: string) {
 }
 
 describe('SignUpPage', () => {
-  it('signs up, is then logged in, and goes to Home', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn()
-        .mockResolvedValueOnce(answer(201, { token: 'new-token', email: 'new@example.com' }))
-        .mockResolvedValue(answer(200, { status: 'UP' })),
-    );
+  it('signs up, is then logged in, and is asked to create a first portfolio', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/signup') return Promise.resolve(answer(201, { token: 'new-token', email: 'new@example.com' }));
+      return Promise.resolve(answer(200, []));
+    }));
     renderSignUp();
 
     await signUp('new@example.com', 'long-enough');
 
-    expect(await screen.findByText('Running')).toBeInTheDocument();
+    expect(await screen.findByText('You have no portfolios yet. Create one above to get started.')).toBeInTheDocument();
     expect(tokenStore.get()).toBe('new-token');
   });
 

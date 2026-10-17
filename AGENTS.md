@@ -145,7 +145,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 
   | Address | Page | Built by |
   |---|---|---|
-  | `/` | Home | Set Up the Project |
+  | `/` | Opens the first portfolio; a user with none goes to `/portfolios` (no Home page) | Open on the Portfolio Page |
   | `/login`, `/signup` | Log In, Sign Up | Sign Up and Log In |
   | `/portfolios` | Portfolios: list, create, rename, delete | Manage My Portfolios |
   | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds holdings and upload, then the annual report story adds Analyse. |
@@ -157,7 +157,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   `NAV_ITEMS` in `navigation.ts` for a page everyone sees, or to `PORTFOLIO_NAV_ITEMS` for a page belonging to the open
   portfolio. Only working pages appear in the sidebar.
 - **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
-  to do next), and loaded. `pages/HomePage.tsx` is the example.
+  to do next), and loaded. `pages/PortfolioPage.tsx` is the example.
 - **Look:** use the colours and classes in `styles.css`. Dark blueprint palette, hairline borders, square corners,
   teal primary actions with one top-right chamfer, lime accents, Space Grotesk for text and JetBrains Mono for tickers
   and numbers. Labels use small capitals; keep button labels in Title Case, e.g. "Upload CSV", "Show Report".

@@ -1,4 +1,4 @@
-// The Sign Up page, at /signup. A new account is logged in straight away, and goes to Home.
+// The Sign Up page, at /signup. A new account is logged in straight away, and goes to "/", which asks for a first portfolio.
 // Client checks give early feedback; the backend remains authoritative.
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';

@@ -11,7 +11,6 @@ export type NavItem = { label: string; path: string };
 export type PortfolioNavItem = { label: string; path: (portfolioId: string) => string };
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', path: paths.home },
   { label: 'Portfolios', path: paths.portfolios },
 ];
 

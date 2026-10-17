@@ -1,4 +1,4 @@
-// The Log In page, at /login. On success the token is kept in the browser, and the user goes to Home.
+// The Log In page, at /login. On success the token is kept in the browser, and the user goes to "/", which opens their first portfolio.
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';

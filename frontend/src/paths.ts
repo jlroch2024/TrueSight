@@ -6,7 +6,7 @@
 //
 // | Address                              | Page                                      | Built by story             |
 // |--------------------------------------|-------------------------------------------|----------------------------|
-// | /                                    | Home                                      | Set Up the Project         |
+// | /                                    | Opens the first portfolio (no Home page)  | Open on the Portfolio Page |
 // | /login, /signup                      | Log In, Sign Up                           | Sign Up and Log In         |
 // | /portfolios                          | Portfolios: list, create, rename, delete  | Manage My Portfolios       |
 // | /portfolios/:portfolioId             | Portfolio: holdings, Upload CSV, Analyse  | See below                  |

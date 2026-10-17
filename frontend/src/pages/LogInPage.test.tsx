@@ -26,18 +26,19 @@ async function logIn(email: string, password: string) {
 }
 
 describe('LogInPage', () => {
-  it('logs in, keeps the token, and goes to Home', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn()
-        .mockResolvedValueOnce(answer(200, { token: 'new-token', email: 'pm@example.com' }))
-        .mockResolvedValue(answer(200, { status: 'UP' })),
-    );
+  it('logs in, keeps the token, and opens the first portfolio', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/login') return Promise.resolve(answer(200, { token: 'new-token', email: 'pm@example.com' }));
+      if (url === '/api/portfolios') {
+        return Promise.resolve(answer(200, [{ id: 7, name: 'Consumer Goods', createdAt: '2026-10-01T00:00:00Z' }]));
+      }
+      return Promise.resolve(answer(200, []));
+    }));
     renderLogIn();
 
     await logIn('pm@example.com', 'right-password');
 
-    expect(await screen.findByText('Running')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Consumer Goods' })).toBeInTheDocument();
     expect(tokenStore.get()).toBe('new-token');
   });
 
