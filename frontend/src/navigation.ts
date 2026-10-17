@@ -20,4 +20,4 @@ export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
 ];
 
 // Analyst pages are registered here as they become available. Do not add buttons for unfinished pages.
-export const ANALYST_NAV_ITEMS: NavItem[] = [];
+export const ANALYST_NAV_ITEMS: NavItem[] = [{ label: 'Review', path: paths.review }];

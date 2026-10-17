@@ -56,6 +56,9 @@ function relationship(overrides: Partial<Relationship> = {}): Relationship {
       filingDate: '2026-02-25',
       url: 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm',
     },
+    reviewStatus: 'UNREVIEWED',
+    reviewedAt: null,
+    reviewNote: null,
     ...overrides,
   };
 }
