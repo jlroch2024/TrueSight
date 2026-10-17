@@ -27,13 +27,13 @@ async function signUp(email: string, password: string, confirm = password) {
 }
 
 describe('SignUpPage', () => {
-  it("looks different from Log In: Create Your Account, beside TrueSight's motto", () => {
-    renderSignUp();
+  it('is one card like Log In, with the motto, told apart by its heading and its lime accent', () => {
+    const { container } = renderSignUp();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Create Your Account' })).toBeInTheDocument();
-    const panel = screen.getByRole('complementary', { name: 'TrueSight' });
-    expect(within(panel).getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
-    expect(within(panel).queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    expect(container.querySelector('form.auth-card')).toHaveClass('sign-up');
     expect(screen.getByText(/Already Have an Account\?/)).toContainElement(screen.getByRole('button', { name: 'Log In' }));
   });
 

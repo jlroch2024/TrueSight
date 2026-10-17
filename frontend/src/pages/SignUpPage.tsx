@@ -1,8 +1,8 @@
 // The Sign Up page, at /signup. A new account is logged in straight away, and goes to "/", which asks for a first portfolio.
 // Client checks give early feedback; the backend remains authoritative.
 //
-// It looks clearly different from Log In: a two-column card, with TrueSight's motto on the left and the form, headed
-// "Create Your Account", on the right. On a phone the two stack.
+// The same card as Log In, told apart by its accent: a lime edge and a lime Sign Up button (Log In is teal), and the
+// heading "Create Your Account".
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
@@ -57,59 +57,55 @@ export function SignUpPage() {
 
   return (
     <main className="auth-page">
-      <div className="auth-card sign-up">
-        <aside className="sign-up-intro" aria-label="TrueSight">
-          <div className="brand">
-            <img src="/eye-logo.png" alt="" className="brand-logo" />
-            <span>TrueSight</span>
-          </div>
-          <p className="sign-up-motto">{MOTTO}</p>
-        </aside>
-        <form className="sign-up-form" noValidate onSubmit={signUp}>
-          <h1>Create Your Account</h1>
-          <FormField
-            id="email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            error={emailError}
-            onBlur={() => setEmailChecked(true)}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              setRegisteredEmailError(null);
-            }}
-          />
-          <FormField
-            id="password"
-            label="Password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            error={passwordError}
-            onBlur={() => setPasswordChecked(true)}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <FormField
-            id="confirm-password"
-            label="Confirm Password"
-            type="password"
-            autoComplete="new-password"
-            value={confirm}
-            error={confirmError}
-            onBlur={() => setConfirmChecked(true)}
-            onChange={(event) => setConfirm(event.target.value)}
-          />
-          {error && <FormError message={error} />}
-          <button type="submit" disabled={sending}>
-            {sending ? 'Signing Up…' : 'Sign Up'}
-          </button>
-          <p className="auth-switch-line">
-            Already Have an Account?{' '}
-            <button type="button" className="auth-switch" onClick={() => navigate(paths.logIn)}>Log In</button>
-          </p>
-        </form>
-      </div>
+      <form className="auth-card sign-up" noValidate onSubmit={signUp}>
+        <div className="brand">
+          <img src="/eye-logo.png" alt="" className="brand-logo" />
+          <span>TrueSight</span>
+        </div>
+        <p className="auth-motto">{MOTTO}</p>
+        <h1>Create Your Account</h1>
+        <FormField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          error={emailError}
+          onBlur={() => setEmailChecked(true)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setRegisteredEmailError(null);
+          }}
+        />
+        <FormField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          error={passwordError}
+          onBlur={() => setPasswordChecked(true)}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+        <FormField
+          id="confirm-password"
+          label="Confirm Password"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          error={confirmError}
+          onBlur={() => setConfirmChecked(true)}
+          onChange={(event) => setConfirm(event.target.value)}
+        />
+        {error && <FormError message={error} />}
+        <button type="submit" disabled={sending}>
+          {sending ? 'Signing Up…' : 'Sign Up'}
+        </button>
+        <p className="auth-switch-line">
+          Already Have an Account?{' '}
+          <button type="button" className="auth-switch" onClick={() => navigate(paths.logIn)}>Log In</button>
+        </p>
+      </form>
     </main>
   );
 }
