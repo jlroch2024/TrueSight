@@ -770,6 +770,11 @@ select {
   white-space: nowrap;
 }
 
+/* A wide table scrolls inside its card, so the page itself never scrolls sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
 table.holdings {
   width: 100%;
   border-collapse: collapse;
@@ -798,9 +803,15 @@ table.holdings td:nth-child(7) {
 
 .page-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px 20px;
+}
+
+/* The actions never shrink into a column: when there is no room beside the heading, the whole row moves under it. */
+.page-heading .page-actions {
+  flex: none;
 }
 
 .page-heading h1 { margin-bottom: 4px; }
@@ -819,12 +830,14 @@ table.holdings td:nth-child(7) {
 }
 .news-check-buttons {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: 10px;
 }
 .news-check-buttons > button {
+  flex: none;
   min-height: 40px;
+  white-space: nowrap;
 }
 .news-check .small {
   text-align: right;
@@ -1315,6 +1328,10 @@ button.panel-row.chosen {
   .news-check {
     align-items: flex-start;
     justify-content: flex-start;
+  }
+
+  .news-check-buttons {
+    flex-wrap: wrap;
   }
 
   .news-check .small {

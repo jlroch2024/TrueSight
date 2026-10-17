@@ -174,26 +174,28 @@ export function PortfolioPage() {
         {holdings.length === 0 ? (
           <p className="muted">No holdings yet. Upload CSV adds them from a file with a ticker column.</p>
         ) : (
-          <table className="holdings">
-            <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Last Analysed</th><th>Report Type</th><th>Filing Date</th><th></th></tr></thead>
-            <tbody>
-              {holdings.map((h) => (
-                <tr key={h.id}>
-                  <td title={h.companyName ?? undefined}>{h.companyName ? displayName(h.companyName) : '—'}</td>
-                  <td>{h.ticker}</td>
-                  <td>{h.weight === null ? '—' : `${h.weight}%`}</td>
-                  <td>
-                    <span className={`status status-${h.status.toLowerCase()}`}>{STATUS_LABELS[h.status]}</span>
-                    {h.statusReason && <span className="status-reason">{h.statusReason}</span>}
-                  </td>
-                  <td>{h.status === 'DONE' && h.lastAnalysed ? formatDateTime(h.lastAnalysed) : '—'}</td>
-                  <td>{h.reportType ?? '—'}</td>
-                  <td>{h.reportDate ?? '—'}</td>
-                  <td>{h.status === 'DONE' && h.reportLink && <button type="button" onClick={() => openInNewTab(h.reportLink!)}>Show Report</button>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="holdings">
+              <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Last Analysed</th><th>Report Type</th><th>Filing Date</th><th></th></tr></thead>
+              <tbody>
+                {holdings.map((h) => (
+                  <tr key={h.id}>
+                    <td title={h.companyName ?? undefined}>{h.companyName ? displayName(h.companyName) : '—'}</td>
+                    <td>{h.ticker}</td>
+                    <td>{h.weight === null ? '—' : `${h.weight}%`}</td>
+                    <td>
+                      <span className={`status status-${h.status.toLowerCase()}`}>{STATUS_LABELS[h.status]}</span>
+                      {h.statusReason && <span className="status-reason">{h.statusReason}</span>}
+                    </td>
+                    <td>{h.status === 'DONE' && h.lastAnalysed ? formatDateTime(h.lastAnalysed) : '—'}</td>
+                    <td>{h.reportType ?? '—'}</td>
+                    <td>{h.reportDate ?? '—'}</td>
+                    <td>{h.status === 'DONE' && h.reportLink && <button type="button" onClick={() => openInNewTab(h.reportLink!)}>Show Report</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>
