@@ -113,9 +113,10 @@ export function nodeLabel(node: GraphNode): string {
 }
 
 const LOGO_HOST = 'https://img.logo.dev';
-// A PNG twice the tile's size, so it stays sharp when zoomed in. fallback=404 makes Logo.dev answer "not found" for a
-// company it does not know, instead of drawing its own letter, so the graph can show its own.
-const LOGO_OPTIONS = 'size=64&retina=true&format=png&fallback=404';
+// Logo.dev's usual JPEG, whose white background keeps a dark logo visible on the dark graph, at twice the size it is
+// shown so it stays sharp when zoomed in. fallback=404 makes Logo.dev answer "not found" for a company it does not
+// know, instead of drawing its own letter, so the graph can show its own.
+const LOGO_OPTIONS = 'size=64&retina=true&fallback=404';
 
 /**
  * Where a company's logo is on Logo.dev: by ticker when it has one, otherwise by its plain name ("NVIDIA", not

@@ -1,4 +1,5 @@
-// The graph's layout and zoom settings (TS-89), its moving dashes and its focus on one company (TS-97). Cytoscape draws
+// The graph's layout and zoom settings (TS-89), its moving dashes and its focus on one company (TS-97), and its logo
+// tiles and labels (TS-95). Cytoscape draws
 // on a canvas, which the test browser cannot, so a stand-in records what the graph asks of it: the zoom limits, the two
 // layout phases, what Fit to Screen does, which companies and arrows are faded, and the dash offsets.
 import { render, screen } from '@testing-library/react';
@@ -25,7 +26,13 @@ const made: {
   style: ReturnType<typeof vi.fn>;
   frames: FrameRequestCallback[];
   cy?: object;
+  // What the graph set on a company after it was drawn, e.g. its logo once loaded: [company id, field, value].
+  dataSet: Array<[string, string, unknown]>;
+  // Every logo the graph started loading.
+  images: FakeImage[];
 } = {
+  dataSet: [],
+  images: [],
   layouts: [],
   animate: vi.fn(),
   handlers: new Map(),
@@ -34,6 +41,17 @@ const made: {
   style: vi.fn(),
   frames: [],
 };
+
+// A stand-in for the browser's Image: the test browser loads no pictures, so a test says whether a logo loaded.
+class FakeImage {
+  crossOrigin: string | null = null;
+  src = '';
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor() {
+    made.images.push(this);
+  }
+}
 
 function fake(id: string): Fake {
   const item: Fake = {
@@ -92,6 +110,9 @@ vi.mock('cytoscape', () => {
       elements: () => 'every element',
       nodes: () => collection(made.nodes),
       edges: () => collection(made.edges, made.style),
+      getElementById: (id: string) => ({
+        data: (field: string, value: unknown) => made.dataSet.push([id, field, value]),
+      }),
       destroyed: () => false,
       destroy: vi.fn(),
     };
@@ -104,8 +125,8 @@ vi.mock('cytoscape', () => {
 
 import { SupplyChainGraph } from './SupplyChainGraph';
 
-function drawGraph(nodes: GraphNode[] = [], edges: GraphEdge[] = []) {
-  return render(<SupplyChainGraph nodes={nodes} edges={edges} onEdgeSelect={() => {}} />);
+function drawGraph(nodes: GraphNode[] = [], edges: GraphEdge[] = [], logoToken = '') {
+  return render(<SupplyChainGraph nodes={nodes} edges={edges} onEdgeSelect={() => {}} logoToken={logoToken} />);
 }
 
 // Pretends the visitor's computer is (or is not) set to reduce motion.
@@ -146,6 +167,9 @@ beforeEach(() => {
   made.edges = [];
   made.style.mockClear();
   made.frames = [];
+  made.dataSet = [];
+  made.images = [];
+  vi.stubGlobal('Image', FakeImage);
   setReducedMotion(false);
   window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => made.frames.push(callback)) as unknown as typeof window.requestAnimationFrame;
   window.cancelAnimationFrame = vi.fn();
@@ -289,6 +313,101 @@ describe('SupplyChainGraph', () => {
 
       const options = made.options as { style: unknown[] };
       expect(options.style).toContainEqual({ selector: '.faded', style: { opacity: 0.15 } });
+    });
+  });
+
+  describe('company tiles', () => {
+    // Real companies from docs/examples/relationships.json: a holding with a weight, a supplier with a ticker, and a
+    // supplier with none.
+    const TILE_NODES: GraphNode[] = [
+      { id: 'nvda', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true, weight: 18 },
+      { id: 'tsm', name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM', isHolding: false, weight: null },
+      { id: 'samsung', name: 'Samsung Electronics Co., Ltd.', ticker: null, isHolding: false, weight: null },
+    ];
+
+    type Element = { data: { id: string; label: string; image: string } };
+    const elementsDrawn = () => (made.options as { elements: Element[] }).elements;
+    const styles = () => (made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> }).style;
+    const letterIn = (image: string) => decodeURIComponent(image).match(/>([^<]+)<\/text>/)?.[1];
+
+    it('labels every company: a holding with its ticker and weight, others with a ticker or a short name', () => {
+      drawGraph(TILE_NODES);
+
+      expect(elementsDrawn().map((element) => element.data.label)).toEqual(['NVDA 18%', 'TSM', 'Samsung Elect\u2026']);
+    });
+
+    it('shows each company\'s first letter on its square tile until a logo arrives', () => {
+      drawGraph(TILE_NODES);
+
+      const images = elementsDrawn().map((element) => element.data.image);
+      expect(images.every((image) => image.startsWith('data:image/svg+xml'))).toBe(true);
+      expect(images.map(letterIn)).toEqual(['N', 'T', 'S']);
+      expect(styles()).toContainEqual(expect.objectContaining({
+        selector: 'node',
+        style: expect.objectContaining({ shape: 'rectangle', width: 44, height: 44, 'background-image': 'data(image)' }),
+      }));
+    });
+
+    it('puts the label under the tile, on a patch that hides any arrow passing behind it', () => {
+      drawGraph(TILE_NODES);
+
+      expect(styles()).toContainEqual(expect.objectContaining({
+        selector: 'node',
+        style: expect.objectContaining({
+          'text-valign': 'bottom',
+          'text-background-color': '#0b2028',
+          'text-background-opacity': 1,
+        }),
+      }));
+    });
+
+    it('gives holdings a teal border', () => {
+      drawGraph(TILE_NODES);
+
+      expect(styles()).toContainEqual({
+        selector: 'node[holding = 1]',
+        style: { 'border-width': 3, 'border-color': '#2dd4bf' },
+      });
+    });
+
+    it('swaps a company\'s letter for its logo once the logo has loaded', () => {
+      drawGraph(TILE_NODES, [], 'pk_test_token');
+
+      expect(made.images.map((image) => new URL(image.src).pathname)).toEqual([
+        '/ticker/NVDA',
+        '/ticker/TSM',
+        '/name/Samsung%20Electronics',
+      ]);
+      expect(made.images.every((image) => image.crossOrigin === 'anonymous')).toBe(true);
+
+      made.images[0]!.onload!();
+
+      expect(made.dataSet).toEqual([['nvda', 'image', made.images[0]!.src]]);
+    });
+
+    it('keeps the letter for a company Logo.dev does not know', () => {
+      drawGraph(TILE_NODES, [], 'pk_test_token');
+
+      made.images[2]!.onerror?.(); // Logo.dev answers 404 for it
+
+      expect(made.dataSet).toEqual([]);
+      expect(letterIn(elementsDrawn()[2]!.data.image)).toBe('S');
+    });
+
+    it('still draws every company and its label without a Logo.dev token, with letters instead of logos', () => {
+      drawGraph(TILE_NODES, [], '');
+
+      expect(elementsDrawn()).toHaveLength(3);
+      expect(elementsDrawn().map((element) => element.data.label)).toEqual(['NVDA 18%', 'TSM', 'Samsung Elect\u2026']);
+      expect(made.images).toEqual([]);
+    });
+
+    it('stops waiting for logos when the graph is taken off the page', () => {
+      const { unmount } = drawGraph(TILE_NODES, [], 'pk_test_token');
+
+      unmount();
+
+      expect(made.images.every((image) => image.onload === null)).toBe(true);
     });
   });
 });
