@@ -178,6 +178,9 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 - **Tests never call the SEC website or Gemini.** Use `docs/examples/`, saved responses and fake clients.
 - **Never invent sample data.** Anything that looks like a real report, quote or AI answer must be real and say where it
   came from.
+- **Saved samples must not expire.** When a saved sample meets a rule based on today's date (such as "the last 7
+  days"), move the sample's dates relative to now in the test, keeping the gaps between them, as `NewsCheckIT` does.
+  Otherwise the test passes on the day it is written and fails a week later.
 - Never delete, skip or weaken a test to make it pass.
 
 ## Git and Pull Requests

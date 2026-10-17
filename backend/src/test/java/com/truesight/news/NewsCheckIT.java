@@ -70,8 +70,21 @@ class NewsCheckIT {
     @BeforeEach
     void returnTheSavedGoogleNewsSample() {
         reset(news, steps);
-        sample = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
+        sample = movedToNow(new GoogleNewsParser().parse(Examples.googleNewsTsmc()));
         when(news.search(anyString())).thenReturn(sample);
+    }
+
+    /**
+     * The saved sample, with every article moved forward by the same amount so the newest was published an hour ago.
+     * The headlines, links, publishers and the gaps between them stay as Google News sent them. Without this, the
+     * "last 7 days" rule would drop the whole sample a week after it was saved, and these tests would fail.
+     */
+    private static List<NewsItem> movedToNow(List<NewsItem> items) {
+        Instant newest = items.stream().map(NewsItem::publishedAt).max(Instant::compareTo).orElseThrow();
+        Duration shift = Duration.between(newest, Instant.now().minus(Duration.ofHours(1)));
+        return items.stream()
+                .map(item -> new NewsItem(item.title(), item.url(), item.source(), item.publishedAt().plus(shift)))
+                .toList();
     }
 
     @Test
