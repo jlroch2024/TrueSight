@@ -9,9 +9,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
-import type { Holding } from '../api/portfolios';
+import type { NewsArticle } from '../api/news';
+import type { Holding, Portfolio } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { tokenStore } from '../api/client';
+import { TSMC, sampleNews } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 import { SupplyChainPage } from './SupplyChainPage';
 
@@ -94,14 +96,32 @@ function holding(overrides: Partial<Holding> = {}): Holding {
   };
 }
 
-// Answers the page's three calls. settings is GET /api/settings's answer, or a status code for it to fail with.
-function fakeFetch(relationships: Relationship[], holdings: Holding[], settings: { logoToken: string } | number = { logoToken: '' }) {
+const PORTFOLIO: Portfolio = {
+  id: 7,
+  name: 'Semiconductors',
+  createdAt: '2026-10-01T00:00:00Z',
+  newsStatus: 'IDLE',
+  newsStatusReason: null,
+  newsCheckedAt: null,
+};
+
+// Answers the page's calls. settings is GET /api/settings's answer, or a status code for it to fail with. news is
+// GET .../news's answer, and portfolio the open portfolio in GET /api/portfolios.
+function fakeFetch(
+  relationships: Relationship[],
+  holdings: Holding[],
+  settings: { logoToken: string } | number = { logoToken: '' },
+  news: NewsArticle[] = [],
+  portfolio: Portfolio = PORTFOLIO,
+) {
   return vi.fn(async (url: string) => {
     if (url.endsWith('/settings')) {
       return typeof settings === 'number'
         ? new Response(JSON.stringify({ message: 'Something went wrong.' }), { status: settings })
         : new Response(JSON.stringify(settings));
     }
+    if (url === '/api/portfolios') return new Response(JSON.stringify([portfolio]));
+    if (url.endsWith('/news')) return new Response(JSON.stringify(news));
     return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
   });
 }
@@ -253,7 +273,7 @@ describe('Supply Chain page', () => {
       renderAt('/portfolios/7/supply-chain');
 
       await screen.findByTestId('fake-graph');
-      const panel = screen.getByRole('complementary', { name: 'Holdings' });
+      const panel = screen.getByRole('complementary', { name: 'Holdings and News' });
       expect(within(panel).getByRole('heading', { name: 'Shared Suppliers and Customers' })).toBeInTheDocument();
       const shared = within(panel).getAllByRole('button').filter((button) => button.classList.contains('shared'));
       expect(shared.map((button) => button.textContent)).toEqual([
@@ -307,7 +327,7 @@ describe('Supply Chain workspace', () => {
   }
 
   const inspector = () => screen.getByRole('complementary', { name: 'Inspector' });
-  const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings' });
+  const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings and News' });
 
   it('shows the holdings, the graph and the Inspector side by side, with nothing chosen yet', async () => {
     await openWorkspace();
@@ -386,5 +406,76 @@ describe('Supply Chain workspace', () => {
 
     expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
     expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
+  });
+});
+
+describe('Supply Chain news', () => {
+  const nvidia = { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' };
+  const relationships = [relationship({ id: 1, company: nvidia, counterparty: TSMC })];
+  const holdings = [holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name, weight: 18 })];
+  const checked = { ...PORTFOLIO, newsCheckedAt: '2026-10-13T00:00:00Z' };
+
+  it('opens on the News tab from ?panel=news, listing the collected headlines', async () => {
+    const news = sampleNews(3);
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, news, checked));
+
+    renderAt('/portfolios/7/supply-chain?panel=news');
+
+    expect(await screen.findByRole('tab', { name: 'News (3)' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText(news[0]!.title)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Open Article' })).toHaveLength(3);
+  });
+
+  it('lists the headlines once a running news check finishes, without reloading the page', async () => {
+    let finished = false;
+    const news = sampleNews(2);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url === '/api/portfolios') {
+        return new Response(JSON.stringify([finished ? checked : { ...PORTFOLIO, newsStatus: 'CHECKING' }]));
+      }
+      if (url.endsWith('/news')) return new Response(JSON.stringify(finished ? news : []));
+      if (url.endsWith('/settings')) return new Response(JSON.stringify({ logoToken: '' }));
+      return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
+    }));
+    renderAt('/portfolios/7/supply-chain?panel=news');
+    expect(await screen.findByRole('button', { name: 'Checking news…' })).toBeDisabled();
+
+    finished = true;
+
+    expect(await screen.findByText(news[0]!.title, undefined, { timeout: 4000 })).toBeInTheDocument();
+  });
+
+  it("chooses a headline's company on the graph, and the Inspector shows its newest headlines", async () => {
+    const news = sampleNews(5);
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, news, checked));
+    renderAt('/portfolios/7/supply-chain?panel=news');
+    await screen.findByText(news[0]!.title);
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'TSM' })[0]!);
+
+    expect(screen.getByTestId('selected-node')).toHaveTextContent('11');
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    const recent = within(inspector).getByRole('region', { name: 'Recent News' });
+    expect(within(recent).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(recent).getByText('(5)')).toBeInTheDocument();
+  });
+
+  it('narrows the News tab to one company with Show All News, and Clear lifts it', async () => {
+    const [tsmcNews, other] = sampleNews(2);
+    const nvidiaNews = { ...other!, id: 99, company: nvidia, isHolding: true };
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, [tsmcNews!, nvidiaNews], checked));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' })); // NVIDIA
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Show All News' }));
+
+    const panel = screen.getByRole('tabpanel');
+    expect(screen.getByRole('tab', { name: 'News (2)' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(panel).getByText('Only NVIDIA')).toBeInTheDocument();
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Clear' }));
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
   });
 });

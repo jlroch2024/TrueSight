@@ -6,13 +6,17 @@ import { formatDateTime } from '../format';
 type Props = {
   portfolio: Portfolio;
   onChange: (portfolio: Portfolio) => void;
+  // How many articles the last check found, shown after its time; leave out to show only the time.
+  articleCount?: number | null;
+  // Shows a See News button after a check, which opens the collected news.
+  onSeeNews?: () => void;
 };
 
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
 
-export function CheckNewsButton({ portfolio, onChange }: Props) {
+export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews }: Props) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +56,15 @@ export function CheckNewsButton({ portfolio, onChange }: Props) {
         <span role="alert" className="error small">{portfolio.newsStatusReason}</span>
       )}
       {!checking && portfolio.newsStatus !== 'FAILED' && portfolio.newsCheckedAt && (
-        <span className="muted small">News checked {formatDateTime(portfolio.newsCheckedAt)}</span>
+        <span className="muted small">
+          News checked {formatDateTime(portfolio.newsCheckedAt)}
+          {typeof articleCount === 'number' && ` · ${articleCount} ${articleCount === 1 ? 'article' : 'articles'}`}
+        </span>
+      )}
+      {!checking && portfolio.newsCheckedAt && onSeeNews && (
+        <button type="button" className="secondary" onClick={onSeeNews}>
+          See News
+        </button>
       )}
       {error && <span role="alert" className="error small">{error}</span>}
     </div>

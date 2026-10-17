@@ -60,4 +60,22 @@ describe('Check News button', () => {
     expect(screen.getByText('Google News could not be reached. Please try again later.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check News' })).toBeEnabled();
   });
+
+  it('adds how many articles the last check found, and See News, when the page asks for them', async () => {
+    const seeNews = vi.fn();
+    const checkedAt = '2026-10-14T02:42:00Z';
+    render(
+      <CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} articleCount={37} onSeeNews={seeNews} />,
+    );
+
+    expect(screen.getByText(`News checked ${formatDateTime(checkedAt)} · 37 articles`)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'See News' }));
+    expect(seeNews).toHaveBeenCalled();
+  });
+
+  it('offers no See News before the first check', () => {
+    render(<CheckNewsButton portfolio={base} onChange={vi.fn()} articleCount={null} onSeeNews={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'See News' })).not.toBeInTheDocument();
+  });
 });

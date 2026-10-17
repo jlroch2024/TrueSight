@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tokenStore } from '../api/client';
 import { formatDateTime } from '../format';
+import { sampleNews } from '../test/sampleNews';
 import { PortfolioPage } from './PortfolioPage';
 
 const portfolio = { id: 7, name: 'Demo Portfolio', createdAt: '' };
@@ -126,4 +127,29 @@ describe('Portfolio annual report analysis', () => {
 
     expect(screen.getByText('Supply Chain of portfolio 7')).toBeInTheDocument();
   });
+
+  it('shows how many articles the last news check found, and See News opens them on the Supply Chain page', async () => {
+    const checked = { ...portfolio, newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: '2026-10-13T00:00:00Z' };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/news')) return new Response(JSON.stringify(sampleNews(2)));
+      return new Response(JSON.stringify(url.endsWith('/holdings') ? [row('DONE')] : [checked]));
+    }));
+    render(
+      <MemoryRouter initialEntries={['/portfolios/7']}>
+        <Routes>
+          <Route path="/portfolios/:portfolioId" element={<PortfolioPage />} />
+          <Route path="/portfolios/:portfolioId/supply-chain" element={<SearchShown />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/· 2 articles/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'See News' }));
+
+    expect(screen.getByText('Supply Chain with ?panel=news')).toBeInTheDocument();
+  });
 });
+
+function SearchShown() {
+  return <p>{`Supply Chain with ${useLocation().search}`}</p>;
+}
