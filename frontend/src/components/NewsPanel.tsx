@@ -30,7 +30,10 @@ export function AssessmentTag({ assessment }: { assessment: NewsAssessment | nul
   return <span className={`news-tag severity-${severity.toLowerCase()}`}>Event · {SEVERITY_LABELS[severity]}</span>;
 }
 
-/** One headline: its company, the headline, the publisher and age, the AI's tag, and Open Article. */
+/**
+ * One headline, as a small card: the headline is its title, large and bold; above it, small and muted, the company
+ * (a tag that chooses it on the graph), the publisher and how long ago; the AI's tag beside them; and Open Article.
+ */
 export function NewsItem({
   article,
   onSelectCompany,
@@ -41,23 +44,25 @@ export function NewsItem({
   const companyLabel = article.company.ticker ?? displayName(article.company.name);
   return (
     <li className="news-item">
-      {onSelectCompany && (
-        <button
-          type="button"
-          className={`company-tag${article.isHolding ? ' holding' : ''}`}
-          onClick={() => onSelectCompany(article.company.name)}
-          title={article.company.name}
-        >
-          {companyLabel}
-        </button>
-      )}
-      <p className="news-title">{article.title}</p>
       <p className="news-meta">
-        {article.source && <span>{article.source} · </span>}
-        <span>{formatAge(article.publishedAt)}</span>
+        {onSelectCompany && (
+          <button
+            type="button"
+            className={`company-tag${article.isHolding ? ' holding' : ''}`}
+            onClick={() => onSelectCompany(article.company.name)}
+            title={article.company.name}
+          >
+            {companyLabel}
+          </button>
+        )}
+        <span>
+          {article.source ? `${article.source} · ` : ''}
+          {formatAge(article.publishedAt)}
+        </span>
         <AssessmentTag assessment={article.assessment} />
       </p>
-      <button type="button" className="secondary small-button" onClick={() => openInNewTab(article.url)}>
+      <p className="news-title">{article.title}</p>
+      <button type="button" className="text-button" onClick={() => openInNewTab(article.url)}>
         Open Article
       </button>
     </li>

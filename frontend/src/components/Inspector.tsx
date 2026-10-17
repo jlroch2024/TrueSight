@@ -1,4 +1,7 @@
-// The Supply Chain page's right panel: the details of whatever is chosen.
+// The Supply Chain page's right panel: the details of whatever is chosen. Each kind of information has its own look,
+// so it can be told apart at a glance: a header with chips (ticker, held or not, shared), labelled facts, suppliers in
+// lime and customers in teal (goods flow in from one and out to the other), the evidence in a tinted quote block, and
+// news as small cards.
 //
 // A company: its name, ticker, whether it is held (and how much), its annual report if it is a holding, and its
 // suppliers and customers on the graph, each a button that chooses that relationship. A relationship: what it is, the
@@ -94,26 +97,34 @@ function CompanyDetails({
   const weight = formatWeight(node.weight);
   return (
     <div className="inspector">
-      <p className="inspector-kind">Company</p>
-      <h2 title={node.name}>{displayName(node.name)}</h2>
-      <p className="inspector-facts">
-        {node.ticker && <span className="ticker">{node.ticker}</span>}
-        <span>{node.isHolding ? (weight ? `Holding · ${weight} of the Portfolio` : 'Holding') : 'Not Held'}</span>
-      </p>
+      <header className={`inspector-head${node.isHolding ? ' holding' : ''}`}>
+        <p className="inspector-kind">Company</p>
+        <h2 title={node.name}>{displayName(node.name)}</h2>
+        <p className="chips">
+          {node.ticker && <span className="chip chip-ticker">{node.ticker}</span>}
+          <span className={`chip ${node.isHolding ? 'chip-holding' : 'chip-muted'}`}>
+            {node.isHolding ? (weight ? `Holding · ${weight} of the Portfolio` : 'Holding') : 'Not Held'}
+          </span>
+          {node.sharedSummary && <span className="chip chip-shared">{node.sharedSummary}</span>}
+        </p>
+      </header>
       {holding?.reportType && holding.reportDate && (
-        <div className="inspector-report">
-          <p className="muted small">
-            {holding.reportType}, Filed {holding.reportDate}
-          </p>
+        <dl className="facts">
+          <div>
+            <dt>Annual Report</dt>
+            <dd>
+              {holding.reportType}, Filed {holding.reportDate}
+            </dd>
+          </div>
           {holding.reportLink && (
-            <button type="button" className="secondary" onClick={() => openInNewTab(holding.reportLink!)}>
+            <button type="button" className="secondary small-button" onClick={() => openInNewTab(holding.reportLink!)}>
               Show Report
             </button>
           )}
-        </div>
+        </dl>
       )}
-      <ConnectionList title="Suppliers" connections={suppliers} onSelect={onSelectRelationship} />
-      <ConnectionList title="Customers" connections={customers} onSelect={onSelectRelationship} />
+      <ConnectionList kind="suppliers" title="Suppliers" connections={suppliers} onSelect={onSelectRelationship} />
+      <ConnectionList kind="customers" title="Customers" connections={customers} onSelect={onSelectRelationship} />
       {companyNews && (
         <section className="inspector-section" aria-label="Recent News">
           <h3>
@@ -142,16 +153,19 @@ function CompanyDetails({
 }
 
 function ConnectionList({
+  kind,
   title,
   connections,
   onSelect,
 }: {
+  // Suppliers are drawn in lime and customers in teal, each with its own marker, so the two lists never blur.
+  kind: 'suppliers' | 'customers';
   title: string;
   connections: Connection[];
   onSelect: (relationshipId: number) => void;
 }) {
   return (
-    <section className="inspector-section" aria-label={title}>
+    <section className={`inspector-section connections ${kind}`} aria-label={title}>
       <h3>
         {title} <span className="muted">({connections.length})</span>
       </h3>
@@ -189,12 +203,29 @@ function RelationshipDetails({
       : [relationship.company, relationship.counterparty];
   return (
     <div className="inspector">
-      <p className="inspector-kind">Relationship</p>
-      <h2>{relationshipSummary(relationship)}</h2>
-      <blockquote>{relationship.evidence}</blockquote>
-      <p className="muted small">
-        {relationship.report.form}, Filed {relationship.report.filingDate}
-      </p>
+      <header className="inspector-head relationship">
+        <p className="inspector-kind">Relationship</p>
+        <h2>{relationshipSummary(relationship)}</h2>
+        <p className="chips flow">
+          <span className="chip chip-supplier">{supplier.ticker ?? displayName(supplier.name)}</span>
+          <span className="flow-arrow" aria-hidden="true">
+            {'\u2192'}
+          </span>
+          <span className="chip chip-customer">{customer.ticker ?? displayName(customer.name)}</span>
+        </p>
+      </header>
+      <figure className="evidence">
+        <figcaption>Evidence From the Annual Report</figcaption>
+        <blockquote>{relationship.evidence}</blockquote>
+      </figure>
+      <dl className="facts">
+        <div>
+          <dt>Annual Report</dt>
+          <dd>
+            {relationship.report.form}, Filed {relationship.report.filingDate}
+          </dd>
+        </div>
+      </dl>
       <button type="button" onClick={() => openInNewTab(showInReportUrl(relationship.report.url, relationship.evidence))}>
         Show in Report
       </button>

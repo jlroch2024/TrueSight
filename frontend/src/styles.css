@@ -1166,8 +1166,7 @@ button.panel-row.chosen {
   min-width: 0;
 }
 
-.panel-row .ticker,
-.inspector-facts .ticker {
+.panel-row .ticker {
   color: var(--accent);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
@@ -1196,40 +1195,126 @@ button.panel-row.chosen {
   color: var(--amber);
 }
 
-.inspector h2 {
-  font-size: 17px;
-  line-height: 1.3;
+/* The Inspector: each kind of information has its own look. */
+.inspector-head {
+  margin: -14px -14px 14px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(160deg, rgb(37 67 75 / 45%), transparent);
+}
+
+.inspector-head.holding {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.inspector-head.relationship {
+  box-shadow: inset 3px 0 0 var(--lime);
+}
+
+.inspector-head h2 {
+  margin: 0 0 10px;
+  font-size: 19px;
+  line-height: 1.25;
 }
 
 .inspector-kind {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 600;
 }
 
-.inspector-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 12px;
-  font-size: 14px;
-}
-
-.inspector-report {
+.chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-}
-
-.inspector-report p {
+  gap: 6px;
   margin: 0;
 }
 
-.inspector blockquote {
-  margin: 12px 0;
-  padding-left: 14px;
-  border-left: 2px solid var(--accent);
+.chip {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip-ticker {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.chip-holding {
+  border-color: var(--accent);
+  background: rgb(45 212 191 / 12%);
+  color: var(--accent);
+}
+
+.chip-muted {
+  color: var(--muted);
+}
+
+.chip-shared {
+  border-color: var(--amber);
+  background: rgb(245 183 59 / 12%);
+  color: var(--amber);
+}
+
+.chip-supplier {
+  border-color: var(--lime);
+  background: rgb(196 243 106 / 10%);
+  color: var(--lime);
+}
+
+.chip-customer {
+  border-color: var(--accent);
+  background: rgb(45 212 191 / 10%);
+  color: var(--accent);
+}
+
+.flow-arrow {
+  color: var(--muted);
+}
+
+/* A labelled fact: the label small and muted, the value under it. */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.facts dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.evidence {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--lime);
+  background: rgb(196 243 106 / 6%);
+}
+
+.evidence figcaption {
+  margin-bottom: 6px;
+  color: var(--lime);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.evidence blockquote {
+  margin: 0;
   font-style: italic;
   line-height: 1.5;
 }
@@ -1241,6 +1326,32 @@ button.panel-row.chosen {
 .inspector-section h3 {
   margin: 0 0 6px;
   font-size: 14px;
+}
+
+/* Suppliers in lime, customers in teal, each list marked down its side in its colour. */
+.connections {
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+
+.connections.suppliers {
+  border-left-color: var(--lime);
+}
+
+.connections.customers {
+  border-left-color: var(--accent);
+}
+
+.connections.suppliers h3 {
+  color: var(--lime);
+}
+
+.connections.customers h3 {
+  color: var(--accent);
+}
+
+.connections.suppliers .panel-row .ticker {
+  color: var(--lime);
 }
 
 /* The left panel's tabs, Holdings and News. */
@@ -1297,15 +1408,41 @@ button.panel-row.chosen {
 }
 
 .news-item {
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   background: var(--bg);
+  transition: border-color 150ms ease;
 }
 
+.news-item:hover {
+  border-color: var(--accent);
+}
+
+/* The headline is the card's title: bigger, bold and bright; the details above it are small and muted. */
 .news-title {
-  margin: 6px 0;
-  font-size: 14px;
-  line-height: 1.4;
+  margin: 6px 0 8px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* A quiet button that reads as an action without the weight of a full button. */
+.text-button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  clip-path: none;
+}
+
+.text-button:hover:not(:disabled) {
+  border: 0;
+  background: transparent;
+  color: var(--lime);
 }
 
 .news-meta {
@@ -1313,7 +1450,7 @@ button.panel-row.chosen {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin: 0 0 8px;
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
 }
