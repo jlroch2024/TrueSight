@@ -15,7 +15,9 @@ what runs where, how a merge reaches the live site, and every step used to set i
 | Spending alert | Billing, Budgets & alerts: `TrueSight` | Emails at 50%, 90% and 100% of the monthly budget |
 
 Everything else the app needs is a plain environment variable on the Cloud Run service, not a secret:
-`SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `GEMINI_MODEL` and `SEC_USER_AGENT`.
+`SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `GEMINI_MODEL`, `SEC_USER_AGENT` and
+`LOGO_DEV_TOKEN`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the browser, which is
+where the graph's logos are loaded, so it is not a secret. Without it, the graph shows letters instead of logos.
 
 ## How a Merge Reaches the Live Site
 
@@ -42,6 +44,7 @@ next line. They need the Google Cloud CLI, logged in with `gcloud auth login`.
 | Pause the database to save money (the site stops working) | `gcloud sql instances patch truesight-db --activation-policy=NEVER` |
 | Start it again | `gcloud sql instances patch truesight-db --activation-policy=ALWAYS` |
 | Change a secret, e.g. a new Gemini key | Secret Manager, the secret, **New version**. Then redeploy (merge anything, or re-run the last Deploy) so the app reads it |
+| Set or change the Logo.dev token, for the graph's logos | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="LOGO_DEV_TOKEN=pk_..."`. This starts a new revision with it, keeping every other setting |
 
 ## Setting It Up From Nothing
 
