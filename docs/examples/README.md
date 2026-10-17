@@ -10,6 +10,7 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |
 | `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
+| `news-labels.csv` | The team's own event-or-noise label for each of those 20 headlines, made by hand before looking at Gemini's answer | Filter Out Noise, to measure how often Gemini is right |
 
 ## Where It Came From
 
@@ -71,6 +72,18 @@ HEADLINES:
 19. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Vs. ASML: If I Had to Choose One For the Next 5 Years, It’s This One - Yahoo Finance
 20. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Manufacturing Could Have Big News on Oct. 15 - The Globe and Mail
 ```
+
+## How Often Gemini Is Right
+
+`news-labels.csv` holds the team's hand labels for the same 20 headlines: `index` and `title` as sent to Gemini,
+`label` (`event` or `noise`) and `labelled_by`. Two teammates, Zhe An and Ben, labelled every headline by hand
+before looking at Gemini's answer, and agree on each label. They judged all 20 to be noise.
+
+**Gemini agreed with 20 of 20.** It also judged every headline to be noise.
+
+This shows Gemini does not raise false alarms on ordinary news, such as earnings, share prices, stock advice and
+supply deals. It does not yet show that Gemini catches real disruptions, because none of these 20 headlines reports
+one. A sample that includes real events is needed to measure that.
 
 Every `evidence` sentence in `relationships.json` was copied from the company's real annual report, and checked word for
 word against it. The reports, all downloaded from the SEC on 25 September 2026:
