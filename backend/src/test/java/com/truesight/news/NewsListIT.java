@@ -94,12 +94,12 @@ class NewsListIT {
                 .andExpect(jsonPath("$[0].title").value(sample.get(0).title()))
                 .andExpect(jsonPath("$[0].source").value(sample.get(0).source()))
                 .andExpect(jsonPath("$[0].url").value(sample.get(0).url()))
-                .andExpect(jsonPath("$[0].company.name").value("Taiwan Semiconductor Manufacturing Company Limited"))
-                .andExpect(jsonPath("$[0].company.ticker").value("TSM"))
+                .andExpect(jsonPath("$[0].company.name").value(tsmc.getName()))
+                .andExpect(jsonPath("$[0].company.ticker").value(tsmc.getTicker()))
                 .andExpect(jsonPath("$[0].isHolding").value(false))
                 .andExpect(jsonPath("$[0].assessment").isEmpty())
                 .andExpect(jsonPath("$[1].title").value(sample.get(1).title()))
-                .andExpect(jsonPath("$[1].company.name").value("NVIDIA Corporation"))
+                .andExpect(jsonPath("$[1].company.name").value(nvidia.getName()))
                 .andExpect(jsonPath("$[1].isHolding").value(true))
                 .andExpect(jsonPath("$[2].title").value(sample.get(2).title()));
     }
