@@ -35,7 +35,7 @@ describe('SignUpPage', () => {
 
     await signUp('new@example.com', 'long-enough');
 
-    expect(await screen.findByText('You have no portfolios yet. Create one above to get started.')).toBeInTheDocument();
+    expect(await screen.findByText('You have no portfolios yet. Name your first one above and press Create Portfolio.')).toBeInTheDocument();
     expect(tokenStore.get()).toBe('new-token');
   });
 

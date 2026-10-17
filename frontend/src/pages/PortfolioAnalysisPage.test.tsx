@@ -95,4 +95,35 @@ describe('Portfolio annual report analysis', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/portfolios/7/analysis', expect.objectContaining({ method: 'POST' }));
   });
+
+  it('moves the subtitle from reading reports to the count analysed when analysis ends, without reloading', async () => {
+    let status = 'ANALYSING';
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.endsWith('/holdings') ? [row(status)] : [portfolio],
+    ))));
+
+    renderPage();
+    expect(await screen.findByText('Reading annual reports: 0 of 1 done.')).toBeInTheDocument();
+
+    status = 'DONE';
+    expect(await screen.findByText(/1 of 1 holding analysed\./, undefined, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it('opens the same portfolio\'s Supply Chain from the subtitle once a holding is Done', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.endsWith('/holdings') ? [row('DONE')] : [portfolio],
+    ))));
+    render(
+      <MemoryRouter initialEntries={['/portfolios/7']}>
+        <Routes>
+          <Route path="/portfolios/:portfolioId" element={<PortfolioPage />} />
+          <Route path="/portfolios/:portfolioId/supply-chain" element={<p>Supply Chain of portfolio 7</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Supply Chain' }));
+
+    expect(screen.getByText('Supply Chain of portfolio 7')).toBeInTheDocument();
+  });
 });

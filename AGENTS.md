@@ -156,6 +156,8 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 - **Adding a page:** create it in `src/pages/`, and add a `<Route>` in `App.tsx`. For the sidebar, add a line to
   `NAV_ITEMS` in `navigation.ts` for a page everyone sees, or to `PORTFOLIO_NAV_ITEMS` for a page belonging to the open
   portfolio. Only working pages appear in the sidebar.
+- **Subtitles speak to the user.** A page's subtitle says what the user can do there, or what it shows about their
+  portfolio. It never describes the app to the team.
 - **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
   to do next), and loaded. `pages/PortfolioPage.tsx` is the example.
 - **Look:** use the colours and classes in `styles.css`. Dark blueprint palette, hairline borders, square corners,
