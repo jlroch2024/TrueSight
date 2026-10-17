@@ -28,7 +28,6 @@ function plural(count: number, word: string): string {
 export function HoldingsPanel({ holdings, nodeIdByHolding, relationships, shared, selectedNodeId, onSelect }: Props) {
   return (
     <div className="holdings-panel">
-      <h2>Holdings</h2>
       <ul className="panel-list">
         {[...holdings].sort(byWeight).map((holding) => {
           const nodeId = nodeIdByHolding.get(holding.id);
