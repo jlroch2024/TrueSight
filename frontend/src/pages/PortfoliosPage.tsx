@@ -69,7 +69,7 @@ export function PortfoliosPage() {
   return (
     <section>
       <h1>Portfolios</h1>
-      <p className="muted">Keep each client book in its own portfolio.</p>
+      <p className="muted">Each portfolio is a set of holdings that TrueSight maps to its suppliers and customers. Create one, then open it to upload holdings.</p>
 
       <form className="card inline-form" onSubmit={create}>
         <label htmlFor="new-portfolio-name">New Portfolio Name</label>
@@ -88,7 +88,7 @@ export function PortfoliosPage() {
         ) : !portfolios ? (
           <p className="muted">Loading…</p>
         ) : portfolios.length === 0 ? (
-          <p className="muted">You have no portfolios yet. Create one above to get started.</p>
+          <p className="muted">You have no portfolios yet. Name your first one above and press Create Portfolio.</p>
         ) : (
           <ul className="portfolio-list">
             {portfolios.map((portfolio) => (

@@ -6,6 +6,7 @@ import { type Holding, type HoldingStatus, type Portfolio, holdingApi, portfolio
 import { paths } from '../paths';
 import { formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
+import { portfolioSubtitle } from './portfolioSubtitle';
 
 const STATUS_LABELS: Record<HoldingStatus, string> = {
   WAITING: 'Waiting',
@@ -62,6 +63,7 @@ export function PortfolioPage() {
 
   const running = holdings.some((holding) => holding.status === 'ANALYSING');
   const failed = holdings.some((holding) => holding.status === 'FAILED');
+  const subtitle = portfolioSubtitle(holdings);
 
   useEffect(() => {
     if (!running) return;
@@ -119,7 +121,17 @@ export function PortfolioPage() {
       <div className="page-heading">
         <div>
           <h1>{portfolio.name}</h1>
-          <p className="muted">Annual reports for each company in this portfolio.</p>
+          <p className="muted">
+            {subtitle.text}
+            {subtitle.showSupplyChain && (
+              <>
+                {' '}
+                <button type="button" className="inline-action" onClick={() => navigate(paths.supplyChain(portfolioId))}>
+                  Open Supply Chain
+                </button>
+              </>
+            )}
+          </p>
         </div>
         <div className="page-actions">
           <button type="button" onClick={startAnalysis} disabled={starting || running || !holdings.length}>
@@ -134,7 +146,7 @@ export function PortfolioPage() {
           {uploading ? 'Uploading…' : 'Upload CSV'}
         </button>
         <input ref={uploadInput} id="upload-csv" aria-label="CSV file" type="file" accept=".csv,text/csv" onChange={upload} disabled={uploading} className="visually-hidden" />
-        <span className="muted small">A CSV with a ticker or symbol column, and optionally a weight column. Up to 5 MB.</span>
+        <span className="muted small">A CSV with a ticker or symbol column, and an optional weight column. Up to 5 MB.</span>
       </div>
 
       {error && <p role="alert" className="error">{error}</p>}
@@ -144,7 +156,7 @@ export function PortfolioPage() {
       <div className="card">
         <h2>Holdings</h2>
         {holdings.length === 0 ? (
-          <p className="muted">This portfolio has no holdings yet. Upload a CSV to add them.</p>
+          <p className="muted">No holdings yet. Upload CSV adds them from a file with a ticker column.</p>
         ) : (
           <table className="holdings">
             <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Last Analysed</th><th>Report Type</th><th>Filing Date</th><th></th></tr></thead>

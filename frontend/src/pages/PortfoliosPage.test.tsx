@@ -62,7 +62,7 @@ describe('Portfolios page', () => {
   it('asks a new user to create a portfolio', async () => {
     renderAt('/portfolios');
 
-    expect(await screen.findByText('You have no portfolios yet. Create one above to get started.')).toBeInTheDocument();
+    expect(await screen.findByText('You have no portfolios yet. Name your first one above and press Create Portfolio.')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Main' })).toHaveTextContent('Portfolios');
   });
 
@@ -125,7 +125,7 @@ describe('Portfolios page', () => {
     expect(screen.getByRole('button', { name: 'Tech Book' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(await screen.findByText('You have no portfolios yet. Create one above to get started.')).toBeInTheDocument();
+    expect(await screen.findByText('You have no portfolios yet. Name your first one above and press Create Portfolio.')).toBeInTheDocument();
   });
 });
 

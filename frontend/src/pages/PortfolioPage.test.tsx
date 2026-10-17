@@ -79,7 +79,7 @@ describe('Portfolio page', () => {
     const confirm = vi.spyOn(window, 'confirm');
     renderAt('/portfolios/1');
 
-    expect(await screen.findByText('This portfolio has no holdings yet. Upload a CSV to add them.')).toBeInTheDocument();
+    expect(await screen.findByText('No holdings yet. Upload CSV adds them from a file with a ticker column.')).toBeInTheDocument();
     await userEvent.upload(screen.getByLabelText('CSV file'), csv('ticker,weight\nNVDA,10\nAMD,10\n'));
 
     expect(await screen.findByRole('cell', { name: 'NVDA' })).toBeInTheDocument();
