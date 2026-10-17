@@ -5,7 +5,7 @@ Real data to build and test against, so every story can start on day 1 and tests
 | File | What it is | Used by |
 |---|---|---|
 | `holdings.csv` | The sample portfolio: 10 companies, each weighted 10% | Upload a Portfolio CSV, and the demo |
-| `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns | See the Supply Chain as a Graph, until the real endpoint exists |
+| `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns. Every one is `UNREVIEWED`: `reviewStatus` is `"UNREVIEWED"`, and `reviewedAt` and `reviewNote` are `null` | See the Supply Chain as a Graph, until the real endpoint exists; Review AI Findings |
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |

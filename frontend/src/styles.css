@@ -556,6 +556,49 @@ table.holdings td:nth-child(7) {
   font-size: 12px;
 }
 
+/* The Review page (Analysts only). */
+.review-list {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-card h2 {
+  margin-top: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.review-card blockquote {
+  margin: 12px 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--accent);
+  font-style: italic;
+}
+
+.review-approved {
+  color: var(--lime);
+}
+
+.review-rejected {
+  color: var(--danger);
+}
+
+.review-reject {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-reject textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
 .evidence-panel h2 {
   margin-top: 0;
   font-size: 16px;
