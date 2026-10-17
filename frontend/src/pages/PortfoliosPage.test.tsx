@@ -139,10 +139,11 @@ describe('Portfolio page and switcher', () => {
 
     expect(await screen.findByRole('heading', { name: 'Tech Book' })).toBeInTheDocument();
 
-    await userEvent.selectOptions(await screen.findByLabelText('Open Portfolio'), 'Energy Book');
+    await userEvent.click(await screen.findByLabelText('Open Portfolio'));
+    await userEvent.click(screen.getByRole('option', { name: 'Energy Book' }));
 
     expect(await screen.findByRole('heading', { name: 'Energy Book' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Open Portfolio')).toHaveValue('1');
+    expect(screen.getByLabelText('Open Portfolio')).toHaveTextContent('Energy Book');
   });
 
   it("says so when the portfolio is not one of the user's", async () => {
