@@ -1,7 +1,16 @@
 // The calls for the user's portfolios. Every page that needs portfolios uses these, so the addresses are written once.
 import { api } from './client';
 
-export type Portfolio = { id: number; name: string; createdAt: string };
+export type NewsStatus = 'IDLE' | 'CHECKING' | 'FAILED';
+
+export type Portfolio = {
+  id: number;
+  name: string;
+  createdAt: string;
+  newsStatus: NewsStatus;
+  newsStatusReason: string | null;
+  newsCheckedAt: string | null;
+};
 
 export const portfolioApi = {
   list: () => api<Portfolio[]>('/portfolios'),
@@ -9,6 +18,7 @@ export const portfolioApi = {
   rename: (id: number, name: string) =>
     api<Portfolio>(`/portfolios/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   remove: (id: number) => api(`/portfolios/${id}`, { method: 'DELETE' }),
+  newsCheck: (id: number | string) => api<void>(`/portfolios/${id}/news-check`, { method: 'POST' }),
 };
 
 export type HoldingStatus = 'WAITING' | 'ANALYSING' | 'DONE' | 'FAILED' | 'NO_REPORT_FOUND';
