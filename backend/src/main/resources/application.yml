@@ -42,6 +42,8 @@ truesight:
   gemini:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-3.8-flash}
+  # The emails that are Analysts, comma-separated, any capitalisation (see AnalystEmails). Not a secret.
+  analyst-emails: ${ANALYST_EMAILS:}
   sec:
     user-agent: ${SEC_USER_AGENT:TrueSight contact@truesight.com}
     requests-per-second: 10
