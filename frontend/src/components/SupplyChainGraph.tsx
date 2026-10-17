@@ -10,6 +10,9 @@
 // more shortly after, unless the user has already zoomed, panned or dragged, and Fit to Screen brings everything back
 // into view at any time. Scrolling zooms at the normal speed, within limits.
 //
+// A supplier or customer that several holdings depend on (see sharedCompanies) is drawn bigger, with an amber border,
+// and its label says what it supplies or buys, e.g. "Supplies 4 holdings".
+//
 // A visitor whose computer is set to reduce motion instead gets a layout computed once, still: cola never runs, and
 // the arrows are plain lines instead of moving dashes (the arrowheads still show which way goods flow).
 //
@@ -37,6 +40,7 @@ cytoscape.use(cola);
 // Matches styles.css: Cytoscape draws to a <canvas>, so it cannot read the CSS custom properties there.
 const ACCENT = '#2dd4bf';
 const LIME = '#c4f36a';
+const AMBER = '#f5b73b';
 const MUTED = '#8ba9a5';
 const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
@@ -45,6 +49,8 @@ const PANEL_RAISED = '#102a33';
 
 // The teal border that marks a holding. Tile sizes live in supplyChain.ts, beside holdingSize.
 const HOLDING_BORDER_WIDTH = 3;
+// A supplier or customer several holdings depend on: a bigger tile with an amber border, so it stands out.
+const SHARED_TILE_SIZE = 58;
 
 /**
  * A company's first letter on a tile, as a picture Cytoscape can draw where the logo would be. A canvas cannot use the
@@ -98,12 +104,14 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
       ...nodes.map((node) => ({
         data: {
           id: node.id,
-          label: nodeLabel(node),
+          // A shared company carries what it supplies or buys under its label, e.g. "TSM" then "Supplies 4 holdings".
+          label: node.sharedSummary ? `${nodeLabel(node)}\n${node.sharedSummary}` : nodeLabel(node),
           // The letter first; swapped for the logo once it has loaded (below).
           image: letterTile(node.name),
           holding: node.isHolding ? 1 : 0,
-          // A holding grows with its weight; suppliers and customers keep the usual size.
+          // A holding grows with its weight; other companies keep the usual size (shared ones are made bigger below).
           size: node.isHolding ? holdingSize(node.weight) : TILE_SIZE,
+          shared: node.sharedSummary ? 1 : 0,
           ticker: node.ticker ? 1 : 0,
         },
       })),
@@ -151,6 +159,18 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
         {
           selector: 'node[holding = 1]',
           style: { 'border-width': HOLDING_BORDER_WIDTH, 'border-color': ACCENT },
+        },
+        // Shared suppliers and customers: amber-bordered, bigger, and their label wraps onto a second line.
+        {
+          selector: 'node[shared = 1]',
+          style: {
+            width: SHARED_TILE_SIZE,
+            height: SHARED_TILE_SIZE,
+            'border-width': HOLDING_BORDER_WIDTH,
+            'border-color': AMBER,
+            'text-wrap': 'wrap',
+            'text-max-width': '120px',
+          },
         },
         {
           selector: 'node[ticker = 1]',

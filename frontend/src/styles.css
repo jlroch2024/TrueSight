@@ -9,6 +9,7 @@
   --muted: #8ba9a5;
   --accent: #2dd4bf;
   --lime: #c4f36a;
+  --amber: #f5b73b;
   --danger: #ff7272;
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
@@ -501,6 +502,35 @@ table.holdings td:nth-child(7) {
   position: absolute;
   top: 10px;
   right: 10px;
+}
+
+/* The list of companies several holdings depend on, under the graph. */
+.shared-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shared-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.shared-ticker {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.shared-summary {
+  margin-left: auto;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .evidence-panel h2 {

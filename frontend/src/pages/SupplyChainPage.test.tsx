@@ -206,4 +206,50 @@ describe('Supply Chain page', () => {
     expect(screen.getByTestId('logo-token')).toBeEmptyDOMElement();
     expect(screen.queryByText('Something went wrong.')).not.toBeInTheDocument();
   });
+
+  describe('shared suppliers and customers', () => {
+    const tsmc = { id: 11, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' };
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null };
+    const micron = { id: 13, name: 'Micron Technology, Inc.', ticker: 'MU' };
+    const nvidia = { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' };
+    const amd = { id: 3, name: 'Advanced Micro Devices, Inc.', ticker: 'AMD' };
+    const qualcomm = { id: 5, name: 'QUALCOMM Incorporated', ticker: 'QCOM' };
+    const holdings = [
+      holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name }),
+      holding({ id: 2, ticker: 'AMD', companyName: amd.name }),
+      holding({ id: 3, ticker: 'QCOM', companyName: qualcomm.name }),
+    ];
+
+    it('lists the companies several holdings depend on under the graph, most shared first', async () => {
+      const relationships = [
+        relationship({ id: 1, company: nvidia, counterparty: samsung }),
+        relationship({ id: 2, company: amd, counterparty: samsung }),
+        relationship({ id: 3, company: nvidia, counterparty: tsmc }),
+        relationship({ id: 4, company: amd, counterparty: tsmc }),
+        relationship({ id: 5, company: qualcomm, counterparty: tsmc }),
+        relationship({ id: 6, company: nvidia, counterparty: micron }), // one holding only: not listed
+      ];
+      vi.stubGlobal('fetch', fakeFetch(relationships, holdings));
+
+      renderAt('/portfolios/7/supply-chain');
+
+      await screen.findByTestId('fake-graph');
+      const items = screen.getAllByRole('listitem').map((item) => item.textContent);
+      expect(items).toEqual([
+        'Taiwan Semiconductor Manufacturing Company LimitedTSMSupplies 3 holdings',
+        'Samsung Electronics Co., Ltd.Supplies 2 holdings',
+      ]);
+      expect(screen.queryByText('Micron Technology, Inc.')).not.toBeInTheDocument();
+    });
+
+    it('says so when no company is shared', async () => {
+      vi.stubGlobal('fetch', fakeFetch([relationship()], [holding()]));
+
+      renderAt('/portfolios/7/supply-chain');
+
+      await screen.findByTestId('fake-graph');
+      expect(screen.getByText(/supplies, or buys from, two or more of them/)).toBeInTheDocument();
+      expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    });
+  });
 });

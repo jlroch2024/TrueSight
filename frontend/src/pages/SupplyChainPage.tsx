@@ -8,7 +8,7 @@ import { type Relationship, relationshipApi } from '../api/relationships';
 import { settingsApi } from '../api/settings';
 import { SupplyChainGraph } from '../components/SupplyChainGraph';
 import { paths } from '../paths';
-import { buildGraphElements } from './supplyChain';
+import { buildGraphElements, sharedCompanies, sharedSummary, withSharedSummaries } from './supplyChain';
 import { openInNewTab } from '../format';
 
 function messageOf(e: unknown): string {
@@ -56,6 +56,9 @@ export function SupplyChainPage() {
     () => buildGraphElements(relationships ?? [], holdings),
     [relationships, holdings],
   );
+  // The companies several holdings depend on: drawn amber on the graph, and listed under it, most shared first.
+  const shared = useMemo(() => sharedCompanies(relationships ?? [], nodes), [relationships, nodes]);
+  const graphNodes = useMemo(() => withSharedSummaries(nodes, shared), [nodes, shared]);
   const handleEdgeSelect = useCallback((relationshipId: number) => setSelectedId(relationshipId), []);
   const selected = relationships?.find((r) => r.id === selectedId) ?? null;
 
@@ -91,7 +94,7 @@ export function SupplyChainPage() {
         Drag a company to rearrange the graph, scroll to zoom, point at a company to focus on its connections, and click an edge to see the evidence behind it.
       </p>
 
-      <SupplyChainGraph nodes={nodes} edges={edges} onEdgeSelect={handleEdgeSelect} logoToken={logoToken} />
+      <SupplyChainGraph nodes={graphNodes} edges={edges} onEdgeSelect={handleEdgeSelect} logoToken={logoToken} />
 
       {selected && (
         <div className="card evidence-panel">
@@ -111,6 +114,29 @@ export function SupplyChainPage() {
           <button type="button" onClick={() => openInNewTab(selected.report.url)}>Show Report</button>
         </div>
       )}
+
+      <div className="card shared-companies">
+        <h2>Shared Suppliers and Customers</h2>
+        {shared.length === 0 ? (
+          <p className="muted small">No company outside your holdings supplies, or buys from, two or more of them.</p>
+        ) : (
+          <>
+            <p className="muted small">
+              Companies you do not hold that several of your holdings depend on, most shared first. If one runs into
+              trouble, all of those positions feel it.
+            </p>
+            <ol className="shared-list">
+              {shared.map((company) => (
+                <li key={company.id}>
+                  <span className="shared-name">{company.name}</span>
+                  {company.ticker && <span className="shared-ticker">{company.ticker}</span>}
+                  <span className="shared-summary">{sharedSummary(company)}</span>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+      </div>
     </section>
   );
 }
