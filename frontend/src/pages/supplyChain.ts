@@ -111,6 +111,21 @@ export function formatWeight(weight: number | null): string | null {
   return `${Number(weight.toFixed(2))}%`;
 }
 
+/** The side of a company's square tile on the graph, in pixels. Holdings with a weight grow from here. */
+export const TILE_SIZE = 44;
+/** The biggest a holding's tile can grow, so one large position cannot cover the graph. */
+export const MAX_TILE_SIZE = 110;
+
+/**
+ * How big a holding's tile is drawn: 44 pixels plus 9 times the square root of its weight, at most 110, so bigger
+ * positions stand out while small ones stay readable. The square root keeps the growth gentle: 4% adds 18 pixels,
+ * 25% adds 45. A holding with no weight, or a weight of 0, keeps the usual size.
+ */
+export function holdingSize(weight: number | null): number {
+  if (weight === null || !Number.isFinite(weight) || weight <= 0) return TILE_SIZE;
+  return Math.min(MAX_TILE_SIZE, TILE_SIZE + 9 * Math.sqrt(weight));
+}
+
 /**
  * The label under a company's tile: a holding's ticker and weight ("NVDA 18%"), otherwise its ticker, or a short
  * name when it has no ticker.

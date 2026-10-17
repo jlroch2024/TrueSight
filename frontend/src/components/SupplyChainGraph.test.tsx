@@ -344,8 +344,18 @@ describe('SupplyChainGraph', () => {
       expect(images.map(letterIn)).toEqual(['N', 'T', 'S']);
       expect(styles()).toContainEqual(expect.objectContaining({
         selector: 'node',
-        style: expect.objectContaining({ shape: 'rectangle', width: 44, height: 44, 'background-image': 'data(image)' }),
+        style: expect.objectContaining({
+          shape: 'rectangle', width: 'data(size)', height: 'data(size)', 'background-image': 'data(image)',
+        }),
       }));
+    });
+
+    it('draws a holding bigger by its weight, and suppliers and customers at the usual size', () => {
+      drawGraph(TILE_NODES);
+
+      const sizes = (made.options as { elements: Array<{ data: { size: number } }> }).elements.map((e) => e.data.size);
+      expect(sizes[0]).toBeCloseTo(44 + 9 * Math.sqrt(18)); // NVIDIA, 18% of the portfolio
+      expect(sizes.slice(1)).toEqual([44, 44]);
     });
 
     it('puts the label under the tile, on a patch that hides any arrow passing behind it', () => {

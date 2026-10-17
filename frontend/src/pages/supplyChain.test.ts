@@ -9,6 +9,7 @@ import {
   dashOffsetAt,
   focusOn,
   formatWeight,
+  holdingSize,
   type GraphNode,
   logoUrl,
   nodeLabel,
@@ -360,6 +361,28 @@ describe('logoUrl', () => {
 
   it('is empty without a token, so the graph shows letters instead', () => {
     expect(logoUrl({ name: 'NVIDIA Corporation', ticker: 'NVDA' }, '')).toBeNull();
+  });
+});
+
+describe('holdingSize', () => {
+  it('is the usual tile size for a holding with no weight, or a weight of 0', () => {
+    expect(holdingSize(null)).toBe(44);
+    expect(holdingSize(0)).toBe(44);
+  });
+
+  it('grows with the square root of the weight', () => {
+    expect(holdingSize(4)).toBe(62);
+    expect(holdingSize(25)).toBe(89);
+    expect(holdingSize(18)).toBeCloseTo(82.18, 2);
+  });
+
+  it('never grows past 110 pixels', () => {
+    expect(holdingSize(60)).toBe(110);
+    expect(holdingSize(100)).toBe(110);
+  });
+
+  it('gives a bigger position a bigger tile', () => {
+    expect(holdingSize(40)).toBeGreaterThan(holdingSize(10));
   });
 });
 
