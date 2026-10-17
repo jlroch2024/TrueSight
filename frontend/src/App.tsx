@@ -15,6 +15,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { OpenFirstPortfolioPage } from './pages/OpenFirstPortfolioPage';
 import { PortfolioPage } from './pages/PortfolioPage';
 import { PortfoliosPage } from './pages/PortfoliosPage';
+import { ReviewPage } from './pages/ReviewPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { SupplyChainPage } from './pages/SupplyChainPage';
 import { paths } from './paths';
@@ -36,6 +37,7 @@ export function App() {
           <Route index element={<OpenFirstPortfolioPage />} />
           <Route path={paths.portfolios} element={<PortfoliosPage />} />
           <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
+          <Route path={paths.review} element={<ReviewPage />} />
           <Route path={paths.supplyChain(':portfolioId')} element={<SupplyChainPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

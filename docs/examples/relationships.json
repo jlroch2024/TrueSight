@@ -18,7 +18,10 @@
       "form": "10-K",
       "filingDate": "2026-02-25",
       "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 2,
@@ -39,7 +42,10 @@
       "form": "10-K",
       "filingDate": "2026-02-25",
       "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 3,
@@ -60,7 +66,10 @@
       "form": "10-K",
       "filingDate": "2026-02-04",
       "url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 4,
@@ -81,7 +90,10 @@
       "form": "10-K",
       "filingDate": "2026-02-04",
       "url": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 5,
@@ -102,7 +114,10 @@
       "form": "10-K",
       "filingDate": "2025-11-05",
       "url": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 6,
@@ -123,7 +138,10 @@
       "form": "10-K",
       "filingDate": "2025-11-05",
       "url": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 7,
@@ -144,7 +162,10 @@
       "form": "10-K",
       "filingDate": "2025-11-05",
       "url": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 8,
@@ -165,7 +186,10 @@
       "form": "10-K",
       "filingDate": "2026-01-29",
       "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 9,
@@ -186,7 +210,10 @@
       "form": "10-K",
       "filingDate": "2026-01-29",
       "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 10,
@@ -207,7 +234,10 @@
       "form": "10-K",
       "filingDate": "2025-12-18",
       "url": "https://www.sec.gov/Archives/edgar/data/1730168/000173016825000121/avgo-20251102.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 11,
@@ -228,7 +258,10 @@
       "form": "10-K",
       "filingDate": "2026-08-07",
       "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 12,
@@ -249,7 +282,10 @@
       "form": "10-K",
       "filingDate": "2026-08-07",
       "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 13,
@@ -270,7 +306,10 @@
       "form": "10-K",
       "filingDate": "2026-08-07",
       "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 14,
@@ -291,7 +330,10 @@
       "form": "10-K",
       "filingDate": "2026-08-07",
       "url": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 15,
@@ -312,7 +354,10 @@
       "form": "10-K",
       "filingDate": "2026-05-21",
       "url": "https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/crus-20260328.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 16,
@@ -333,7 +378,10 @@
       "form": "20-F",
       "filingDate": "2026-02-25",
       "url": "https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   },
   {
     "id": 17,
@@ -354,6 +402,9 @@
       "form": "20-F",
       "filingDate": "2026-02-26",
       "url": "https://www.sec.gov/Archives/edgar/data/932787/000093278726000009/stm-20251231.htm"
-    }
+    },
+    "reviewStatus": "UNREVIEWED",
+    "reviewedAt": null,
+    "reviewNote": null
   }
 ]

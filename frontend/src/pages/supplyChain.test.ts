@@ -140,6 +140,9 @@ function relationship(
     provides: null,
     evidence: 'Evidence sentence.',
     report: { form: '10-K', filingDate: '2026-01-01', url: 'https://www.sec.gov/example' },
+    reviewStatus: 'UNREVIEWED',
+    reviewedAt: null,
+    reviewNote: null,
   };
 }
 
