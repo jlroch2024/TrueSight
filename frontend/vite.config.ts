@@ -11,6 +11,11 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8080',
     },
+    // The website's own folder, plus the shared sample data the website tests read (e.g. the saved Google News
+    // answer, as text). Nothing else above the website is reachable, so .env never is.
+    fs: {
+      allow: ['.', '../docs/examples'],
+    },
   },
   test: {
     environment: 'jsdom',

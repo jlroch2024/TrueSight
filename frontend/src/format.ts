@@ -15,6 +15,24 @@ export function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+/**
+ * How long ago something happened, in words: "Just now", "5 minutes ago", "1 hour ago", "2 days ago". Past a week,
+ * the date itself.
+ */
+export function formatAge(value: string, now: number = Date.now()): string {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '—';
+  const minutes = Math.floor((now - then) / 60_000);
+  if (minutes < 1) return 'Just now';
+  const ago = (count: number, unit: string) => `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+  if (minutes < 60) return ago(minutes, 'minute');
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return ago(hours, 'hour');
+  const days = Math.floor(hours / 24);
+  if (days <= 7) return ago(days, 'day');
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(then);
+}
+
 export function openInNewTab(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer');
 }

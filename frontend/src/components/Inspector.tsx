@@ -3,6 +3,7 @@
 // A company: its name, ticker, whether it is held (and how much), its annual report if it is a holding, and its
 // suppliers and customers on the graph, each a button that chooses that relationship. A relationship: what it is, the
 // report's own sentence, Show in Report, and a button for each of the two companies.
+import type { NewsArticle } from '../api/news';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { openInNewTab, showInReportUrl } from '../format';
@@ -15,6 +16,10 @@ import {
   relationshipSummary,
   plainName,
 } from '../pages/supplyChain';
+import { NewsItem } from './NewsPanel';
+
+// How many of a company's headlines the Inspector shows; Show All News lists the rest.
+const NEWS_SHOWN = 3;
 
 type Props = {
   selection: Selection;
@@ -24,9 +29,23 @@ type Props = {
   nodeIdByHolding: Map<number, string>;
   onSelectNode: (nodeId: string) => void;
   onSelectRelationship: (relationshipId: number) => void;
+  // The portfolio's recent news; undefined while it loads or when the page has none to give.
+  news?: NewsArticle[];
+  // Opens the News tab, narrowed to one company.
+  onShowAllNews?: (companyName: string) => void;
 };
 
-export function Inspector({ selection, nodes, relationships, holdings, nodeIdByHolding, onSelectNode, onSelectRelationship }: Props) {
+export function Inspector({
+  selection,
+  nodes,
+  relationships,
+  holdings,
+  nodeIdByHolding,
+  onSelectNode,
+  onSelectRelationship,
+  news,
+  onShowAllNews,
+}: Props) {
   if (selection?.kind === 'company') {
     const node = nodes.find((n) => n.id === selection.nodeId);
     if (node) {
@@ -37,6 +56,8 @@ export function Inspector({ selection, nodes, relationships, holdings, nodeIdByH
           holding={holding}
           relationships={relationships}
           onSelectRelationship={onSelectRelationship}
+          news={news}
+          onShowAllNews={onShowAllNews}
         />
       );
     }
@@ -58,12 +79,17 @@ function CompanyDetails({
   holding,
   relationships,
   onSelectRelationship,
+  news,
+  onShowAllNews,
 }: {
   node: GraphNode;
   holding: Holding | null;
   relationships: Relationship[];
   onSelectRelationship: (relationshipId: number) => void;
+  news?: NewsArticle[];
+  onShowAllNews?: (companyName: string) => void;
 }) {
+  const companyNews = news?.filter((article) => article.company.name === node.name);
   const { suppliers, customers } = connectionsOf(node.id, relationships);
   const weight = formatWeight(node.weight);
   return (
@@ -88,6 +114,29 @@ function CompanyDetails({
       )}
       <ConnectionList title="Suppliers" connections={suppliers} onSelect={onSelectRelationship} />
       <ConnectionList title="Customers" connections={customers} onSelect={onSelectRelationship} />
+      {companyNews && (
+        <section className="inspector-section" aria-label="Recent News">
+          <h3>
+            Recent News <span className="muted">({companyNews.length})</span>
+          </h3>
+          {companyNews.length === 0 ? (
+            <p className="muted small">No news in the last 7 days.</p>
+          ) : (
+            <>
+              <ul className="news-list">
+                {companyNews.slice(0, NEWS_SHOWN).map((article) => (
+                  <NewsItem key={article.id} article={article} />
+                ))}
+              </ul>
+              {onShowAllNews && (
+                <button type="button" className="secondary" onClick={() => onShowAllNews(node.name)}>
+                  Show All News
+                </button>
+              )}
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }

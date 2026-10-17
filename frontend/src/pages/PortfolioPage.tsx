@@ -6,6 +6,7 @@ import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/p
 import { paths } from '../paths';
 import { STATUS_LABELS, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
+import { newsApi } from '../api/news';
 import { portfolioSubtitle } from './portfolioSubtitle';
 
 function messageOf(e: unknown): string {
@@ -56,6 +57,21 @@ export function PortfolioPage() {
   const running = holdings.some((holding) => holding.status === 'ANALYSING');
   const failed = holdings.some((holding) => holding.status === 'FAILED');
   const subtitle = portfolioSubtitle(holdings);
+
+  // How many articles the last news check found, once one has finished. Not essential: on failure it is left out.
+  const [articleCount, setArticleCount] = useState<number | null>(null);
+  const newsCheckedAt = portfolio?.newsCheckedAt ?? null;
+  const newsChecking = portfolio?.newsStatus === 'CHECKING';
+  useEffect(() => {
+    let active = true;
+    setArticleCount(null);
+    if (!newsCheckedAt || newsChecking) return;
+    newsApi
+      .list(portfolioId)
+      .then((articles) => { if (active) setArticleCount(articles.length); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [portfolioId, newsCheckedAt, newsChecking]);
 
   useEffect(() => {
     if (!running) return;
@@ -129,7 +145,12 @@ export function PortfolioPage() {
           <button type="button" onClick={startAnalysis} disabled={starting || running || !holdings.length}>
             {starting ? 'Starting…' : 'Analyse'}
           </button>
-          <CheckNewsButton portfolio={portfolio} onChange={setPortfolio} />
+          <CheckNewsButton
+            portfolio={portfolio}
+            onChange={setPortfolio}
+            articleCount={articleCount}
+            onSeeNews={() => navigate({ pathname: paths.supplyChain(portfolioId), search: '?panel=news' })}
+          />
         </div>
       </div>
 
