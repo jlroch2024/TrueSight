@@ -46,10 +46,14 @@ public class AuthController {
     public record LogInRequest(@NotBlank String email, @NotBlank String password) {
     }
 
-    /** The answer to signing up or logging in. The website keeps the token and sends it with every request. */
-    public record AuthResponse(String token, String email) {
+    /**
+     * The answer to signing up or logging in. The website keeps the token and sends it with every request. {@code role}
+     * is {@code PORTFOLIO_MANAGER} or {@code ANALYST}.
+     */
+    public record AuthResponse(String token, String email, String role) {
     }
 
+    /** Who is logged in. {@code role} is {@code PORTFOLIO_MANAGER} or {@code ANALYST}. */
     public record MeResponse(String email, String role) {
     }
 
@@ -58,14 +62,14 @@ public class AuthController {
     @Operation(summary = "Create an account, and log in to it")
     public AuthResponse signUp(@Valid @RequestBody SignUpRequest request) {
         AuthService.LoggedIn loggedIn = auth.signUp(request.email(), request.password());
-        return new AuthResponse(loggedIn.token(), loggedIn.email());
+        return new AuthResponse(loggedIn.token(), loggedIn.email(), loggedIn.role());
     }
 
     @PostMapping("/login")
     @Operation(summary = "Log in with an email and password")
     public AuthResponse logIn(@Valid @RequestBody LogInRequest request) {
         AuthService.LoggedIn loggedIn = auth.logIn(request.email(), request.password());
-        return new AuthResponse(loggedIn.token(), loggedIn.email());
+        return new AuthResponse(loggedIn.token(), loggedIn.email(), loggedIn.role());
     }
 
     @GetMapping("/me")
