@@ -56,7 +56,7 @@ class ReviewIT {
 
     /** A relationship from the holding's report: the counterparty supplies the holding. */
     private Relationship relationship(Company holding, Company counterparty, String filingDate) {
-        Report report = reports.save(new Report(holding.getId(), "10-K", "acc-" + UUID.randomUUID(), LocalDate.parse(filingDate),
+        Report report = reports.save(new Report(holding.getId(), "10-K", "rv-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20), LocalDate.parse(filingDate),
                 "https://www.sec.gov/Archives/" + UUID.randomUUID(), "text"));
         return relationships.save(new Relationship(report.getId(), holding.getId(), counterparty.getId(),
                 RelationshipType.SUPPLIER, "semiconductor wafers", "We buy wafers from them."));
