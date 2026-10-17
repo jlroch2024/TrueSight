@@ -130,12 +130,12 @@ class AuthIT {
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"wrong@example.com\",\"password\":\"not-the-password\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Wrong email or password"));
+                .andExpect(jsonPath("$.message").value("Wrong email or password."));
 
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"nobody@example.com\",\"password\":\"anything-at-all\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Wrong email or password"));
+                .andExpect(jsonPath("$.message").value("Wrong email or password."));
     }
 
     @Test
@@ -145,7 +145,7 @@ class AuthIT {
         mockMvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"Taken@Example.com\",\"password\":\"second-password\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("This email is already registered"));
+                .andExpect(jsonPath("$.message").value("This email is already registered."));
     }
 
     @Test

@@ -7,13 +7,11 @@ type FormFieldProps = {
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onBlur: (event: FocusEvent<HTMLInputElement>) => void;
   error?: string | null;
-  hint?: string;
 } & Pick<InputHTMLAttributes<HTMLInputElement>, 'type' | 'autoComplete'>;
 
-export function FormField({ id, label, value, onChange, onBlur, error, hint, type = 'text', autoComplete }: FormFieldProps) {
-  const hintId = `${id}-hint`;
+export function FormField({ id, label, value, onChange, onBlur, error, type = 'text', autoComplete }: FormFieldProps) {
   const errorId = `${id}-error`;
-  const describedBy = error ? errorId : hint ? hintId : undefined;
+  const describedBy = error ? errorId : undefined;
 
   return (
     <div className="form-field">
@@ -28,13 +26,20 @@ export function FormField({ id, label, value, onChange, onBlur, error, hint, typ
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy}
       />
-      {error ? (
+      {error && (
         <p className="field-error" id={errorId} role="alert">
           <span aria-hidden="true">⚠</span> {error}
         </p>
-      ) : hint ? (
-        <p className="field-hint muted small" id={hintId}>{hint}</p>
-      ) : null}
+      )}
     </div>
+  );
+}
+
+/** An error about the whole form, such as a refused log in, in the same style as a field's error. */
+export function FormError({ message }: { message: string }) {
+  return (
+    <p className="field-error form-error" role="alert">
+      <span aria-hidden="true">⚠</span> {message}
+    </p>
   );
 }

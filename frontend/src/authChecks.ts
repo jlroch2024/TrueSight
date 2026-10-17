@@ -11,7 +11,7 @@ export function checkLoginPassword(password: string): string | null {
 }
 
 export function checkSignUpPassword(password: string): string | null {
-  if (password.length < 8) return 'Password should be at least 8 characters';
+  if (password.length < 8) return 'Password must be at least 8 characters.';
   if (!password.trim()) return 'Enter a password.';
   if (password.length > 72) return 'Password must be 72 characters or fewer.';
   return null;

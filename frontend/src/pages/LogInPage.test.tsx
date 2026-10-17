@@ -42,14 +42,42 @@ describe('LogInPage', () => {
     expect(tokenStore.get()).toBe('new-token');
   });
 
-  it('shows "Wrong email or password" when the login is refused', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(401, { message: 'Wrong email or password' })));
+  it('shows "Wrong email or password." when the login is refused', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(401, { message: 'Wrong email or password.' })));
     renderLogIn();
 
     await logIn('pm@example.com', 'wrong-password');
 
-    expect(await screen.findByText('Wrong email or password')).toBeInTheDocument();
+    expect(await screen.findByText('Wrong email or password.')).toBeInTheDocument();
     expect(tokenStore.get()).toBeNull();
+  });
+
+  it('shows a refused log in in the same style as a field error, announced to screen readers', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(401, { message: 'Wrong email or password.' })));
+    renderLogIn();
+
+    await logIn('pm@example.com', 'wrong-password');
+
+    const message = await screen.findByRole('alert');
+    expect(message).toHaveTextContent('Wrong email or password.');
+    expect(message).toHaveClass('field-error');
+  });
+
+  it('shows an unreachable server in the same style as a field error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    renderLogIn();
+
+    await logIn('pm@example.com', 'right-password');
+
+    const message = await screen.findByRole('alert');
+    expect(message).toHaveTextContent('Cannot reach the server.');
+    expect(message).toHaveClass('field-error');
+  });
+
+  it('offers Sign Up under the form, for someone new to TrueSight', () => {
+    renderLogIn();
+
+    expect(screen.getByText(/New to TrueSight\?/)).toContainElement(screen.getByRole('button', { name: 'Sign Up' }));
   });
 
   it('shows email and required-password errors on submit without sending a request', async () => {

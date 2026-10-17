@@ -21,7 +21,7 @@ import java.util.Locale;
 public class AuthService {
 
     /** The same message for a wrong email and a wrong password, so nobody can find out which emails have accounts. */
-    static final String WRONG_LOGIN = "Wrong email or password";
+    static final String WRONG_LOGIN = "Wrong email or password.";
 
     private final UserRepository users;
     private final PasswordEncoder passwords;
@@ -44,7 +44,7 @@ public class AuthService {
     public LoggedIn signUp(String email, String password) {
         String normalised = normalise(email);
         if (users.existsByEmail(normalised)) {
-            throw ApiException.conflict("This email is already registered");
+            throw ApiException.conflict("This email is already registered.");
         }
         User newUser = new User(normalised, passwords.encode(password));
         // Nobody picks their own role: only the emails in the ANALYST_EMAILS setting become Analysts.
