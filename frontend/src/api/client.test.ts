@@ -49,11 +49,11 @@ describe('api', () => {
   });
 
   it('does not treat a wrong password as an expired login', async () => {
-    fakeFetch(401, { message: 'Wrong email or password' });
+    fakeFetch(401, { message: 'Wrong email or password.' });
     const loggedOut = vi.fn();
     setLoggedOutHandler(loggedOut);
 
-    await expect(api('/auth/login', { method: 'POST', body: '{}' })).rejects.toThrow('Wrong email or password');
+    await expect(api('/auth/login', { method: 'POST', body: '{}' })).rejects.toThrow('Wrong email or password.');
 
     expect(loggedOut).not.toHaveBeenCalled();
   });

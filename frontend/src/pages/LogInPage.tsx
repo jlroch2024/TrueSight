@@ -2,7 +2,7 @@
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
-import { FormField } from '../components/FormField';
+import { FormError, FormField } from '../components/FormField';
 import { checkEmail, checkLoginPassword } from '../authChecks';
 import { paths } from '../paths';
 
@@ -49,6 +49,7 @@ export function LogInPage() {
           <span>TrueSight</span>
         </div>
         <h1>Log In</h1>
+        <p className="auth-subtitle">Welcome back. Log in to see your portfolios and their supply chains.</p>
         <FormField
           id="email"
           label="Email"
@@ -69,11 +70,14 @@ export function LogInPage() {
           onBlur={() => setPasswordChecked(true)}
           onChange={(event) => setPassword(event.target.value)}
         />
-        {error && <p className="error">{error}</p>}
+        {error && <FormError message={error} />}
         <button type="submit" disabled={sending}>
           {sending ? 'Logging In…' : 'Log In'}
         </button>
-        <button type="button" className="auth-switch" onClick={() => navigate(paths.signUp)}>Sign Up</button>
+        <p className="auth-switch-line">
+          New to TrueSight?{' '}
+          <button type="button" className="auth-switch" onClick={() => navigate(paths.signUp)}>Sign Up</button>
+        </p>
       </form>
     </main>
   );

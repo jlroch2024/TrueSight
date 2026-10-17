@@ -4,7 +4,7 @@ import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
 import { checkEmail, checkSignUpPassword } from '../authChecks';
-import { FormField } from '../components/FormField';
+import { FormError, FormField } from '../components/FormField';
 import { paths } from '../paths';
 
 type AuthResponse = { token: string; email: string };
@@ -38,7 +38,7 @@ export function SignUpPage() {
       navigate(paths.home, { replace: true });
     } catch (e) {
       const message = e instanceof ApiError ? e.message : 'Something went wrong.';
-      if (message === 'This email is already registered') setRegisteredEmailError(message);
+      if (message === 'This email is already registered.') setRegisteredEmailError(message);
       else setError(message);
     } finally {
       setSending(false);
@@ -73,15 +73,17 @@ export function SignUpPage() {
           autoComplete="new-password"
           value={password}
           error={passwordError}
-          hint="Password should be at least 8 characters"
           onBlur={() => setPasswordChecked(true)}
           onChange={(event) => setPassword(event.target.value)}
         />
-        {error && <p className="error">{error}</p>}
+        {error && <FormError message={error} />}
         <button type="submit" disabled={sending}>
           {sending ? 'Signing Up…' : 'Sign Up'}
         </button>
-        <button type="button" className="auth-switch" onClick={() => navigate(paths.logIn)}>Log In</button>
+        <p className="auth-switch-line">
+          Already have an account?{' '}
+          <button type="button" className="auth-switch" onClick={() => navigate(paths.logIn)}>Log In</button>
+        </p>
       </form>
     </main>
   );

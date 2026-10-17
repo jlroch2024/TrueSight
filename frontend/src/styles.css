@@ -306,7 +306,7 @@ select:focus {
 
 .auth-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   padding: 30px;
   border: 1px solid var(--border);
   background: var(--panel);
@@ -331,6 +331,17 @@ select:focus {
   font-size: 24px;
 }
 
+.auth-subtitle {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Every input fills the card, so the inputs and the main button line up exactly. */
+.auth-card .form-field input {
+  width: 100%;
+}
+
 .auth-card .form-field label {
   color: var(--muted);
 }
@@ -339,7 +350,6 @@ select:focus {
   border-color: var(--danger);
 }
 
-.field-hint,
 .field-error {
   margin: 6px 0 0;
   font-size: 12px;
@@ -356,9 +366,22 @@ select:focus {
   margin-top: 18px;
 }
 
+.form-error {
+  margin-top: 14px;
+}
+
+.auth-switch-line {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
 .auth-switch {
-  display: block;
-  margin: 12px auto 0;
+  min-height: 0;
+  padding: 2px 4px;
+  border: 0;
+  color: var(--accent);
 }
 
 /* Portfolio pages */

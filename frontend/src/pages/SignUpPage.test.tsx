@@ -46,7 +46,7 @@ describe('SignUpPage', () => {
 
     await signUp('new@example.com', 'short');
 
-    expect(await screen.findByText(/Password should be at least 8 characters/)).toBeInTheDocument();
+    expect(await screen.findByText('Password must be at least 8 characters.')).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -75,7 +75,7 @@ describe('SignUpPage', () => {
     const password = screen.getByLabelText('Password');
     await user.type(password, 'short');
     await user.tab();
-    expect(await screen.findByText(/Password should be at least 8 characters/)).toBeInTheDocument();
+    expect(await screen.findByText('Password must be at least 8 characters.')).toBeInTheDocument();
 
     await user.clear(password);
     await user.type(password, 'long-enough');
@@ -104,12 +104,19 @@ describe('SignUpPage', () => {
     await user.click(screen.getByRole('button', { name: 'Sign Up' }));
 
     expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
-    expect(screen.getByText(/Password should be at least 8 characters/)).toBeInTheDocument();
+    expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('shows no hint under the password before anything is typed', () => {
+    renderSignUp();
+
+    expect(screen.queryByText(/8 characters/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-describedby');
+  });
+
   it('shows the duplicate email response under the email field', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(409, { message: 'This email is already registered' })));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(409, { message: 'This email is already registered.' })));
     renderSignUp();
 
     await signUp('taken@example.com', 'long-enough');
@@ -117,7 +124,7 @@ describe('SignUpPage', () => {
     const email = screen.getByLabelText('Email');
     expect(email).toHaveAttribute('aria-invalid', 'true');
     expect(email).toHaveAttribute('aria-describedby', 'email-error');
-    expect(within(email.parentElement as HTMLElement).getByText('This email is already registered')).toBeInTheDocument();
+    expect(within(email.parentElement as HTMLElement).getByText('This email is already registered.')).toBeInTheDocument();
   });
 
   it('switches to Log In with a button and has no account-switching link', async () => {
