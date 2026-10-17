@@ -1,17 +1,21 @@
 // Shared authenticated frame: the TrueSight header, navigation sidebar and current page.
 // <Outlet /> is where React Router puts the page for the current address.
 //
+// The header shows who is logged in: their email, with "Analyst" under it for an Analyst. The sidebar also lists the
+// Analyst-only pages (ANALYST_NAV_ITEMS), but only for an Analyst.
+//
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
 // PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a switcher naming the open portfolio.
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate } from 'react-router';
-import { api, tokenStore } from '../api/client';
+import { authApi, type Me } from '../api/auth';
+import { tokenStore } from '../api/client';
 import { ANALYST_NAV_ITEMS, NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
 import { paths } from '../paths';
 import { PortfolioSwitcher } from './PortfolioSwitcher';
 
 export function Layout() {
-  const [me, setMe] = useState<{ email: string; role: string } | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
@@ -19,7 +23,7 @@ export function Layout() {
 
   useEffect(() => {
     if (!tokenStore.get()) return;
-    api<{ email: string; role: string }>('/auth/me').then(setMe).catch(() => setMe(null));
+    authApi.me().then(setMe).catch(() => setMe(null));
   }, []);
 
   // Logging out only forgets the token: the backend keeps nothing to undo.
@@ -36,7 +40,12 @@ export function Layout() {
           <span>TrueSight</span>
         </div>
         <div className="header-account">
-          {me && <span className="account-email">{me.email}</span>}
+          {me && (
+            <div className="account-identity">
+              <span className="account-email">{me.email}</span>
+              {me.role === 'ANALYST' && <span className="account-role">Analyst</span>}
+            </div>
+          )}
           <button type="button" className="log-out" onClick={logOut}>Log Out</button>
         </div>
       </header>
