@@ -159,14 +159,18 @@ describe('Review page', () => {
     expect(headings).toEqual(['Supplier 2 → NVIDIA Corporation', 'Supplier 1 → NVIDIA Corporation']);
   });
 
-  it('opens the report when Show Report is pressed', async () => {
+  it('opens the report at the evidence when Show in Report is pressed', async () => {
     fakeBackend(() => [item(1)]);
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderPage();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Show Report' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Show in Report' }));
 
-    expect(open).toHaveBeenCalledWith('https://www.sec.gov/report-1', '_blank', 'noopener,noreferrer');
+    expect(open).toHaveBeenCalledWith(
+      'https://www.sec.gov/report-1#:~:text=We%20utilize%20foundries%2C%20such%20as,to%20produce%20our%20semiconductor%20wafers.',
+      '_blank',
+      'noopener,noreferrer',
+    );
   });
 
   it('approves a relationship, and it leaves the Unreviewed list', async () => {

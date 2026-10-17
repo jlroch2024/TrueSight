@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 import type { ReviewStatus } from '../api/relationships';
 import { type ReviewFilter, type ReviewItem, reviewApi } from '../api/reviews';
-import { formatDateTime, openInNewTab } from '../format';
+import { formatDateTime, openInNewTab, showInReportUrl } from '../format';
 
 const FILTERS: { value: ReviewFilter; label: string }[] = [
   { value: 'UNREVIEWED', label: 'Unreviewed' },
@@ -112,8 +112,8 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
         </div>
       ) : (
         <div className="actions">
-          <button type="button" onClick={() => openInNewTab(relationship.report.url)}>
-            Show Report
+          <button type="button" onClick={() => openInNewTab(showInReportUrl(relationship.report.url, relationship.evidence))}>
+            Show in Report
           </button>
           <button type="button" disabled={busy} onClick={() => decide('APPROVED')}>
             Approve

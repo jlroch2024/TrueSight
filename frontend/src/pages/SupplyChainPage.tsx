@@ -9,7 +9,7 @@ import { settingsApi } from '../api/settings';
 import { SupplyChainGraph } from '../components/SupplyChainGraph';
 import { paths } from '../paths';
 import { buildGraphElements, sharedCompanies, sharedSummary, withSharedSummaries } from './supplyChain';
-import { openInNewTab } from '../format';
+import { openInNewTab, showInReportUrl } from '../format';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -111,7 +111,9 @@ export function SupplyChainPage() {
           <p className="muted small">
             {selected.report.form}, filed {selected.report.filingDate}
           </p>
-          <button type="button" onClick={() => openInNewTab(selected.report.url)}>Show Report</button>
+          <button type="button" onClick={() => openInNewTab(showInReportUrl(selected.report.url, selected.evidence))}>
+            Show in Report
+          </button>
         </div>
       )}
 

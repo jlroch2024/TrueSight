@@ -224,6 +224,7 @@ file in the demo. Then they open the pull request.
 | Evidence | The report's own sentence that supports a relationship. Shown to users |
 | Quote | What the AI gives as its source. Checked against the report, then replaced by the evidence. Never shown |
 | Show Report | The button that opens the annual report on the SEC website without highlighting text |
+| Show in Report | The evidence's button: opens the annual report on the SEC website, scrolled to the evidence and highlighted |
 | Node, Edge | On the graph only: a company is a node, a relationship is an edge, pointing from supplier to customer |
 | Status | Where a holding's analysis is: Waiting, Analysing, Done, Failed or No Report Found |
 | Role | A user's access level: Portfolio Manager or Analyst. Authorization reads the current database value |
