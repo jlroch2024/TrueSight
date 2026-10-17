@@ -152,7 +152,7 @@ describe('Supply Chain page', () => {
     expect(screen.getByTestId('edge-count')).toHaveTextContent('1');
   });
 
-  it('shows the evidence, report and date, and a Show Report button when an edge is clicked', async () => {
+  it('shows the evidence, report and date, and a Show in Report button that opens the report at the evidence', async () => {
     vi.stubGlobal('fetch', fakeFetch([relationship()], [holding()]));
     renderAt('/portfolios/7/supply-chain');
     await screen.findByTestId('fake-graph');
@@ -162,9 +162,10 @@ describe('Supply Chain page', () => {
     expect(screen.getByText(tsmcSentence)).toBeInTheDocument();
     expect(screen.getByText('10-K, filed 2026-02-25')).toBeInTheDocument();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
-    await userEvent.click(screen.getByRole('button', { name: 'Show Report' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Show in Report' }));
     expect(open).toHaveBeenCalledWith(
-      'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm',
+      'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm' +
+        '#:~:text=We%20utilize%20foundries%2C%20such%20as,to%20produce%20our%20semiconductor%20wafers.',
       '_blank',
       'noopener,noreferrer',
     );
