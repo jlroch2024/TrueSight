@@ -36,4 +36,14 @@ public class CurrentUser {
         return users.findById(id()).map(User::getRole)
                 .orElseThrow(() -> ApiException.unauthorized("Please log in."));
     }
+
+    /**
+     * Stops the request with a 403 unless the logged-in user is an Analyst. Every Analyst-only endpoint calls this one
+     * method first; never copy the check.
+     */
+    public void requireAnalyst() {
+        if (role() != Role.ANALYST) {
+            throw ApiException.forbidden("Only analysts can do this.");
+        }
+    }
 }

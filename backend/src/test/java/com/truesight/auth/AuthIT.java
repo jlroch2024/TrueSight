@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * email, so tests never affect each other.
  */
 @IntegrationTest
+@TestPropertySource(properties = "truesight.analyst-emails=Listed@Example.com, Caps-Listed@Example.com")
 class AuthIT {
 
     @Autowired
@@ -49,6 +51,51 @@ class AuthIT {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("new@example.com"))
                 .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void signingUpWithAnEmailListedInAnalystEmailsCreatesAnAnalyst() throws Exception {
+        MvcResult signUp = mockMvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"listed@example.com\",\"password\":\"long-enough\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("ANALYST"))
+                .andReturn();
+
+        String token = json.readTree(signUp.getResponse().getContentAsString()).get("token").asText();
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.email").value("listed@example.com"))
+                .andExpect(jsonPath("$.role").value("ANALYST"));
+    }
+
+    @Test
+    void signingUpWithAnyOtherEmailCreatesAPortfolioManager() throws Exception {
+        MvcResult signUp = mockMvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"not-listed@example.com\",\"password\":\"long-enough\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("PORTFOLIO_MANAGER"))
+                .andReturn();
+
+        String token = json.readTree(signUp.getResponse().getContentAsString()).get("token").asText();
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.role").value("PORTFOLIO_MANAGER"));
+    }
+
+    @Test
+    void theEmailsInTheSettingMatchWhateverTheirCapitalisation() throws Exception {
+        // The setting says "Caps-Listed@Example.com"; the person types it in mixed capitals.
+        mockMvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"cAPS-lISTED@eXAMPLE.cOM\",\"password\":\"long-enough\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("ANALYST"));
+    }
+
+    @Test
+    void loggingInAnswersWithTheRoleToo() throws Exception {
+        signUp("login-role@example.com", "right-password");
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"login-role@example.com\",\"password\":\"right-password\"}"))
+                .andExpect(jsonPath("$.role").value("PORTFOLIO_MANAGER"));
     }
 
     @Test

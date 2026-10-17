@@ -1,6 +1,8 @@
 package com.truesight.auth;
 
 import com.truesight.common.ApiException;
+import com.truesight.user.AnalystEmails;
+import com.truesight.user.Role;
 import com.truesight.user.User;
 import com.truesight.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,15 +26,18 @@ public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder passwords;
     private final TokenService tokens;
+    private final AnalystEmails analystEmails;
 
-    public AuthService(UserRepository users, PasswordEncoder passwords, TokenService tokens) {
+    public AuthService(UserRepository users, PasswordEncoder passwords, TokenService tokens,
+                       AnalystEmails analystEmails) {
         this.users = users;
         this.passwords = passwords;
         this.tokens = tokens;
+        this.analystEmails = analystEmails;
     }
 
-    /** What signing up or logging in gives back: the token, and the email it belongs to. */
-    public record LoggedIn(String token, String email) {
+    /** What signing up or logging in gives back: the token, the email it belongs to, and that user's role. */
+    public record LoggedIn(String token, String email, String role) {
     }
 
     @Transactional
@@ -41,8 +46,11 @@ public class AuthService {
         if (users.existsByEmail(normalised)) {
             throw ApiException.conflict("This email is already registered");
         }
-        User user = users.save(new User(normalised, passwords.encode(password)));
-        return new LoggedIn(tokens.issue(user), user.getEmail());
+        User newUser = new User(normalised, passwords.encode(password));
+        // Nobody picks their own role: only the emails in the ANALYST_EMAILS setting become Analysts.
+        newUser.setRole(analystEmails.isAnalyst(normalised) ? Role.ANALYST : Role.PORTFOLIO_MANAGER);
+        User user = users.save(newUser);
+        return new LoggedIn(tokens.issue(user), user.getEmail(), user.getRole().name());
     }
 
     public LoggedIn logIn(String email, String password) {
@@ -50,7 +58,7 @@ public class AuthService {
                 .filter(found -> found.getPasswordHash() != null)
                 .filter(found -> passwords.matches(password, found.getPasswordHash()))
                 .orElseThrow(() -> ApiException.unauthorized(WRONG_LOGIN));
-        return new LoggedIn(tokens.issue(user), user.getEmail());
+        return new LoggedIn(tokens.issue(user), user.getEmail(), user.getRole().name());
     }
 
     static String normalise(String email) {

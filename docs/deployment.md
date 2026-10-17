@@ -15,9 +15,11 @@ what runs where, how a merge reaches the live site, and every step used to set i
 | Spending alert | Billing, Budgets & alerts: `TrueSight` | Emails at 50%, 90% and 100% of the monthly budget |
 
 Everything else the app needs is a plain environment variable on the Cloud Run service, not a secret:
-`SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `GEMINI_MODEL`, `SEC_USER_AGENT` and
-`LOGO_DEV_TOKEN`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the browser, which is
-where the graph's logos are loaded, so it is not a secret. Without it, the graph shows letters instead of logos.
+`SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `GEMINI_MODEL`, `SEC_USER_AGENT`,
+`LOGO_DEV_TOKEN` and `ANALYST_EMAILS`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the
+browser, which is where the graph's logos are loaded, so it is not a secret. Without it, the graph shows letters
+instead of logos. `ANALYST_EMAILS` is the comma-separated emails that are Analysts (empty means nobody is). It is read
+when the app starts, so change it on the service and let it restart.
 
 ## How a Merge Reaches the Live Site
 

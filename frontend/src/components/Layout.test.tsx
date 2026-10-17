@@ -1,10 +1,11 @@
-// Proves the sidebar shows a portfolio's own pages only while that portfolio is open.
+// Proves the sidebar shows a portfolio's own pages only while that portfolio is open, and that the header says who is
+// logged in: their email, with "Analyst" under it for an Analyst, and the Analyst-only pages for Analysts alone.
 // The list of portfolio pages is replaced with a sample here, because the real one is empty until stories add pages.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { tokenStore } from '../api/client';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Layout } from './Layout';
 
 vi.mock('../navigation', () => ({
@@ -74,5 +75,66 @@ describe('Layout', () => {
     expect(await screen.findByText('analyst@example.com')).toBeInTheDocument();
     fetchMock.mockRestore();
     tokenStore.clear();
+  });
+
+  describe('who is logged in', () => {
+    function logInAs(role: 'PORTFOLIO_MANAGER' | 'ANALYST', email: string) {
+      tokenStore.set('a-token');
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ email, role }))));
+    }
+
+    afterEach(() => {
+      tokenStore.clear();
+      vi.unstubAllGlobals();
+    });
+
+    it('shows the email, with Analyst under it, for an Analyst', async () => {
+      logInAs('ANALYST', 'analyst@firm.com');
+
+      renderAt('/');
+
+      const email = await screen.findByText('analyst@firm.com');
+      const label = screen.getByText('Analyst');
+      expect(label).toBeInTheDocument();
+      // Both sit together in the account block above Log Out: the email first, then the label under it.
+      expect(email.nextElementSibling).toBe(label);
+      expect(email.parentElement).toBe(label.parentElement);
+    });
+
+    it('shows the email and nothing extra for a Portfolio Manager', async () => {
+      logInAs('PORTFOLIO_MANAGER', 'pm@firm.com');
+
+      renderAt('/');
+
+      const email = await screen.findByText('pm@firm.com');
+      expect(email.nextElementSibling).toBeNull();
+      expect(screen.queryByText('Analyst')).not.toBeInTheDocument();
+    });
+
+    it('shows the Analyst-only items to an Analyst', async () => {
+      logInAs('ANALYST', 'analyst@firm.com');
+
+      renderAt('/');
+
+      expect(await screen.findByRole('button', { name: 'Analyst Review' })).toBeInTheDocument();
+    });
+
+    it('shows no Analyst-only items to a Portfolio Manager', async () => {
+      logInAs('PORTFOLIO_MANAGER', 'pm@firm.com');
+
+      renderAt('/');
+
+      await screen.findByText('pm@firm.com'); // the role has arrived, so the items would be there by now
+      expect(screen.queryByRole('button', { name: 'Analyst Review' })).not.toBeInTheDocument();
+    });
+
+    it('asks who is logged in only once', async () => {
+      logInAs('ANALYST', 'analyst@firm.com');
+
+      renderAt('/');
+      await screen.findByText('analyst@firm.com');
+
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+    });
   });
 });
