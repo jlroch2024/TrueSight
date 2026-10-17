@@ -3,7 +3,7 @@
 // Each company is a square tile with its logo from Logo.dev, or its first letter while the logo loads, when Logo.dev
 // does not know the company, or when there is no Logo.dev token. Its label sits underneath (a holding's ticker and
 // weight, otherwise its ticker or a short name), on a patch of the panel's colour, so it stays readable where an arrow
-// passes behind it. Holdings have a teal border.
+// passes behind it. Holdings have a teal border, and are drawn bigger the bigger their weight (holdingSize).
 //
 // Layout: first the companies settle while the view fits them all; then the physics keeps running, so connected
 // companies keep pulling together while the user drags one, and shared suppliers stand out. The view is fitted once
@@ -23,11 +23,13 @@ import {
   DASH_PATTERN,
   dashOffsetAt,
   focusOn,
+  holdingSize,
   type GraphEdge,
   type GraphNode,
   logoUrl,
   nodeLabel,
   plainName,
+  TILE_SIZE,
 } from '../pages/supplyChain';
 
 cytoscape.use(cola);
@@ -41,8 +43,7 @@ const BORDER = '#25434b';
 const PANEL = '#0b2028';
 const PANEL_RAISED = '#102a33';
 
-// Each company's square tile, and the teal border that marks a holding.
-const TILE_SIZE = 44;
+// The teal border that marks a holding. Tile sizes live in supplyChain.ts, beside holdingSize.
 const HOLDING_BORDER_WIDTH = 3;
 
 /**
@@ -101,6 +102,8 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
           // The letter first; swapped for the logo once it has loaded (below).
           image: letterTile(node.name),
           holding: node.isHolding ? 1 : 0,
+          // A holding grows with its weight; suppliers and customers keep the usual size.
+          size: node.isHolding ? holdingSize(node.weight) : TILE_SIZE,
           ticker: node.ticker ? 1 : 0,
         },
       })),
@@ -123,8 +126,8 @@ export function SupplyChainGraph({ nodes, edges, onEdgeSelect, logoToken = '' }:
           selector: 'node',
           style: {
             shape: 'rectangle',
-            width: TILE_SIZE,
-            height: TILE_SIZE,
+            width: 'data(size)',
+            height: 'data(size)',
             'background-color': PANEL_RAISED,
             'background-image': 'data(image)',
             'background-fit': 'contain',
