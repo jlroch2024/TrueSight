@@ -6,7 +6,7 @@
 import type { NewsArticle } from '../api/news';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
-import { openInNewTab, showInReportUrl } from '../format';
+import { formatDate, openInNewTab, showInReportUrl } from '../format';
 import {
   type Connection,
   type GraphNode,
@@ -191,6 +191,16 @@ function RelationshipDetails({
     <div className="inspector">
       <p className="inspector-kind">Relationship</p>
       <h2>{relationshipSummary(relationship)}</h2>
+      <p className="muted small review-status">
+        {relationship.reviewStatus === 'APPROVED'
+          ? `Approved by an analyst${relationship.reviewedAt ? ` on ${formatDate(relationship.reviewedAt)}` : ''}`
+          : relationship.reviewStatus === 'UNREVIEWED'
+            ? 'Not yet reviewed by an analyst'
+            : 'Rejected by an analyst'}
+      </p>
+      {relationship.reviewStatus === 'APPROVED' && relationship.reviewNote && (
+        <p className="muted small review-note">{relationship.reviewNote}</p>
+      )}
       <blockquote>{relationship.evidence}</blockquote>
       <p className="muted small">
         {relationship.report.form}, filed {relationship.report.filingDate}

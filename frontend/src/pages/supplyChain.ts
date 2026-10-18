@@ -1,7 +1,7 @@
 // Turns a portfolio's holdings and relationships into graph elements. Kept apart from SupplyChainGraph.tsx (which
 // draws it with Cytoscape) so this logic can be tested on its own, in milliseconds.
 import type { Holding } from '../api/portfolios';
-import type { Relationship } from '../api/relationships';
+import type { Relationship, ReviewStatus } from '../api/relationships';
 
 // weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
 // had no weight.
@@ -15,7 +15,7 @@ export type GraphNode = {
   weight: number | null;
   sharedSummary?: string;
 };
-export type GraphEdge = { id: string; source: string; target: string; relationshipId: number };
+export type GraphEdge = { id: string; source: string; target: string; relationshipId: number; reviewStatus: ReviewStatus };
 
 /**
  * One node per company, one edge per relationship, the arrow pointing from supplier to customer.
@@ -51,7 +51,13 @@ export function buildGraphElements(
     // CUSTOMER: the counterparty buys from the company, so the arrow runs company -> counterparty.
     const [source, target] =
       relationship.type === 'SUPPLIER' ? [counterpartyId, companyId] : [companyId, counterpartyId];
-    return { id: `relationship-${relationship.id}`, source, target, relationshipId: relationship.id };
+    return {
+      id: `relationship-${relationship.id}`,
+      source,
+      target,
+      relationshipId: relationship.id,
+      reviewStatus: relationship.reviewStatus,
+    };
   });
 
   const nodeIdByName = new Map<string, string>();
@@ -176,20 +182,12 @@ export function focusOn(nodeId: string, edges: GraphEdge[]): Focus {
   return { nodeIds, edgeIds };
 }
 
-// The arrows are dashes that travel from supplier to customer: 8 px of line, then a 5 px gap, repeating.
-export const DASH_PATTERN = [8, 5];
-const DASH_PERIOD = 13; // 8 + 5
-const DASH_SPEED = 20; // pixels per second
+// A flow marker takes this long to travel from supplier to customer, independent of the review line style.
+export const FLOW_DURATION_MS = 2200;
 
-/**
- * Where the dash pattern sits after {@code elapsedMs} of animation, as a value for Cytoscape's {@code line-dash-offset}.
- *
- * An edge is drawn from its source (the supplier) to its target (the customer). A larger offset slides the pattern
- * back towards the source, so to make the dashes travel towards the customer the offset has to get smaller as time
- * passes. It wraps around once a whole dash and gap has gone by, so it never grows without end.
- */
-export function dashOffsetAt(elapsedMs: number): number {
-  return 0 - (((elapsedMs / 1000) * DASH_SPEED) % DASH_PERIOD);
+/** Progress of the flow marker from supplier (0) to customer (1), wrapping once per cycle. */
+export function flowProgressAt(elapsedMs: number): number {
+  return (((elapsedMs % FLOW_DURATION_MS) + FLOW_DURATION_MS) % FLOW_DURATION_MS) / FLOW_DURATION_MS;
 }
 
 /**

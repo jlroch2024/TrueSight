@@ -1,17 +1,20 @@
-// The graph's layout and zoom settings (TS-89), its moving dashes and its focus on one company (TS-97), and its logo
+// The graph's layout and zoom settings (TS-89), its flow markers and its focus on one company (TS-97), and its logo
 // tiles and labels (TS-95). Cytoscape draws
 // on a canvas, which the test browser cannot, so a stand-in records what the graph asks of it: the zoom limits, the two
-// layout phases, what Fit to Screen does, which companies and arrows are faded, and the dash offsets.
+// layout phases, what Fit to Screen does, which companies and arrows are faded, and the moving marker positions.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dashOffsetAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
+import { flowProgressAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
 type Handler = (event: { target: unknown }) => void;
 // A stand-in company or arrow: it remembers its classes, so a test can see what was faded.
 type Fake = {
   id: () => string;
+  renderedSourceEndpoint: () => { x: number; y: number };
+  renderedTargetEndpoint: () => { x: number; y: number };
+  renderedControlPoints: () => { x: number; y: number }[];
   classes: Set<string>;
   toggleClass: (name: string, on: boolean) => Fake;
   removeClass: (name: string) => Fake;
@@ -59,6 +62,9 @@ class FakeImage {
 function fake(id: string): Fake {
   const item: Fake = {
     id: () => id,
+    renderedSourceEndpoint: () => ({ x: 0, y: 0 }),
+    renderedTargetEndpoint: () => ({ x: 100, y: 0 }),
+    renderedControlPoints: () => [],
     classes: new Set(),
     toggleClass: (name, on) => {
       if (on) item.classes.add(name);
@@ -165,9 +171,9 @@ const FOCUS_NODES: GraphNode[] = [
   { id: 'other', name: 'Other', ticker: 'OTH', isHolding: true, weight: null },
 ];
 const FOCUS_EDGES: GraphEdge[] = [
-  { id: 'relationship-1', source: 'supplier', target: 'holding', relationshipId: 1 },
-  { id: 'relationship-2', source: 'holding', target: 'customer', relationshipId: 2 },
-  { id: 'relationship-3', source: 'supplier', target: 'other', relationshipId: 3 },
+  { id: 'relationship-1', source: 'supplier', target: 'holding', relationshipId: 1, reviewStatus: 'APPROVED' },
+  { id: 'relationship-2', source: 'holding', target: 'customer', relationshipId: 2, reviewStatus: 'UNREVIEWED' },
+  { id: 'relationship-3', source: 'supplier', target: 'other', relationshipId: 3, reviewStatus: 'UNREVIEWED' },
 ];
 
 function fadedIds(): string[] {
@@ -242,39 +248,70 @@ describe('SupplyChainGraph', () => {
   });
 
   describe('the arrows', () => {
-    it('are dashes that travel from supplier to customer', () => {
+    it('uses solid and dashed base strokes for the review status', () => {
       drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
-      const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
+      const options = made.options as {
+        elements: Array<{ data: { source?: string; reviewStatus?: string } }>;
+        style: Array<{ selector: string; style: Record<string, unknown> }>;
+      };
+      expect(options.elements.filter((element) => element.data.source !== undefined).map((element) => element.data.reviewStatus))
+        .toEqual(['APPROVED', 'UNREVIEWED', 'UNREVIEWED']);
       expect(options.style).toContainEqual(expect.objectContaining({
-        selector: 'edge',
+        selector: 'edge[reviewStatus = "APPROVED"]',
+        style: expect.objectContaining({ 'line-style': 'solid' }),
+      }));
+      expect(options.style).toContainEqual(expect.objectContaining({
+        selector: 'edge[reviewStatus = "UNREVIEWED"]',
         style: expect.objectContaining({ 'line-style': 'dashed' }),
       }));
-
-      runFrame(1000); // the first frame starts the clock
-      runFrame(1250);
-      runFrame(1500);
-
-      const offsets = made.style.mock.calls.map((call) => call[1] as number);
-      expect(made.style.mock.calls.every((call) => call[0] === 'line-dash-offset')).toBe(true);
-      expect(offsets).toEqual([dashOffsetAt(0), dashOffsetAt(250), dashOffsetAt(500)]);
-      // A smaller offset slides the dashes along the edge from its source, the supplier, to its target, the customer.
-      expect(offsets[2]).toBeLessThan(offsets[1]);
-      expect(offsets[1]).toBeLessThan(offsets[0]);
     });
 
-    it('are still lines when the computer is set to reduce motion', () => {
+    it('moves separate teal markers from supplier to customer without adding graph elements', () => {
+      const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      const graphOptions = made.options as { elements: unknown[] };
+      const markers = [...container.querySelectorAll<SVGCircleElement>('[data-flow-edge="relationship-1"]')];
+      expect(graphOptions.elements).toHaveLength(FOCUS_NODES.length + FOCUS_EDGES.length);
+      expect(markers).toHaveLength(2);
+
+      runFrame(1000); // the first frame starts the clock
+      runFrame(1550);
+
+      expect(markers.map((marker) => Number(marker.getAttribute('cx')))).toEqual([25, 75]);
+      expect(markers[0]).toHaveAttribute('fill', '#2dd4bf');
+      expect(flowProgressAt(550)).toBe(0.25);
+    });
+
+    it('keeps status strokes and hides moving markers when the computer is set to reduce motion', () => {
       setReducedMotion(true);
 
-      drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
       const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
       expect(options.style).toContainEqual(expect.objectContaining({
         selector: 'edge',
         style: expect.objectContaining({ 'line-style': 'solid' }),
       }));
+      expect(options.style).toContainEqual(expect.objectContaining({
+        selector: 'edge[reviewStatus = "UNREVIEWED"]',
+        style: expect.objectContaining({ 'line-style': 'dashed' }),
+      }));
       expect(window.requestAnimationFrame).not.toHaveBeenCalled();
       expect(made.style).not.toHaveBeenCalled();
+      expect(container.querySelector('svg')?.style.visibility).toBe('hidden');
+    });
+
+    it('shows both status styles in the legend whenever arrows are present', () => {
+      const { container, rerender } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
+
+      const legend = screen.getByRole('list', { name: 'Relationship review status' });
+      expect(legend).toHaveTextContent('Approved');
+      expect(legend).toHaveTextContent('Not yet reviewed');
+      expect(legend.querySelector('.graph-legend-line.approved')).toBeInTheDocument();
+      expect(legend.querySelector('.graph-legend-line.unreviewed')).toBeInTheDocument();
+
+      rerender(<SupplyChainGraph nodes={FOCUS_NODES} edges={[]} onEdgeSelect={() => {}} />);
+      expect(container.querySelector('[aria-label="Relationship review status"]')).not.toBeInTheDocument();
     });
 
     it('stop moving when the graph is taken off the page', () => {

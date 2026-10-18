@@ -14,17 +14,17 @@
 // and its label says what it supplies or buys, e.g. "Supplies 4 holdings".
 //
 // A visitor whose computer is set to reduce motion instead gets a layout computed once, still: cola never runs, and
-// the arrows are plain lines instead of moving dashes (the arrowheads still show which way goods flow).
+// the moving flow markers are hidden (the arrowheads still show which way goods flow).
 //
-// The arrows are dashes that travel from supplier to customer. Pointing at a company (hovering, or tapping it on a
-// touch screen) keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest;
-// moving off the company, or tapping the background, brings everything back.
+// A small marker travels from supplier to customer over each arrow. The arrow's solid or dashed base line shows its
+// review status. Pointing at a company (hovering, or tapping it on a touch screen) keeps it, its direct suppliers and
+// customers, and the arrows between them lit, and fades the rest; moving off the company, or tapping the background,
+// brings everything back.
 import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import { useEffect, useRef } from 'react';
 import {
-  DASH_PATTERN,
-  dashOffsetAt,
+  flowProgressAt,
   focusOn,
   holdingSize,
   type GraphEdge,
@@ -106,6 +106,7 @@ export function SupplyChainGraph({
   logoToken = '',
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const flowLayerRef = useRef<SVGSVGElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const onEdgeSelectRef = useRef(onEdgeSelect);
   onEdgeSelectRef.current = onEdgeSelect;
@@ -135,7 +136,13 @@ export function SupplyChainGraph({
         },
       })),
       ...edges.map((edge) => ({
-        data: { id: edge.id, source: edge.source, target: edge.target, relationshipId: edge.relationshipId },
+        data: {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          relationshipId: edge.relationshipId,
+          reviewStatus: edge.reviewStatus,
+        },
       })),
     ];
 
@@ -205,10 +212,16 @@ export function SupplyChainGraph({
             'target-arrow-shape': 'triangle',
             'arrow-scale': 1,
             'curve-style': 'bezier',
-            // Dashes that travel from supplier to customer; plain lines when the visitor asked for less motion.
-            'line-style': reducesMotion ? 'solid' : 'dashed',
-            'line-dash-pattern': DASH_PATTERN,
+            'line-style': 'solid',
           },
+        },
+        {
+          selector: 'edge[reviewStatus = "APPROVED"]',
+          style: { 'line-style': 'solid' },
+        },
+        {
+          selector: 'edge[reviewStatus = "UNREVIEWED"]',
+          style: { 'line-style': 'dashed' },
         },
         {
           selector: 'edge:selected',
@@ -286,14 +299,34 @@ export function SupplyChainGraph({
     });
     applyFocus(cy, edges, selectedNodeRef.current);
 
-    // Moving dashes. The offset gets smaller over time, which is what carries the dashes from supplier to customer.
+    // The teal markers carry flow direction independently from the solid/dashed review-status strokes.
     let frame: number | undefined;
-    if (!reducesMotion && typeof window.requestAnimationFrame === 'function') {
+    const flowLayer = flowLayerRef.current;
+    const markersByEdge = new Map<string, SVGCircleElement[]>();
+    flowLayer?.querySelectorAll<SVGCircleElement>('[data-flow-edge]').forEach((marker) => {
+      const edgeId = marker.dataset.flowEdge;
+      if (!edgeId) return;
+      const markers = markersByEdge.get(edgeId) ?? [];
+      markers.push(marker);
+      markersByEdge.set(edgeId, markers);
+    });
+    if (flowLayer) flowLayer.style.visibility = reducesMotion ? 'hidden' : 'visible';
+    if (!reducesMotion && edges.length > 0 && typeof window.requestAnimationFrame === 'function') {
       let startedAt: number | undefined;
       const step = (now: number) => {
         if (cy.destroyed()) return;
         startedAt ??= now;
-        cy.edges().style('line-dash-offset', dashOffsetAt(now - startedAt));
+        const progress = flowProgressAt(now - startedAt);
+        cy.edges().forEach((edge) => {
+          const markers = markersByEdge.get(edge.id()) ?? [];
+          markers.forEach((marker, index) => {
+            const markerProgress = (progress + index / Math.max(markers.length, 1)) % 1;
+            const point = pointAlongEdge(edge, markerProgress);
+            marker.setAttribute('cx', String(point.x));
+            marker.setAttribute('cy', String(point.y));
+            marker.setAttribute('opacity', String(Math.min(1, markerProgress * 8, (1 - markerProgress) * 8)));
+          });
+        });
         frame = window.requestAnimationFrame(step);
       };
       frame = window.requestAnimationFrame(step);
@@ -341,14 +374,58 @@ export function SupplyChainGraph({
 
   return (
     <div className="graph-frame">
-      <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
+      <div className="graph-viewport">
+        <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
+        <svg ref={flowLayerRef} className="flow-marker-layer" aria-hidden="true" style={{ visibility: 'hidden' }}>
+          {edges.flatMap((edge) =>
+            [0, 1].map((markerIndex) => (
+              <circle
+                key={`${edge.id}-flow-${markerIndex}`}
+                data-flow-edge={edge.id}
+                cx="0"
+                cy="0"
+                r="3"
+                fill={ACCENT}
+                stroke={PANEL}
+                strokeWidth="1.5"
+              />
+            )),
+          )}
+        </svg>
+      </div>
       <div className="graph-controls">
         <button type="button" className="secondary" onClick={fitToScreen}>
           Fit to Screen
         </button>
+        {edges.length > 0 && (
+          <ul className="graph-legend" aria-label="Relationship review status">
+            <li><span className="graph-legend-line approved" aria-hidden="true" />Approved</li>
+            <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not yet reviewed</li>
+          </ul>
+        )}
       </div>
     </div>
   );
+}
+
+type Point = { x: number; y: number };
+type EdgePath = {
+  renderedSourceEndpoint: () => Point;
+  renderedTargetEndpoint: () => Point;
+  renderedControlPoints: () => Point[];
+};
+
+function pointAlongEdge(edge: EdgePath, progress: number): Point {
+  const points = [edge.renderedSourceEndpoint(), ...edge.renderedControlPoints(), edge.renderedTargetEndpoint()];
+  for (let remaining = points.length - 1; remaining > 0; remaining--) {
+    for (let i = 0; i < remaining; i++) {
+      points[i] = {
+        x: points[i]!.x + (points[i + 1]!.x - points[i]!.x) * progress,
+        y: points[i]!.y + (points[i + 1]!.y - points[i]!.y) * progress,
+      };
+    }
+  }
+  return points[0]!;
 }
 
 /** Lights one company and its direct suppliers and customers, and fades the rest; with none, lights everything. */
