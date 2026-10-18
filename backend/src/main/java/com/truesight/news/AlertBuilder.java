@@ -1,0 +1,145 @@
+package com.truesight.news;
+
+import com.truesight.portfolio.Holding;
+import com.truesight.portfolio.HoldingRepository;
+import com.truesight.relationship.Relationship;
+import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.ReviewStatus;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * See What a News Event Affects: the second news-check step. For each article the AI judged a real event, it finds
+ * the portfolio's holdings the event reaches, and saves one {@link Alert} listing them.
+ *
+ * <p>An event about company E reaches holding H when H is E itself, or when a relationship that is not Rejected joins
+ * them one step along the graph, whichever report it came from and whichever way it points: E supplies H, E buys from
+ * H, H supplies E, or H buys from E. If several relationships join the same pair, the Approved one is kept, then the
+ * lowest id.
+ *
+ * <p>The alert's exposure is the total weight of the holdings reached (12.5 means 12.5%). A holding with no weight
+ * counts as 0; if no holding in the portfolio has a weight, exposure is the number of holdings reached instead.
+ *
+ * <p>Noise never becomes an alert, and an article that already has an alert in this portfolio is skipped, so checking
+ * the news again never repeats one.
+ */
+@Component
+@Order(2)
+public class AlertBuilder implements NewsCheckStep {
+
+    /** Approved first, then the lowest id: the relationship kept when several join the same holding and company. */
+    private static final Comparator<Relationship> PREFERRED = Comparator
+            .comparing((Relationship relationship) -> relationship.getReviewStatus() != ReviewStatus.APPROVED)
+            .thenComparing(Relationship::getId);
+
+    private final NewsCheckService newsCheck;
+    private final HoldingRepository holdings;
+    private final RelationshipRepository relationships;
+    private final NewsArticleRepository articles;
+    private final NewsAssessmentRepository assessments;
+    private final AlertRepository alerts;
+    private final AlertHoldingRepository alertHoldings;
+    private final TransactionTemplate transaction;
+
+    public AlertBuilder(NewsCheckService newsCheck, HoldingRepository holdings, RelationshipRepository relationships,
+                        NewsArticleRepository articles, NewsAssessmentRepository assessments, AlertRepository alerts,
+                        AlertHoldingRepository alertHoldings, TransactionTemplate transaction) {
+        this.newsCheck = newsCheck;
+        this.holdings = holdings;
+        this.relationships = relationships;
+        this.articles = articles;
+        this.assessments = assessments;
+        this.alerts = alerts;
+        this.alertHoldings = alertHoldings;
+        this.transaction = transaction;
+    }
+
+    @Override
+    public void run(Long portfolioId) {
+        List<Holding> held = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId).stream()
+                .filter(holding -> holding.getCompanyId() != null)
+                .toList();
+        if (held.isEmpty()) return;
+
+        Set<Long> checked = newsCheck.companiesFor(portfolioId).stream()
+                .map(NewsCheckService.NewsCompany::id)
+                .collect(Collectors.toSet());
+        if (checked.isEmpty()) return;
+
+        List<NewsArticle> found = articles.findByCompanyIdInOrderByIdAsc(checked);
+        Set<Long> events = assessments.findByArticleIdIn(found.stream().map(NewsArticle::getId).toList()).stream()
+                .filter(NewsAssessment::isEvent)
+                .map(NewsAssessment::getArticleId)
+                .collect(Collectors.toSet());
+
+        Set<Long> heldCompanies = held.stream().map(Holding::getCompanyId).collect(Collectors.toSet());
+        List<Relationship> links = relationships.findByCompanyIdInOrCounterpartyIdIn(heldCompanies, heldCompanies)
+                .stream()
+                .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
+                .toList();
+
+        for (NewsArticle article : found) {
+            if (!events.contains(article.getId())) continue;
+            if (alerts.existsByPortfolioIdAndArticleId(portfolioId, article.getId())) continue;
+            Map<Holding, Long> reached = reached(article.getCompanyId(), held, links);
+            if (!reached.isEmpty()) {
+                save(portfolioId, article.getId(), reached, exposure(reached.keySet(), held));
+            }
+        }
+    }
+
+    /**
+     * Each holding an event about {@code eventCompany} reaches, with the relationship that links it, or null when the
+     * event is about the holding itself.
+     */
+    static Map<Holding, Long> reached(Long eventCompany, List<Holding> held, List<Relationship> links) {
+        Map<Holding, Long> reached = new LinkedHashMap<>();
+        for (Holding holding : held) {
+            Long company = holding.getCompanyId();
+            if (company.equals(eventCompany)) {
+                reached.put(holding, null);
+                continue;
+            }
+            links.stream()
+                    .filter(link -> joins(link, company, eventCompany))
+                    .min(PREFERRED)
+                    .ifPresent(link -> reached.put(holding, link.getId()));
+        }
+        return reached;
+    }
+
+    /** True when the relationship joins these two companies, from either one's report, whichever way it points. */
+    private static boolean joins(Relationship link, Long first, Long second) {
+        return (link.getCompanyId().equals(first) && link.getCounterpartyId().equals(second))
+                || (link.getCompanyId().equals(second) && link.getCounterpartyId().equals(first));
+    }
+
+    /** The total weight of the holdings reached, or how many there are when no holding in the portfolio has one. */
+    static BigDecimal exposure(Set<Holding> reached, List<Holding> held) {
+        boolean anyWeighted = held.stream().anyMatch(holding -> holding.getWeight() != null);
+        if (!anyWeighted) return BigDecimal.valueOf(reached.size());
+        return reached.stream()
+                .map(Holding::getWeight)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Saves the alert and its holdings together, so an alert never exists without the holdings it reaches. */
+    private void save(Long portfolioId, Long articleId, Map<Holding, Long> reached, BigDecimal exposure) {
+        transaction.executeWithoutResult(status -> {
+            Alert alert = alerts.save(new Alert(portfolioId, articleId, exposure));
+            reached.forEach((holding, relationshipId) ->
+                    alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), relationshipId)));
+        });
+    }
+}

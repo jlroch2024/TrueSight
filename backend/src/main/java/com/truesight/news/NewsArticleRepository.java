@@ -16,6 +16,9 @@ public interface NewsArticleRepository extends JpaRepository<NewsArticle, Long> 
 
     List<NewsArticle> findByCompanyIdOrderByPublishedAtDesc(Long companyId);
 
+    /** Every article about any of these companies, in the order they were saved. */
+    List<NewsArticle> findByCompanyIdInOrderByIdAsc(Collection<Long> companyIds);
+
     /** The 200 newest articles about any of these companies published after {@code after}. */
     List<NewsArticle> findTop200ByCompanyIdInAndPublishedAtAfterOrderByPublishedAtDesc(Collection<Long> companyIds,
                                                                                        Instant after);

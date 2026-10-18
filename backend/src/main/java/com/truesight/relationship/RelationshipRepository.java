@@ -12,6 +12,10 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
     /** Every relationship from these companies' reports, e.g. all the holdings in one portfolio. */
     List<Relationship> findByCompanyIdIn(Collection<Long> companyIds);
 
+    /** Every relationship touching these companies, from their own reports or naming them as the counterparty. */
+    List<Relationship> findByCompanyIdInOrCounterpartyIdIn(Collection<Long> companyIds,
+                                                           Collection<Long> counterpartyIds);
+
     boolean existsByReportId(Long reportId);
 
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
