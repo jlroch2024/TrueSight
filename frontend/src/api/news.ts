@@ -28,5 +28,6 @@ export type NewsArticle = {
 };
 
 export const newsApi = {
-  list: (portfolioId: string | number) => api<NewsArticle[]>(`/portfolios/${portfolioId}/news`),
+  list: (portfolioId: string | number, noise = false) =>
+    api<NewsArticle[]>(`/portfolios/${portfolioId}/news${noise ? '?noise=true' : ''}`),
 };
