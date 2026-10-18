@@ -147,7 +147,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   |---|---|---|
   | `/` | Opens the first portfolio; a user with none goes to `/portfolios` (no Home page) | Open on the Portfolio Page |
   | `/login`, `/signup` | Log In, Sign Up | Sign Up and Log In |
-  | `/portfolios` | Portfolios: list, create, rename, delete | Manage My Portfolios |
+  | `/portfolios` | Opens the first portfolio, or asks a user with none to create one. There is no Portfolios page: the header's Portfolio list switches portfolios and Manage Portfolios opens a window to create, rename and delete them | Manage My Portfolios, then One Portfolio Page |
   | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds holdings and upload, then the annual report story adds Analyse. |
   | `/portfolios/:portfolioId/supply-chain` | Supply Chain: the graph | See the Supply Chain as a Graph |
 

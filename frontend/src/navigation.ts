@@ -1,7 +1,7 @@
 // The sidebar's navigation buttons, in order. Labels are in Title Case. Only pages that work are listed.
 //
-// NAV_ITEMS are always shown. A story that adds a page for everybody (e.g. Portfolios) adds one line here, and its
-// <Route> in App.tsx.
+// NAV_ITEMS are always shown. A story that adds a page for everybody adds one line here, and its <Route> in App.tsx.
+// Portfolios have no page of their own: they are switched and managed from the header (PortfolioPicker).
 //
 // PORTFOLIO_NAV_ITEMS are shown only while a portfolio is open (its id is in the address), and navigate to that
 // portfolio's pages. A story that adds a portfolio page (e.g. Supply Chain) adds one line here instead.
@@ -10,12 +10,10 @@ import { paths } from './paths';
 export type NavItem = { label: string; path: string };
 export type PortfolioNavItem = { label: string; path: (portfolioId: string) => string };
 
-export const NAV_ITEMS: NavItem[] = [
-  { label: 'Portfolios', path: paths.portfolios },
-];
+export const NAV_ITEMS: NavItem[] = [];
 
 export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
-  { label: 'Open Portfolio', path: paths.portfolio },
+  { label: 'Portfolio', path: paths.portfolio },
   { label: 'Supply Chain', path: paths.supplyChain },
 ];
 

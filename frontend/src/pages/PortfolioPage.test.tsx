@@ -125,7 +125,7 @@ describe('Portfolio page', () => {
 
     expect(await screen.findByRole('cell', { name: 'NVDA' })).toBeInTheDocument();
 
-    await userEvent.click(await screen.findByLabelText('Open Portfolio'));
+    await userEvent.click(await screen.findByLabelText('Portfolio'));
     await userEvent.click(screen.getByRole('option', { name: 'Energy' }));
 
     expect(await screen.findByRole('cell', { name: 'XOM' })).toBeInTheDocument();
