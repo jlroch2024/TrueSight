@@ -400,6 +400,42 @@ describe('Supply Chain workspace', () => {
     expect(screen.getByTestId('selected-node')).toHaveTextContent('18');
   });
 
+  it('shows when an analyst approved a relationship and the note', async () => {
+    const approved = {
+      ...relationships[0]!,
+      reviewStatus: 'APPROVED' as const,
+      reviewedAt: '2026-10-14T12:00:00Z',
+      reviewNote: 'Confirmed against the annual report.',
+    };
+    vi.stubGlobal('fetch', fakeFetch([approved], holdings));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+
+    expect(within(inspector()).getByText('Approved by an analyst on 14 October 2026')).toBeInTheDocument();
+    expect(within(inspector()).getByText('Confirmed against the annual report.')).toBeInTheDocument();
+  });
+
+  it('shows an approval without a note and says when a relationship is unreviewed', async () => {
+    const approved = {
+      ...relationships[0]!,
+      reviewStatus: 'APPROVED' as const,
+      reviewedAt: '2026-10-14T12:00:00Z',
+      reviewNote: null,
+    };
+    vi.stubGlobal('fetch', fakeFetch([approved, relationships[1]!], holdings));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+    expect(within(inspector()).getByText('Approved by an analyst on 14 October 2026')).toBeInTheDocument();
+    expect(inspector().querySelector('.review-note')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 15' }));
+    expect(within(inspector()).getByText('Not yet reviewed by an analyst')).toBeInTheDocument();
+  });
+
   it('lets go of the choice when the background is clicked', async () => {
     await openWorkspace();
     await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import sampleRelationshipsJson from '../../docs/examples/relationships.json';
 import type { Relationship } from './api/relationships';
-import { formatAge, showInReportUrl } from './format';
+import { formatAge, formatDate, showInReportUrl } from './format';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
 const evidenceOf = (company: string, counterparty: string) =>
@@ -50,5 +50,15 @@ describe('formatAge', () => {
   it('gives the date itself past a week, and a dash for a bad date', () => {
     expect(formatAge('2026-09-01T00:00:00Z', now)).not.toMatch(/Ago/);
     expect(formatAge('not a date', now)).toBe('—');
+  });
+});
+
+describe('formatDate', () => {
+  it('shows the day, full month and year', () => {
+    expect(formatDate('2026-10-14T12:00:00Z')).toBe('14 October 2026');
+  });
+
+  it('uses a dash for a bad date', () => {
+    expect(formatDate('not a date')).toBe('—');
   });
 });

@@ -7,7 +7,7 @@ import type { Relationship } from '../api/relationships';
 import {
   buildGraphElements,
   connectionsOf,
-  dashOffsetAt,
+  flowProgressAt,
   displayName,
   focusOn,
   formatWeight,
@@ -196,9 +196,9 @@ describe('focusOn', () => {
   });
 
   it('does not light an arrow between two neighbours that does not touch the company', () => {
-    const a = { id: 'a', source: 'supplier', target: 'focus', relationshipId: 1 };
-    const b = { id: 'b', source: 'focus', target: 'customer', relationshipId: 2 };
-    const between = { id: 'between', source: 'supplier', target: 'customer', relationshipId: 3 };
+    const a = { id: 'a', source: 'supplier', target: 'focus', relationshipId: 1, reviewStatus: 'UNREVIEWED' as const };
+    const b = { id: 'b', source: 'focus', target: 'customer', relationshipId: 2, reviewStatus: 'UNREVIEWED' as const };
+    const between = { id: 'between', source: 'supplier', target: 'customer', relationshipId: 3, reviewStatus: 'UNREVIEWED' as const };
 
     const focus = focusOn('focus', [a, b, between]);
 
@@ -214,19 +214,26 @@ describe('focusOn', () => {
   });
 });
 
-describe('dashOffsetAt', () => {
-  // An edge is drawn from supplier to customer, and a smaller offset slides the dashes towards the customer.
-  it('gets smaller as time passes, so the dashes travel from supplier to customer', () => {
-    expect(dashOffsetAt(0)).toBe(0);
-    expect(dashOffsetAt(250)).toBeLessThan(dashOffsetAt(0));
-    expect(dashOffsetAt(500)).toBeLessThan(dashOffsetAt(250));
+describe('flowProgressAt', () => {
+  it('moves from supplier to customer and wraps after one cycle', () => {
+    expect(flowProgressAt(0)).toBe(0);
+    expect(flowProgressAt(550)).toBe(0.25);
+    expect(flowProgressAt(2200)).toBe(0);
+    expect(flowProgressAt(2250)).toBeCloseTo(50 / 2200);
   });
+});
 
-  it('wraps around after one dash and gap, so it never grows without end', () => {
-    for (const elapsed of [0, 1_000, 123_456, 86_400_000]) {
-      expect(dashOffsetAt(elapsed)).toBeLessThanOrEqual(0);
-      expect(dashOffsetAt(elapsed)).toBeGreaterThan(-13);
-    }
+describe('review status on graph edges', () => {
+  it('carries approved and unreviewed statuses onto their edges', () => {
+    const approved = relationship(31, { id: 1, name: 'Example Corp', ticker: 'EX' }, { id: 2, name: 'Supplier Ltd', ticker: null });
+    const unreviewed = { ...approved, id: 32, reviewStatus: 'UNREVIEWED' as const };
+    const { edges } = buildGraphElements([
+      { ...approved, reviewStatus: 'APPROVED', reviewedAt: '2026-10-14T12:00:00Z', reviewNote: 'Checked.' },
+      unreviewed,
+    ], []);
+
+    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: 31, reviewStatus: 'APPROVED' }));
+    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: 32, reviewStatus: 'UNREVIEWED' }));
   });
 });
 

@@ -9,8 +9,8 @@
 //
 // Layout: the companies settle out of sight, the view is fitted once, and then the finished graph fades in. From the
 // first time the user drags a company, the physics keeps running, so its neighbours follow it; the view is never moved
-// again on its own. Fit to Screen brings everything back into view at any time. A visitor whose computer
-// is set to reduce motion gets a layout computed once, still, and plain arrows instead of moving dashes.
+// again on its own. Fit to Screen brings everything back into view at any time. A visitor whose computer is set to
+// reduce motion gets a layout computed once, still, and no moving flow markers.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
@@ -20,9 +20,8 @@ import cytoscape, { type Core, type ElementDefinition, type Layouts, type Layout
 import cola from 'cytoscape-cola';
 import { useEffect, useRef } from 'react';
 import {
-  DASH_PATTERN,
-  dashOffsetAt,
   displayName,
+  flowProgressAt,
   focusOn,
   formatWeight,
   holdingSize,
@@ -45,6 +44,7 @@ const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
 const PANEL_RAISED = '#102a33';
 const WHITE = '#ffffff';
+const PANEL = '#0b2028';
 
 // The teal border that marks a holding. Tile sizes live in supplyChain.ts, beside holdingSize.
 const HOLDING_BORDER_WIDTH = 3;
@@ -123,6 +123,7 @@ export function SupplyChainGraph({
 }: Props) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const flowLayerRef = useRef<SVGSVGElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
   const crosshairRef = useRef<SVGSVGElement | null>(null);
@@ -159,7 +160,13 @@ export function SupplyChainGraph({
         },
       })),
       ...edges.map((edge) => ({
-        data: { id: edge.id, source: edge.source, target: edge.target, relationshipId: edge.relationshipId },
+        data: {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          relationshipId: edge.relationshipId,
+          reviewStatus: edge.reviewStatus,
+        },
       })),
     ];
 
@@ -249,14 +256,14 @@ export function SupplyChainGraph({
             'target-arrow-shape': 'triangle',
             'arrow-scale': 1,
             'curve-style': 'bezier',
-            // Dashes that travel from supplier to customer; plain lines when the visitor asked for less motion.
-            'line-style': reducesMotion ? 'solid' : 'dashed',
-            'line-dash-pattern': DASH_PATTERN,
+            'line-style': 'solid',
             'overlay-opacity': 0,
             'transition-property': 'width, line-color, target-arrow-color',
             'transition-duration': HOVER_TRANSITION,
           },
         },
+        { selector: 'edge[reviewStatus = "APPROVED"]', style: { 'line-style': 'solid' } },
+        { selector: 'edge[reviewStatus = "UNREVIEWED"]', style: { 'line-style': 'dashed' } },
         { selector: 'edge.hover', style: { width: 3, 'line-color': TEXT, 'target-arrow-color': TEXT } },
         { selector: 'edge.chosen', style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME } },
         // Last, so it wins: what is outside the focus fades.
@@ -347,21 +354,41 @@ export function SupplyChainGraph({
     });
     applyFocus(cy, edges, selectedNodeRef.current);
 
-    // Moving dashes. The offset gets smaller over time, which is what carries the dashes from supplier to customer.
-    let dashFrame: number | undefined;
-    if (!reducesMotion && typeof window.requestAnimationFrame === 'function') {
+    // Teal markers carry flow direction independently from the status shown by the base line.
+    let flowFrame: number | undefined;
+    const flowLayer = flowLayerRef.current;
+    const markersByEdge = new Map<string, SVGCircleElement[]>();
+    flowLayer?.querySelectorAll<SVGCircleElement>('[data-flow-edge]').forEach((marker) => {
+      const edgeId = marker.dataset.flowEdge;
+      if (!edgeId) return;
+      const markers = markersByEdge.get(edgeId) ?? [];
+      markers.push(marker);
+      markersByEdge.set(edgeId, markers);
+    });
+    if (flowLayer) flowLayer.style.visibility = reducesMotion ? 'hidden' : 'visible';
+    if (!reducesMotion && edges.length > 0 && typeof window.requestAnimationFrame === 'function') {
       let startedAt: number | undefined;
       const step = (now: number) => {
         if (cy.destroyed()) return;
         startedAt ??= now;
-        cy.edges().style('line-dash-offset', dashOffsetAt(now - startedAt));
-        dashFrame = window.requestAnimationFrame(step);
+        const progress = flowProgressAt(now - startedAt);
+        cy.edges().forEach((edge) => {
+          const markers = markersByEdge.get(edge.id()) ?? [];
+          markers.forEach((marker, index) => {
+            const markerProgress = (progress + index / Math.max(markers.length, 1)) % 1;
+            const point = pointAlongEdge(edge, markerProgress);
+            marker.setAttribute('cx', String(point.x));
+            marker.setAttribute('cy', String(point.y));
+            marker.setAttribute('opacity', String(Math.min(1, markerProgress * 8, (1 - markerProgress) * 8)));
+          });
+        });
+        flowFrame = window.requestAnimationFrame(step);
       };
-      dashFrame = window.requestAnimationFrame(step);
+      flowFrame = window.requestAnimationFrame(step);
     }
 
     return () => {
-      if (dashFrame !== undefined) window.cancelAnimationFrame(dashFrame);
+      if (flowFrame !== undefined) window.cancelAnimationFrame(flowFrame);
       running.forEach((layout) => layout.stop());
       placeOverlayRef.current = () => {};
       cy.destroy();
@@ -440,6 +467,22 @@ export function SupplyChainGraph({
     <div ref={frameRef} className="graph-frame">
       <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
       <div className="graph-overlay" aria-hidden="true">
+        <svg ref={flowLayerRef} className="flow-marker-layer" style={{ visibility: 'hidden' }}>
+          {edges.flatMap((edge) =>
+            [0, 1].map((markerIndex) => (
+              <circle
+                key={`${edge.id}-flow-${markerIndex}`}
+                data-flow-edge={edge.id}
+                cx="0"
+                cy="0"
+                r="3"
+                fill={ACCENT}
+                stroke={PANEL}
+                strokeWidth="1.5"
+              />
+            )),
+          )}
+        </svg>
         <svg ref={crosshairRef} className="graph-crosshair">
           <line className="crosshair-x" />
           <line className="crosshair-y" />
@@ -468,9 +511,35 @@ export function SupplyChainGraph({
         <button type="button" className="secondary" onClick={fitToScreen}>
           Fit to Screen
         </button>
+        {edges.length > 0 && (
+          <ul className="graph-legend" aria-label="Relationship review status">
+            <li><span className="graph-legend-line approved" aria-hidden="true" />Approved</li>
+            <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not yet reviewed</li>
+          </ul>
+        )}
       </div>
     </div>
   );
+}
+
+type Point = { x: number; y: number };
+type EdgePath = {
+  renderedSourceEndpoint: () => Point;
+  renderedTargetEndpoint: () => Point;
+  renderedControlPoints: () => Point[];
+};
+
+function pointAlongEdge(edge: EdgePath, progress: number): Point {
+  const points = [edge.renderedSourceEndpoint(), ...edge.renderedControlPoints(), edge.renderedTargetEndpoint()];
+  for (let remaining = points.length - 1; remaining > 0; remaining--) {
+    for (let i = 0; i < remaining; i++) {
+      points[i] = {
+        x: points[i]!.x + (points[i + 1]!.x - points[i]!.x) * progress,
+        y: points[i]!.y + (points[i + 1]!.y - points[i]!.y) * progress,
+      };
+    }
+  }
+  return points[0]!;
 }
 
 /** A company's label box, line by line: its ticker and weight (or its name), its name, and what a shared one supplies. */

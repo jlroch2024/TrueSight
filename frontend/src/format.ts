@@ -15,6 +15,12 @@ export function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+export function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
 /**
  * How long ago something happened, in words: "Just Now", "5 Minutes Ago", "1 Hour Ago", "2 Days Ago". Past a week,
  * the date itself.
