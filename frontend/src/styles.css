@@ -912,11 +912,57 @@ table.holdings td:nth-child(7) {
   list-style: none;
 }
 
+.graph-key {
+  display: grid;
+  gap: 8px;
+}
+
 .graph-legend li {
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+}
+
+.graph-legend-tile {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.graph-legend-tile.holding {
+  border: 2px solid var(--accent);
+}
+
+.graph-legend-tile.shared {
+  border: 2px solid var(--amber);
+}
+
+.graph-legend-flow {
+  position: relative;
+  width: 24px;
+  height: 10px;
+  border-top: 2px solid var(--muted);
+}
+
+.graph-legend-flow::after {
+  position: absolute;
+  top: -5px;
+  right: -1px;
+  content: '';
+  border-block: 4px solid transparent;
+  border-left: 6px solid var(--muted);
+}
+
+.graph-legend-flow i {
+  position: absolute;
+  top: -4px;
+  left: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .graph-legend-line {
@@ -926,6 +972,33 @@ table.holdings td:nth-child(7) {
 
 .graph-legend-line.unreviewed {
   border-top-style: dashed;
+}
+
+.graph-tooltip {
+  position: absolute;
+  z-index: 4;
+  max-width: 320px;
+  margin: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--lime);
+  background: var(--panel-raised);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  transform: translate(12px, 12px);
+}
+
+.graph-tooltip.flip-x {
+  transform: translate(calc(-100% - 12px), 12px);
+}
+
+.graph-tooltip.flip-y {
+  transform: translate(12px, calc(-100% - 12px));
+}
+
+.graph-tooltip.flip-x.flip-y {
+  transform: translate(calc(-100% - 12px), calc(-100% - 12px));
 }
 
 /* While the companies settle, the graph is out of sight; then it fades in, already arranged and fitted. */
