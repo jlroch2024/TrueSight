@@ -126,48 +126,59 @@ export function Select({ id, label, value, options, onChange }: Props) {
       <label id={labelId} htmlFor={id}>
         {label}
       </label>
-      <button
-        ref={buttonRef}
-        id={id}
-        type="button"
-        className="select-button"
-        aria-haspopup="listbox"
-        // Named by its label and the chosen item, so a screen reader says "Open Portfolio, Semiconductors".
-        aria-labelledby={`${labelId} ${valueId}`}
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        onClick={() => (open ? close() : openList())}
-        onKeyDown={onButtonKeyDown}
-      >
-        <span id={valueId} className="select-value">{chosen?.label ?? ''}</span>
-        <span className="select-chevron" aria-hidden="true" />
-      </button>
-      {open && (
-        <ul
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          tabIndex={-1}
-          className="select-list"
-          aria-labelledby={labelId}
-          aria-activedescendant={`${optionId}-${active}`}
-          onKeyDown={onListKeyDown}
+      {/* The box and its list share this frame, so the open list has exactly the closed box's left edge and width. */}
+      <div className="select-box">
+        <button
+          ref={buttonRef}
+          id={id}
+          type="button"
+          className="select-button"
+          aria-haspopup="listbox"
+          // Named by its label and the chosen item, so a screen reader says "Open Portfolio, Semiconductors".
+          aria-labelledby={`${labelId} ${valueId}`}
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          onClick={() => (open ? close() : openList())}
+          onKeyDown={onButtonKeyDown}
         >
-          {options.map((option, index) => (
-            <li
-              key={option.value}
-              id={`${optionId}-${index}`}
-              role="option"
-              aria-selected={option.value === value}
-              className={index === active ? 'active' : undefined}
-              onMouseEnter={() => setActive(index)}
-              onClick={() => choose(index)}
-            >
-              {option.label}
-            </li>
-          ))}
-        </ul>
-      )}
+          <span className="select-values">
+            <span id={valueId} className="select-value">{chosen?.label ?? ''}</span>
+            {/* Every item's label, invisible, in the same spot: the box is as wide as the longest one, open or closed. */}
+            {options.map((option) => (
+              <span key={option.value} className="select-sizer" aria-hidden="true">
+                {option.label}
+              </span>
+            ))}
+          </span>
+          <span className="select-chevron" aria-hidden="true" />
+        </button>
+        {open && (
+          <ul
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            tabIndex={-1}
+            className="select-list"
+            aria-labelledby={labelId}
+            aria-activedescendant={`${optionId}-${active}`}
+            onKeyDown={onListKeyDown}
+          >
+            {options.map((option, index) => (
+              <li
+                key={option.value}
+                id={`${optionId}-${index}`}
+                role="option"
+                aria-selected={option.value === value}
+                className={index === active ? 'active' : undefined}
+                onMouseEnter={() => setActive(index)}
+                onClick={() => choose(index)}
+              >
+                {option.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

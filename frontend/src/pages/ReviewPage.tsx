@@ -7,6 +7,7 @@ import type { ReviewStatus } from '../api/relationships';
 import { type ReviewFilter, type ReviewItem, reviewApi } from '../api/reviews';
 import { RadioGroup } from '../components/RadioGroup';
 import { formatDateTime, openInNewTab, showInReportUrl } from '../format';
+import { displayName } from './supplyChain';
 
 const FILTERS: { value: ReviewFilter; label: string }[] = [
   { value: 'UNREVIEWED', label: 'Unreviewed' },
@@ -59,20 +60,20 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
   return (
     <li className="card review-card">
       <h2>
-        {supplier.name} {'\u2192'} {customer.name}
+        {displayName(supplier.name)} {'\u2192'} {displayName(customer.name)}
       </h2>
       <p className="muted small">
         {relationship.type === 'SUPPLIER'
-          ? `${relationship.counterparty.name} supplies ${relationship.company.name}`
-          : `${relationship.counterparty.name} buys from ${relationship.company.name}`}
+          ? `${displayName(relationship.counterparty.name)} supplies ${displayName(relationship.company.name)}`
+          : `${displayName(relationship.counterparty.name)} buys from ${displayName(relationship.company.name)}`}
         {relationship.provides ? `: ${relationship.provides}.` : '.'}
       </p>
       <blockquote>{relationship.evidence}</blockquote>
       <p className="muted small">
-        {relationship.report.form}, filed {relationship.report.filingDate}
+        {relationship.report.form}, Filed {relationship.report.filingDate}
       </p>
       <p className="muted small">
-        Used by {item.usedByPortfolios} {item.usedByPortfolios === 1 ? 'portfolio' : 'portfolios'}
+        Used by {item.usedByPortfolios} {item.usedByPortfolios === 1 ? 'Portfolio' : 'Portfolios'}
       </p>
       {item.reviewStatus !== 'UNREVIEWED' && (
         <p className={`small review-decision review-${item.reviewStatus.toLowerCase()}`}>

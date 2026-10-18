@@ -50,7 +50,7 @@ describe('NewsPanel', () => {
     const item = screen.getByRole('listitem');
     expect(within(item).getByText(first!.title)).toBeInTheDocument();
     expect(within(item).getByRole('button', { name: 'TSM' })).toBeInTheDocument();
-    expect(item).toHaveTextContent('Yahoo Finance · 6 hours ago');
+    expect(item).toHaveTextContent('Yahoo Finance · 6 Hours Ago');
 
     await userEvent.click(within(item).getByRole('button', { name: 'Open Article' }));
     expect(open).toHaveBeenCalledWith(first!.url, '_blank', 'noopener,noreferrer');

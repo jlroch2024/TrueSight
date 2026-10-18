@@ -125,11 +125,11 @@ describe('Review page', () => {
 
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA Corporation' })).toBeInTheDocument();
-    expect(screen.getByText('Supplier 1 supplies NVIDIA Corporation: semiconductor wafers.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.getByText('Supplier 1 supplies NVIDIA: semiconductor wafers.')).toBeInTheDocument();
     expect(screen.getByText(sentence)).toBeInTheDocument();
-    expect(screen.getByText('10-K, filed 2026-02-25')).toBeInTheDocument();
-    expect(screen.getByText('Used by 3 portfolios')).toBeInTheDocument();
+    expect(screen.getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
+    expect(screen.getByText('Used by 3 Portfolios')).toBeInTheDocument();
   });
 
   it('says "1 portfolio", not "1 portfolios"', async () => {
@@ -137,7 +137,7 @@ describe('Review page', () => {
 
     renderPage();
 
-    expect(await screen.findByText('Used by 1 portfolio')).toBeInTheDocument();
+    expect(await screen.findByText('Used by 1 Portfolio')).toBeInTheDocument();
   });
 
   it('draws the arrow from supplier to customer when the other company buys from the holding', async () => {
@@ -145,8 +145,8 @@ describe('Review page', () => {
 
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: 'NVIDIA Corporation → Supplier 1' })).toBeInTheDocument();
-    expect(screen.getByText('Supplier 1 buys from NVIDIA Corporation: semiconductor wafers.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'NVIDIA → Supplier 1' })).toBeInTheDocument();
+    expect(screen.getByText('Supplier 1 buys from NVIDIA: semiconductor wafers.')).toBeInTheDocument();
   });
 
   it('lists the relationships in the order the backend gives them', async () => {
@@ -154,9 +154,9 @@ describe('Review page', () => {
 
     renderPage();
 
-    await screen.findByText('Used by 3 portfolios');
+    await screen.findByText('Used by 3 Portfolios');
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(['Supplier 2 → NVIDIA Corporation', 'Supplier 1 → NVIDIA Corporation']);
+    expect(headings).toEqual(['Supplier 2 → NVIDIA', 'Supplier 1 → NVIDIA']);
   });
 
   it('opens the report at the evidence when Show in Report is pressed', async () => {
@@ -178,11 +178,11 @@ describe('Review page', () => {
     renderPage();
     await screen.findByText(sentence);
 
-    const card = screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA Corporation' }).closest('li')!;
+    const card = screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' }).closest('li')!;
     await userEvent.click(within(card).getByRole('button', { name: 'Approve' }));
 
-    expect(screen.queryByRole('heading', { name: 'Supplier 1 → NVIDIA Corporation' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Supplier 2 → NVIDIA Corporation' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Supplier 1 → NVIDIA' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Supplier 2 → NVIDIA' })).toBeInTheDocument();
     const put = calls.find((call) => call.method === 'PUT')!;
     expect(put.url).toBe('/api/relationships/1/review');
     expect(put.body).toMatchObject({ decision: 'APPROVED' });
@@ -264,7 +264,7 @@ describe('Review page', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
 
     expect(await screen.findByText('Relationship not found.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA Corporation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
   });
 
   it('shows the Unreviewed ones first, and asks the backend for each filter when it is changed', async () => {
@@ -300,6 +300,6 @@ describe('Review page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }));
 
     expect(await screen.findByText(/Approved by analyst@firm.com/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA Corporation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
   });
 });

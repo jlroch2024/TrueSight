@@ -11,7 +11,7 @@ function holdings(...statuses: HoldingStatus[]): Holding[] {
 
 describe('portfolioSubtitle', () => {
   it('asks for a CSV when there are no holdings', () => {
-    expect(portfolioSubtitle([])).toEqual({ text: 'Upload a CSV of your holdings to begin.', showSupplyChain: false });
+    expect(portfolioSubtitle([])).toEqual({ text: 'Upload a CSV of Your Holdings to Begin', showSupplyChain: false });
   });
 
   it('explains Analyse when no holding has been analysed', () => {
@@ -22,17 +22,17 @@ describe('portfolioSubtitle', () => {
 
   it('counts the reports read while analysing, whatever their result', () => {
     expect(portfolioSubtitle(holdings('DONE', 'FAILED', 'ANALYSING', 'WAITING'))).toEqual({
-      text: 'Reading annual reports: 2 of 4 done.',
+      text: 'Reading Annual Reports: 2 of 4 Done',
       showSupplyChain: false,
     });
   });
 
   it('counts the analysed holdings and offers the Supply Chain once one is Done', () => {
     expect(portfolioSubtitle(holdings('DONE', 'NO_REPORT_FOUND', 'WAITING'))).toEqual({
-      text: '2 of 3 holdings analysed.',
+      text: '2 of 3 Holdings Analysed',
       showSupplyChain: true,
     });
-    expect(portfolioSubtitle(holdings('DONE')).text).toBe('1 of 1 holding analysed.');
+    expect(portfolioSubtitle(holdings('DONE')).text).toBe('1 of 1 Holding Analysed');
   });
 
   it('still explains Analyse when every analysed holding failed', () => {

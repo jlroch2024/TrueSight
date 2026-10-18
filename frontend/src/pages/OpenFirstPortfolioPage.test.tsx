@@ -57,6 +57,6 @@ describe('OpenFirstPortfolioPage', () => {
 
     renderAtRoot();
 
-    expect(screen.getByText('Opening your portfolio…')).toBeInTheDocument();
+    expect(screen.getByText('Opening Your Portfolio…')).toBeInTheDocument();
   });
 });

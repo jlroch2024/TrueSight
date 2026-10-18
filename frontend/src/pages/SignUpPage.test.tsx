@@ -27,16 +27,14 @@ async function signUp(email: string, password: string, confirm = password) {
 }
 
 describe('SignUpPage', () => {
-  it('looks different from Log In: Create Your Account, beside what TrueSight gives you', () => {
+  it("looks different from Log In: Create Your Account, beside TrueSight's motto", () => {
     renderSignUp();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Create Your Account' })).toBeInTheDocument();
-    const panel = screen.getByRole('complementary', { name: 'What You Get' });
-    expect(within(panel).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Upload your holdings from a CSV.',
-      'See their suppliers and customers, found in their annual reports.',
-      "Check every link against the report's own sentence.",
-    ]);
+    const panel = screen.getByRole('complementary', { name: 'TrueSight' });
+    expect(within(panel).getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
+    expect(within(panel).queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.getByText(/Already Have an Account\?/)).toContainElement(screen.getByRole('button', { name: 'Log In' }));
   });
 
   it('refuses a Confirm Password that does not match, and sends nothing', async () => {

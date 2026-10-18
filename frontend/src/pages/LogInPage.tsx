@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
 import { FormError, FormField } from '../components/FormField';
 import { checkEmail, checkLoginPassword } from '../authChecks';
+import { MOTTO } from '../brand';
 import { paths } from '../paths';
 
 type AuthResponse = { token: string; email: string };
@@ -48,8 +49,8 @@ export function LogInPage() {
           <img src="/eye-logo.png" alt="" className="brand-logo" />
           <span>TrueSight</span>
         </div>
+        <p className="auth-motto">{MOTTO}</p>
         <h1>Log In</h1>
-        <p className="auth-subtitle">Welcome back. Log in to see your portfolios and their supply chains.</p>
         <FormField
           id="email"
           label="Email"

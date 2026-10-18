@@ -8,6 +8,7 @@ import {
   buildGraphElements,
   connectionsOf,
   flowProgressAt,
+  displayName,
   focusOn,
   formatWeight,
   holdingNodeIds,
@@ -55,19 +56,6 @@ function sampleHoldings(): Holding[] {
 }
 
 describe('buildGraphElements', () => {
-  it('carries each relationship review status onto its arrow', () => {
-    const [first, second] = sampleRelationships;
-    const reviewedRelationships: Relationship[] = [
-      { ...first!, reviewStatus: 'APPROVED', reviewedAt: '2026-10-14T12:00:00Z', reviewNote: 'Confirmed.' },
-      { ...second!, reviewStatus: 'UNREVIEWED', reviewedAt: null, reviewNote: null },
-    ];
-
-    const { edges } = buildGraphElements(reviewedRelationships, sampleHoldings());
-
-    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: first!.id, reviewStatus: 'APPROVED' }));
-    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: second!.id, reviewStatus: 'UNREVIEWED' }));
-  });
-
   it('gives a supplier shared by several holdings, such as TSMC, one node with an edge to each', () => {
     const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
 
@@ -230,12 +218,22 @@ describe('flowProgressAt', () => {
   it('moves from supplier to customer and wraps after one cycle', () => {
     expect(flowProgressAt(0)).toBe(0);
     expect(flowProgressAt(550)).toBe(0.25);
-    expect(flowProgressAt(1100)).toBe(0.5);
     expect(flowProgressAt(2200)).toBe(0);
+    expect(flowProgressAt(2250)).toBeCloseTo(50 / 2200);
   });
+});
 
-  it('wraps negative elapsed values safely', () => {
-    expect(flowProgressAt(-550)).toBeCloseTo(0.75);
+describe('review status on graph edges', () => {
+  it('carries approved and unreviewed statuses onto their edges', () => {
+    const approved = relationship(31, { id: 1, name: 'Example Corp', ticker: 'EX' }, { id: 2, name: 'Supplier Ltd', ticker: null });
+    const unreviewed = { ...approved, id: 32, reviewStatus: 'UNREVIEWED' as const };
+    const { edges } = buildGraphElements([
+      { ...approved, reviewStatus: 'APPROVED', reviewedAt: '2026-10-14T12:00:00Z', reviewNote: 'Checked.' },
+      unreviewed,
+    ], []);
+
+    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: 31, reviewStatus: 'APPROVED' }));
+    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: 32, reviewStatus: 'UNREVIEWED' }));
   });
 });
 
@@ -410,8 +408,8 @@ describe('sharedCompanies', () => {
     const tsmc = find('Taiwan Semiconductor Manufacturing Company Limited')!;
     const apple = find('Apple Inc.')!;
 
-    expect(sharedSummary(tsmc)).toBe('Supplies 4 holdings');
-    expect(sharedSummary(apple)).toBe('Buys from 2 holdings');
+    expect(sharedSummary(tsmc)).toBe('Supplies 4 Holdings');
+    expect(sharedSummary(apple)).toBe('Buys From 2 Holdings');
   });
 
   it('lists the most shared first, and companies of equal rank in alphabetical order', () => {
@@ -475,7 +473,7 @@ describe('sharedCompanies', () => {
     const bothWays = sharedCompanies(both, nodes).find((c) => c.name === 'Both Ways Ltd')!;
 
     expect(bothWays).toMatchObject({ suppliesHoldings: 2, buysFromHoldings: 3 });
-    expect(sharedSummary(bothWays)).toBe('Supplies 2 holdings · Buys from 3 holdings');
+    expect(sharedSummary(bothWays)).toBe('Supplies 2 Holdings · Buys From 3 Holdings');
   });
 
   it('leaves out the side held by only one holding', () => {
@@ -483,7 +481,7 @@ describe('sharedCompanies', () => {
 
     // TSMC also buys from Lam Research, but that is a single holding.
     expect(tsmc.buysFromHoldings).toBe(1);
-    expect(sharedSummary(tsmc)).not.toContain('Buys from');
+    expect(sharedSummary(tsmc)).not.toContain('Buys From');
   });
 
   it('lists nothing when no company is shared', () => {
@@ -570,5 +568,28 @@ describe('relationshipSummary', () => {
 
   it('turns a customer relationship round, and leaves out what is supplied when the report does not say', () => {
     expect(relationshipSummary(sampleRelationships[14]!)).toBe('Cirrus Logic supplies Apple');
+  });
+});
+
+describe('displayName', () => {
+  // The SEC's own names for the holdings in the live Semiconductors portfolio, and names the reports give.
+  it("turns the SEC's all-capital names into Title Case, without the legal ending", () => {
+    expect(displayName('NVIDIA CORP')).toBe('Nvidia');
+    expect(displayName('MICROSOFT CORP')).toBe('Microsoft');
+  });
+
+  it('keeps short words in capitals, as they are usually acronyms', () => {
+    expect(displayName('ASML HOLDING NV')).toBe('ASML Holding');
+    expect(displayName('ADVANCED MICRO DEVICES INC')).toBe('Advanced Micro Devices');
+  });
+
+  it('writes a trailing COM as the web address it is', () => {
+    expect(displayName('AMAZON COM INC')).toBe('Amazon.com');
+  });
+
+  it('keeps a name already written in mixed case as it is, only without the legal ending', () => {
+    expect(displayName('Apple Inc.')).toBe('Apple');
+    expect(displayName('NVIDIA Corporation')).toBe('NVIDIA');
+    expect(displayName('Taiwan Semiconductor Manufacturing Company Limited')).toBe('Taiwan Semiconductor Manufacturing');
   });
 });

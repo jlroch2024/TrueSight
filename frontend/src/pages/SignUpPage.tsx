@@ -1,22 +1,17 @@
 // The Sign Up page, at /signup. A new account is logged in straight away, and goes to "/", which asks for a first portfolio.
 // Client checks give early feedback; the backend remains authoritative.
 //
-// It looks clearly different from Log In: a two-column card, with what TrueSight does on the left and the form, headed
+// It looks clearly different from Log In: a two-column card, with TrueSight's motto on the left and the form, headed
 // "Create Your Account", on the right. On a phone the two stack.
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError, api, tokenStore } from '../api/client';
 import { checkEmail, checkPasswordsMatch, checkSignUpPassword } from '../authChecks';
 import { FormError, FormField } from '../components/FormField';
+import { MOTTO } from '../brand';
 import { paths } from '../paths';
 
 type AuthResponse = { token: string; email: string };
-
-const WHAT_YOU_GET = [
-  'Upload your holdings from a CSV.',
-  'See their suppliers and customers, found in their annual reports.',
-  "Check every link against the report's own sentence.",
-];
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -63,17 +58,12 @@ export function SignUpPage() {
   return (
     <main className="auth-page">
       <div className="auth-card sign-up">
-        <aside className="sign-up-intro" aria-labelledby="what-you-get">
+        <aside className="sign-up-intro" aria-label="TrueSight">
           <div className="brand">
             <img src="/eye-logo.png" alt="" className="brand-logo" />
             <span>TrueSight</span>
           </div>
-          <h2 id="what-you-get">What You Get</h2>
-          <ul>
-            {WHAT_YOU_GET.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+          <p className="sign-up-motto">{MOTTO}</p>
         </aside>
         <form className="sign-up-form" noValidate onSubmit={signUp}>
           <h1>Create Your Account</h1>
@@ -115,7 +105,7 @@ export function SignUpPage() {
             {sending ? 'Signing Up…' : 'Sign Up'}
           </button>
           <p className="auth-switch-line">
-            Already have an account?{' '}
+            Already Have an Account?{' '}
             <button type="button" className="auth-switch" onClick={() => navigate(paths.logIn)}>Log In</button>
           </p>
         </form>

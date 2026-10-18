@@ -37,7 +37,7 @@ describe('Check News button', () => {
     const { rerender } = render(
       <CheckNewsButton portfolio={{ ...base, newsStatus: 'CHECKING' }} onChange={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: 'Checking news…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Checking News…' })).toBeDisabled();
 
     rerender(
       <CheckNewsButton
@@ -45,7 +45,7 @@ describe('Check News button', () => {
         onChange={vi.fn()}
       />,
     );
-    expect(screen.getByText(`News checked ${formatDateTime('2026-10-14T02:42:00Z')}`)).toBeInTheDocument();
+    expect(screen.getByText(`News Checked ${formatDateTime('2026-10-14T02:42:00Z')}`)).toBeInTheDocument();
 
     rerender(
       <CheckNewsButton
@@ -68,7 +68,7 @@ describe('Check News button', () => {
       <CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} articleCount={37} onSeeNews={seeNews} />,
     );
 
-    expect(screen.getByText(`News checked ${formatDateTime(checkedAt)} · 37 articles`)).toBeInTheDocument();
+    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)} · 37 Articles`)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'See News' }));
     expect(seeNews).toHaveBeenCalled();
   });

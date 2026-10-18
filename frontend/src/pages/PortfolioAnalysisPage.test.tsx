@@ -45,7 +45,7 @@ describe('Portfolio annual report analysis', () => {
 
     renderPage();
 
-    expect(await screen.findByText('NVIDIA Corporation')).toBeInTheDocument();
+    expect(await screen.findByText('NVIDIA')).toBeInTheDocument();
     expect(screen.getByText('Done')).toBeInTheDocument();
     expect(screen.getByText('10-K')).toBeInTheDocument();
     expect(screen.getByText('2026-02-25')).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('Portfolio annual report analysis', () => {
 
     expect(await screen.findByText('Analysing')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show Report' })).not.toBeInTheDocument();
-    const rowElement = screen.getByRole('row', { name: /NVIDIA Corporation/ });
+    const rowElement = screen.getByRole('row', { name: /NVIDIA/ });
     expect(rowElement.querySelectorAll('td')[4]).toHaveTextContent('—');
   });
 
@@ -104,10 +104,10 @@ describe('Portfolio annual report analysis', () => {
     ))));
 
     renderPage();
-    expect(await screen.findByText('Reading annual reports: 0 of 1 done.')).toBeInTheDocument();
+    expect(await screen.findByText('Reading Annual Reports: 0 of 1 Done')).toBeInTheDocument();
 
     status = 'DONE';
-    expect(await screen.findByText(/1 of 1 holding analysed\./, undefined, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText(/1 of 1 Holding Analysed/, undefined, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it('opens the same portfolio\'s Supply Chain from the subtitle once a holding is Done', async () => {
@@ -143,7 +143,7 @@ describe('Portfolio annual report analysis', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/· 2 articles/)).toBeInTheDocument();
+    expect(await screen.findByText(/· 2 Articles/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'See News' }));
 
     expect(screen.getByText('Supply Chain with ?panel=news')).toBeInTheDocument();

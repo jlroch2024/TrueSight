@@ -5,7 +5,7 @@ import type { Relationship, ReviewStatus } from '../api/relationships';
 
 // weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
 // had no weight.
-// sharedSummary is set (e.g. "Supplies 4 holdings") only on a company that several holdings depend on; see
+// sharedSummary is set (e.g. "Supplies 4 Holdings") only on a company that several holdings depend on; see
 // sharedCompanies.
 export type GraphNode = {
   id: string;
@@ -104,9 +104,33 @@ export function plainName(name: string): string {
 // The longest name that fits under a company's tile on the graph.
 export const SHORT_NAME_LENGTH = 14;
 
-/** A name short enough for the graph: its plain name, cut with an ellipsis if it is still too long. */
-export function shortName(name: string): string {
+/** A name short enough for the graph: its display name, cut with an ellipsis if it is still too long. */
+/**
+ * A company's name as the website shows it, the same way for every company: its plain name (no legal ending), in Title
+ * Case. The SEC writes most names in capitals ("NVIDIA CORP", "AMAZON COM INC"); those words become Title Case
+ * ("NVIDIA CORP" becomes "Nvidia"), except short ones of four letters or fewer, which are usually acronyms and stay as they are ("ASML
+ * Holding", "AMD"). A trailing "COM" is the company's web address, so "AMAZON COM" becomes "Amazon.com". A name already
+ * in mixed case ("Apple Inc.") keeps its own capitals. The stored name is never changed.
+ */
+export function displayName(name: string): string {
   const plain = plainName(name);
+  // Judged on the whole stored name: "NVIDIA Corporation" is written in mixed case, so its "NVIDIA" stays as it is.
+  if (/[a-z]/.test(name)) return plain;
+  const words = plain.split(' ');
+  if (words.length > 1 && words[words.length - 1] === 'COM') {
+    words.pop();
+    words[words.length - 1] += '.com';
+  }
+  return words.map((word) => (/[A-Z]{5,}/.test(word) ? titleWord(word) : word)).join(' ');
+}
+
+// "MANUFACTURING" becomes "Manufacturing"; each part of "SK-HYNIX" or "AMAZON.com" is done on its own.
+function titleWord(word: string): string {
+  return word.replace(/[A-Z]+/g, (part) => part[0] + part.slice(1).toLowerCase());
+}
+
+export function shortName(name: string): string {
+  const plain = displayName(name);
   if (plain.length <= SHORT_NAME_LENGTH) return plain;
   return `${plain.slice(0, SHORT_NAME_LENGTH - 1).trimEnd()}\u2026`;
 }
@@ -149,14 +173,17 @@ const LOGO_HOST = 'https://img.logo.dev';
 const LOGO_OPTIONS = 'size=64&retina=true&fallback=404';
 
 /**
- * Where a company's logo is on Logo.dev: by ticker when it has one, otherwise by its plain name ("NVIDIA", not
+ * Where a company's logo is on Logo.dev: by ticker when it has one; otherwise by its website domain when one was found
+ * (see GET /api/logos/domains), which Logo.dev knows far better than names; otherwise by its plain name ("NVIDIA", not
  * "NVIDIA Corporation", which Logo.dev matches less well). Null without a Logo.dev token: the graph then shows letters.
  */
-export function logoUrl(node: Pick<GraphNode, 'name' | 'ticker'>, token: string): string | null {
+export function logoUrl(node: Pick<GraphNode, 'name' | 'ticker'>, token: string, domain?: string): string | null {
   if (!token) return null;
   const path = node.ticker
     ? `ticker/${encodeURIComponent(node.ticker)}`
-    : `name/${encodeURIComponent(plainName(node.name))}`;
+    : domain
+      ? encodeURIComponent(domain)
+      : `name/${encodeURIComponent(plainName(node.name))}`;
   return `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}`;
 }
 
@@ -251,13 +278,13 @@ export function sharedCompanies(relationships: Relationship[], nodes: GraphNode[
 }
 
 /**
- * The label for a shared company, e.g. "Supplies 4 holdings" or "Buys from 2 holdings". A side held by only one
- * holding is left out, so it never reads "Supplies 1 holdings"; a company shared on both sides gets both.
+ * The label for a shared company, e.g. "Supplies 4 Holdings" or "Buys From 2 Holdings". A side held by only one
+ * holding is left out, so it never reads "Supplies 1 Holdings"; a company shared on both sides gets both.
  */
 export function sharedSummary(company: SharedCompany): string {
   const parts: string[] = [];
-  if (company.suppliesHoldings >= SHARED_FROM) parts.push(`Supplies ${company.suppliesHoldings} holdings`);
-  if (company.buysFromHoldings >= SHARED_FROM) parts.push(`Buys from ${company.buysFromHoldings} holdings`);
+  if (company.suppliesHoldings >= SHARED_FROM) parts.push(`Supplies ${company.suppliesHoldings} Holdings`);
+  if (company.buysFromHoldings >= SHARED_FROM) parts.push(`Buys From ${company.buysFromHoldings} Holdings`);
   return parts.join(' · ');
 }
 
@@ -315,7 +342,7 @@ export function relationshipSummary(relationship: Relationship): string {
     relationship.type === 'SUPPLIER'
       ? [relationship.counterparty, relationship.company]
       : [relationship.company, relationship.counterparty];
-  const sentence = `${plainName(supplier.name)} supplies ${plainName(customer.name)}`;
+  const sentence = `${displayName(supplier.name)} supplies ${displayName(customer.name)}`;
   return relationship.provides ? `${sentence}: ${relationship.provides}` : sentence;
 }
 
