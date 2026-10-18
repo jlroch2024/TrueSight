@@ -53,13 +53,41 @@ public class NewsListService {
 
     @Transactional(readOnly = true)
     public List<NewsArticleResponse> list(Long portfolioId) {
+        return list(portfolioId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NewsArticleResponse> list(Long portfolioId, boolean noiseOnly) {
+        NewsSelection selection = selection(portfolioId);
+        return selection.articles().stream()
+                .filter(article -> !noiseOnly || isNoise(selection.assessmentByArticle().get(article.getId())))
+                .map(article -> NewsArticleResponse.from(article,
+                        selection.companyById().get(article.getCompanyId()),
+                        selection.heldCompanyIds().contains(article.getCompanyId()),
+                        selection.assessmentByArticle().get(article.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Counts counts(Long portfolioId) {
+        NewsSelection selection = selection(portfolioId);
+        int articlesChecked = selection.assessmentByArticle().size();
+        int noiseCount = (int) selection.assessmentByArticle().values().stream()
+                .filter(assessment -> !assessment.isEvent())
+                .count();
+        return new Counts(articlesChecked, noiseCount);
+    }
+
+    private NewsSelection selection(Long portfolioId) {
         portfolios.findByIdAndUserId(portfolioId, currentUser.id())
                 .orElseThrow(() -> ApiException.notFound(NOT_FOUND));
 
         List<Long> companyIds = newsCheck.companiesFor(portfolioId).stream()
                 .map(NewsCheckService.NewsCompany::id)
                 .toList();
-        if (companyIds.isEmpty()) return List.of();
+        if (companyIds.isEmpty()) {
+            return new NewsSelection(List.of(), Map.of(), Set.of(), Map.of());
+        }
 
         List<NewsArticle> recent = articles.findTop200ByCompanyIdInAndPublishedAtAfterOrderByPublishedAtDesc(
                 companyIds, Instant.now().minus(RECENT));
@@ -74,9 +102,20 @@ public class NewsListService {
                 .findByArticleIdIn(recent.stream().map(NewsArticle::getId).toList()).stream()
                 .collect(Collectors.toMap(NewsAssessment::getArticleId, Function.identity()));
 
-        return recent.stream()
-                .map(article -> NewsArticleResponse.from(article, companyById.get(article.getCompanyId()),
-                        heldCompanyIds.contains(article.getCompanyId()), assessmentByArticle.get(article.getId())))
-                .toList();
+        return new NewsSelection(recent, companyById, heldCompanyIds, assessmentByArticle);
+    }
+
+    private boolean isNoise(NewsAssessment assessment) {
+        return assessment != null && !assessment.isEvent();
+    }
+
+    public record Counts(int articlesChecked, int noiseCount) {
+    }
+
+    private record NewsSelection(
+            List<NewsArticle> articles,
+            Map<Long, Company> companyById,
+            Set<Long> heldCompanyIds,
+            Map<Long, NewsAssessment> assessmentByArticle) {
     }
 }
