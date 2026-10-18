@@ -2,13 +2,13 @@
 // tiles and labels (TS-95). Cytoscape draws
 // on a canvas, which the test browser cannot, so a stand-in records what the graph asks of it: the zoom limits, the two
 // layout phases, what Fit to Screen does, which companies and arrows are faded, and the dash offsets.
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flowProgressAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
-type Handler = (event: { target: unknown }) => void;
+type Handler = (event: { target: unknown; renderedPosition?: { x: number; y: number } }) => void;
 // A stand-in company or arrow: it remembers its classes, so a test can see what was faded.
 type Fake = {
   id: () => string;
@@ -182,9 +182,18 @@ const FOCUS_NODES: GraphNode[] = [
   { id: 'other', name: 'Other', ticker: 'OTH', isHolding: true, weight: null },
 ];
 const FOCUS_EDGES: GraphEdge[] = [
-  { id: 'relationship-1', source: 'supplier', target: 'holding', relationshipId: 1, reviewStatus: 'APPROVED' },
-  { id: 'relationship-2', source: 'holding', target: 'customer', relationshipId: 2, reviewStatus: 'UNREVIEWED' },
-  { id: 'relationship-3', source: 'supplier', target: 'other', relationshipId: 3, reviewStatus: 'UNREVIEWED' },
+  {
+    id: 'relationship-1', source: 'supplier', target: 'holding', relationshipId: 1,
+    reviewStatus: 'APPROVED', summary: 'Supplier supplies Holding: semiconductor wafers',
+  },
+  {
+    id: 'relationship-2', source: 'holding', target: 'customer', relationshipId: 2,
+    reviewStatus: 'UNREVIEWED', summary: 'Holding supplies Customer',
+  },
+  {
+    id: 'relationship-3', source: 'supplier', target: 'other', relationshipId: 3,
+    reviewStatus: 'UNREVIEWED', summary: 'Supplier supplies Other',
+  },
 ];
 
 function fadedIds(): string[] {
@@ -321,6 +330,57 @@ describe('SupplyChainGraph', () => {
         selector: 'edge[reviewStatus = "UNREVIEWED"]',
         style: expect.objectContaining({ 'line-style': 'dashed' }),
       }));
+    });
+
+    it('highlights a hovered arrow and shows its sentence beside the pointer until the pointer leaves', () => {
+      const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      const graph = container.querySelector('.supply-chain-graph')!;
+      Object.defineProperties(graph, {
+        clientWidth: { value: 800 },
+        clientHeight: { value: 560 },
+      });
+
+      act(() => {
+        made.handlers.get('mouseover edge')!({
+          target: made.edges[0],
+          renderedPosition: { x: 120, y: 80 },
+        });
+      });
+
+      const tooltip = screen.getByRole('tooltip');
+      expect(made.edges[0]!.classes.has('hover')).toBe(true);
+      expect(tooltip).toHaveTextContent('Supplier supplies Holding: semiconductor wafers');
+      expect(tooltip).toHaveStyle({ left: '120px', top: '80px' });
+
+      act(() => {
+        made.handlers.get('mousemove edge')!({
+          target: made.edges[0],
+          renderedPosition: { x: 760, y: 530 },
+        });
+      });
+      expect(tooltip).toHaveClass('flip-x', 'flip-y');
+
+      act(() => {
+        made.handlers.get('mouseout edge')!({ target: made.edges[0] });
+      });
+      expect(made.edges[0]!.classes.has('hover')).toBe(false);
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+
+    it('still reports a clicked arrow after it has been hovered', () => {
+      const onEdgeSelect = vi.fn();
+      render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={onEdgeSelect} />);
+
+      act(() => {
+        made.handlers.get('mouseover edge')!({
+          target: made.edges[0],
+          renderedPosition: { x: 120, y: 80 },
+        });
+        made.handlers.get('tap edge')!({ target: { data: () => 1 } });
+      });
+
+      expect(onEdgeSelect).toHaveBeenCalledWith(1);
+      expect(screen.getByRole('tooltip')).toHaveTextContent(FOCUS_EDGES[0]!.summary);
     });
 
     it('moves separate teal markers from supplier to customer without adding graph elements', () => {

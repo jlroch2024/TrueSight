@@ -15,7 +15,14 @@ export type GraphNode = {
   weight: number | null;
   sharedSummary?: string;
 };
-export type GraphEdge = { id: string; source: string; target: string; relationshipId: number; reviewStatus: ReviewStatus };
+export type GraphEdge = {
+  id: string;
+  source: string;
+  target: string;
+  relationshipId: number;
+  reviewStatus: ReviewStatus;
+  summary: string;
+};
 
 /**
  * One node per company, one edge per relationship, the arrow pointing from supplier to customer.
@@ -57,6 +64,7 @@ export function buildGraphElements(
       target,
       relationshipId: relationship.id,
       reviewStatus: relationship.reviewStatus,
+      summary: relationshipSummary(relationship),
     };
   });
 
