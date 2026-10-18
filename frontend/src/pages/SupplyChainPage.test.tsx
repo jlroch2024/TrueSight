@@ -333,13 +333,38 @@ describe('Supply Chain workspace', () => {
   const inspector = () => screen.getByRole('complementary', { name: 'Inspector' });
   const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings and News' });
 
-  it('shows the holdings, the graph and the Inspector side by side, with nothing chosen yet', async () => {
+  it('shows the holdings and the graph, with the Inspector closed until something is chosen', async () => {
     await openWorkspace();
 
     expect(holdingsPanel()).toBeInTheDocument();
     expect(screen.getByTestId('fake-graph')).toBeInTheDocument();
-    expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Inspector' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Who supplies your holdings/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+    expect(inspector()).toBeInTheDocument();
+  });
+
+  it('closes the Inspector with its close button, letting go of the choice', async () => {
+    await openWorkspace();
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Close Inspector' }));
+
+    expect(screen.queryByRole('complementary', { name: 'Inspector' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
+  });
+
+  it('folds the Holdings and News drawer to a strip, and opens it again', async () => {
+    await openWorkspace();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide Holdings and News' }));
+    expect(screen.queryByRole('tab', { name: 'Holdings' })).not.toBeInTheDocument();
+    expect(document.querySelector('.workspace')).toHaveClass('left-closed');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show Holdings and News' }));
+    expect(screen.getByRole('tab', { name: 'Holdings' })).toBeInTheDocument();
+    expect(document.querySelector('.workspace')).not.toHaveClass('left-closed');
   });
 
   it('lists holdings largest first, each with its weight and how many suppliers and customers it has', async () => {
@@ -443,7 +468,7 @@ describe('Supply Chain workspace', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Click the background' }));
 
     expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
-    expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Inspector' })).not.toBeInTheDocument();
   });
 });
 

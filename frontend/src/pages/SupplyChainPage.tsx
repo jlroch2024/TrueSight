@@ -1,5 +1,6 @@
 // The Supply Chain page: a workspace with the portfolio's holdings on the left, its suppliers and customers as a graph
-// in the middle, and the details of whatever is chosen on the right (the Inspector).
+// in the middle, and the details of whatever is chosen on the right (the Inspector). Both sides are drawers: the left
+// one folds to a narrow strip, and the Inspector opens only while something is chosen, so the graph gets the room.
 //
 // One thing is chosen at a time: a company (from the graph, the holdings or the Inspector) or a relationship (an arrow,
 // or a supplier or customer in the Inspector). The graph keeps a chosen company in focus and centred, and draws a chosen
@@ -34,6 +35,9 @@ export function SupplyChainPage() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
+  // The left drawer can fold to a narrow strip, to give the graph more room. The Inspector, on the right, is open only
+  // while something is chosen.
+  const [leftOpen, setLeftOpen] = useState(true);
   // Empty until the settings arrive, or when no Logo.dev token is set: the graph then shows letters.
   const [logoToken, setLogoToken] = useState('');
   // The website domains of companies without a ticker, so their logos can be found too.
@@ -180,53 +184,70 @@ export function SupplyChainPage() {
     <section className="workspace-page">
       <h1>Supply Chain</h1>
 
-      <div className="workspace">
+      <div className={`workspace${leftOpen ? '' : ' left-closed'}${selection ? '' : ' inspector-closed'}`}>
         <aside className="workspace-panel workspace-left" aria-label="Holdings and News">
-          <div className="panel-tabs" role="tablist" aria-label="Left panel">
-            <button
-              type="button"
-              role="tab"
-              id="tab-holdings"
-              aria-selected={panel === 'holdings'}
-              aria-controls="panel-holdings"
-              onClick={() => setPanel('holdings')}
-            >
-              Holdings
+          {!leftOpen ? (
+            <button type="button" className="drawer-strip" onClick={() => setLeftOpen(true)}>
+              Show Holdings and News
             </button>
-            <button
-              type="button"
-              role="tab"
-              id="tab-news"
-              aria-selected={panel === 'news'}
-              aria-controls="panel-news"
-              onClick={() => setPanel('news')}
-            >
-              News{news && news.length > 0 ? ` (${news.length})` : ''}
-            </button>
-          </div>
-          {panel === 'holdings' ? (
-            <div role="tabpanel" id="panel-holdings" aria-labelledby="tab-holdings">
-              <HoldingsPanel
-                holdings={holdings}
-                nodeIdByHolding={nodeIdByHolding}
-                relationships={relationships}
-                shared={shared}
-                selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
-                onSelect={selectNode}
-              />
-            </div>
           ) : (
-            <div role="tabpanel" id="panel-news" aria-labelledby="tab-news">
-              <NewsPanel
-                portfolio={portfolio}
-                onPortfolioChange={setPortfolio}
-                articles={news}
-                error={newsError}
-                companyFilter={newsCompany}
-                onClearFilter={() => setNewsCompany(null)}
-                onSelectCompany={selectCompanyByName}
-              />
-            </div>
+            <>
+              <div className="panel-tabs" role="tablist" aria-label="Left panel">
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-holdings"
+                  aria-selected={panel === 'holdings'}
+                  aria-controls="panel-holdings"
+                  onClick={() => setPanel('holdings')}
+                >
+                  Holdings
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="tab-news"
+                  aria-selected={panel === 'news'}
+                  aria-controls="panel-news"
+                  onClick={() => setPanel('news')}
+                >
+                  News{news && news.length > 0 ? ` (${news.length})` : ''}
+                </button>
+                <button
+                  type="button"
+                  className="drawer-close"
+                  aria-label="Hide Holdings and News"
+                  title="Hide Holdings and News"
+                  onClick={() => setLeftOpen(false)}
+                >
+                  {'\u2039'}
+                </button>
+              </div>
+              {panel === 'holdings' ? (
+                <div role="tabpanel" id="panel-holdings" aria-labelledby="tab-holdings">
+                  <HoldingsPanel
+                    holdings={holdings}
+                    nodeIdByHolding={nodeIdByHolding}
+                    relationships={relationships}
+                    shared={shared}
+                    selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
+                    onSelect={selectNode}
+                  />
+                </div>
+              ) : (
+                <div role="tabpanel" id="panel-news" aria-labelledby="tab-news">
+                  <NewsPanel
+                    portfolio={portfolio}
+                    onPortfolioChange={setPortfolio}
+                    articles={news}
+                    error={newsError}
+                    companyFilter={newsCompany}
+                    onClearFilter={() => setNewsCompany(null)}
+                    onSelectCompany={selectCompanyByName}
+                  />
+                </div>
+              )}
+            </>
           )}
         </aside>
 
@@ -244,19 +265,30 @@ export function SupplyChainPage() {
           <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         </div>
 
-        <aside className="workspace-panel workspace-inspector" aria-label="Inspector">
-          <Inspector
-            selection={selection}
-            nodes={graphNodes}
-            relationships={relationships}
-            holdings={holdings}
-            nodeIdByHolding={nodeIdByHolding}
-            onSelectNode={selectNode}
-            onSelectRelationship={selectRelationship}
-            news={news}
-            onShowAllNews={showAllNews}
-          />
-        </aside>
+        {selection && (
+          <aside className="workspace-panel workspace-inspector" aria-label="Inspector">
+            <button
+              type="button"
+              className="drawer-close inspector-close"
+              aria-label="Close Inspector"
+              title="Close Inspector"
+              onClick={() => setSelection(null)}
+            >
+              {'\u00d7'}
+            </button>
+            <Inspector
+              selection={selection}
+              nodes={graphNodes}
+              relationships={relationships}
+              holdings={holdings}
+              nodeIdByHolding={nodeIdByHolding}
+              onSelectNode={selectNode}
+              onSelectRelationship={selectRelationship}
+              news={news}
+              onShowAllNews={showAllNews}
+            />
+          </aside>
+        )}
       </div>
     </section>
   );

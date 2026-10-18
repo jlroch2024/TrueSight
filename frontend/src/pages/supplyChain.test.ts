@@ -9,7 +9,10 @@ import {
   connectionsOf,
   flowProgressAt,
   displayName,
+  easeTowards,
+  flowLayout,
   focusOn,
+  followTarget,
   formatWeight,
   holdingNodeIds,
   holdingSize,
@@ -608,5 +611,101 @@ describe('displayName', () => {
     expect(displayName('Apple Inc.')).toBe('Apple');
     expect(displayName('NVIDIA Corporation')).toBe('NVIDIA');
     expect(displayName('Taiwan Semiconductor Manufacturing Company Limited')).toBe('Taiwan Semiconductor Manufacturing');
+  });
+});
+
+describe('elastic dragging', () => {
+  it("moves a dragged company's neighbour by a share of the drag, from where the neighbour rests", () => {
+    expect(followTarget({ x: 100, y: 50 }, { x: 0, y: 0 }, { x: 200, y: -100 }, 0.35)).toEqual({ x: 170, y: 15 });
+  });
+
+  it('eases a fraction of the way each frame, and arrives once within half a pixel', () => {
+    const first = easeTowards({ x: 0, y: 0 }, { x: 100, y: 0 }, 0.18);
+    expect(first).toEqual({ position: { x: 18, y: 0 }, arrived: false });
+    expect(easeTowards({ x: 99.7, y: 0 }, { x: 100, y: 0 })).toEqual({ position: { x: 100, y: 0 }, arrived: true });
+  });
+
+  it('settles within about a second of frames', () => {
+    let position = { x: 0, y: 0 };
+    let frames = 0;
+    for (let arrived = false; !arrived; frames++) ({ position, arrived } = easeTowards(position, { x: 300, y: 0 }));
+    expect(frames).toBeLessThan(60);
+  });
+});
+
+describe('flowLayout', () => {
+  const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
+  const ids = nodes.map((node) => node.id);
+  const layout = () => flowLayout(ids, edges, () => 60);
+
+  it('puts every supplier left of its customer, with the real sample relationships', () => {
+    const positions = layout();
+
+    for (const edge of edges) {
+      expect(positions.get(edge.source)!.x).toBeLessThan(positions.get(edge.target)!.x);
+    }
+  });
+
+  it('places every company, and never two of one group in the same spot', () => {
+    const positions = layout();
+    // NVIDIA's group: everyone linked to it, however indirectly. (Separate groups each start at the left edge; the
+    // graph packs them apart afterwards.)
+    const group = new Set([nodes.find((node) => node.name === 'NVIDIA Corporation')!.id]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const { source, target } of edges) {
+        if (group.has(source) !== group.has(target)) {
+          group.add(source);
+          group.add(target);
+          grew = true;
+        }
+      }
+    }
+    const spots = new Set([...group].map((id) => `${positions.get(id)!.x},${positions.get(id)!.y}`));
+
+    expect(positions.size).toBe(ids.length);
+    expect(group.size).toBeGreaterThan(5);
+    expect(spots.size).toBe(group.size);
+  });
+
+  it("puts a company that only supplies next to its customer, not far out on the left", () => {
+    const positions = layout();
+    const lam = nodes.find((node) => node.name === 'Lam Research Corporation')!.id; // supplies TSMC, Samsung, Micron, SK hynix
+    const zeiss = nodes.find((node) => node.name === 'Carl Zeiss SMT')!.id; // supplies ASML only
+    const asml = nodes.find((node) => node.name === 'ASML Holding N.V.')!.id;
+
+    expect(positions.get(asml)!.x - positions.get(zeiss)!.x).toBe(200);
+    expect(positions.get(lam)!.x).toBe(0);
+  });
+
+  it('lays out each separate group from the left on its own', () => {
+    const positions = layout();
+    const tesla = nodes.find((node) => node.name === 'Tesla, Inc.')!.id;
+
+    // Tesla's group (Panasonic and CATL supply it) starts at the left edge too: two columns, Tesla in the second.
+    expect(positions.get(tesla)!.x).toBe(200);
+  });
+
+  it('lets only the arrow that closes a loop point backwards', () => {
+    const loop = [
+      { source: 'a', target: 'b' },
+      { source: 'b', target: 'c' },
+      { source: 'c', target: 'a' },
+    ];
+
+    const positions = flowLayout(['a', 'b', 'c'], loop, () => 60);
+    const backwards = loop.filter(({ source, target }) => positions.get(source)!.x >= positions.get(target)!.x);
+
+    expect(backwards).toEqual([{ source: 'c', target: 'a' }]);
+  });
+
+  it('gives a taller company more room in its column', () => {
+    const positions = flowLayout(['s', 'big', 'small'], [
+      { source: 's', target: 'big' },
+      { source: 's', target: 'small' },
+    ], (id) => (id === 'big' ? 160 : 60));
+
+    const gap = Math.abs(positions.get('big')!.y - positions.get('small')!.y);
+    expect(gap).toBe(160 / 2 + 20 + 60 / 2);
   });
 });

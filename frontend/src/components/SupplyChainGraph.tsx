@@ -1,4 +1,4 @@
-// Draws the supply chain as an interactive graph: Cytoscape.js, laid out with cytoscape-cola.
+// Draws the supply chain as an interactive graph: Cytoscape.js, laid out as a flow (flowLayout).
 //
 // Each company is a square tile with its logo from Logo.dev, on a white square with an even margin so every logo
 // looks the same size, or its first letter while the logo loads, when Logo.dev does not know the company, or when
@@ -7,23 +7,27 @@
 // weight (holdingSize). A supplier or customer that several holdings depend on (see sharedCompanies) is drawn bigger,
 // with an amber border, and its label box says what it supplies or buys, e.g. "Supplies 4 Holdings".
 //
-// Layout: the companies settle out of sight, the view is fitted once, and then the finished graph fades in. From the
-// first time the user drags a company, the physics keeps running, so its neighbours follow it; the view is never moved
-// again on its own. Fit to Screen brings everything back into view at any time. A visitor whose computer is set to
-// reduce motion gets a layout computed once, still, and no moving flow markers.
+// Layout: a flow, worked out before the graph is drawn (flowLayout): each company in a column by its place in the
+// chain, so every arrow runs left to right from supplier to customer, with separate groups packed into the frame's
+// shape. The view is fitted once and the graph fades in; nothing rearranges it afterwards. Dragging a company tugs its
+// direct suppliers and customers along like elastic, and they ease back when it is let go; nothing else moves.
+// Fit to Screen brings everything back into view at any time. A visitor whose computer is set to reduce motion gets
+// no easing and no moving flow markers.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
 // Clicking a company chooses it: corner brackets close in around it and dashed crosshair lines run through it. Clicking
 // the background lets go. Cytoscape's own grey press circle and selection overlay are switched off.
-import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions, type NodeSingular } from 'cytoscape';
-import cola from 'cytoscape-cola';
+import cytoscape, { type Core, type ElementDefinition, type NodeSingular } from 'cytoscape';
 import { useEffect, useRef, useState } from 'react';
 import { GraphLegend } from './GraphLegend';
 import {
   displayName,
+  easeTowards,
+  flowLayout,
   flowProgressAt,
   focusOn,
+  followTarget,
   formatWeight,
   holdingSize,
   type GraphEdge,
@@ -31,10 +35,10 @@ import {
   logoUrl,
   nodeLabel,
   plainName,
+  type Point,
   TILE_SIZE,
 } from '../pages/supplyChain';
 
-cytoscape.use(cola);
 
 // Matches styles.css: Cytoscape draws to a <canvas>, so it cannot read the CSS custom properties there.
 const ACCENT = '#2dd4bf';
@@ -88,15 +92,9 @@ const BRACKET_GAP = 7;
 const TOOLTIP_WIDTH = 320;
 const TOOLTIP_HEIGHT = 90;
 
-// cola's settings for both phases: keep companies and their label boxes apart (each tile carries an invisible canvas
-// label the size of its box), and lay out unconnected groups side by side.
-const COLA = {
-  avoidOverlap: true,
-  handleDisconnected: true,
-  nodeDimensionsIncludeLabels: true,
-  nodeSpacing: 10,
-  edgeLength: 70,
-};
+// A label box's height for the layout: each line, plus its padding and the gap under the tile.
+const LABEL_LINE = 14;
+const LABEL_EXTRA = 14;
 
 type Props = {
   nodes: GraphNode[];
@@ -152,12 +150,26 @@ export function SupplyChainGraph({
     setEdgeTooltip(null);
     const edgeById = new Map(edges.map((edge) => [edge.id, edge]));
 
+    // Where every company goes, worked out before anything is drawn, so nothing moves into place on screen.
+    const sizeOf = (node: GraphNode) =>
+      node.sharedSummary ? SHARED_TILE_SIZE : node.isHolding ? holdingSize(node.weight) : TILE_SIZE;
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const positions = flowLayout(
+      nodes.map((node) => node.id),
+      edges,
+      (id) => {
+        const node = nodeById.get(id)!;
+        return sizeOf(node) + labelLines(node).length * LABEL_LINE + LABEL_EXTRA;
+      },
+    );
+
     const elements: ElementDefinition[] = [
       ...nodes.map((node) => ({
+        position: { ...(positions.get(node.id) ?? { x: 0, y: 0 }) },
         data: {
           id: node.id,
-          // The label box's lines. The canvas lays them out invisibly, only so the layout keeps every box clear of
-          // the others (see the node style); the box itself is HTML, over the graph.
+          // The label box's lines. The canvas lays them out invisibly, only so the graph's size counts every box (see
+          // the node style); the box itself is HTML, over the graph.
           label: labelLines(node).join('\n'),
           // The letter first; swapped for the logo once it has loaded (below).
           image: letterTile(node.name),
@@ -184,8 +196,8 @@ export function SupplyChainGraph({
     const cy = cytoscape({
       container,
       elements,
-      // The companies start in a grid, out of sight; the layout below arranges them before the graph is shown.
-      layout: { name: 'grid', fit: true, padding: PADDING },
+      // The companies are already in place (positions above).
+      layout: { name: 'preset', fit: false },
       minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
       // No rubber-band selection, and no Cytoscape selection state: what is chosen is the page's, drawn with classes.
@@ -207,7 +219,7 @@ export function SupplyChainGraph({
             'border-width': 1,
             'border-color': BORDER,
             // The label box is HTML over the graph, in the app's own font. The canvas lays out the same lines,
-            // invisibly, at the box's size, so the layout (nodeDimensionsIncludeLabels) leaves room for each box.
+            // invisibly, at the box's size, so packing the groups and fitting the view leave room for each box.
             label: 'data(label)',
             'font-family': 'Space Grotesk, system-ui, sans-serif',
             'font-size': 11,
@@ -297,38 +309,28 @@ export function SupplyChainGraph({
     placeOverlayRef.current = schedule;
     cy.on('pan zoom resize position', schedule);
 
-    // The graph is hidden while it settles, then fitted once and faded in, so the arrangement never jumps in view.
-    frame.classList.add('settling');
-    const reveal = () => {
-      if (cy.destroyed()) return;
-      packGroups(cy, container.clientWidth / Math.max(1, container.clientHeight));
-      cy.fit(cy.elements(), PADDING);
-      frame.classList.remove('settling');
-      schedule();
-    };
+    // When a drawer opens or closes, the graph's frame changes size: Cytoscape is told, and the view keeps its centre.
+    let size = { width: container.clientWidth, height: container.clientHeight };
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => {
+            if (cy.destroyed()) return;
+            const next = { width: container.clientWidth, height: container.clientHeight };
+            cy.resize();
+            cy.panBy({ x: (next.width - size.width) / 2, y: (next.height - size.height) / 2 });
+            size = next;
+            schedule();
+          });
+    observer?.observe(container);
 
-    const running: Layouts[] = [];
-    if (reducesMotion) {
-      cy.layout({ name: 'breadthfirst', animate: false, fit: true, padding: PADDING, spacingFactor: 1.4 }).run();
-      reveal();
-    } else {
-      // Phase 1: settle, out of sight, then show the graph fitted. Phase 2, only once the user first drags a company:
-      // keep the physics running, without moving the view, so its neighbours follow it. Starting it any earlier would
-      // rearrange the companies again after they were shown.
-      const settle = cy.layout({ name: 'cola', ...COLA, fit: true, padding: PADDING, maxSimulationTime: 2500 } as LayoutOptions);
-      settle.one('layoutstop', () => {
-        if (cy.destroyed()) return;
-        reveal();
-        cy.one('grab', 'node', () => {
-          if (cy.destroyed()) return;
-          const live = cy.layout({ name: 'cola', ...COLA, infinite: true, fit: false } as LayoutOptions);
-          running.push(live);
-          live.run();
-        });
-      });
-      running.push(settle);
-      settle.run();
-    }
+    // Separate groups are packed into the frame's shape, the view is fitted once, and the graph fades in.
+    packGroups(cy, container.clientWidth / Math.max(1, container.clientHeight));
+    cy.fit(cy.elements(), PADDING);
+    schedule();
+
+    // Dragging a company tugs its direct suppliers and customers along like elastic; they ease back when it is let go.
+    const stopElastic = reducesMotion ? () => {} : elasticDrag(cy, schedule);
 
     cy.on('tap', 'edge', (event) => {
       onEdgeSelectRef.current(event.target.data('relationshipId') as number);
@@ -418,7 +420,8 @@ export function SupplyChainGraph({
     return () => {
       setEdgeTooltip(null);
       if (flowFrame !== undefined) window.cancelAnimationFrame(flowFrame);
-      running.forEach((layout) => layout.stop());
+      stopElastic();
+      observer?.disconnect();
       placeOverlayRef.current = () => {};
       cy.destroy();
       cyRef.current = null;
@@ -535,7 +538,6 @@ export function SupplyChainGraph({
           </div>
         ))}
       </div>
-      <p className="graph-arranging">Arranging the Graph…</p>
       {edgeTooltip && (
         <p
           role="tooltip"
@@ -555,7 +557,6 @@ export function SupplyChainGraph({
   );
 }
 
-type Point = { x: number; y: number };
 type EdgePath = {
   renderedSourceEndpoint: () => Point;
   renderedTargetEndpoint: () => Point;
@@ -653,6 +654,9 @@ function placeOverlay(
   }
 }
 
+// How much wider than the frame's exact shape a row of groups may be.
+const ROW_SLACK = 1.3;
+
 // The space between groups of companies that are not connected to each other.
 const GROUP_GAP = 30;
 
@@ -671,7 +675,8 @@ function packGroups(cy: Core, frameRatio: number): void {
   if (groups.length < 2) return;
   const area = groups.reduce((sum, { box }) => sum + (box.w + GROUP_GAP) * (box.h + GROUP_GAP), 0);
   const widest = Math.max(...groups.map(({ box }) => box.w));
-  const rowWidth = Math.max(widest, Math.sqrt(area * frameRatio));
+  // A little wider than the exact shape, so a group that nearly fits beside another goes there rather than below.
+  const rowWidth = Math.max(widest, Math.sqrt(area * frameRatio) * ROW_SLACK);
   let x = 0;
   let y = 0;
   let rowHeight = 0;
@@ -687,6 +692,74 @@ function packGroups(cy: Core, frameRatio: number): void {
     x += box.w + GROUP_GAP;
     rowHeight = Math.max(rowHeight, box.h);
   }
+}
+
+/**
+ * Makes dragging feel elastic: while a company is dragged, its direct suppliers and customers follow a share of its move
+ * (followTarget), easing towards it frame by frame; when it is let go, it stays where it was dropped and they ease back
+ * to where they were. Nothing else moves. Returns a function that stops any easing still running.
+ */
+function elasticDrag(cy: Core, onMove: () => void): () => void {
+  const rest = new Map<string, Point>();
+  const targets = new Map<string, Point>();
+  let dragged: NodeSingular | null = null;
+  let from: Point | null = null;
+  let frame: number | undefined;
+
+  // Where a company rests: remembered the first time it is needed, before anything has moved it.
+  const restOf = (node: NodeSingular): Point => {
+    if (!rest.has(node.id())) rest.set(node.id(), { ...node.position() });
+    return rest.get(node.id())!;
+  };
+  const tick = () => {
+    frame = undefined;
+    if (cy.destroyed()) return;
+    for (const [id, target] of targets) {
+      const node = cy.getElementById(id);
+      if (node.empty() || node.grabbed()) {
+        targets.delete(id);
+        continue;
+      }
+      const { position, arrived } = easeTowards(node.position(), target);
+      node.position(position);
+      if (arrived && dragged === null) targets.delete(id);
+    }
+    onMove();
+    if (targets.size > 0) frame = window.requestAnimationFrame(tick);
+  };
+  const run = () => {
+    if (frame === undefined) frame = window.requestAnimationFrame(tick);
+  };
+
+  cy.on('grab', 'node', (event) => {
+    dragged = event.target as NodeSingular;
+    from = restOf(dragged);
+  });
+  cy.on('drag', 'node', (event) => {
+    const held = dragged;
+    const start = from;
+    if (!held || !start || event.target !== held) return;
+    const to = held.position();
+    held.neighborhood('node').forEach((neighbour) => {
+      if (!neighbour.grabbed()) targets.set(neighbour.id(), followTarget(restOf(neighbour), start, to));
+    });
+    run();
+  });
+  cy.on('free', 'node', (event) => {
+    const held = dragged;
+    if (!held || event.target !== held) return;
+    rest.set(held.id(), { ...held.position() });
+    held.neighborhood('node').forEach((neighbour) => {
+      targets.set(neighbour.id(), restOf(neighbour));
+    });
+    dragged = null;
+    from = null;
+    run();
+  });
+
+  return () => {
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+  };
 }
 
 /** Lights one company and its direct suppliers and customers, and fades the rest; with none, lights everything. */

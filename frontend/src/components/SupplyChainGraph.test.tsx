@@ -100,7 +100,6 @@ const everyElement = {
   removeClass: (name: string) => [...made.nodes, ...made.edges].forEach((item) => item.removeClass(name)),
 };
 
-vi.mock('cytoscape-cola', () => ({ default: {} }));
 vi.mock('cytoscape', () => {
   const cytoscape = (options: Record<string, unknown>) => {
     made.options = options;
@@ -228,26 +227,28 @@ describe('SupplyChainGraph', () => {
     expect(made.options).toMatchObject({ minZoom: 0.3, maxZoom: 3 });
   });
 
-  it('settles out of sight, shows the graph fitted, and starts the live physics only when a company is first dragged', () => {
-    const { container } = drawGraph();
-    const frame = container.querySelector('.graph-frame')!;
+  it('places every company before drawing, the chain reading left to right, and fits the view once', () => {
+    drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
-    expect(frame).toHaveClass('settling');
-    expect(screen.getByText('Arranging the Graph…')).toBeInTheDocument();
-    expect(made.layouts).toHaveLength(1);
-    expect(made.layouts[0].options).toMatchObject({ name: 'cola', fit: true, maxSimulationTime: 2500, nodeDimensionsIncludeLabels: true });
+    const options = made.options as {
+      layout: { name: string };
+      elements: Array<{ position?: { x: number; y: number }; data: { id: string; source?: string; target?: string } }>;
+    };
+    expect(options.layout).toMatchObject({ name: 'preset' }); // no physics settling on screen
+    const x = new Map(options.elements.filter((e) => e.position).map((e) => [e.data.id, e.position!.x]));
+    for (const edge of options.elements.filter((e) => e.data.source)) {
+      expect(x.get(edge.data.source!)!).toBeLessThan(x.get(edge.data.target!)!); // supplier left of customer
+    }
+    expect(made.fit).toHaveBeenCalledTimes(1);
+    expect(made.layouts).toHaveLength(0);
+  });
 
-    made.layouts[0].fire(); // the companies have settled
+  it('makes dragging elastic: it listens for a company being grabbed, dragged and let go', () => {
+    drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
-    expect(made.fit).toHaveBeenCalled();
-    expect(frame).not.toHaveClass('settling');
-    expect(made.layouts).toHaveLength(1); // nothing rearranges them once they are shown
-
-    made.handlers.get('grab node')!({ target: made.nodes[0] }); // the user starts dragging a company
-
-    expect(made.layouts).toHaveLength(2);
-    expect(made.layouts[1].options).toMatchObject({ name: 'cola', infinite: true, fit: false });
-    expect(made.layouts[1].run).toHaveBeenCalled();
+    expect(made.handlers.has('grab node')).toBe(true);
+    expect(made.handlers.has('drag node')).toBe(true);
+    expect(made.handlers.has('free node')).toBe(true);
   });
 
   it('brings every company back into view with Fit to Screen', async () => {
@@ -575,7 +576,7 @@ describe('SupplyChainGraph', () => {
       expect(sizes.slice(1)).toEqual([44, 44]);
     });
 
-    it("keeps room for each label box: the canvas lays out the box's lines, invisibly, and the layout counts them", () => {
+    it("keeps room for each label box: the canvas lays out the box's lines, invisibly, so the graph's size counts them", () => {
       drawGraph(TILE_NODES);
 
       expect(elementsDrawn().map((element) => element.data.label)).toEqual([
@@ -587,7 +588,6 @@ describe('SupplyChainGraph', () => {
         selector: 'node',
         style: expect.objectContaining({ label: 'data(label)', 'text-opacity': 0, 'text-valign': 'bottom' }),
       }));
-      expect(made.layouts[0]!.options).toMatchObject({ nodeDimensionsIncludeLabels: true, avoidOverlap: true });
     });
 
     it('gives holdings a teal border', () => {

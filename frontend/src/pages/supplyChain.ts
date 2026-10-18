@@ -356,3 +356,146 @@ export function relationshipSummary(relationship: Relationship): string {
 
 /** What is chosen on the Supply Chain page: a company, a relationship, or nothing. */
 export type Selection = { kind: 'company'; nodeId: string } | { kind: 'relationship'; relationshipId: number } | null;
+
+export type Point = { x: number; y: number };
+
+// How far a dragged company's direct suppliers and customers follow it: a share of its move, so they trail behind it
+// like elastic rather than moving with it.
+export const FOLLOW_SHARE = 0.35;
+
+/** Where a neighbour heads while a company is dragged from {@code from} to {@code to}: its resting place, moved by a share. */
+export function followTarget(rest: Point, from: Point, to: Point, share: number = FOLLOW_SHARE): Point {
+  return { x: rest.x + (to.x - from.x) * share, y: rest.y + (to.y - from.y) * share };
+}
+
+// How much of the remaining distance a moving neighbour covers each frame: quick at first, then slowing to a stop.
+export const EASE = 0.18;
+
+/** One frame of easing towards a target. Returns where the company is now, and whether it has arrived (within half a pixel). */
+export function easeTowards(current: Point, target: Point, ease: number = EASE): { position: Point; arrived: boolean } {
+  const dx = target.x - current.x;
+  const dy = target.y - current.y;
+  if (Math.hypot(dx, dy) < 0.5) return { position: target, arrived: true };
+  return { position: { x: current.x + dx * ease, y: current.y + dy * ease }, arrived: false };
+}
+
+/**
+ * Lays the graph out as a flow, the way goods move: every company in a column by its place in the chain, so each
+ * arrow runs left to right from supplier to customer (suppliers' suppliers, suppliers, then their customers). Within a
+ * column, companies are ordered to keep arrows from crossing: a few passes that place each one at the average height of
+ * its neighbours in the next column over. Each group of connected companies is laid out on its own, from (0, 0); the
+ * graph then packs the groups together.
+ *
+ * Companies in a loop (each supplying the other) cannot all be left of each other: the loop is broken at the arrow that
+ * closes it, which is then the only one allowed to point backwards. A company that only supplies is placed in the
+ * column just before its first customer, so it sits next to it rather than far out on the left.
+ *
+ * {@code heightOf} is how tall a company is with its label box, so taller ones get more room in their column.
+ */
+export function flowLayout(
+  nodeIds: string[],
+  edges: Pick<GraphEdge, 'source' | 'target'>[],
+  heightOf: (id: string) => number,
+  columnGap = 200,
+  rowGap = 20,
+): Map<string, Point> {
+  const out = new Map<string, string[]>(nodeIds.map((id) => [id, []]));
+  const into = new Map<string, string[]>(nodeIds.map((id) => [id, []]));
+  for (const { source, target } of edges) {
+    if (source === target || !out.has(source) || !out.has(target)) continue;
+    out.get(source)!.push(target);
+    into.get(target)!.push(source);
+  }
+
+  // The groups of connected companies, in the order their first company comes.
+  const groupOf = new Map<string, number>();
+  const groups: string[][] = [];
+  for (const start of nodeIds) {
+    if (groupOf.has(start)) continue;
+    const group: string[] = [];
+    const stack = [start];
+    groupOf.set(start, groups.length);
+    while (stack.length) {
+      const id = stack.pop()!;
+      group.push(id);
+      for (const next of [...out.get(id)!, ...into.get(id)!]) {
+        if (!groupOf.has(next)) {
+          groupOf.set(next, groups.length);
+          stack.push(next);
+        }
+      }
+    }
+    groups.push(group);
+  }
+
+  const positions = new Map<string, Point>();
+  for (const group of groups) {
+    // Arrows that close a loop are found with a depth-first walk and left out of the column rule.
+    const loopArrows = new Set<string>();
+    const state = new Map<string, 'open' | 'done'>();
+    const walk = (id: string) => {
+      state.set(id, 'open');
+      for (const next of out.get(id)!) {
+        if (state.get(next) === 'open') loopArrows.add(`${id}>${next}`);
+        else if (!state.has(next)) walk(next);
+      }
+      state.set(id, 'done');
+    };
+    group.forEach((id) => {
+      if (!state.has(id)) walk(id);
+    });
+    const forward = (from: string) => out.get(from)!.filter((to) => !loopArrows.has(`${from}>${to}`));
+    const backward = (to: string) => into.get(to)!.filter((from) => !loopArrows.has(`${from}>${to}`));
+
+    // Columns: the longest chain of suppliers before each company.
+    const column = new Map<string, number>();
+    const columnOf = (id: string): number => {
+      if (column.has(id)) return column.get(id)!;
+      column.set(id, 0); // guards the walk; loops are already removed
+      const value = Math.max(0, ...backward(id).map((from) => columnOf(from) + 1));
+      column.set(id, value);
+      return value;
+    };
+    group.forEach(columnOf);
+    // A company that only supplies moves up to the column just before its nearest customer.
+    for (const id of group) {
+      if (backward(id).length === 0 && forward(id).length > 0) {
+        column.set(id, Math.max(0, Math.min(...forward(id).map((to) => column.get(to)!)) - 1));
+      }
+    }
+
+    const columns: string[][] = [];
+    group.forEach((id) => (columns[column.get(id)!] ??= []).push(id));
+    for (let c = 0; c < columns.length; c++) columns[c] ??= [];
+
+    // Ordering passes: by the average place of each company's neighbours in the column before, then the one after.
+    const place = new Map<string, number>();
+    const renumber = (ids: string[]) => ids.forEach((id, index) => place.set(id, index));
+    columns.forEach(renumber);
+    const average = (ids: string[], fallback: number) =>
+      ids.length ? ids.reduce((sum, id) => sum + place.get(id)!, 0) / ids.length : fallback;
+    for (let pass = 0; pass < 4; pass++) {
+      for (let c = 1; c < columns.length; c++) {
+        columns[c]!.sort((a, b) => average(backward(a), place.get(a)!) - average(backward(b), place.get(b)!));
+        renumber(columns[c]!);
+      }
+      for (let c = columns.length - 2; c >= 0; c--) {
+        columns[c]!.sort((a, b) => average(forward(a), place.get(a)!) - average(forward(b), place.get(b)!));
+        renumber(columns[c]!);
+      }
+    }
+
+    // Each column is stacked from the top, its companies centred on the tallest column's middle.
+    const columnHeights = columns.map((ids) => ids.reduce((sum, id) => sum + heightOf(id) + rowGap, -rowGap));
+    const tallest = Math.max(0, ...columnHeights);
+    columns.forEach((ids, c) => {
+      let y = (tallest - columnHeights[c]!) / 2;
+      for (const id of ids) {
+        const height = heightOf(id);
+        positions.set(id, { x: c * columnGap, y: y + height / 2 });
+        y += height + rowGap;
+      }
+    });
+  }
+  return positions;
+}

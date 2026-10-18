@@ -1073,30 +1073,20 @@ table.holdings td:nth-child(7) {
   transform: translate(calc(-100% - 12px), calc(-100% - 12px));
 }
 
-/* While the companies settle, the graph is out of sight; then it fades in, already arranged and fitted. */
+/* The graph appears already arranged and fitted, fading in. */
 .supply-chain-graph,
 .graph-overlay {
-  transition: opacity 350ms ease;
+  animation: graph-in 300ms ease-out;
 }
 
-.graph-frame.settling .supply-chain-graph,
-.graph-frame.settling .graph-overlay {
-  opacity: 0;
-}
+@keyframes graph-in {
+  from {
+    opacity: 0;
+  }
 
-.graph-arranging {
-  position: absolute;
-  inset: 0;
-  display: none;
-  place-items: center;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  pointer-events: none;
-}
-
-.graph-frame.settling .graph-arranging {
-  display: grid;
+  to {
+    opacity: 1;
+  }
 }
 
 /* The label boxes, the chosen company's brackets and its crosshair: HTML and SVG over the graph's canvas, moved by
@@ -1264,6 +1254,76 @@ table.holdings td:nth-child(7) {
   height: calc(100vh - 300px);
   min-height: 520px;
   margin-top: 16px;
+}
+
+/* The side panels are drawers: the left one folds to a narrow strip, and the Inspector is shown only while something
+   is chosen, so the graph widens into the room they leave. */
+.workspace.inspector-closed {
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+
+.workspace.left-closed {
+  grid-template-columns: 40px minmax(0, 1fr) 320px;
+}
+
+.workspace.left-closed.inspector-closed {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.workspace.left-closed .workspace-left {
+  padding: 0;
+}
+
+.drawer-strip {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  clip-path: none;
+  font-size: 13px;
+  font-weight: 600;
+  writing-mode: vertical-rl;
+}
+
+.drawer-strip:hover:not(:disabled) {
+  border: 0;
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.drawer-close {
+  min-height: 0;
+  padding: 4px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  clip-path: none;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.drawer-close:hover:not(:disabled) {
+  border: 0;
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.panel-tabs .drawer-close {
+  flex: none;
+}
+
+.workspace-inspector {
+  position: relative;
+}
+
+.inspector-close {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  right: 6px;
 }
 
 .workspace-panel {
@@ -1782,7 +1842,10 @@ button.panel-row.chosen {
 }
 
 @media (max-width: 1100px) {
-  .workspace {
+  .workspace,
+  .workspace.left-closed,
+  .workspace.inspector-closed,
+  .workspace.left-closed.inspector-closed {
     grid-template-columns: minmax(0, 1fr);
     height: auto;
     min-height: 0;
@@ -1804,6 +1867,12 @@ button.panel-row.chosen {
 
   .workspace-panel {
     overflow-y: visible;
+  }
+
+  .drawer-strip {
+    padding: 10px 14px;
+    writing-mode: horizontal-tb;
+    text-align: left;
   }
 }
 
