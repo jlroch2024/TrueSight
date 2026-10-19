@@ -18,7 +18,8 @@
 // the background lets go. Cytoscape's own grey press circle and selection overlay are switched off.
 import cytoscape, { type Core, type ElementDefinition, type Layouts, type LayoutOptions, type NodeSingular } from 'cytoscape';
 import cola from 'cytoscape-cola';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { GraphLegend } from './GraphLegend';
 import {
   displayName,
   flowProgressAt,
@@ -83,6 +84,9 @@ const PADDING = 48;
 const LABEL_SCALE_MIN = 0.75;
 // How far outside its tile the chosen company's corner brackets sit.
 const BRACKET_GAP = 7;
+// Approximate room for the arrow sentence, used to put it on the other side of the pointer near an edge.
+const TOOLTIP_WIDTH = 320;
+const TOOLTIP_HEIGHT = 90;
 
 // cola's settings for both phases: keep companies and their label boxes apart (each tile carries an invisible canvas
 // label the size of its box), and lay out unconnected groups side by side.
@@ -111,6 +115,8 @@ type Props = {
   logoDomains?: Record<string, string>;
 };
 
+type EdgeTooltip = { text: string; x: number; y: number; flipX: boolean; flipY: boolean };
+
 export function SupplyChainGraph({
   nodes,
   edges,
@@ -121,6 +127,7 @@ export function SupplyChainGraph({
   logoToken = '',
   logoDomains,
 }: Props) {
+  const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltip | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const flowLayerRef = useRef<SVGSVGElement | null>(null);
@@ -142,6 +149,8 @@ export function SupplyChainGraph({
     const container = containerRef.current;
     const frame = frameRef.current;
     if (!container || !frame) return;
+    setEdgeTooltip(null);
+    const edgeById = new Map(edges.map((edge) => [edge.id, edge]));
 
     const elements: ElementDefinition[] = [
       ...nodes.map((node) => ({
@@ -331,8 +340,27 @@ export function SupplyChainGraph({
       container.style.cursor = on ? 'pointer' : '';
       schedule();
     };
-    cy.on('mouseover', 'edge', hover(true));
-    cy.on('mouseout', 'edge', hover(false));
+    const showEdgeTooltip = (event: { target: NodeSingular; renderedPosition?: Point }) => {
+      const edge = edgeById.get(event.target.id());
+      const point = event.renderedPosition;
+      if (!edge || !point) return;
+      setEdgeTooltip({
+        text: edge.summary,
+        x: point.x,
+        y: point.y,
+        flipX: point.x > container.clientWidth - TOOLTIP_WIDTH,
+        flipY: point.y > container.clientHeight - TOOLTIP_HEIGHT,
+      });
+    };
+    cy.on('mouseover', 'edge', (event) => {
+      hover(true)(event);
+      showEdgeTooltip(event);
+    });
+    cy.on('mousemove', 'edge', showEdgeTooltip);
+    cy.on('mouseout', 'edge', (event) => {
+      hover(false)(event);
+      setEdgeTooltip(null);
+    });
     cy.on('mouseover', 'node', (event) => {
       hover(true)(event);
       applyFocus(cy, edges, event.target.id());
@@ -388,6 +416,7 @@ export function SupplyChainGraph({
     }
 
     return () => {
+      setEdgeTooltip(null);
       if (flowFrame !== undefined) window.cancelAnimationFrame(flowFrame);
       running.forEach((layout) => layout.stop());
       placeOverlayRef.current = () => {};
@@ -507,16 +536,20 @@ export function SupplyChainGraph({
         ))}
       </div>
       <p className="graph-arranging">Arranging the Graph…</p>
+      {edgeTooltip && (
+        <p
+          role="tooltip"
+          className={`graph-tooltip${edgeTooltip.flipX ? ' flip-x' : ''}${edgeTooltip.flipY ? ' flip-y' : ''}`}
+          style={{ left: edgeTooltip.x, top: edgeTooltip.y }}
+        >
+          {edgeTooltip.text}
+        </p>
+      )}
       <div className="graph-controls">
         <button type="button" className="secondary" onClick={fitToScreen}>
           Fit to Screen
         </button>
-        {edges.length > 0 && (
-          <ul className="graph-legend" aria-label="Relationship review status">
-            <li><span className="graph-legend-line approved" aria-hidden="true" />Approved</li>
-            <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not yet reviewed</li>
-          </ul>
-        )}
+        <GraphLegend hasRelationships={edges.length > 0} />
       </div>
     </div>
   );

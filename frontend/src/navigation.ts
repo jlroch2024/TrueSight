@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [];
 export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
   { label: 'Portfolio', path: paths.portfolio },
   { label: 'Supply Chain', path: paths.supplyChain },
+  { label: 'Alerts', path: paths.alerts },
 ];
 
 // Analyst pages are registered here as they become available. Do not add buttons for unfinished pages.
