@@ -8,12 +8,16 @@
 // |--------------------------------------|-------------------------------------------|----------------------------|
 // | /                                    | Opens the first portfolio (no Home page)  | Open on the Portfolio Page |
 // | /login, /signup                      | Log In, Sign Up                           | Sign Up and Log In         |
-// | /portfolios                          | Portfolios: list, create, rename, delete  | Manage My Portfolios       |
+// | /portfolios                          | Opens the first portfolio, or asks a user | One Portfolio Page         |
+// |                                      | with none to create one                   |                            |
 // | /portfolios/:portfolioId             | Portfolio: holdings, Upload CSV, Analyse  | See below                  |
 // | /portfolios/:portfolioId/supply-chain| Supply Chain: the graph                   | See the Supply Chain...    |
 //
 // /portfolios/:portfolioId is built by: Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds
 // holdings and upload, then the annual report story adds Analyse.
+//
+// There is no Portfolios page: the header's Portfolio list switches portfolios, and Manage Portfolios opens a window to
+// create, rename and delete them (One Portfolio Page).
 export const paths = {
   home: '/',
   logIn: '/login',

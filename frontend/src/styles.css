@@ -687,8 +687,7 @@ select {
   gap: 10px;
 }
 
-.inline-form label,
-.portfolio-header label {
+.inline-form label {
   display: inline;
   margin: 0;
 }
@@ -733,13 +732,86 @@ select {
   gap: 8px;
 }
 
-.portfolio-header {
+/* The header's Portfolio list and Manage Portfolios button, between the brand and the account. */
+.portfolio-picker {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+/* Keeps "Manage Portfolios" on one line, however narrow the header gets. */
+.manage-portfolios {
+  white-space: nowrap;
+}
+
+/* On narrow screens the portfolio controls take their own row under the brand and the account. */
+@media (max-width: 900px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .portfolio-picker {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+/* The Manage Portfolios window, over a dimmed page. */
+.window-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(7 20 26 / 72%);
+}
+
+.window {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.window:focus {
+  outline: none;
+}
+
+.window-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.window-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.window-create {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.portfolio-name {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 24px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+}
+
+.active-tag {
+  padding: 1px 8px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .upload-row {

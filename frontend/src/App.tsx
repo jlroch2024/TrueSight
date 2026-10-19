@@ -15,7 +15,7 @@ import { LogInPage } from './pages/LogInPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OpenFirstPortfolioPage } from './pages/OpenFirstPortfolioPage';
 import { PortfolioPage } from './pages/PortfolioPage';
-import { PortfoliosPage } from './pages/PortfoliosPage';
+import { PortfolioStart } from './pages/PortfolioStart';
 import { ReviewPage } from './pages/ReviewPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { SupplyChainPage } from './pages/SupplyChainPage';
@@ -36,7 +36,7 @@ export function App() {
       <Route element={<RequireLogIn />}>
         <Route element={<Layout />}>
           <Route index element={<OpenFirstPortfolioPage />} />
-          <Route path={paths.portfolios} element={<PortfoliosPage />} />
+          <Route path={paths.portfolios} element={<PortfolioStart />} />
           <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
           <Route path={paths.review} element={<ReviewPage />} />
           <Route path={paths.supplyChain(':portfolioId')} element={<SupplyChainPage />} />

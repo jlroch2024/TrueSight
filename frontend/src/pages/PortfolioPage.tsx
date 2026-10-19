@@ -2,7 +2,7 @@
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../api/client';
-import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
+import { type Holding, type Portfolio, holdingApi, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { paths } from '../paths';
 import { STATUS_LABELS, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
@@ -54,6 +54,17 @@ export function PortfolioPage() {
       .catch((e: unknown) => { if (active) setError(messageOf(e)); });
     return () => { active = false; };
   }, [portfolioId]);
+
+  // After a rename in the Manage Portfolios window, show the new name without reloading the holdings.
+  useEffect(() => portfolioChanges.listen(() => {
+    portfolioApi
+      .list()
+      .then((all) => {
+        const renamed = all.find((p) => String(p.id) === portfolioId);
+        if (renamed) setPortfolio((current) => (current ? { ...current, name: renamed.name } : current));
+      })
+      .catch(() => {});
+  }), [portfolioId]);
 
   const running = holdings.some((holding) => holding.status === 'ANALYSING');
   const failed = holdings.some((holding) => holding.status === 'FAILED');

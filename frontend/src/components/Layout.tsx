@@ -5,14 +5,15 @@
 // Analyst-only pages (ANALYST_NAV_ITEMS), but only for an Analyst.
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
-// PORTFOLIO_NAV_ITEMS in navigation.ts, and the page has a switcher naming the open portfolio.
+// PORTFOLIO_NAV_ITEMS in navigation.ts. The header has the Portfolio list and Manage Portfolios (PortfolioPicker) on
+// every page, so an Analyst on Review can always get back to a portfolio.
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate } from 'react-router';
 import { authApi, type Me } from '../api/auth';
 import { tokenStore } from '../api/client';
 import { ANALYST_NAV_ITEMS, NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
 import { paths } from '../paths';
-import { PortfolioSwitcher } from './PortfolioSwitcher';
+import { PortfolioPicker } from './PortfolioPicker';
 
 export function Layout() {
   const [me, setMe] = useState<Me | null>(null);
@@ -39,6 +40,7 @@ export function Layout() {
           <span className="brand-tile"><img src="/eye-logo.png" alt="" className="brand-logo" /></span>
           <span>TrueSight</span>
         </div>
+        <PortfolioPicker portfolioId={portfolioId} />
         <div className="header-account">
           {me && (
             <div className="account-identity">
@@ -92,7 +94,6 @@ export function Layout() {
           </nav>
         </aside>
         <main className="content">
-          {portfolioId && <PortfolioSwitcher portfolioId={portfolioId} />}
           <Outlet />
         </main>
       </div>

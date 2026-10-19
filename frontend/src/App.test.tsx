@@ -1,6 +1,6 @@
 // Tests the whole website shell: the login guard, the sidebar, and "/" opening the first portfolio, with a fake backend.
 // This is the example for page tests: draw the page inside a router, fake the backend, check what the user sees.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -43,7 +43,9 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'Consumer Goods' })).toBeInTheDocument();
     const sidebar = screen.getByRole('navigation', { name: 'Main' });
-    expect(sidebar).toHaveTextContent('Portfolios');
+    // No Portfolios page: portfolios are switched and managed from the header.
+    expect(within(sidebar).getByRole('button', { name: 'Portfolio' })).toBeInTheDocument();
+    expect(within(sidebar).queryByRole('button', { name: 'Portfolios' })).not.toBeInTheDocument();
     expect(sidebar).not.toHaveTextContent('Home');
   });
 
