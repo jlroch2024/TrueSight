@@ -1,5 +1,25 @@
 package com.truesight.news;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.portfolio.Holding;
@@ -15,26 +35,6 @@ import com.truesight.report.ReportRepository;
 import com.truesight.support.Examples;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** The Alerts page API, against the real Sprint 2 tables. */
 @IntegrationTest
@@ -263,7 +263,7 @@ class AlertsIT {
     private NewsArticle article(Company company, int sampleIndex, Duration ago) {
         NewsItem item = sample.get(sampleIndex);
         return articles.save(new NewsArticle(company.getId(), item.url() + "#" + UUID.randomUUID(), item.title(),
-                item.source(), Instant.now().minus(ago)));
+                item.source(), Instant.now().minus(ago).truncatedTo(ChronoUnit.MICROS)));
     }
 
     private NewsAssessment event(NewsArticle article, Severity severity, Confidence confidence) {
