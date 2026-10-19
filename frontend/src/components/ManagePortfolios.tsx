@@ -2,10 +2,10 @@
 // each Open, Rename and Delete. A box at the bottom creates one. Everything is a button: the window has no links.
 //
 // Creating a portfolio opens it. Deleting the open portfolio opens another, or /portfolios when none is left.
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
-import { type Portfolio, portfolioApi } from '../api/portfolios';
+import { type Portfolio, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { paths } from '../paths';
 
 function messageOf(e: unknown): string {
@@ -25,14 +25,14 @@ export function samePageFor(pathname: string, openId: string | undefined, nextId
 }
 
 type Props = {
-  /** The open portfolio's id, from the address. */
-  openId: string;
+  /** The open portfolio's id, from the address, or none on a page such as Review. */
+  openId?: string;
   onClose: () => void;
-  /** Called after any change, so the header's list can reload. */
-  onChanged: () => void;
 };
 
-export function ManagePortfolios({ openId, onClose, onChanged }: Props) {
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+export function ManagePortfolios({ openId, onClose }: Props) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [portfolios, setPortfolios] = useState<Portfolio[] | null>(null);
@@ -64,12 +64,29 @@ export function ManagePortfolios({ openId, onClose, onChanged }: Props) {
 
   // Escape closes the window, as Close does.
   useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [onClose]);
+
+  // Tab and Shift+Tab go round the window's own controls, never to the page behind it.
+  function keepFocusInside(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Tab' || !windowRef.current) return;
+    const focusable = Array.from(windowRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (focusable.length === 0) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    const current = document.activeElement;
+    if (event.shiftKey && (current === first || current === windowRef.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && current === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   // Runs one change, then reloads the list. The buttons are disabled meanwhile, so nothing is sent twice.
   async function run<T>(action: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false }> {
@@ -77,7 +94,7 @@ export function ManagePortfolios({ openId, onClose, onChanged }: Props) {
     setActionError(null);
     try {
       const value = await action();
-      onChanged();
+      portfolioChanges.announce();
       return { ok: true, value };
     } catch (e) {
       setActionError(messageOf(e));
@@ -130,6 +147,7 @@ export function ManagePortfolios({ openId, onClose, onChanged }: Props) {
         aria-modal="true"
         aria-labelledby="manage-portfolios-title"
         tabIndex={-1}
+        onKeyDown={keepFocusInside}
       >
         <div className="window-heading">
           <h2 id="manage-portfolios-title">Manage Portfolios</h2>

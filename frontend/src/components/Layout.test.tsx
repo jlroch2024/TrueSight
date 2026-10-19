@@ -39,7 +39,8 @@ describe('Layout', () => {
 
   it('Log Out forgets the login and goes to the Log In page', async () => {
     tokenStore.set('a-token');
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"email":"pm@example.com","role":"PORTFOLIO_MANAGER"}')));
+    vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+      new Response(url === '/api/portfolios' ? '[]' : '{"email":"pm@example.com","role":"PORTFOLIO_MANAGER"}')));
     render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
@@ -66,7 +67,8 @@ describe('Layout', () => {
 
   it('loads the current role for analyst navigation when logged in', async () => {
     tokenStore.set('a-token');
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{"email":"analyst@example.com","role":"ANALYST"}'));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+      new Response(url === '/api/portfolios' ? '[]' : '{"email":"analyst@example.com","role":"ANALYST"}'));
     renderAt('/');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
       headers: expect.any(Headers),
@@ -80,7 +82,9 @@ describe('Layout', () => {
   describe('who is logged in', () => {
     function logInAs(role: 'PORTFOLIO_MANAGER' | 'ANALYST', email: string) {
       tokenStore.set('a-token');
-      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ email, role }))));
+      // The header also lists the portfolios, on every page; this user has none.
+      vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+        new Response(url === '/api/portfolios' ? '[]' : JSON.stringify({ email, role }))));
     }
 
     afterEach(() => {
@@ -134,7 +138,8 @@ describe('Layout', () => {
       renderAt('/');
       await screen.findByText('analyst@firm.com');
 
-      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+      const asked = vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/auth/me');
+      expect(asked).toHaveLength(1);
     });
   });
 });

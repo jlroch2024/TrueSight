@@ -12,6 +12,9 @@ import { Layout } from './Layout';
 type Stored = { id: number; name: string; createdAt: string };
 let stored: Stored[];
 let nextId: number;
+let role: 'PORTFOLIO_MANAGER' | 'ANALYST';
+// While true, listing portfolios fails, as if the backend were restarting.
+let backendDown: boolean;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
@@ -28,8 +31,11 @@ async function fakeBackend(url: string, init: RequestInit = {}): Promise<Respons
   const clash = (name: string, except?: number) => stored.some((p) => p.name === name && p.id !== except);
   const inUse = json({ message: 'You already have a portfolio with this name.' }, 409);
 
-  if (url === '/api/auth/me') return json({ email: 'pm@example.com', role: 'PORTFOLIO_MANAGER' });
+  if (url === '/api/auth/me') return json({ email: 'pm@example.com', role });
   if (url === '/api/portfolios' && method === 'GET') {
+    if (backendDown) {
+      return json({ message: 'The server is restarting.' }, 503);
+    }
     return json([...stored].sort((a, b) => a.name.localeCompare(b.name)));
   }
   if (url === '/api/portfolios' && method === 'POST') {
@@ -82,6 +88,8 @@ beforeEach(() => {
   tokenStore.set('a-token');
   stored = [portfolio(1, 'Tech Book'), portfolio(2, 'Energy Book')];
   nextId = 10;
+  role = 'PORTFOLIO_MANAGER';
+  backendDown = false;
   vi.stubGlobal('fetch', vi.fn(fakeBackend));
 });
 
@@ -187,6 +195,39 @@ describe('Manage Portfolios window', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('renaming the open portfolio shows the new name in its heading straight away', async () => {
+    renderAt('/portfolios/1');
+    expect(await screen.findByRole('heading', { name: 'Tech Book' })).toBeInTheDocument();
+    const window = await openWindow();
+
+    await userEvent.click(within(window).getByRole('button', { name: 'Rename Tech Book' }));
+    const input = within(window).getByLabelText('New Name');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Chips Book');
+    await userEvent.click(within(window).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('heading', { name: 'Chips Book' })).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the window, and gives focus back to Manage Portfolios when it closes', async () => {
+    const user = userEvent.setup();
+    renderAt('/portfolios/1');
+    const window = await openWindow();
+
+    // Many presses of Tab, then Shift+Tab: focus never leaves the window.
+    for (let i = 0; i < 15; i++) {
+      await user.tab();
+      expect(window).toContainElement(document.activeElement as HTMLElement);
+    }
+    for (let i = 0; i < 15; i++) {
+      await user.tab({ shift: true });
+      expect(window).toContainElement(document.activeElement as HTMLElement);
+    }
+
+    await user.click(within(window).getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('button', { name: 'Manage Portfolios' })).toHaveFocus();
+  });
+
   it('Open switches to the chosen portfolio', async () => {
     renderAt('/portfolios/1');
     const window = await openWindow();
@@ -203,6 +244,17 @@ describe('/portfolios', () => {
     renderAt('/portfolios');
 
     // Sorted by name, Energy Book (id 2) comes first.
+    await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
+  });
+
+  it('offers Retry after a failed load, and Retry opens the first portfolio', async () => {
+    backendDown = true;
+    renderAt('/portfolios');
+
+    expect(await screen.findByText('The server is restarting.')).toBeInTheDocument();
+    backendDown = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
     await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
   });
 
@@ -226,6 +278,26 @@ describe('header and sidebar', () => {
     expect(within(sidebar).getByRole('button', { name: 'Portfolio' })).toBeInTheDocument();
     expect(within(sidebar).getByRole('button', { name: 'Supply Chain' })).toBeInTheDocument();
     expect(within(sidebar).queryByRole('button', { name: 'Portfolios' })).not.toBeInTheDocument();
+  });
+
+  it('an Analyst on the Review page can get back to a portfolio from the header', async () => {
+    role = 'ANALYST';
+    renderAt('/review');
+
+    const list = await screen.findByLabelText('Portfolio');
+    expect(list).toHaveTextContent('Choose a Portfolio');
+    await userEvent.click(list);
+    await userEvent.click(screen.getByRole('option', { name: 'Tech Book' }));
+
+    await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/1'));
+  });
+
+  it('Manage Portfolios is in the header on a page with no portfolio open', async () => {
+    role = 'ANALYST';
+    renderAt('/review');
+
+    const header = screen.getByRole('banner');
+    expect(await within(header).findByRole('button', { name: 'Manage Portfolios' })).toBeInTheDocument();
   });
 
   it('switching portfolios keeps the same kind of page: Supply Chain stays on Supply Chain', async () => {

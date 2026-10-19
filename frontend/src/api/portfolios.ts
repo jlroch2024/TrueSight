@@ -21,6 +21,19 @@ export const portfolioApi = {
   newsCheck: (id: number | string) => api<void>(`/portfolios/${id}/news-check`, { method: 'POST' }),
 };
 
+// Sent in the browser after a portfolio is created, renamed or deleted, so everything showing portfolio names (the
+// header's list, the open portfolio's heading) loads them again.
+const PORTFOLIOS_CHANGED = 'truesight:portfolios-changed';
+
+export const portfolioChanges = {
+  announce: () => window.dispatchEvent(new Event(PORTFOLIOS_CHANGED)),
+  /** Calls listener after every change; returns the function that stops listening. */
+  listen: (listener: () => void) => {
+    window.addEventListener(PORTFOLIOS_CHANGED, listener);
+    return () => window.removeEventListener(PORTFOLIOS_CHANGED, listener);
+  },
+};
+
 export type HoldingStatus = 'WAITING' | 'ANALYSING' | 'DONE' | 'FAILED' | 'NO_REPORT_FOUND';
 
 // The company and report fields stay empty until the analysis fills them in.

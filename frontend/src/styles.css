@@ -740,6 +740,23 @@ select {
   gap: 12px;
 }
 
+/* Keeps "Manage Portfolios" on one line, however narrow the header gets. */
+.manage-portfolios {
+  white-space: nowrap;
+}
+
+/* On narrow screens the portfolio controls take their own row under the brand and the account. */
+@media (max-width: 900px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .portfolio-picker {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 /* The Manage Portfolios window, over a dimmed page. */
 .window-backdrop {
   position: fixed;

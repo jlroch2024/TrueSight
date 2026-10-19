@@ -18,9 +18,12 @@ export function PortfolioStart() {
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  // Counts the attempts: pressing Retry adds one, which loads the portfolios again.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     portfolioApi
       .list()
       .then((portfolios) => {
@@ -35,7 +38,7 @@ export function PortfolioStart() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, attempt]);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -54,7 +57,16 @@ export function PortfolioStart() {
   if (none === null) {
     return (
       <section>
-        {error ? <p className="error">{error}</p> : <p className="muted">Opening Your Portfolio…</p>}
+        {error ? (
+          <>
+            <p className="error">{error}</p>
+            <button type="button" onClick={() => setAttempt((n) => n + 1)}>
+              Retry
+            </button>
+          </>
+        ) : (
+          <p className="muted">Opening Your Portfolio…</p>
+        )}
       </section>
     );
   }
