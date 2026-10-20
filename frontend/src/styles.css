@@ -972,6 +972,11 @@ table.holdings td:nth-child(7) {
   gap: 8px;
 }
 
+.graph-buttons {
+  display: flex;
+  gap: 6px;
+}
+
 .graph-legend {
   display: grid;
   gap: 6px;
@@ -1058,19 +1063,21 @@ table.holdings td:nth-child(7) {
   font-size: 12px;
   line-height: 1.35;
   pointer-events: none;
-  transform: translate(12px, 12px);
-}
-
-.graph-tooltip.flip-x {
-  transform: translate(calc(-100% - 12px), 12px);
-}
-
-.graph-tooltip.flip-y {
+  /* Above the pointer, so it never covers the companies under the arrow. */
   transform: translate(12px, calc(-100% - 12px));
 }
 
-.graph-tooltip.flip-x.flip-y {
+.graph-tooltip.flip-x {
   transform: translate(calc(-100% - 12px), calc(-100% - 12px));
+}
+
+/* No room above: below the pointer instead. */
+.graph-tooltip.flip-y {
+  transform: translate(12px, 12px);
+}
+
+.graph-tooltip.flip-x.flip-y {
+  transform: translate(calc(-100% - 12px), 12px);
 }
 
 /* The graph appears already arranged and fitted, fading in. */

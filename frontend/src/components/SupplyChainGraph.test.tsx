@@ -18,6 +18,13 @@ type Fake = {
   classes: Set<string>;
   toggleClass: (name: string, on: boolean) => Fake;
   removeClass: (name: string) => Fake;
+  addClass: (name: string) => Fake;
+  // Where a company is, and the box its tile and label take (the same for every stand-in company).
+  position: (point?: { x: number; y: number }) => { x: number; y: number };
+  boundingBox: () => { x1: number; y1: number; x2: number; y2: number; w: number; h: number };
+  // What the graph set on an arrow, e.g. its detour.
+  data: (values?: Record<string, unknown>) => Fake;
+  values: Record<string, unknown>;
 };
 const made: {
   options?: Record<string, unknown>;
@@ -38,7 +45,12 @@ const made: {
   // The ids of the companies the graph drew chosen.
   chosenNodes: string[];
   fit: ReturnType<typeof vi.fn>;
+  // Where the test puts companies before the graph is drawn, by id; anything else is at 0, 0.
+  placed: Map<string, { x: number; y: number }>;
+  viewport: ReturnType<typeof vi.fn>;
 } = {
+  placed: new Map(),
+  viewport: vi.fn(),
   selectedEdges: [],
   chosenNodes: [],
   fit: vi.fn(),
@@ -80,7 +92,22 @@ function fake(id: string): Fake {
       item.classes.delete(name);
       return item;
     },
+    addClass: (name) => {
+      item.classes.add(name);
+      return item;
+    },
+    position: (point) => {
+      if (point) at = point;
+      return at;
+    },
+    boundingBox: () => ({ x1: at.x - 30, y1: at.y - 30, x2: at.x + 30, y2: at.y + 50, w: 60, h: 80 }),
+    values: {},
+    data: (values) => {
+      Object.assign(item.values, values);
+      return item;
+    },
   };
+  let at = made.placed.get(id) ?? { x: 0, y: 0 };
   return item;
 }
 
@@ -135,9 +162,14 @@ vi.mock('cytoscape', () => {
       fit: made.fit,
       nodes: () => collection(made.nodes),
       edges: (selector?: string) => collection(made.edges, made.style, selector),
+      viewport: made.viewport,
+      zoom: () => 1,
+      pan: () => ({ x: 0, y: 0 }),
       getElementById: (id: string) => {
         const exists = made.nodes.some((node) => node.id() === id);
+        const node = made.nodes.find((item) => item.id() === id);
         return {
+          position: (point?: { x: number; y: number }) => node?.position(point),
           data: (field: string, value: unknown) => made.dataSet.push([id, field, value]),
           empty: () => !exists,
           nonempty: () => exists,
@@ -213,6 +245,9 @@ beforeEach(() => {
   made.fit.mockClear();
   made.dataSet = [];
   made.images = [];
+  made.placed = new Map();
+  made.viewport.mockClear();
+  window.sessionStorage.clear();
   vi.stubGlobal('Image', FakeImage);
   setReducedMotion(false);
   window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => made.frames.push(callback)) as unknown as typeof window.requestAnimationFrame;
@@ -313,6 +348,90 @@ describe('SupplyChainGraph', () => {
     expect(options.style.find((rule) => rule.selector === 'node')!.style).toMatchObject({ 'transition-duration': 0.15 });
   });
 
+  describe('arrows that would cross a company (item 55)', () => {
+    it('curves an arrow around a company in its way, and leaves the others straight', () => {
+      // Supplier and customer in one row with the holding between them: the arrow straight from supplier to customer
+      // would pass through the holding.
+      made.placed = new Map([
+        ['supplier', { x: 0, y: 0 }],
+        ['holding', { x: 200, y: 0 }],
+        ['customer', { x: 400, y: 0 }],
+        ['other', { x: 200, y: 400 }],
+      ]);
+      const skip: GraphEdge = {
+        id: 'relationship-9', source: 'supplier', target: 'customer', relationshipId: 9,
+        reviewStatus: 'UNREVIEWED', summary: 'Supplier supplies Customer',
+      };
+      drawGraph(FOCUS_NODES, [...FOCUS_EDGES, skip]);
+
+      const curved = made.edges.find((edge) => edge.id() === 'relationship-9')!;
+      expect(curved.classes.has('detour')).toBe(true);
+      expect(Math.abs(curved.values.bend as number)).toBeGreaterThan(0);
+      expect(made.edges.filter((edge) => edge.classes.has('detour')).map((edge) => edge.id())).toEqual(['relationship-9']);
+
+      const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
+      expect(options.style).toContainEqual(expect.objectContaining({
+        selector: 'edge.detour',
+        style: expect.objectContaining({ 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(bend)' }),
+      }));
+    });
+  });
+
+  describe('the remembered layout (item 62)', () => {
+    function drawPortfolioGraph() {
+      return render(
+        <SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} layoutKey="truesight.graph.7" />,
+      );
+    }
+
+    it('puts back the companies the user moved, and the view, when the graph is drawn again', () => {
+      window.sessionStorage.setItem(
+        'truesight.graph.7',
+        JSON.stringify({ positions: { holding: { x: 321, y: 123 } }, zoom: 1.5, pan: { x: 10, y: 20 } }),
+      );
+
+      drawPortfolioGraph();
+
+      expect(made.nodes.find((node) => node.id() === 'holding')!.position()).toEqual({ x: 321, y: 123 });
+      expect(made.viewport).toHaveBeenCalledWith({ zoom: 1.5, pan: { x: 10, y: 20 } });
+      expect(made.fit).not.toHaveBeenCalled();
+    });
+
+    it('remembers a company the user lets go', () => {
+      drawPortfolioGraph();
+      const holding = made.nodes.find((node) => node.id() === 'holding')!;
+      holding.position({ x: 50, y: 60 });
+
+      act(() => {
+        made.handlers.get('dragfree node')!({ target: holding });
+      });
+
+      expect(JSON.parse(window.sessionStorage.getItem('truesight.graph.7')!).positions).toEqual({ holding: { x: 50, y: 60 } });
+    });
+
+    it('goes back to the calculated arrangement with Reset Layout, and forgets what was saved', async () => {
+      made.placed = new Map([['holding', { x: 5, y: 5 }]]);
+      window.sessionStorage.setItem('truesight.graph.7', JSON.stringify({ positions: { holding: { x: 321, y: 123 } } }));
+      drawPortfolioGraph();
+      const holding = made.nodes.find((node) => node.id() === 'holding')!;
+      expect(holding.position()).toEqual({ x: 321, y: 123 });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Reset Layout' }));
+
+      expect(holding.position()).toEqual({ x: 5, y: 5 });
+      expect(window.sessionStorage.getItem('truesight.graph.7')).toBeNull();
+      expect(made.fit).toHaveBeenCalled();
+    });
+
+    it('remembers nothing for a graph without a key', () => {
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      act(() => {
+        made.handlers.get('dragfree node')!({ target: made.nodes[0] });
+      });
+      expect(window.sessionStorage.length).toBe(0);
+    });
+  });
+
   describe('the arrows', () => {
     it('uses solid and dashed base strokes for review status', () => {
       drawGraph(FOCUS_NODES, FOCUS_EDGES);
@@ -333,7 +452,7 @@ describe('SupplyChainGraph', () => {
       }));
     });
 
-    it('highlights a hovered arrow and shows its sentence beside the pointer until the pointer leaves', () => {
+    it('highlights a hovered arrow and shows its sentence above the pointer until the pointer leaves', () => {
       const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
       const graph = container.querySelector('.supply-chain-graph')!;
       Object.defineProperties(graph, {
@@ -344,22 +463,35 @@ describe('SupplyChainGraph', () => {
       act(() => {
         made.handlers.get('mouseover edge')!({
           target: made.edges[0],
-          renderedPosition: { x: 120, y: 80 },
+          renderedPosition: { x: 120, y: 200 },
         });
       });
 
       const tooltip = screen.getByRole('tooltip');
       expect(made.edges[0]!.classes.has('hover')).toBe(true);
       expect(tooltip).toHaveTextContent('Supplier supplies Holding: semiconductor wafers');
-      expect(tooltip).toHaveStyle({ left: '120px', top: '80px' });
+      expect(tooltip).toHaveStyle({ left: '120px', top: '200px' });
+      // Above the pointer (the style sheet's default), so it does not cover the companies under the arrow.
+      expect(tooltip).not.toHaveClass('flip-y');
 
+      // Near the right edge it moves to the left of the pointer; near the bottom it stays above.
       act(() => {
         made.handlers.get('mousemove edge')!({
           target: made.edges[0],
           renderedPosition: { x: 760, y: 530 },
         });
       });
-      expect(tooltip).toHaveClass('flip-x', 'flip-y');
+      expect(tooltip).toHaveClass('flip-x');
+      expect(tooltip).not.toHaveClass('flip-y');
+
+      // Only with no room above does it go below the pointer.
+      act(() => {
+        made.handlers.get('mousemove edge')!({
+          target: made.edges[0],
+          renderedPosition: { x: 120, y: 30 },
+        });
+      });
+      expect(tooltip).toHaveClass('flip-y');
 
       act(() => {
         made.handlers.get('mouseout edge')!({ target: made.edges[0] });
@@ -368,7 +500,7 @@ describe('SupplyChainGraph', () => {
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     });
 
-    it('still reports a clicked arrow after it has been hovered', () => {
+    it('reports a clicked arrow after it has been hovered, and hides its sentence, which the Inspector now shows', () => {
       const onEdgeSelect = vi.fn();
       render(<SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={onEdgeSelect} />);
 
@@ -381,7 +513,23 @@ describe('SupplyChainGraph', () => {
       });
 
       expect(onEdgeSelect).toHaveBeenCalledWith(1);
-      expect(screen.getByRole('tooltip')).toHaveTextContent(FOCUS_EDGES[0]!.summary);
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+
+    it('shows no sentence over the arrow already chosen', () => {
+      render(
+        <SupplyChainGraph nodes={FOCUS_NODES} edges={FOCUS_EDGES} onEdgeSelect={() => {}} selectedRelationshipId={1} />,
+      );
+
+      act(() => {
+        made.handlers.get('mouseover edge')!({ target: made.edges[0], renderedPosition: { x: 120, y: 80 } });
+      });
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+      act(() => {
+        made.handlers.get('mouseover edge')!({ target: made.edges[1], renderedPosition: { x: 120, y: 80 } });
+      });
+      expect(screen.getByRole('tooltip')).toHaveTextContent(FOCUS_EDGES[1]!.summary);
     });
 
     it('moves separate teal markers from supplier to customer without adding graph elements', () => {

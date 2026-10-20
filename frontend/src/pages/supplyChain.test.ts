@@ -1,12 +1,15 @@
 // Tests for buildGraphElements. The graph-building test uses docs/examples/relationships.json,
 // the real sample data every AI story test uses.
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import {
+  type Box,
   buildGraphElements,
   connectionsOf,
+  detours,
+  forgetLayout,
   flowProgressAt,
   displayName,
   easeTowards,
@@ -20,7 +23,9 @@ import {
   logoUrl,
   nodeLabel,
   plainName,
+  readSavedLayout,
   relationshipSummary,
+  saveLayout,
   shortName,
   sharedCompanies,
   sharedSummary,
@@ -709,3 +714,102 @@ describe('flowLayout', () => {
     expect(gap).toBe(160 / 2 + 20 + 60 / 2);
   });
 });
+
+describe('detours', () => {
+  // Three companies in a row, 200 apart, each a 60-wide tile with its label box: the arrow from the first to the third
+  // runs straight through the second.
+  const box = (x: number, y: number): Box => ({ x1: x - 30, y1: y - 30, x2: x + 30, y2: y + 50 });
+  const row = new Map([
+    ['left', box(0, 0)],
+    ['middle', box(200, 0)],
+    ['right', box(400, 0)],
+  ]);
+  // The arrows run between the tiles' middles, above the middles of the boxes (the label hangs below the tile).
+  const tiles = new Map([
+    ['left', { x: 0, y: 0 }],
+    ['middle', { x: 200, y: 0 }],
+    ['right', { x: 400, y: 0 }],
+  ]);
+
+  it('curves an arrow that would pass through a company, far enough to clear it', () => {
+    const found = detours(row, tiles, [{ id: 'skip', source: 'left', target: 'right' }]);
+
+    const detour = found.get('skip');
+    expect(detour).toBeDefined();
+    // The middle company sits halfway, so the curve bends most there.
+    expect(detour!.weight).toBeCloseTo(0.5, 5);
+    // Its box reaches 30 above the line and 50 below; its centre is below, so the arrow passes above, clear of the box's
+    // top by the margin. A curve strays 2·w·(1 − w) of its control point's distance.
+    const strays = 2 * detour!.weight * (1 - detour!.weight) * Math.abs(detour!.distance);
+    expect(strays).toBeGreaterThan(30);
+    expect(strays).toBeLessThan(60);
+  });
+
+  it('bends away from the side the company lies on', () => {
+    // The middle company sits a little below the arrow's line (y grows downwards), so the arrow bends the other way.
+    const below = new Map([...row, ['middle', box(200, 20)]]);
+    const above = new Map([...row, ['middle', box(200, -20)]]);
+
+    const bendBelow = detours(below, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!.distance;
+    const bendAbove = detours(above, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!.distance;
+
+    expect(Math.sign(bendBelow)).toBe(-Math.sign(bendAbove));
+  });
+
+  it('follows the arrow from tile to tile, so it catches a label box the arrow only clips', () => {
+    // The arrow runs along y = 0. With its tile 40 above, the middle company's label box (which hangs 50 below its tile's
+    // middle) reaches 10 below the arrow, so the arrow clips it; with its tile 60 above, the box ends 10 short of it.
+    const clipped = new Map([...row, ['middle', box(200, -40)]]);
+    const clear = new Map([...row, ['middle', box(200, -60)]]);
+
+    expect(detours(clipped, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).size).toBe(1);
+    expect(detours(clear, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).size).toBe(0);
+  });
+
+  it('leaves arrows between neighbours, and arrows that miss every company, straight', () => {
+    const found = detours(row, tiles, [
+      { id: 'next', source: 'left', target: 'middle' },
+      { id: 'also-next', source: 'middle', target: 'right' },
+    ]);
+    const clear = detours(new Map([...row, ['middle', box(200, 300)]]), tiles, [{ id: 'skip', source: 'left', target: 'right' }]);
+
+    expect(found.size).toBe(0);
+    expect(clear.size).toBe(0);
+  });
+});
+
+describe('saved layouts', () => {
+  afterEach(() => {
+    window.sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps what the user did to a portfolio\'s graph for the browser tab, and forgets it on request', () => {
+    saveLayout('truesight.graph.7', { positions: { nvidia: { x: 10, y: 20 } }, zoom: 1.5, pan: { x: 3, y: 4 } });
+
+    expect(readSavedLayout('truesight.graph.7')).toEqual({
+      positions: { nvidia: { x: 10, y: 20 } },
+      zoom: 1.5,
+      pan: { x: 3, y: 4 },
+    });
+    expect(readSavedLayout('truesight.graph.8')).toBeNull();
+
+    forgetLayout('truesight.graph.7');
+    expect(readSavedLayout('truesight.graph.7')).toBeNull();
+  });
+
+  it('reads nothing from a damaged entry, or when the browser refuses storage', () => {
+    window.sessionStorage.setItem('truesight.graph.7', 'not json');
+    expect(readSavedLayout('truesight.graph.7')).toBeNull();
+
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage is switched off');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage is switched off');
+    });
+    expect(() => saveLayout('truesight.graph.7', { positions: {} })).not.toThrow();
+    expect(readSavedLayout('truesight.graph.7')).toBeNull();
+  });
+});
+

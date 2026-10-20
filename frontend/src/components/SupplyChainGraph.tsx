@@ -11,8 +11,10 @@
 // chain, so every arrow runs left to right from supplier to customer, with separate groups packed into the frame's
 // shape. The view is fitted once and the graph fades in; nothing rearranges it afterwards. Dragging a company tugs its
 // direct suppliers and customers along like elastic, and they ease back when it is let go; nothing else moves.
-// Fit to Screen brings everything back into view at any time. A visitor whose computer is set to reduce motion gets
-// no easing and no moving flow markers.
+// An arrow that would pass through another company curves around it. What the user did (the companies they moved, the
+// zoom and pan) is remembered per portfolio while the browser tab is open, so leaving the page and coming back changes
+// nothing; Reset Layout returns to the calculated arrangement, and Fit to Screen brings everything back into view.
+// A visitor whose computer is set to reduce motion gets no easing and no moving flow markers.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
@@ -22,12 +24,15 @@ import cytoscape, { type Core, type ElementDefinition, type NodeSingular } from 
 import { useEffect, useRef, useState } from 'react';
 import { GraphLegend } from './GraphLegend';
 import {
+  type Box,
+  detours,
   displayName,
   easeTowards,
   flowLayout,
   flowProgressAt,
   focusOn,
   followTarget,
+  forgetLayout,
   formatWeight,
   holdingSize,
   type GraphEdge,
@@ -36,6 +41,8 @@ import {
   nodeLabel,
   plainName,
   type Point,
+  readSavedLayout,
+  saveLayout,
   TILE_SIZE,
 } from '../pages/supplyChain';
 
@@ -91,6 +98,10 @@ const BRACKET_GAP = 7;
 // Approximate room for the arrow sentence, used to put it on the other side of the pointer near an edge.
 const TOOLTIP_WIDTH = 320;
 const TOOLTIP_HEIGHT = 90;
+// How long after the user stops zooming or panning the view is remembered, and how long after a company is let go the
+// arrows are checked again (its neighbours have eased back by then).
+const REMEMBER_DELAY_MS = 500;
+const DETOUR_DELAY_MS = 600;
 
 // A label box's height for the layout: each line, plus its padding and the gap under the tile.
 const LABEL_LINE = 14;
@@ -111,6 +122,9 @@ type Props = {
   // Company name to website domain, for companies without a ticker (from GET /api/logos/domains). Logo.dev knows
   // companies by domain far better than by name.
   logoDomains?: Record<string, string>;
+  // Where this portfolio's moved companies, zoom and pan are kept for the browser tab (sessionStorage), e.g.
+  // "truesight.graph.7". Without one, nothing is remembered.
+  layoutKey?: string;
 };
 
 type EdgeTooltip = { text: string; x: number; y: number; flipX: boolean; flipY: boolean };
@@ -124,6 +138,7 @@ export function SupplyChainGraph({
   selectedRelationshipId = null,
   logoToken = '',
   logoDomains,
+  layoutKey,
 }: Props) {
   const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltip | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -142,6 +157,11 @@ export function SupplyChainGraph({
   // Read by the graph's own handlers: pointing away from a company goes back to the chosen one, not to nothing.
   const selectedNodeRef = useRef(selectedNodeId);
   selectedNodeRef.current = selectedNodeId;
+  // Read by the arrow's hover sentence: the chosen arrow's sentence is already in the Inspector.
+  const selectedRelationshipRef = useRef(selectedRelationshipId);
+  selectedRelationshipRef.current = selectedRelationshipId;
+  // Set by the graph once it is drawn: puts every company back where the layout placed it.
+  const resetLayoutRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const container = containerRef.current;
@@ -283,6 +303,15 @@ export function SupplyChainGraph({
             'transition-duration': HOVER_TRANSITION,
           },
         },
+        // An arrow that would pass through another company curves around it (see applyDetours).
+        {
+          selector: 'edge.detour',
+          style: {
+            'curve-style': 'unbundled-bezier',
+            'control-point-distances': 'data(bend)',
+            'control-point-weights': 'data(bendAt)',
+          },
+        },
         { selector: 'edge[reviewStatus = "APPROVED"]', style: { 'line-style': 'solid' } },
         { selector: 'edge[reviewStatus = "UNREVIEWED"]', style: { 'line-style': 'dashed' } },
         { selector: 'edge.hover', style: { width: 3, 'line-color': TEXT, 'target-arrow-color': TEXT } },
@@ -324,15 +353,72 @@ export function SupplyChainGraph({
           });
     observer?.observe(container);
 
-    // Separate groups are packed into the frame's shape, the view is fitted once, and the graph fades in.
+    // Separate groups are packed into the frame's shape. Where every company then rests is home: Reset Layout comes back
+    // here.
     packGroups(cy, container.clientWidth / Math.max(1, container.clientHeight));
-    cy.fit(cy.elements(), PADDING);
+    const home = new Map<string, Point>();
+    cy.nodes().forEach((node) => {
+      home.set(node.id(), { ...node.position() });
+    });
+
+    // What the user did to this portfolio's graph earlier in the tab: the companies they moved, and the view.
+    const saved = layoutKey ? readSavedLayout(layoutKey) : null;
+    const moved: Record<string, Point> = {};
+    for (const [id, point] of Object.entries(saved?.positions ?? {})) {
+      const node = cy.getElementById(id);
+      if (node.nonempty()) {
+        node.position(point);
+        moved[id] = point;
+      }
+    }
+    if (saved?.zoom !== undefined && saved.pan) cy.viewport({ zoom: saved.zoom, pan: saved.pan });
+    else cy.fit(cy.elements(), PADDING);
+    applyDetours(cy, edges);
+    // Cytoscape measures the label boxes when it first draws them, so the arrows are checked again once it has.
+    cy.one('render', () => {
+      if (!cy.destroyed()) applyDetours(cy, edges);
+    });
     schedule();
 
     // Dragging a company tugs its direct suppliers and customers along like elastic; they ease back when it is let go.
-    const stopElastic = reducesMotion ? () => {} : elasticDrag(cy, schedule);
+    const elastic = reducesMotion ? { stop: () => {}, forget: () => {} } : elasticDrag(cy, schedule);
+
+    // Remembered for the tab: a company the user lets go, and a zoom or pan the user makes (not one the graph makes).
+    const remember = () => {
+      if (layoutKey) saveLayout(layoutKey, { positions: moved, zoom: cy.zoom(), pan: { ...cy.pan() } });
+    };
+    let viewTimer: number | undefined;
+    cy.on('dragpan scrollzoom pinchzoom', () => {
+      window.clearTimeout(viewTimer);
+      viewTimer = window.setTimeout(remember, REMEMBER_DELAY_MS);
+    });
+    let detourTimer: number | undefined;
+    cy.on('dragfree', 'node', (event) => {
+      moved[event.target.id()] = { ...event.target.position() };
+      remember();
+      // Once the neighbours have eased back, the arrows are checked again against where everything now is.
+      window.clearTimeout(detourTimer);
+      detourTimer = window.setTimeout(() => {
+        if (!cy.destroyed()) applyDetours(cy, edges);
+      }, DETOUR_DELAY_MS);
+    });
+
+    resetLayoutRef.current = () => {
+      if (cy.destroyed()) return;
+      if (layoutKey) forgetLayout(layoutKey);
+      Object.keys(moved).forEach((id) => delete moved[id]);
+      elastic.forget();
+      cy.nodes().forEach((node) => {
+        const point = home.get(node.id());
+        if (point) node.position(point);
+      });
+      cy.fit(cy.elements(), PADDING);
+      applyDetours(cy, edges);
+      schedule();
+    };
 
     cy.on('tap', 'edge', (event) => {
+      setEdgeTooltip(null);
       onEdgeSelectRef.current(event.target.data('relationshipId') as number);
     });
 
@@ -346,12 +432,18 @@ export function SupplyChainGraph({
       const edge = edgeById.get(event.target.id());
       const point = event.renderedPosition;
       if (!edge || !point) return;
+      // The chosen arrow's sentence is already the Inspector's heading.
+      if (edge.relationshipId === selectedRelationshipRef.current) {
+        setEdgeTooltip(null);
+        return;
+      }
+      // Above the pointer, so it never covers the companies under the arrow; below only when there is no room above.
       setEdgeTooltip({
         text: edge.summary,
         x: point.x,
         y: point.y,
         flipX: point.x > container.clientWidth - TOOLTIP_WIDTH,
-        flipY: point.y > container.clientHeight - TOOLTIP_HEIGHT,
+        flipY: point.y < TOOLTIP_HEIGHT,
       });
     };
     cy.on('mouseover', 'edge', (event) => {
@@ -420,8 +512,11 @@ export function SupplyChainGraph({
     return () => {
       setEdgeTooltip(null);
       if (flowFrame !== undefined) window.cancelAnimationFrame(flowFrame);
-      stopElastic();
+      window.clearTimeout(viewTimer);
+      window.clearTimeout(detourTimer);
+      elastic.stop();
       observer?.disconnect();
+      resetLayoutRef.current = () => {};
       placeOverlayRef.current = () => {};
       cy.destroy();
       cyRef.current = null;
@@ -429,7 +524,7 @@ export function SupplyChainGraph({
     // onEdgeSelect is deliberately left out: it is read through the ref above, so that selecting an edge (which
     // changes the page's state, and so gives onEdgeSelect a new identity) does not recreate the whole graph and
     // throw away its pan, zoom and node positions.
-  }, [nodes, edges]);
+  }, [nodes, edges, layoutKey]);
 
   // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
   // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
@@ -486,7 +581,10 @@ export function SupplyChainGraph({
     const cy = cyRef.current;
     if (!cy || cy.destroyed()) return;
     cy.edges().removeClass('chosen');
-    if (selectedRelationshipId !== null) cy.edges(`[relationshipId = ${selectedRelationshipId}]`).addClass('chosen');
+    if (selectedRelationshipId !== null) {
+      cy.edges(`[relationshipId = ${selectedRelationshipId}]`).addClass('chosen');
+      setEdgeTooltip(null);
+    }
   }, [selectedRelationshipId, nodes, edges]);
 
   // Brings every company back into view, however far the user has zoomed, panned or dragged.
@@ -548,9 +646,14 @@ export function SupplyChainGraph({
         </p>
       )}
       <div className="graph-controls">
-        <button type="button" className="secondary" onClick={fitToScreen}>
-          Fit to Screen
-        </button>
+        <span className="graph-buttons">
+          <button type="button" className="secondary" onClick={() => resetLayoutRef.current()}>
+            Reset Layout
+          </button>
+          <button type="button" className="secondary" onClick={fitToScreen}>
+            Fit to Screen
+          </button>
+        </span>
         <GraphLegend hasRelationships={edges.length > 0} />
       </div>
     </div>
@@ -697,9 +800,10 @@ function packGroups(cy: Core, frameRatio: number): void {
 /**
  * Makes dragging feel elastic: while a company is dragged, its direct suppliers and customers follow a share of its move
  * (followTarget), easing towards it frame by frame; when it is let go, it stays where it was dropped and they ease back
- * to where they were. Nothing else moves. Returns a function that stops any easing still running.
+ * to where they were. Nothing else moves. Returns stop, which ends any easing still running, and forget, which drops
+ * the remembered resting places (after Reset Layout).
  */
-function elasticDrag(cy: Core, onMove: () => void): () => void {
+function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: () => void } {
   const rest = new Map<string, Point>();
   const targets = new Map<string, Point>();
   let dragged: NodeSingular | null = null;
@@ -757,9 +861,32 @@ function elasticDrag(cy: Core, onMove: () => void): () => void {
     run();
   });
 
-  return () => {
-    if (frame !== undefined) window.cancelAnimationFrame(frame);
+  return {
+    stop: () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+    },
+    // After Reset Layout: every company's resting place is read again from where it now is.
+    forget: () => {
+      rest.clear();
+      targets.clear();
+    },
   };
+}
+
+/** Curves each arrow that would pass through another company around it, and straightens the others (see detours). */
+function applyDetours(cy: Core, edges: GraphEdge[]): void {
+  const boxes = new Map<string, Box>();
+  const tiles = new Map<string, Point>();
+  cy.nodes().forEach((node) => {
+    boxes.set(node.id(), node.boundingBox({ includeLabels: true }));
+    tiles.set(node.id(), { ...node.position() });
+  });
+  const found = detours(boxes, tiles, edges);
+  cy.edges().forEach((edge) => {
+    const detour = found.get(edge.id());
+    if (detour) edge.data({ bend: detour.distance, bendAt: detour.weight }).addClass('detour');
+    else edge.removeClass('detour');
+  });
 }
 
 /** Lights one company and its direct suppliers and customers, and fades the rest; with none, lights everything. */

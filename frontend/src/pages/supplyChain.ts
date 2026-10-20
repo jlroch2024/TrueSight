@@ -499,3 +499,107 @@ export function flowLayout(
   }
   return positions;
 }
+
+/** The space a company takes on the graph, its tile and label box together, in the graph's own coordinates. */
+export type Box = { x1: number; y1: number; x2: number; y2: number };
+
+/** How an arrow curves around a company it would otherwise cross: how far its control point sits from the straight
+ * line (Cytoscape's control-point-distances), and where along the arrow (control-point-weights, 0 to 1). */
+export type Detour = { distance: number; weight: number };
+
+// How many points along an arrow are checked, and how far a curved arrow keeps from the company it goes around.
+const DETOUR_STEPS = 50;
+const DETOUR_MARGIN = 16;
+
+/**
+ * The arrows that would pass straight through another company's tile or label box (boxes), each with the curve that
+ * takes it around. Each arrow runs between the middles of its two companies' tiles (tiles). A column layout keeps most arrows clear, but an arrow that skips a column (a supplier's supplier straight to
+ * a holding) can meet a company in between. The first company an arrow meets decides its curve, which bends away from
+ * that company's centre, opposite its middle, just far enough to clear its box.
+ */
+export function detours(
+  boxes: Map<string, Box>,
+  tiles: Map<string, Point>,
+  edges: Pick<GraphEdge, 'id' | 'source' | 'target'>[],
+): Map<string, Detour> {
+  const centre = (box: Box): Point => ({ x: (box.x1 + box.x2) / 2, y: (box.y1 + box.y2) / 2 });
+  const result = new Map<string, Detour>();
+  for (const edge of edges) {
+    // An arrow runs between the middles of the two tiles, not of their boxes, whose label hangs below the tile.
+    const from = tiles.get(edge.source);
+    const to = tiles.get(edge.target);
+    if (!from || !to || edge.source === edge.target) continue;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy);
+    if (length === 0) continue;
+
+    let crossed: { box: Box } | null = null;
+    for (let step = 1; step < DETOUR_STEPS && !crossed; step++) {
+      const at = step / DETOUR_STEPS;
+      const point = { x: from.x + dx * at, y: from.y + dy * at };
+      for (const [id, box] of boxes) {
+        if (id === edge.source || id === edge.target) continue;
+        if (point.x > box.x1 && point.x < box.x2 && point.y > box.y1 && point.y < box.y2) {
+          crossed = { box };
+          break;
+        }
+      }
+    }
+    if (!crossed) continue;
+
+    // How far a point lies to one side of the arrow's line (negative: the other side).
+    const across = (point: Point) => (dx * (point.y - from.y) - dy * (point.x - from.x)) / length;
+    const box = crossed.box;
+    const corners = [
+      { x: box.x1, y: box.y1 },
+      { x: box.x2, y: box.y1 },
+      { x: box.x1, y: box.y2 },
+      { x: box.x2, y: box.y2 },
+    ].map(across);
+    // The arrow passes on the side away from the company's centre, just beyond the box's furthest corner on that side.
+    const middle = centre(box);
+    const side = across(middle);
+    const clearance = (side > 0 ? -Math.min(...corners) : Math.max(...corners)) + DETOUR_MARGIN;
+    // The curve bends most opposite the company's middle.
+    const along = ((middle.x - from.x) * dx + (middle.y - from.y) * dy) / (length * length);
+    const weight = Math.min(0.85, Math.max(0.15, along));
+    // A curve with one control point strays from the straight line by 2·w·(1 − w) of the control point's distance.
+    const distance = clearance / (2 * weight * (1 - weight));
+    result.set(edge.id, { distance: side > 0 ? -distance : distance, weight });
+  }
+  return result;
+}
+
+/** What the user did to a portfolio's graph: the companies they dragged, and the zoom and pan. */
+export type SavedLayout = { positions: Record<string, Point>; zoom?: number; pan?: Point };
+
+/** The saved layout under this key, or null when there is none, it cannot be read, or the browser's storage is off. */
+export function readSavedLayout(key: string): SavedLayout | null {
+  try {
+    const text = window.sessionStorage.getItem(key);
+    if (!text) return null;
+    const value = JSON.parse(text) as SavedLayout;
+    return value && typeof value.positions === 'object' && value.positions !== null ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Saves a layout for as long as the browser tab is open. Storage that is full or switched off is simply skipped. */
+export function saveLayout(key: string, layout: SavedLayout): void {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(layout));
+  } catch {
+    // Remembering the layout is a convenience: without storage, the graph opens in its calculated arrangement.
+  }
+}
+
+/** Forgets a portfolio's saved layout, so its graph opens in the calculated arrangement again. */
+export function forgetLayout(key: string): void {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Nothing was saved if storage is switched off.
+  }
+}
