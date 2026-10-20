@@ -48,9 +48,11 @@ const made: {
   // Where the test puts companies before the graph is drawn, by id; anything else is at 0, 0.
   placed: Map<string, { x: number; y: number }>;
   viewport: ReturnType<typeof vi.fn>;
+  panBy: ReturnType<typeof vi.fn>;
 } = {
   placed: new Map(),
   viewport: vi.fn(),
+  panBy: vi.fn(),
   selectedEdges: [],
   chosenNodes: [],
   fit: vi.fn(),
@@ -163,6 +165,8 @@ vi.mock('cytoscape', () => {
       nodes: () => collection(made.nodes),
       edges: (selector?: string) => collection(made.edges, made.style, selector),
       viewport: made.viewport,
+      resize: vi.fn(),
+      panBy: made.panBy,
       zoom: () => 1,
       pan: () => ({ x: 0, y: 0 }),
       getElementById: (id: string) => {
@@ -247,6 +251,7 @@ beforeEach(() => {
   made.images = [];
   made.placed = new Map();
   made.viewport.mockClear();
+  made.panBy.mockClear();
   window.sessionStorage.clear();
   vi.stubGlobal('Image', FakeImage);
   setReducedMotion(false);
@@ -421,6 +426,31 @@ describe('SupplyChainGraph', () => {
       expect(holding.position()).toEqual({ x: 5, y: 5 });
       expect(window.sessionStorage.getItem('truesight.graph.7')).toBeNull();
       expect(made.fit).toHaveBeenCalled();
+    });
+
+    it('fits the graph again when its frame grows, until the user chooses a view; then it only keeps the centre', () => {
+      let resized = () => {};
+      vi.stubGlobal('ResizeObserver', class {
+        constructor(callback: () => void) {
+          resized = callback;
+        }
+        observe() {}
+        disconnect() {}
+      });
+      drawPortfolioGraph();
+      made.fit.mockClear();
+
+      resized(); // the frame reaches its full size after the graph was first fitted
+      expect(made.fit).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        made.handlers.get('dragpan scrollzoom pinchzoom')!({ target: made.cy });
+      });
+      made.fit.mockClear();
+      resized(); // a drawer opens after the user has zoomed
+      expect(made.fit).not.toHaveBeenCalled();
+      expect(made.panBy).toHaveBeenCalled();
+      vi.unstubAllGlobals();
     });
 
     it('remembers nothing for a graph without a key', () => {

@@ -338,7 +338,10 @@ export function SupplyChainGraph({
     placeOverlayRef.current = schedule;
     cy.on('pan zoom resize position', schedule);
 
-    // When a drawer opens or closes, the graph's frame changes size: Cytoscape is told, and the view keeps its centre.
+    // When the graph's frame changes size (as the page settles, or a drawer opens or closes), Cytoscape is told. Until
+    // the user has chosen a view (a zoom or pan of their own, or one remembered from earlier), the graph is fitted to the
+    // new size: the first fit can happen before the frame has its full size. After that, the view keeps its centre.
+    let viewChosen = false;
     let size = { width: container.clientWidth, height: container.clientHeight };
     const observer =
       typeof ResizeObserver === 'undefined'
@@ -347,7 +350,8 @@ export function SupplyChainGraph({
             if (cy.destroyed()) return;
             const next = { width: container.clientWidth, height: container.clientHeight };
             cy.resize();
-            cy.panBy({ x: (next.width - size.width) / 2, y: (next.height - size.height) / 2 });
+            if (viewChosen) cy.panBy({ x: (next.width - size.width) / 2, y: (next.height - size.height) / 2 });
+            else cy.fit(cy.elements(), PADDING);
             size = next;
             schedule();
           });
@@ -371,8 +375,12 @@ export function SupplyChainGraph({
         moved[id] = point;
       }
     }
-    if (saved?.zoom !== undefined && saved.pan) cy.viewport({ zoom: saved.zoom, pan: saved.pan });
-    else cy.fit(cy.elements(), PADDING);
+    if (saved?.zoom !== undefined && saved.pan) {
+      cy.viewport({ zoom: saved.zoom, pan: saved.pan });
+      viewChosen = true;
+    } else {
+      cy.fit(cy.elements(), PADDING);
+    }
     applyDetours(cy, edges);
     // Cytoscape measures the label boxes when it first draws them, so the arrows are checked again once it has.
     cy.one('render', () => {
@@ -389,6 +397,7 @@ export function SupplyChainGraph({
     };
     let viewTimer: number | undefined;
     cy.on('dragpan scrollzoom pinchzoom', () => {
+      viewChosen = true;
       window.clearTimeout(viewTimer);
       viewTimer = window.setTimeout(remember, REMEMBER_DELAY_MS);
     });
@@ -408,6 +417,7 @@ export function SupplyChainGraph({
       if (layoutKey) forgetLayout(layoutKey);
       Object.keys(moved).forEach((id) => delete moved[id]);
       elastic.forget();
+      viewChosen = false;
       cy.nodes().forEach((node) => {
         const point = home.get(node.id());
         if (point) node.position(point);
