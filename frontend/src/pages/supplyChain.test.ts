@@ -382,20 +382,19 @@ describe('logoUrl', () => {
     expect(url.searchParams.get('token')).toBe(token);
   });
 
-  it('looks a company with no ticker up by its name without the legal ending', () => {
-    const url = new URL(logoUrl({ name: 'Samsung Electronics Co., Ltd.', ticker: null }, token)!);
-    expect(url.pathname).toBe('/name/Samsung%20Electronics');
+  it('looks a company with no ticker up by the website domain the backend checked is its own', () => {
+    const url = new URL(logoUrl({ name: 'Amkor Technology, Inc.', ticker: null }, token, 'amkor.com')!);
+    expect(url.pathname).toBe('/amkor.com');
+    expect(url.searchParams.get('token')).toBe(token);
+  });
+
+  it('never asks Logo.dev by name: without a ticker or a checked domain, the graph shows the letter', () => {
+    expect(logoUrl({ name: 'King Yuan Electronics Company', ticker: null }, token)).toBeNull();
   });
 
   it('asks Logo.dev for "not found" rather than its own letter, so the graph can show its own', () => {
-    const url = new URL(logoUrl({ name: 'Carl Zeiss SMT', ticker: null }, token)!);
+    const url = new URL(logoUrl({ name: 'Amkor Technology, Inc.', ticker: null }, token, 'amkor.com')!);
     expect(url.searchParams.get('fallback')).toBe('404');
-  });
-
-  it('keeps a name\'s other characters from breaking the address', () => {
-    const url = logoUrl({ name: 'AT&T Inc.', ticker: null }, token)!;
-    expect(new URL(url).pathname).toBe('/name/AT%26T');
-    expect(new URL(url).searchParams.get('token')).toBe(token);
   });
 
   it('is empty without a token, so the graph shows letters instead', () => {
@@ -754,6 +753,44 @@ describe('detours', () => {
     const bendAbove = detours(above, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!.distance;
 
     expect(Math.sign(bendBelow)).toBe(-Math.sign(bendAbove));
+  });
+
+  it('bends the other way when going round the first company would meet a second', () => {
+    // The middle company sits just below the arrow, so the arrow would bend up; but a second company sits above, where
+    // that curve would pass. Bending down, round the bottom of the middle company's box, clears both.
+    const crowded = new Map([...row, ['middle', box(200, 15)], ['above', box(200, -60)]]);
+
+    const detour = detours(crowded, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!;
+
+    // In these coordinates y grows downwards, and a positive distance bends the arrow down (to its right).
+    expect(detour.distance).toBeGreaterThan(0);
+    const strays = 2 * detour.weight * (1 - detour.weight) * detour.distance;
+    expect(strays).toBeGreaterThan(65); // below the middle company's box, which reaches 65 below the arrow
+  });
+
+  it('swings wide around a crowded column when no gentle curve is clear', () => {
+    // A column of four companies right across the arrow's path: bending a little either way meets one of them.
+    const column = new Map([
+      ...row,
+      ['middle', box(200, 0)],
+      ['up-1', box(200, -100)],
+      ['down-1', box(200, 100)],
+      ['up-2', box(200, -200)],
+    ]);
+
+    const detour = detours(column, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!;
+
+    // The curve (one control point, at the detour's weight and distance from the line) misses every box in the column.
+    const control = { x: 400 * detour.weight, y: detour.distance };
+    for (let step = 1; step < 50; step++) {
+      const t = step / 50;
+      const u = 1 - t;
+      const point = { x: 2 * u * t * control.x + t * t * 400, y: 2 * u * t * control.y };
+      for (const [id, b] of column) {
+        if (id === 'left' || id === 'right') continue;
+        expect(point.x > b.x1 && point.x < b.x2 && point.y > b.y1 && point.y < b.y2).toBe(false);
+      }
+    }
   });
 
   it('follows the arrow from tile to tile, so it catches a label box the arrow only clips', () => {

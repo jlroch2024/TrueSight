@@ -750,11 +750,9 @@ describe('SupplyChainGraph', () => {
     it('swaps a company\'s letter for its logo once the logo has loaded', () => {
       drawGraph(TILE_NODES, [], 'pk_test_token');
 
-      expect(made.images.map((image) => new URL(image.src).pathname)).toEqual([
-        '/ticker/NVDA',
-        '/ticker/TSM',
-        '/name/Samsung%20Electronics',
-      ]);
+      // Samsung Electronics has no ticker and no checked domain here, so it keeps its letter: Logo.dev is never asked
+      // by name.
+      expect(made.images.map((image) => new URL(image.src).pathname)).toEqual(['/ticker/NVDA', '/ticker/TSM']);
       expect(made.images.every((image) => image.crossOrigin === 'anonymous')).toBe(true);
 
       made.images[0]!.onload!();
@@ -784,10 +782,10 @@ describe('SupplyChainGraph', () => {
     it('keeps the letter for a company Logo.dev does not know', () => {
       drawGraph(TILE_NODES, [], 'pk_test_token');
 
-      made.images[2]!.onerror?.(); // Logo.dev answers 404 for it
+      made.images[1]!.onerror?.(); // Logo.dev answers 404 for TSM's ticker
 
       expect(made.dataSet).toEqual([]);
-      expect(letterIn(elementsDrawn()[2]!.data.image)).toBe('S');
+      expect(letterIn(elementsDrawn()[1]!.data.image)).toBe('T');
     });
 
     it('still draws every company and its label without a Logo.dev token, with letters instead of logos', () => {

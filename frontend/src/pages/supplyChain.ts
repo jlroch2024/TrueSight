@@ -181,18 +181,15 @@ const LOGO_HOST = 'https://img.logo.dev';
 const LOGO_OPTIONS = 'size=64&retina=true&fallback=404';
 
 /**
- * Where a company's logo is on Logo.dev: by ticker when it has one; otherwise by its website domain when one was found
- * (see GET /api/logos/domains), which Logo.dev knows far better than names; otherwise by its plain name ("NVIDIA", not
- * "NVIDIA Corporation", which Logo.dev matches less well). Null without a Logo.dev token: the graph then shows letters.
+ * Where a company's logo is on Logo.dev: by ticker when it has one; otherwise by the website domain the backend checked
+ * belongs to it (see GET /api/logos/domains). Null without either, or without a Logo.dev token: the graph then shows the
+ * company's letter. Logo.dev is never asked by name, because it answers a name it does not know with whichever company
+ * shares a word of it (a restaurant called Yuan for King Yuan Electronics), and a letter is better than a wrong logo.
  */
 export function logoUrl(node: Pick<GraphNode, 'name' | 'ticker'>, token: string, domain?: string): string | null {
   if (!token) return null;
-  const path = node.ticker
-    ? `ticker/${encodeURIComponent(node.ticker)}`
-    : domain
-      ? encodeURIComponent(domain)
-      : `name/${encodeURIComponent(plainName(node.name))}`;
-  return `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}`;
+  const path = node.ticker ? `ticker/${encodeURIComponent(node.ticker)}` : domain ? encodeURIComponent(domain) : null;
+  return path ? `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}` : null;
 }
 
 /** The part of the graph that stays lit while one company is in focus. */
@@ -510,12 +507,19 @@ export type Detour = { distance: number; weight: number };
 // How many points along an arrow are checked, and how far a curved arrow keeps from the company it goes around.
 const DETOUR_STEPS = 50;
 const DETOUR_MARGIN = 16;
+// A curve is only judged clear if it also keeps this far from every other company: Cytoscape draws it from the
+// tiles' edges rather than their middles, so the drawn curve runs a little apart from the one checked here.
+const DETOUR_GAP = 10;
+// The wider search, when no gentle curve is clear: control-point distances in these steps, up to this far.
+const DETOUR_STEP = 20;
+const WIDEST_SWING = 400;
 
 /**
  * The arrows that would pass straight through another company's tile or label box (boxes), each with the curve that
  * takes it around. Each arrow runs between the middles of its two companies' tiles (tiles). A column layout keeps most arrows clear, but an arrow that skips a column (a supplier's supplier straight to
  * a holding) can meet a company in between. The first company an arrow meets decides its curve, which bends away from
- * that company's centre, opposite its middle, just far enough to clear its box.
+ * that company's centre, opposite its middle, just far enough to clear its box; if that curve would meet another
+ * company, it bends the other way or wider; in a crowded column, it swings as wide as it must to clear every one.
  */
 export function detours(
   boxes: Map<string, Box>,
@@ -560,13 +564,79 @@ export function detours(
     // The arrow passes on the side away from the company's centre, just beyond the box's furthest corner on that side.
     const middle = centre(box);
     const side = across(middle);
+    const away = side > 0 ? -1 : 1;
     const clearance = (side > 0 ? -Math.min(...corners) : Math.max(...corners)) + DETOUR_MARGIN;
+    const otherClearance = (side > 0 ? Math.max(...corners) : -Math.min(...corners)) + DETOUR_MARGIN;
     // The curve bends most opposite the company's middle.
     const along = ((middle.x - from.x) * dx + (middle.y - from.y) * dy) / (length * length);
     const weight = Math.min(0.85, Math.max(0.15, along));
     // A curve with one control point strays from the straight line by 2·w·(1 − w) of the control point's distance.
-    const distance = clearance / (2 * weight * (1 - weight));
-    result.set(edge.id, { distance: side > 0 ? -distance : distance, weight });
+    const spread = 2 * weight * (1 - weight);
+
+    // How many other companies a curve with this control-point distance would still pass through.
+    const normal = { x: -dy / length, y: dx / length };
+    const companiesCrossed = (distance: number, at: number): number => {
+      const control = {
+        x: from.x + dx * at + normal.x * distance,
+        y: from.y + dy * at + normal.y * distance,
+      };
+      const crossedIds = new Set<string>();
+      for (let step = 1; step < DETOUR_STEPS; step++) {
+        const t = step / DETOUR_STEPS;
+        const u = 1 - t;
+        const point = {
+          x: u * u * from.x + 2 * u * t * control.x + t * t * to.x,
+          y: u * u * from.y + 2 * u * t * control.y + t * t * to.y,
+        };
+        for (const [id, other] of boxes) {
+          if (id === edge.source || id === edge.target) continue;
+          if (
+            point.x > other.x1 - DETOUR_GAP &&
+            point.x < other.x2 + DETOUR_GAP &&
+            point.y > other.y1 - DETOUR_GAP &&
+            point.y < other.y2 + DETOUR_GAP
+          ) {
+            crossedIds.add(id);
+          }
+        }
+      }
+      return crossedIds.size;
+    };
+    // The first curve that clears every company: away from the company first, then the other way, each a little wider
+    // in turn. If none is clear, the one that crosses fewest.
+    const choices = [away * clearance, -away * otherClearance].flatMap((offset) =>
+      [1, 1.5, 2].map((wider) => (offset * wider) / spread),
+    );
+    let distance = choices[0]!;
+    let fewest = Number.POSITIVE_INFINITY;
+    for (const choice of choices) {
+      const crossedCount = companiesCrossed(choice, weight);
+      if (crossedCount < fewest) {
+        distance = choice;
+        fewest = crossedCount;
+      }
+      if (crossedCount === 0) break;
+    }
+    // In a crowded column none of those may be clear: then the gentlest curve that is, bending anywhere along the
+    // arrow, however wide it has to swing. An arrow through a company would read as a relationship with it.
+    let bendAt = weight;
+    if (fewest > 0) {
+      let gentlest = Number.POSITIVE_INFINITY;
+      for (let at = 0.15; at <= 0.85 + 1e-9; at += 0.1) {
+        for (let wider = 1; wider <= WIDEST_SWING / DETOUR_STEP; wider++) {
+          for (const sign of [1, -1]) {
+            const candidate = sign * wider * DETOUR_STEP;
+            const strays = 2 * at * (1 - at) * Math.abs(candidate);
+            if (strays < gentlest && companiesCrossed(candidate, at) === 0) {
+              gentlest = strays;
+              distance = candidate;
+              bendAt = at;
+            }
+          }
+        }
+      }
+    }
+    result.set(edge.id, { distance, weight: bendAt });
   }
   return result;
 }
