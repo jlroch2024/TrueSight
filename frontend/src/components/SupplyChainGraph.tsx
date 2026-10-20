@@ -1,4 +1,5 @@
-// Draws the supply chain as an interactive graph: Cytoscape.js, laid out as a flow (flowLayout).
+// Draws the supply chain as an interactive graph: Cytoscape.js, laid out as a flow spread to fill the frame
+// (spreadLayout).
 //
 // Each company is a square tile with its logo from Logo.dev, on a white square with an even margin so every logo
 // looks the same size, or its first letter while the logo loads, when Logo.dev does not know the company, or when
@@ -7,9 +8,10 @@
 // weight (holdingSize). A supplier or customer that several holdings depend on (see sharedCompanies) is drawn bigger,
 // with an amber border, and its label box says what it supplies or buys, e.g. "Supplies 4 Holdings".
 //
-// Layout: a flow, worked out before the graph is drawn (flowLayout): each company in a column by its place in the
-// chain, so every arrow runs left to right from supplier to customer, with separate groups packed into the frame's
-// shape. The view is fitted once and the graph fades in; nothing rearranges it afterwards. Dragging a company tugs its
+// Layout: a flow, worked out before the graph is drawn (spreadLayout): each company in a band by its place in the
+// chain, so every arrow runs left to right from supplier to customer, spread out inside its band so the graph takes
+// the frame's shape, with separate groups packed into the frame's shape too. The legend and buttons sit in a bar under
+// the graph, so no company can hide behind them. The view is fitted once and the graph fades in; nothing rearranges it afterwards. Dragging a company tugs its
 // direct suppliers and customers along like elastic, and they ease back when it is let go; nothing else moves.
 // An arrow that would pass through another company curves around it. What the user did (the companies they moved, the
 // zoom and pan) is remembered per portfolio while the browser tab is open, so leaving the page and coming back changes
@@ -28,7 +30,6 @@ import {
   detours,
   displayName,
   easeTowards,
-  flowLayout,
   flowProgressAt,
   focusOn,
   followTarget,
@@ -43,6 +44,7 @@ import {
   type Point,
   readSavedLayout,
   saveLayout,
+  spreadLayout,
   TILE_SIZE,
 } from '../pages/supplyChain';
 
@@ -106,6 +108,13 @@ const DETOUR_DELAY_MS = 600;
 // A label box's height for the layout: each line, plus its padding and the gap under the tile.
 const LABEL_LINE = 14;
 const LABEL_EXTRA = 14;
+// For guessing a label box's width before it is drawn: about how wide a letter is, the box's padding and border, and
+// the widest it gets (see .graph-label).
+const LABEL_CHAR = 6.5;
+const LABEL_PADDING = 16;
+const LABEL_MAX_WIDTH = 170;
+// The frame's width ÷ height, when the frame has no size yet.
+const DEFAULT_FRAME_RATIO = 1.8;
 
 type Props = {
   nodes: GraphNode[];
@@ -174,13 +183,23 @@ export function SupplyChainGraph({
     const sizeOf = (node: GraphNode) =>
       node.sharedSummary ? SHARED_TILE_SIZE : node.isHolding ? holdingSize(node.weight) : TILE_SIZE;
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
-    const positions = flowLayout(
+    // The frame's shape; before the page has settled the frame can still be flat, so a usual shape stands in.
+    const frameRatio =
+      container.clientHeight > 100 ? container.clientWidth / container.clientHeight : DEFAULT_FRAME_RATIO;
+    const positions = spreadLayout(
       nodes.map((node) => node.id),
       edges,
       (id) => {
         const node = nodeById.get(id)!;
-        return sizeOf(node) + labelLines(node).length * LABEL_LINE + LABEL_EXTRA;
+        const lines = labelLines(node);
+        const tile = sizeOf(node);
+        const label = lines.length * LABEL_LINE + LABEL_EXTRA;
+        // The label box's width, from its longest line (at most LABEL_MAX_WIDTH, then cut short).
+        const longest = Math.max(...lines.map((line) => line.length));
+        const width = Math.min(LABEL_MAX_WIDTH, longest * LABEL_CHAR + LABEL_PADDING);
+        return { width: Math.max(tile, width), height: tile + label, below: label / 2 };
       },
+      frameRatio,
     );
 
     const elements: ElementDefinition[] = [
@@ -605,57 +624,63 @@ export function SupplyChainGraph({
 
   return (
     <div ref={frameRef} className="graph-frame">
-      <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
-      <div className="graph-overlay" aria-hidden="true">
-        <svg ref={flowLayerRef} className="flow-marker-layer" style={{ visibility: 'hidden' }}>
-          {edges.flatMap((edge) =>
-            [0, 1].map((markerIndex) => (
-              <circle
-                key={`${edge.id}-flow-${markerIndex}`}
-                data-flow-edge={edge.id}
-                cx="0"
-                cy="0"
-                r="3"
-                fill={ACCENT}
-                stroke={PANEL}
-                strokeWidth="1.5"
-              />
-            )),
-          )}
-        </svg>
-        <svg ref={crosshairRef} className="graph-crosshair">
-          <line className="crosshair-x" />
-          <line className="crosshair-y" />
-        </svg>
-        <div ref={bracketsRef} className="graph-brackets">
-          <span className="bracket top-left" />
-          <span className="bracket top-right" />
-          <span className="bracket bottom-left" />
-          <span className="bracket bottom-right" />
-        </div>
-        {nodes.map((node) => (
-          <div
-            key={node.id}
-            ref={(element) => {
-              if (element) labelRefs.current.set(node.id, element);
-              else labelRefs.current.delete(node.id);
-            }}
-            className={`graph-label${node.isHolding ? ' holding' : ''}${node.sharedSummary ? ' shared' : ''}`}
-          >
-            <LabelBox node={node} />
+      {/* The graph itself, with nothing over it but its own labels and markers. */}
+      <div className="graph-stage">
+        <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
+        <div className="graph-overlay" aria-hidden="true">
+          <svg ref={flowLayerRef} className="flow-marker-layer" style={{ visibility: 'hidden' }}>
+            {edges.flatMap((edge) =>
+              [0, 1].map((markerIndex) => (
+                <circle
+                  key={`${edge.id}-flow-${markerIndex}`}
+                  data-flow-edge={edge.id}
+                  cx="0"
+                  cy="0"
+                  r="3"
+                  fill={ACCENT}
+                  stroke={PANEL}
+                  strokeWidth="1.5"
+                />
+              )),
+            )}
+          </svg>
+          <svg ref={crosshairRef} className="graph-crosshair">
+            <line className="crosshair-x" />
+            <line className="crosshair-y" />
+          </svg>
+          <div ref={bracketsRef} className="graph-brackets">
+            <span className="bracket top-left" />
+            <span className="bracket top-right" />
+            <span className="bracket bottom-left" />
+            <span className="bracket bottom-right" />
           </div>
-        ))}
+          {nodes.map((node) => (
+            <div
+              key={node.id}
+              ref={(element) => {
+                if (element) labelRefs.current.set(node.id, element);
+                else labelRefs.current.delete(node.id);
+              }}
+              className={`graph-label${node.isHolding ? ' holding' : ''}${node.sharedSummary ? ' shared' : ''}`}
+            >
+              <LabelBox node={node} />
+            </div>
+          ))}
+        </div>
+        {edgeTooltip && (
+          <p
+            role="tooltip"
+            className={`graph-tooltip${edgeTooltip.flipX ? ' flip-x' : ''}${edgeTooltip.flipY ? ' flip-y' : ''}`}
+            style={{ left: edgeTooltip.x, top: edgeTooltip.y }}
+          >
+            {edgeTooltip.text}
+          </p>
+        )}
       </div>
-      {edgeTooltip && (
-        <p
-          role="tooltip"
-          className={`graph-tooltip${edgeTooltip.flipX ? ' flip-x' : ''}${edgeTooltip.flipY ? ' flip-y' : ''}`}
-          style={{ left: edgeTooltip.x, top: edgeTooltip.y }}
-        >
-          {edgeTooltip.text}
-        </p>
-      )}
-      <div className="graph-controls">
+      {/* Under the graph, so no company can hide behind it: the key, how to use the graph, and its two buttons. */}
+      <div className="graph-bar">
+        <GraphLegend hasRelationships={edges.length > 0} />
+        <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         <span className="graph-buttons">
           <button type="button" className="secondary" onClick={() => resetLayoutRef.current()}>
             Reset Layout
@@ -664,7 +689,6 @@ export function SupplyChainGraph({
             Fit to Screen
           </button>
         </span>
-        <GraphLegend hasRelationships={edges.length > 0} />
       </div>
     </div>
   );

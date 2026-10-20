@@ -263,7 +263,6 @@ export function SupplyChainPage() {
             logoDomains={logoDomains}
             layoutKey={`truesight.graph.${portfolioId}`}
           />
-          <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         </div>
 
         {selection && (

@@ -299,6 +299,20 @@ describe('SupplyChainGraph', () => {
     expect(made.animate).toHaveBeenCalledWith(expect.objectContaining({ fit: { eles: everyElement, padding: 48 } }));
   });
 
+  it('keeps the key and the buttons under the graph, where no company can hide behind them', () => {
+    drawGraph();
+    const graphArea = screen.getByRole('application', { name: 'Supply chain graph' }).parentElement!;
+
+    for (const control of [
+      screen.getByRole('list', { name: 'Graph key' }),
+      screen.getByRole('button', { name: 'Fit to Screen' }),
+      screen.getByRole('button', { name: 'Reset Layout' }),
+      screen.getByText('Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence'),
+    ]) {
+      expect(graphArea).not.toContainElement(control);
+    }
+  });
+
   it("uses blueprint colors, square nodes and the app's one font for every label, with no monospace", () => {
     drawGraph([{ id: 'holding-1', name: 'NVIDIA Corporation', ticker: 'NVDA', isHolding: true, weight: null }]);
 

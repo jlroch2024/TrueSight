@@ -673,3 +673,118 @@ export function forgetLayout(key: string): void {
     // Nothing was saved if storage is switched off.
   }
 }
+
+/** The space a company takes, for laying it out: its tile and label box together, and how far that box's middle sits
+ * below the tile's middle (the label hangs under the tile). */
+export type NodeBox = { width: number; height: number; below: number };
+
+// The room kept between two companies side by side, and one above the other, and the extra room between bands, where
+// the arrows run.
+const SPREAD_GAP_X = 36;
+const SPREAD_GAP_Y = 28;
+const SPREAD_BAND_GAP = 90;
+
+/**
+ * Lays the graph out to fill a frame of the given shape (width ÷ height), still reading left to right. Each column of
+ * the flow (suppliers' suppliers, suppliers, holdings, customers) becomes a band across the frame. A band holding many
+ * companies gets several lanes side by side instead of standing in one tall line, and every band spreads its rows
+ * evenly over the same height, so a band with few companies fills it too. The height is chosen so the whole group comes
+ * closest to the frame's shape. Within a band, companies keep the flow's order (which keeps arrows from crossing), row
+ * by row, and every other lane sits half a row lower, so the graph does not look like a grid. No two companies can
+ * overlap, and as bands never overlap, every arrow still runs from left to right. Separate groups are laid out on their
+ * own (the graph packs them afterwards). Nothing is random: the same graph always comes out the same.
+ */
+export function spreadLayout(
+  nodeIds: string[],
+  edges: Pick<GraphEdge, 'source' | 'target'>[],
+  boxOf: (id: string) => NodeBox,
+  frameRatio: number,
+): Map<string, Point> {
+  const columnGap = 200;
+  const flow = flowLayout(nodeIds, edges, (id) => boxOf(id).height, columnGap);
+  const ratio = Number.isFinite(frameRatio) && frameRatio > 0.2 ? frameRatio : 1.6;
+
+  // The groups of connected companies, laid out one at a time.
+  const linked = new Map<string, string[]>(nodeIds.map((id) => [id, []]));
+  for (const { source, target } of edges) {
+    if (source === target || !linked.has(source) || !linked.has(target)) continue;
+    linked.get(source)!.push(target);
+    linked.get(target)!.push(source);
+  }
+  const seen = new Set<string>();
+  const groups: string[][] = [];
+  for (const start of nodeIds) {
+    if (seen.has(start)) continue;
+    const group: string[] = [];
+    const stack = [start];
+    seen.add(start);
+    while (stack.length) {
+      const id = stack.pop()!;
+      group.push(id);
+      for (const next of linked.get(id)!) {
+        if (!seen.has(next)) {
+          seen.add(next);
+          stack.push(next);
+        }
+      }
+    }
+    groups.push(group);
+  }
+
+  const positions = new Map<string, Point>();
+  for (const group of groups) {
+    // Each band's companies in the flow's order, and the room one of them needs.
+    const bands: string[][] = [];
+    for (const id of group) (bands[Math.round(flow.get(id)!.x / columnGap)] ??= []).push(id);
+    const filled = bands
+      .filter((band) => band?.length)
+      .map((band) => band.sort((a, b) => flow.get(a)!.y - flow.get(b)!.y));
+    const cells = filled.map((band) => ({
+      width: Math.max(...band.map((id) => boxOf(id).width)) + SPREAD_GAP_X,
+      height: Math.max(...band.map((id) => boxOf(id).height)) + SPREAD_GAP_Y,
+    }));
+
+    // How each band is arranged for a given height: as many rows as fit, and as many lanes as that then takes.
+    const arrange = (height: number) =>
+      filled.map((band, b) => {
+        const rows = Math.max(1, Math.min(band.length, Math.floor(height / cells[b]!.height)));
+        const lanes = Math.ceil(band.length / rows);
+        return { rows: Math.ceil(band.length / lanes), lanes };
+      });
+    const widthAt = (height: number) =>
+      arrange(height).reduce((sum, { lanes }, b) => sum + lanes * cells[b]!.width + SPREAD_BAND_GAP, -SPREAD_BAND_GAP);
+
+    // The height whose arrangement comes closest to the frame's shape: from one row up to every company in one line.
+    const lowest = Math.max(...cells.map((cell) => cell.height));
+    const highest = Math.max(...filled.map((band, b) => band.length * cells[b]!.height));
+    let height = lowest;
+    let best = Infinity;
+    for (let candidate = lowest; candidate <= highest; candidate += 4) {
+      const miss = Math.abs(Math.log(widthAt(candidate) / candidate / ratio));
+      if (miss < best - 1e-9) {
+        best = miss;
+        height = candidate;
+      }
+    }
+
+    let left = 0;
+    arrange(height).forEach(({ rows, lanes }, b) => {
+      const band = filled[b]!;
+      const cell = cells[b]!;
+      // Rows spread evenly over the whole height; every other lane half a row lower, the band then centred again.
+      const rowHeight = height / rows;
+      const sway = rows > 1 && lanes > 1 ? rowHeight / 2 : 0;
+      band.forEach((id, index) => {
+        const row = Math.floor(index / lanes);
+        const lane = index % lanes;
+        const middle = (row + 0.5) * rowHeight + (lane % 2) * sway - sway / 2;
+        positions.set(id, {
+          x: left + (lane + 0.5) * cell.width,
+          y: middle - boxOf(id).below,
+        });
+      });
+      left += lanes * cell.width + SPREAD_BAND_GAP;
+    });
+  }
+  return positions;
+}

@@ -28,6 +28,7 @@ import {
   saveLayout,
   shortName,
   sharedCompanies,
+  spreadLayout,
   sharedSummary,
   withSharedSummaries,
 } from './supplyChain';
@@ -713,6 +714,98 @@ describe('flowLayout', () => {
     expect(gap).toBe(160 / 2 + 20 + 60 / 2);
   });
 });
+
+describe('spreadLayout', () => {
+  const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
+  const ids = nodes.map((node) => node.id);
+  const box = { width: 120, height: 90, below: 20 };
+  // How much room a group of companies takes, from the boxes around them.
+  const extent = (positions: Map<string, { x: number; y: number }>, group: string[]) => {
+    const xs = group.map((id) => positions.get(id)!.x);
+    const ys = group.map((id) => positions.get(id)!.y + box.below);
+    return {
+      width: Math.max(...xs) - Math.min(...xs) + box.width,
+      height: Math.max(...ys) - Math.min(...ys) + box.height,
+    };
+  };
+  // One holding with 14 suppliers and 2 customers: the case that used to stand in one tall line.
+  const suppliers = Array.from({ length: 14 }, (_, index) => `supplier-${index}`);
+  const crowded = {
+    ids: [...suppliers, 'holding', 'customer-a', 'customer-b'],
+    edges: [
+      ...suppliers.map((id) => ({ source: id, target: 'holding' })),
+      { source: 'holding', target: 'customer-a' },
+      { source: 'holding', target: 'customer-b' },
+    ],
+  };
+
+  it('still puts every supplier left of its customer, with the real sample relationships', () => {
+    const positions = spreadLayout(ids, edges, () => box, 1.8);
+
+    for (const edge of edges) {
+      expect(positions.get(edge.source)!.x).toBeLessThan(positions.get(edge.target)!.x);
+    }
+  });
+
+  it('never lets two companies overlap', () => {
+    for (const [graphIds, graphEdges] of [
+      [ids, edges],
+      [crowded.ids, crowded.edges],
+    ] as const) {
+      const positions = spreadLayout([...graphIds], [...graphEdges], () => box, 1.8);
+      // Separate groups each start from the same corner; the graph packs them apart afterwards.
+      for (const a of graphIds) {
+        for (const b of spreadGroupOf(graphEdges, a)) {
+          if (a >= b) continue;
+          const pa = positions.get(a)!;
+          const pb = positions.get(b)!;
+          const apart = Math.abs(pa.x - pb.x) >= box.width || Math.abs(pa.y - pb.y) >= box.height;
+          expect(apart, `${a} and ${b}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('spreads a crowded column over several lanes, so the graph takes the shape of the frame, not a tall line', () => {
+    const positions = spreadLayout(crowded.ids, crowded.edges, () => box, 1.8);
+    const lanes = new Set(suppliers.map((id) => positions.get(id)!.x));
+    const { width, height } = extent(positions, crowded.ids);
+
+    expect(lanes.size).toBeGreaterThan(1);
+    expect(width / height).toBeGreaterThan(1.8 / 1.5);
+    expect(width / height).toBeLessThan(1.8 * 1.5);
+  });
+
+  it('comes out wider for a wider frame', () => {
+    const wide = extent(spreadLayout(crowded.ids, crowded.edges, () => box, 3), crowded.ids);
+    const tall = extent(spreadLayout(crowded.ids, crowded.edges, () => box, 0.8), crowded.ids);
+
+    expect(wide.width / wide.height).toBeGreaterThan(tall.width / tall.height);
+  });
+
+  it('lays the same graph out the same way every time', () => {
+    const first = spreadLayout(ids, edges, () => box, 1.8);
+    const second = spreadLayout(ids, edges, () => box, 1.8);
+
+    expect([...second.entries()]).toEqual([...first.entries()]);
+  });
+});
+
+/** Every company linked to the given one, however indirectly, and the company itself. */
+function spreadGroupOf(edges: readonly { source: string; target: string }[], start: string): Set<string> {
+  const group = new Set([start]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const { source, target } of edges) {
+      if (group.has(source) !== group.has(target)) {
+        group.add(source);
+        group.add(target);
+        grew = true;
+      }
+    }
+  }
+  return group;
+}
 
 describe('detours', () => {
   // Three companies in a row, 200 apart, each a 60-wide tile with its label box: the arrow from the first to the third
