@@ -13,20 +13,22 @@
 // frame's shape, with separate groups packed into the frame's shape too. The legend and buttons sit in a bar under the
 // graph, so no company can hide behind them. The view is fitted once and the graph fades in; nothing rearranges it
 // afterwards. Dragging a company tugs its direct suppliers and customers along like elastic, and they ease back when it
-// is let go; nothing else moves. Every arrow is a straight line of dashes that travel from supplier to customer, fading
-// from teal to lime, with a soft glow; one not yet reviewed by an analyst is a little thinner and fainter. What the user did
-// (the companies they moved, the zoom and pan) is remembered per portfolio while the browser tab is open, so leaving
-// the page and coming back changes nothing; Reset Layout returns to the calculated arrangement, and Fit to Screen
-// brings everything back into view. A visitor whose computer is set to reduce motion gets no easing and still dashes.
+// is let go; nothing else moves. Every arrow is a straight line of dashes that travel from supplier to customer, in the
+// colour of its holding's chain (chainColours), with a soft glow of that colour, and a key under the graph names each
+// colour; one not yet reviewed by an analyst is a little thinner and fainter. What the user did (the companies they
+// moved, the zoom and pan) is remembered per portfolio while the browser tab is open, so leaving the page and coming
+// back changes nothing; Reset Layout returns to the calculated arrangement, and Fit to Screen brings everything back
+// into view. A visitor whose computer is set to reduce motion gets no easing and still dashes.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
 // Clicking a company chooses it: corner brackets close in around it and dashed crosshair lines run through it. Clicking
 // the background lets go. Cytoscape's own grey press circle and selection overlay are switched off.
 import cytoscape, { type Core, type ElementDefinition, type NodeSingular } from 'cytoscape';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GraphLegend } from './GraphLegend';
 import {
+  chainColours,
   DASH_PATTERN,
   dashOffsetAt,
   displayName,
@@ -53,6 +55,7 @@ import {
 const ACCENT = '#2dd4bf';
 const LIME = '#c4f36a';
 const AMBER = '#f5b73b';
+const MUTED = '#8ba9a5';
 const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
 const PANEL_RAISED = '#102a33';
@@ -172,6 +175,8 @@ export function SupplyChainGraph({
   selectedRelationshipRef.current = selectedRelationshipId;
   // Set by the graph once it is drawn: puts every company back where the layout placed it.
   const resetLayoutRef = useRef<() => void>(() => {});
+  // Each holding's chain in its own colour, for the arrows and for the key under the graph.
+  const chains = useMemo(() => chainColours(nodes, edges), [nodes, edges]);
 
 
   useEffect(() => {
@@ -228,6 +233,8 @@ export function SupplyChainGraph({
           target: edge.target,
           relationshipId: edge.relationshipId,
           reviewStatus: edge.reviewStatus,
+          // The colour of the holding's chain it belongs to (see chainColours); grey when it has none.
+          colour: chains.edges.get(edge.id) ?? MUTED,
         },
       })),
     ];
@@ -308,18 +315,17 @@ export function SupplyChainGraph({
         { selector: 'node.hover', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
         // Chosen on the page: a lime border (the brackets and crosshair are drawn over the graph).
         { selector: 'node.chosen', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
-        // Straight arrows of dashes that travel from supplier to customer, the line fading from teal at the supplier to
-        // lime at the customer, with a soft teal glow around it.
+        // Straight arrows of dashes that travel from supplier to customer, in the colour of their holding's chain, with
+        // a soft glow of the same colour around them.
         {
           selector: 'edge',
           style: {
             width: EDGE_WIDTH,
-            'line-fill': 'linear-gradient',
-            'line-gradient-stop-colors': [ACCENT, LIME],
+            'line-color': 'data(colour)',
             'line-style': 'dashed',
             'line-dash-pattern': DASH_PATTERN,
-            'target-arrow-color': LIME,
-            'underlay-color': ACCENT,
+            'target-arrow-color': 'data(colour)',
+            'underlay-color': 'data(colour)',
             'underlay-opacity': GLOW_OPACITY,
             'underlay-padding': GLOW_WIDTH,
             'target-arrow-shape': 'triangle',
@@ -338,11 +344,11 @@ export function SupplyChainGraph({
         // Under the pointer, or chosen: one bright colour, at full strength.
         {
           selector: 'edge.hover',
-          style: { width: 3, opacity: 1, 'line-fill': 'solid', 'line-color': TEXT, 'target-arrow-color': TEXT },
+          style: { width: 3, opacity: 1, 'line-color': TEXT, 'target-arrow-color': TEXT },
         },
         {
           selector: 'edge.chosen',
-          style: { width: 3, opacity: 1, 'line-fill': 'solid', 'line-color': LIME, 'target-arrow-color': LIME },
+          style: { width: 3, opacity: 1, 'line-color': LIME, 'target-arrow-color': LIME },
         },
         // Last, so it wins: what is outside the focus fades.
         { selector: '.faded', style: { opacity: FADED_OPACITY } },
@@ -529,7 +535,7 @@ export function SupplyChainGraph({
     // onEdgeSelect is deliberately left out: it is read through the ref above, so that selecting an edge (which
     // changes the page's state, and so gives onEdgeSelect a new identity) does not recreate the whole graph and
     // throw away its pan, zoom and node positions.
-  }, [nodes, edges, layoutKey]);
+  }, [nodes, edges, chains, layoutKey]);
 
   // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
   // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
@@ -640,6 +646,16 @@ export function SupplyChainGraph({
       {/* Under the graph, so no company can hide behind it: the key, how to use the graph, and its two buttons. */}
       <div className="graph-bar">
         <GraphLegend hasRelationships={edges.length > 0} />
+        {chains.key.length > 0 && (
+          <ul className="graph-legend" aria-label="Each holding's chain">
+            {chains.key.map((entry) => (
+              <li key={entry.id}>
+                <span className="graph-legend-chain" style={{ color: entry.colour }} aria-hidden="true" />
+                {entry.label}
+              </li>
+            ))}
+          </ul>
+        )}
         <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         <span className="graph-buttons">
           <button type="button" className="secondary" onClick={() => resetLayoutRef.current()}>

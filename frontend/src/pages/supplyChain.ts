@@ -214,6 +214,76 @@ export function focusOn(nodeId: string, edges: GraphEdge[]): Focus {
   return { nodeIds, edgeIds };
 }
 
+// The colours of the holdings' chains, handed out in this order. Checked as a set against the graph's dark panel
+// (#0b2028) with the dataviz skill's palette validator, every pair against every other: each pair is told apart with
+// full colour vision (difference at least 15) and with each kind of colour blindness (at least 9), and each stands out
+// from the panel by at least 3:1. None is the teal, lime or amber that already mean holding, chosen and shared.
+export const CHAIN_COLOURS = ['#d7587e', '#185afa', '#0fac13', '#8480f2', '#a25927', '#2c9fbb', '#9d45ab'];
+
+/** A holding whose chain has a colour, for the graph's key: its ticker (or name), and the colour. */
+export type ChainKey = { id: string; label: string; colour: string };
+
+/**
+ * Gives each holding's chain its own colour, so the user can follow it across the graph: every arrow into or out of a
+ * holding takes that holding's colour, and an arrow further out (a supplier's supplier) takes the colour of the
+ * holding it leads to. An arrow from one holding to another takes its customer's colour. Holdings with arrows get
+ * colours in the order of their tickers (names for those without); there are only as many colours as CHAIN_COLOURS
+ * holds, and a colour is never used twice, so the arrows of any further holding keep no colour (the graph draws them
+ * grey), as do arrows that lead to no holding at all.
+ */
+export function chainColours(
+  nodes: Pick<GraphNode, 'id' | 'name' | 'ticker' | 'isHolding'>[],
+  edges: Pick<GraphEdge, 'id' | 'source' | 'target'>[],
+): { edges: Map<string, string>; key: ChainKey[] } {
+  const linked = new Set(edges.flatMap((edge) => [edge.source, edge.target]));
+  const labelOf = (node: Pick<GraphNode, 'name' | 'ticker'>) => node.ticker ?? displayName(node.name);
+  const holdings = nodes
+    .filter((node) => node.isHolding && linked.has(node.id))
+    .sort((a, b) => labelOf(a).localeCompare(labelOf(b)));
+  const key = holdings
+    .slice(0, CHAIN_COLOURS.length)
+    .map((node, index) => ({ id: node.id, label: labelOf(node), colour: CHAIN_COLOURS[index]! }));
+  const colourOf = new Map(key.map((entry) => [entry.id, entry.colour]));
+  const rank = new Map(holdings.map((node, index) => [node.id, index]));
+
+  // The nearest holding along the arrows, walking towards customers (or towards suppliers): of those equally near, the
+  // first in ticker order.
+  const nearest = (start: string, towards: 'target' | 'source'): string | null => {
+    const from = towards === 'target' ? 'source' : 'target';
+    const seen = new Set([start]);
+    let ring = [start];
+    while (ring.length) {
+      const found = ring.filter((id) => rank.has(id)).sort((a, b) => rank.get(a)! - rank.get(b)!);
+      if (found.length) return found[0]!;
+      const next: string[] = [];
+      for (const id of ring) {
+        for (const edge of edges) {
+          const onward = edge[towards];
+          if (edge[from] === id && !seen.has(onward)) {
+            seen.add(onward);
+            next.push(onward);
+          }
+        }
+      }
+      ring = next;
+    }
+    return null;
+  };
+
+  const result = new Map<string, string>();
+  for (const edge of edges) {
+    // Its customer if that is a holding, else its supplier if that is, else the holding it leads to (or comes from).
+    const holding = rank.has(edge.target)
+      ? edge.target
+      : rank.has(edge.source)
+        ? edge.source
+        : (nearest(edge.target, 'target') ?? nearest(edge.source, 'source'));
+    const colour = holding ? colourOf.get(holding) : undefined;
+    if (colour) result.set(edge.id, colour);
+  }
+  return { edges: result, key };
+}
+
 // The arrows are dashes that travel from supplier to customer: 8 px of line, then a 5 px gap, repeating, at 20 px a
 // second.
 export const DASH_PATTERN = [8, 5];

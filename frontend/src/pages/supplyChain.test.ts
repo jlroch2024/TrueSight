@@ -6,6 +6,8 @@ import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import {
   buildGraphElements,
+  CHAIN_COLOURS,
+  chainColours,
   dashOffsetAt,
   connectionsOf,
   forgetLayout,
@@ -239,6 +241,76 @@ describe('lineCrosses', () => {
     expect(lineCrosses({ x: 0, y: 30 }, { x: 100, y: 30 }, box)).toBe(false);
     expect(lineCrosses({ x: 0, y: 0 }, { x: 30, y: 0 }, box)).toBe(false);
     expect(lineCrosses({ x: 0, y: -50 }, { x: 100, y: 50 }, box)).toBe(true);
+  });
+});
+
+describe('chainColours', () => {
+  it("colours every arrow into or out of a holding in that holding's own colour, with the real sample relationships", () => {
+    const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
+    const { edges: colours, key } = chainColours(nodes, edges);
+    const colourOf = new Map(key.map((entry) => [entry.id, entry.colour]));
+    const holdings = new Set(nodes.filter((node) => node.isHolding).map((node) => node.id));
+
+    expect(key.length).toBeGreaterThan(0);
+    for (const edge of edges) {
+      const holding = holdings.has(edge.target) ? edge.target : holdings.has(edge.source) ? edge.source : null;
+      if (holding && colourOf.has(holding)) expect(colours.get(edge.id), edge.summary).toBe(colourOf.get(holding));
+    }
+    expect(new Set(key.map((entry) => entry.colour)).size).toBe(key.length);
+  });
+
+  it('lists the holdings with arrows in ticker order, and leaves out a holding without any', () => {
+    const nodes = [
+      { id: 'b', name: 'Bee', ticker: 'BEE', isHolding: true },
+      { id: 'a', name: 'Ay', ticker: 'AY', isHolding: true },
+      { id: 'alone', name: 'Alone', ticker: 'AAA', isHolding: true },
+      { id: 's', name: 'Supplier', ticker: null, isHolding: false },
+    ];
+    const edges = [
+      { id: 'e1', source: 's', target: 'b' },
+      { id: 'e2', source: 's', target: 'a' },
+    ];
+
+    expect(chainColours(nodes, edges).key).toEqual([
+      { id: 'a', label: 'AY', colour: CHAIN_COLOURS[0] },
+      { id: 'b', label: 'BEE', colour: CHAIN_COLOURS[1] },
+    ]);
+  });
+
+  it("gives a supplier's supplier the colour of the holding its goods go on to, and a holding's supply to another holding the customer's colour", () => {
+    const nodes = [
+      { id: 'far', name: 'Far', ticker: null, isHolding: false },
+      { id: 'near', name: 'Near', ticker: null, isHolding: false },
+      { id: 'maker', name: 'Maker', ticker: 'MKR', isHolding: true },
+      { id: 'buyer', name: 'Buyer', ticker: 'BUY', isHolding: true },
+    ];
+    const edges = [
+      { id: 'far-near', source: 'far', target: 'near' },
+      { id: 'near-buyer', source: 'near', target: 'buyer' },
+      { id: 'maker-buyer', source: 'maker', target: 'buyer' },
+      { id: 'maker-near', source: 'maker', target: 'near' },
+    ];
+    const { edges: colours, key } = chainColours(nodes, edges);
+    const buyer = key.find((entry) => entry.id === 'buyer')!.colour;
+    const maker = key.find((entry) => entry.id === 'maker')!.colour;
+
+    expect(colours.get('far-near')).toBe(buyer);
+    expect(colours.get('near-buyer')).toBe(buyer);
+    expect(colours.get('maker-buyer')).toBe(buyer);
+    expect(colours.get('maker-near')).toBe(maker);
+  });
+
+  it('never uses a colour twice: holdings beyond the colours there are keep grey arrows', () => {
+    const holdings = Array.from({ length: CHAIN_COLOURS.length + 2 }, (_, index) => ({
+      id: `h${index}`, name: `Holding ${index}`, ticker: `H${String(index).padStart(2, '0')}`, isHolding: true,
+    }));
+    const nodes = [...holdings, { id: 's', name: 'Supplier', ticker: null, isHolding: false }];
+    const edges = holdings.map((holding) => ({ id: `to-${holding.id}`, source: 's', target: holding.id }));
+    const { edges: colours, key } = chainColours(nodes, edges);
+
+    expect(key).toHaveLength(CHAIN_COLOURS.length);
+    expect(new Set(colours.values()).size).toBe(CHAIN_COLOURS.length);
+    expect(colours.has(`to-h${CHAIN_COLOURS.length}`)).toBe(false);
   });
 });
 

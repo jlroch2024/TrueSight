@@ -5,7 +5,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dashOffsetAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
+import { CHAIN_COLOURS, dashOffsetAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
 type Handler = (event: { target: unknown; renderedPosition?: { x: number; y: number } }) => void;
@@ -383,20 +383,28 @@ describe('SupplyChainGraph', () => {
       }
     });
 
-    it('fades every arrow from teal at the supplier to lime at the customer, in dashes, with a glow', () => {
+    it("draws each arrow in dashes, in its holding's chain colour with a glow of it, and keys the colours under the graph", () => {
       drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
+      const elements = (made.options as { elements: Array<{ data: Record<string, unknown> }> }).elements;
+      const colourOf = (id: string) => elements.find((element) => element.data.id === id)!.data.colour;
+      // HLD and OTH, in ticker order: relationship-1 goes into HLD, relationship-2 out of it, relationship-3 into OTH.
+      expect(colourOf('relationship-1')).toBe(CHAIN_COLOURS[0]);
+      expect(colourOf('relationship-2')).toBe(CHAIN_COLOURS[0]);
+      expect(colourOf('relationship-3')).toBe(CHAIN_COLOURS[1]);
       const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
       expect(options.style).toContainEqual(expect.objectContaining({
         selector: 'edge',
         style: expect.objectContaining({
-          'line-fill': 'linear-gradient',
-          'line-gradient-stop-colors': ['#2dd4bf', '#c4f36a'],
+          'line-color': 'data(colour)',
+          'target-arrow-color': 'data(colour)',
+          'underlay-color': 'data(colour)',
           'line-style': 'dashed',
-          'target-arrow-color': '#c4f36a',
-          'underlay-color': '#2dd4bf',
         }),
       }));
+
+      const key = screen.getByRole('list', { name: "Each holding's chain" });
+      expect([...key.querySelectorAll('li')].map((item) => item.textContent)).toEqual(['HLD', 'OTH']);
     });
   });
 
