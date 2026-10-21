@@ -92,9 +92,20 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 .figure span { color: var(--muted); font-size: 14px; }
 .bar { display: flex; height: 12px; background: rgb(255 255 255 / 4%); border: 1px solid var(--border); overflow: hidden; }
 .bar i { display: block; height: 100%; transition: width .6s ease; }
-.bar .merged { background: var(--lime); }
-.bar .open { background: var(--accent); }
-.bar .started { background: repeating-linear-gradient(135deg, rgb(45 212 191 / 55%) 0 5px, rgb(45 212 191 / 25%) 5px 10px); }
+/* The bar moves: a light sweeps across what is merged, and stripes run through work still under way. */
+.bar .merged {
+  background: linear-gradient(100deg, var(--lime) 40%, #efffc8 50%, var(--lime) 60%) var(--lime);
+  background-size: 250% 100%; animation: sheen 3.6s ease-in-out infinite;
+}
+.bar .open {
+  background: linear-gradient(135deg, #5fe6d4 25%, var(--accent) 25% 50%, #5fe6d4 50% 75%, var(--accent) 75%);
+  background-size: 16px 16px; animation: stripes .9s linear infinite;
+}
+.bar .started {
+  background: linear-gradient(135deg, rgb(45 212 191 / 55%) 25%, rgb(45 212 191 / 22%) 25% 50%, rgb(45 212 191 / 55%) 50% 75%, rgb(45 212 191 / 22%) 75%);
+  background-size: 16px 16px; animation: stripes 1.8s linear infinite;
+}
+@keyframes stripes { to { background-position: 16px 0; } }
 .bar-key { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .bar-key i { display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: -1px; }
 .bar-key .merged { background: var(--lime); }
@@ -102,7 +113,7 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 .bar-key .started { background: rgb(45 212 191 / 45%); }
 .bar-key .none { background: rgb(255 255 255 / 10%); }
 
-.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 8px; }
+.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr)); gap: 8px; }
 .person {
   display: flex; align-items: center; gap: 11px; padding: 9px 10px; min-width: 0; text-align: left;
   background: rgb(7 20 26 / 55%); border: 1px solid var(--border); color: var(--text); font: inherit; cursor: pointer;
@@ -110,9 +121,13 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 }
 .person:hover, .person:focus-visible { border-color: var(--border-strong); background: rgb(7 20 26 / 85%); outline: none; }
 .person.on { border-color: var(--text); }
-.person div { min-width: 0; }
-.person div b { display: block; font-size: 15px; font-weight: 600; }
-.person div span { display: block; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* A person: name and points on one line, a small bar of stories merged on the next. Nothing wraps. */
+.person .p-body { flex: 1; min-width: 0; display: grid; gap: 7px; }
+.person .p-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; white-space: nowrap; }
+.person b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.person .p-row span { flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.person .p-row .mini { flex: 1; height: 5px; background: rgb(255 255 255 / 9%); overflow: hidden; }
+.person .mini i { display: block; height: 100%; background: var(--lime); }
 
 .avatar {
   flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
@@ -129,8 +144,9 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 /* Flow */
 .flow { position: relative; display: grid; grid-template-columns: 1fr 3fr 1fr 1fr; gap: 46px; align-items: start; }
 .links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
-.links path { fill: none; stroke: var(--faint); stroke-width: 1.3; opacity: .5; transition: opacity .2s, stroke .2s; }
-.links path.done { stroke: var(--lime); opacity: .35; }
+/* Lines use the same colours as tile edges: plain edge, a merged tile's see-through lime, and the highlight colours. */
+.links path { fill: none; stroke: var(--border); stroke-width: 1.5; transition: opacity .2s, stroke .2s; }
+.links path.done { stroke: rgb(196 243 106 / 55%); }
 .links path.need { stroke: var(--accent); opacity: 1; stroke-width: 2; stroke-dasharray: 6 5; animation: flow 1s linear infinite; }
 .links path.unlock { stroke: var(--lime); opacity: 1; stroke-width: 2; stroke-dasharray: 6 5; animation: flow 1s linear infinite; }
 .links path.off { opacity: .05; }
@@ -138,7 +154,7 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 @keyframes pulse { 50% { opacity: .35; } }
 
 .stage { position: relative; z-index: 1; display: grid; gap: 12px; align-content: start; min-width: 0; }
-.stage-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; padding-bottom: 9px; border-bottom: 1px solid var(--border-strong); }
+.stage-head { display: flex; flex-direction: column; gap: 2px; padding-bottom: 9px; border-bottom: 1px solid var(--border-strong); }
 .stage-head b { font-size: 19px; font-weight: 600; }
 .stage-head span { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cards { display: grid; gap: 12px; }
@@ -147,7 +163,7 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 /* A story tile: raised, with the app's top-right chamfer cut by a corner piece so the shadow survives */
 .card {
   --edge: var(--border);
-  position: relative; display: grid; gap: 10px; padding: 13px 14px 13px; cursor: pointer; outline: none;
+  position: relative; display: flex; flex-direction: column; gap: 10px; padding: 13px 14px 13px; cursor: pointer; outline: none;
   background: linear-gradient(180deg, var(--panel-top) 0%, var(--panel) 100%);
   border: 1px solid var(--edge);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 10px 24px -12px rgb(0 0 0 / 85%), 0 2px 4px rgb(0 0 0 / 30%);
@@ -155,7 +171,7 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
 }
 .card::before {
   content: ""; position: absolute; top: -1px; right: -1px; width: 12px; height: 12px;
-  background: linear-gradient(225deg, var(--bg) 0 50%, var(--edge) 50% calc(50% + 1.3px), transparent calc(50% + 1.3px));
+  background: linear-gradient(225deg, var(--bg) 0 50%, var(--edge) 50% calc(50% + var(--edge-w, 1.3px)), transparent calc(50% + var(--edge-w, 1.3px)));
 }
 .card:hover, .card:focus-visible { transform: translateY(-2px); --edge: var(--border-strong); }
 .card:focus-visible { --edge: var(--text); }
@@ -166,8 +182,19 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
   background: rgb(7 20 26 / 60%); border: 1px solid var(--border); color: var(--text); font-weight: 600; font-size: 13px;
 }
 .card .name { font-size: 16px; font-weight: 600; line-height: 1.28; text-wrap: pretty; letter-spacing: -.005em; }
-.card .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.card .who { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); font-weight: 500; }
+/* Every tile has the same rows: key and points, a name in a fixed three-line space, owner, status (with an icon for
+   the pull request's checks), and what it still waits for. No row wraps. */
+.card .top, .card .who, .card .status, .card .detail { white-space: nowrap; }
+.card .top a { color: var(--muted); text-decoration: none; }
+.card .top a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.card .name { height: calc(3 * 1.28em); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.card .who { display: flex; align-items: center; gap: 8px; margin-top: auto; font-size: 14px; color: var(--muted); font-weight: 500; }
+.card .status, .card .detail { display: flex; gap: 6px; height: 25px; overflow: hidden; margin-top: -2px; }
+.card .checks { display: inline-flex; }
+.card .checks svg { width: 15px; height: 15px; }
+.card .checks.ok { color: var(--lime); }
+.card .checks.bad { color: var(--danger); }
+.card .checks.wait { color: var(--amber); }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 13px; font-weight: 500;
   border: 1px solid var(--border); color: var(--muted); background: rgb(7 20 26 / 50%); text-decoration: none; white-space: nowrap;
@@ -182,8 +209,6 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
 .chip.ok { color: var(--lime); border-color: rgb(196 243 106 / 50%); }
 .chip.wait { color: var(--amber); border-color: rgb(245 183 59 / 45%); }
 .chip.bad { color: var(--danger); border-color: rgb(255 122 122 / 50%); }
-.extra { display: flex; flex-wrap: wrap; gap: 6px; }
-.extra:empty { display: none; }
 
 .card.is-started { --edge: rgb(45 212 191 / 40%); }
 .card.is-open, .card.is-draft { --edge: rgb(45 212 191 / 75%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 10px 26px -12px rgb(45 212 191 / 35%), 0 2px 4px rgb(0 0 0 / 30%); }
@@ -201,14 +226,87 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
 
 /* Highlight: a story with what it needs and unlocks, or one person's stories */
 .lit .card { opacity: .2; }
-.lit .card.sel { opacity: 1; --edge: var(--text); }
-.lit .card.need { opacity: 1; --edge: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 26px rgb(45 212 191 / 30%); }
-.lit .card.unlock { opacity: 1; --edge: var(--lime); box-shadow: 0 0 0 1px var(--lime), 0 0 26px rgb(196 243 106 / 25%); }
+/* The thicker edge is drawn inside the tile, so the corner piece covers it and the cut corner stays cut. */
+.lit .card.sel, .lit .card.need, .lit .card.unlock {
+  opacity: 1; --edge-w: 2px; box-shadow: inset 0 0 0 1px var(--edge), 0 0 28px -6px var(--glow, transparent);
+}
+.lit .card.sel { --edge: var(--text); }
+.lit .card.need { --edge: var(--accent); --glow: rgb(45 212 191 / 55%); }
+.lit .card.unlock { --edge: var(--lime); --glow: rgb(196 243 106 / 50%); }
 
-.foot-note { color: var(--faint); font-size: 14px; border-top: 1px solid var(--border); padding-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 24px; }
+
+/* Motion: an opening sequence (header, panels, tiles step by step, then the curves draw), figures that count, pulses
+   running along every need that is already met, a spotlight under the pointer, a countdown to the next GitHub check,
+   and a flash plus a note when a story's status changes. */
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+@keyframes draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+@keyframes sheen { 0%, 50% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
+@keyframes flash {
+  0% { box-shadow: inset 0 0 0 0 rgb(196 243 106 / 0%), 0 0 0 0 rgb(196 243 106 / 0%); }
+  35% { box-shadow: inset 0 0 0 2px rgb(196 243 106 / 95%), 0 0 44px 2px rgb(196 243 106 / 35%); }
+  100% { box-shadow: inset 0 0 0 0 rgb(196 243 106 / 0%), 0 0 0 0 rgb(196 243 106 / 0%); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes countdown { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+
+.hero > *, .panel, .legend { animation: rise .7s cubic-bezier(.2, .7, .2, 1) backwards; }
+.eyebrow { animation-delay: 60ms; }
+h1 { animation-delay: 120ms; }
+.live { animation-delay: 180ms; }
+.summary .panel:first-child { animation-delay: 220ms; }
+.summary .panel + .panel { animation-delay: 300ms; }
+.legend { animation-delay: 360ms; }
+
+.card { animation: rise .6s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: var(--d, 0ms); }
+.settled .card { animation: none; }
+.card.changed, .settled .card.changed { --edge: var(--lime); --edge-w: 2px; animation: flash 1.6s ease-out 2; }
+.card::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgb(45 212 191 / 13%), transparent 65%);
+}
+.card:hover::after { opacity: 1; }
+
+.links path.intro:not(.need):not(.unlock) { stroke-dasharray: var(--len); animation: draw 1.1s cubic-bezier(.4, 0, .2, 1) both; animation-delay: var(--d, 0ms); }
+
+.chip.open {
+  background-image: linear-gradient(100deg, transparent 35%, rgb(255 255 255 / 45%) 50%, transparent 65%);
+  background-size: 250% 100%; animation: sheen 3.2s ease-in-out infinite;
+}
+.chip.started svg { animation: pulse 1.6s ease-in-out infinite; }
+
+.figure b i { font-style: normal; }
+.figure b { transition: color .8s; }
+.figure.bump b { color: var(--lime); transition: none; }
+.bar i { width: 0; transition: width 1.2s cubic-bezier(.2, .7, .2, 1); }
+
+.live button { position: relative; display: inline-flex; align-items: center; gap: 7px; overflow: hidden; }
+.live button svg { width: 14px; height: 14px; }
+.live button.spinning svg { animation: spin .8s linear infinite; }
+.live button::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent);
+  opacity: .75; transform: scaleX(0); transform-origin: left;
+}
+.live button.counting::after { animation: countdown var(--every, 300s) linear forwards; }
+
+.toasts {
+  position: fixed; z-index: 20; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px));
+  right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+.toast {
+  display: flex; align-items: center; gap: 12px; padding: 13px 15px;
+  background: linear-gradient(180deg, var(--panel-top), var(--panel)); border: 1px solid var(--border-strong);
+  box-shadow: 0 20px 44px -14px rgb(0 0 0 / 90%); animation: toast-in .4s cubic-bezier(.2, .7, .2, 1) backwards;
+  transition: opacity .35s, transform .35s;
+}
+.toast.out { opacity: 0; transform: translateY(10px); }
+.toast div { min-width: 0; }
+.toast b { display: block; font-size: 15px; font-weight: 600; }
+.toast span { display: block; color: var(--muted); font-size: 14px; }
+.toast i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 12px var(--c); }
 
 /* Narrow screens: steps stack, curves give way to the highlight alone */
-@media (max-width: 1120px) {
+@media (max-width: 1320px) {
   .summary { grid-template-columns: 1fr; }
   .flow { grid-template-columns: 1fr; gap: 30px; }
   .links { display: none; }
@@ -223,8 +321,7 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
   .stage .cards, .stage.wide .cards { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .links path.need, .links path.unlock, .live.on .dot { animation: none; }
-  * { transition: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 </style>
 </head>
@@ -238,7 +335,7 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
       TrueSight · Sprint 3
     </div>
     <h1>Recommend and Explain</h1>
-    <div class="live" id="live"><span><span class="dot"></span><span id="live-text">Reading GitHub</span></span><button type="button" id="refresh">Refresh</button></div>
+    <div class="live" id="live"><span><span class="dot"></span><span id="live-text">Reading GitHub</span></span><button type="button" id="refresh"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg>Refresh</button></div>
   </header>
 
   <section class="summary">
@@ -265,10 +362,7 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
 
   <div class="flow" id="flow"><svg class="links" aria-hidden="true"></svg></div>
 
-  <footer class="foot-note">
-    <span>Push the branch, open a pull request, get one approval, then merge. Stories merge left to right.</span>
-    <span>Status comes from <a href="https://github.com/jlroch2024/TrueSight/pulls" target="_blank" rel="noopener">GitHub pull requests and branches</a>, every 5 minutes.</span>
-  </footer>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 </main>
 
 <script>
@@ -322,6 +416,7 @@ const STAGES = [
 ];
 
 const ICON = {
+  lock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="7" width="9" height="6.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>',
   check: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 8.5 3.2 3L13 4.5"/></svg>',
   cross: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m4 4 8 8M12 4l-8 8"/></svg>',
   clock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3"/></svg>',
@@ -339,6 +434,67 @@ const isMerged = n => stateOf(BY_N[n]) === 'merged';
 
 const flow = document.getElementById('flow');
 const page = document.getElementById('page');
+const MOTION = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+const OPENED = performance.now();
+setTimeout(() => page.classList.add('settled'), 2600);
+const LABEL = {
+  merged: 'Merged', approved: 'Approved', changes: 'Changes Requested', review: 'Waiting for Review',
+  draft: 'Draft Pull Request', branch: 'In Progress', none: 'Not Started',
+};
+
+// Figures count from what they last showed to their new value, and glow lime when they rise after the first load.
+const shownFigures = [];
+function showFigures(list) {
+  const box = document.getElementById('figures');
+  if (!box.children.length) {
+    box.innerHTML = list.map(([, of, label]) =>
+      `<div class="figure"><b><i>0</i>${of != null ? `<small> / ${of}</small>` : ''}</b><span>${label}</span></div>`).join('');
+  }
+  list.forEach(([to], i) => {
+    const from = shownFigures[i] ?? 0;
+    shownFigures[i] = to;
+    const fig = box.children[i];
+    const num = fig.querySelector('i');
+    if (from === to) { num.textContent = to; return; }
+    if (to > from && checkedAt && performance.now() - OPENED > 3000) {
+      fig.classList.add('bump');
+      setTimeout(() => fig.classList.remove('bump'), 900);
+    }
+    if (!MOTION) { num.textContent = to; return; }
+    const start = performance.now(), wait = performance.now() - OPENED < 1000 ? 250 : 0;
+    const step = now => {
+      const t = Math.min(1, Math.max(0, (now - start - wait) / 900));
+      num.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+// A story whose status changed since the last check (or since this browser's last visit) flashes and gets a note.
+function announce(changed) {
+  const box = document.getElementById('toasts');
+  changed.slice(0, 4).forEach((s, i) => {
+    const card = flow.querySelector(`.card[data-id="${s.n}"]`);
+    card.classList.remove('changed');
+    void card.offsetWidth;
+    card.classList.add('changed');
+    setTimeout(() => card.classList.remove('changed'), 3400);
+
+    const state = stateOf(s);
+    let note = `Now ${LABEL[state]}`;
+    if (state === 'merged') {
+      const free = STORIES.filter(x => x.needs.includes(s.n) && x.needs.every(isMerged)).length;
+      note = free ? `Merged · Unblocks ${free} ${free === 1 ? 'Story' : 'Stories'}` : 'Merged';
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.animationDelay = `${i * 120}ms`;
+    toast.innerHTML = `<i style="--c:${state === 'merged' ? 'var(--lime)' : 'var(--accent)'}"></i><div><b>${s.key} ${s.name}</b><span>${note}</span></div>`;
+    box.appendChild(toast);
+    setTimeout(() => { toast.classList.add('out'); setTimeout(() => toast.remove(), 400); }, 7000 + i * 400);
+  });
+}
 
 function avatar(code, sm) {
   const p = PEOPLE[code];
@@ -355,13 +511,15 @@ function buildCards() {
       const s = BY_N[n];
       const el = document.createElement('div');
       el.className = 'card';
+      el.style.setProperty('--d', `${380 + STAGES.indexOf(stage) * 170 + stage.ids.indexOf(n) * 28}ms`);
       el.dataset.id = n;
       el.tabIndex = 0;
       el.setAttribute('role', 'button');
-      el.innerHTML = `<div class="top"><span class="kind kind-${s.kind}"></span>${s.key}<span class="pts" title="Story points">${s.pts}</span></div>
-        <div class="name">${s.name}</div>
-        <div class="foot"><span class="who">${avatar(s.who, true)}${PEOPLE[s.who].name}</span><span data-chip></span></div>
-        <div class="extra" data-extra></div>`;
+      el.innerHTML = `<div class="top"><span class="kind kind-${s.kind}"></span>${s.key}<span data-pr></span><span data-checks></span><span class="pts" title="Story points">${s.pts}</span></div>
+        <div class="name" title="${s.name}">${s.name}</div>
+        <div class="who">${avatar(s.who, true)}${PEOPLE[s.who].name}</div>
+        <div class="status" data-chip></div>
+        <div class="detail" data-detail></div>`;
       cards.appendChild(el);
     }
     flow.appendChild(col);
@@ -391,7 +549,7 @@ function render() {
     const st = STATUS[s.key] || {};
     const state = stateOf(s);
     el.className = el.className.replace(/\bis-\w+/g, '').trim() + ' is-' + (CARD_LOOK[state] || state);
-    const prLink = (cls, label) => `<a class="chip ${cls}" href="${st.url}" target="_blank" rel="noopener">${label} #${st.pr}</a>`;
+    const prLink = (cls, label) => `<a class="chip ${cls}" href="${st.url}" target="_blank" rel="noopener" title="Open pull request #${st.pr}">${label}</a>`;
     let chip = '';
     if (state === 'merged') chip = prLink('merged', ICON.check + 'Merged');
     else if (state === 'approved') chip = prLink('open', ICON.check + 'Approved');
@@ -402,16 +560,22 @@ function render() {
     else chip = `<span class="chip">Not Started</span>`;
     el.querySelector('[data-chip]').innerHTML = chip;
 
-    const extra = [];
-    if (CARD_LOOK[state] === 'open' || state === 'draft') {
-      if (st.checks === 'pass') extra.push(`<span class="chip ok">${ICON.check}Checks Pass</span>`);
-      else if (st.checks === 'fail') extra.push(`<span class="chip bad">${ICON.cross}Checks Fail</span>`);
-      else if (st.checks === 'pending') extra.push(`<span class="chip wait">${ICON.clock}Checks Running</span>`);
-      const waiting = s.needs.filter(n => !isMerged(n)).map(n => BY_N[n].key);
-      if (waiting.length) extra.push(`<span class="chip wait">Waits for ${waiting.join(', ')}</span>`);
-      else if (state === 'approved' && st.checks !== 'fail') extra.push(`<span class="chip ok">${ICON.check}Ready to Merge</span>`);
+    const inPR = CARD_LOOK[state] === 'open' || state === 'draft';
+    el.querySelector('[data-pr]').innerHTML = st.pr
+      ? ` · <a href="${st.url}" target="_blank" rel="noopener" title="Open pull request #${st.pr}">#${st.pr}</a>` : '';
+    const checks = inPR && { pass: ['ok', ICON.check, 'Checks pass'], fail: ['bad', ICON.cross, 'Checks fail'], pending: ['wait', ICON.clock, 'Checks running'] }[st.checks];
+    el.querySelector('[data-checks]').innerHTML = checks
+      ? `<span class="checks ${checks[0]}" title="${checks[2]}" aria-label="${checks[2]}">${checks[1]}</span>` : '';
+    // What the story still waits for: amber once its pull request is open, quiet before that.
+    const waiting = s.needs.filter(n => !isMerged(n)).map(n => BY_N[n].key);
+    let detail = '';
+    if (state !== 'merged' && waiting.length) {
+      const what = waiting.length === 1 ? waiting[0] : `${waiting.length} Stories`;
+      detail = `<span class="chip${inPR ? ' wait' : ''}" title="Waits for ${waiting.join(', ')}">${ICON.lock}Waits for ${what}</span>`;
+    } else if (state === 'approved' && st.checks !== 'fail') {
+      detail = `<span class="chip ok">${ICON.check}Ready to Merge</span>`;
     }
-    el.querySelector('[data-extra]').innerHTML = extra.join('');
+    el.querySelector('[data-detail]').innerHTML = detail;
     el.setAttribute('aria-label', `${s.key} ${s.name}, ${s.pts} points, ${PEOPLE[s.who].name}, ${el.querySelector('[data-chip]').textContent}`);
   }
 
@@ -421,15 +585,16 @@ function render() {
   STORIES.forEach(s => groups[{ draft: 'open', branch: 'started' }[stateOf(s)] || CARD_LOOK[stateOf(s)] || stateOf(s)].push(s));
   const pts = list => list.reduce((t, s) => t + s.pts, 0);
   const count = state => STORIES.filter(s => stateOf(s) === state).length;
-  document.getElementById('figures').innerHTML = [
-    [`${groups.merged.length}<small> / ${STORIES.length}</small>`, 'Stories Merged'],
-    [`${pts(groups.merged)}<small> / ${total}</small>`, 'Points Merged'],
-    [count('review') + count('changes'), 'Waiting for Review'],
-    [count('approved'), 'Approved'],
-    [groups.started.length, 'In Progress'],
-  ].map(([v, l]) => `<div class="figure"><b>${v}</b><span>${l}</span></div>`).join('');
+  showFigures([
+    [groups.merged.length, STORIES.length, 'Stories Merged'],
+    [pts(groups.merged), total, 'Points Merged'],
+    [count('review') + count('changes'), null, 'Waiting for Review'],
+    [count('approved'), null, 'Approved'],
+    [groups.started.length, null, 'In Progress'],
+  ]);
   const bars = document.querySelectorAll('#bar i');
-  ['merged', 'open', 'started'].forEach((k, i) => { bars[i].style.width = (pts(groups[k]) / total * 100) + '%'; });
+  const widths = ['merged', 'open', 'started'].map(k => (pts(groups[k]) / total * 100) + '%');
+  requestAnimationFrame(() => requestAnimationFrame(() => bars.forEach((b, i) => { b.style.width = widths[i]; })));
   document.getElementById('bar-key').innerHTML = [
     ['merged', 'Merged'], ['open', 'Pull Request Open'], ['started', 'In Progress'], ['none', 'Not Started'],
   ].map(([k, l]) => `<span><i class="${k}"></i>${l} · ${pts(groups[k])} Points</span>`).join('');
@@ -438,8 +603,10 @@ function render() {
   document.getElementById('team').innerHTML = Object.entries(PEOPLE).map(([code, p]) => {
     const mine = STORIES.filter(s => s.who === code);
     const done = mine.filter(s => stateOf(s) === 'merged').length;
-    return `<button type="button" class="person${person === code ? ' on' : ''}" data-person="${code}">${avatar(code)}
-      <div><b>${p.name}</b><span>${done} of ${mine.length} Merged · ${pts(mine)} Pts</span></div></button>`;
+    return `<button type="button" class="person${person === code ? ' on' : ''}" data-person="${code}"
+      title="${p.name}: ${done} of ${mine.length} stories merged, ${pts(mine)} points">${avatar(code)}
+      <div class="p-body"><div class="p-row"><b>${p.name}</b><span>${pts(mine)} Pts</span></div>
+      <div class="p-row"><span class="mini"><i style="width:${done / mine.length * 100}%"></i></span><span>${done} of ${mine.length}</span></div></div></button>`;
   }).join('');
 
   // Live line
@@ -453,10 +620,23 @@ function render() {
     text.textContent = `Updated From GitHub ${ago(checkedAt)}`;
   }
 
+  layout();
+}
+
+// Every tile takes the height of the tallest, so rows line up across all four steps.
+function levelCards() {
+  const cards = [...flow.querySelectorAll('.card')];
+  cards.forEach(c => { c.style.minHeight = ''; });
+  const tallest = Math.max(...cards.map(c => c.offsetHeight));
+  cards.forEach(c => { c.style.minHeight = tallest + 'px'; });
+}
+
+function layout() {
+  levelCards();
   drawLinks();
 }
 
-// One curve per "needs", from the right edge of what is needed to the left edge of what needs it.
+// One straight line per "needs", from the right edge of what is needed to the left edge of what needs it.
 function drawLinks() {
   const svg = flow.querySelector('.links');
   if (getComputedStyle(svg).display === 'none') return;
@@ -471,12 +651,21 @@ function drawLinks() {
       const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
       const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
       if (x2 <= x1) continue;
-      const dx = Math.max(30, (x2 - x1) * .5);
-      out += `<path class="${isMerged(need) ? 'done' : ''}" data-from="${need}" data-to="${s.n}" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
+      const d = `M${x1},${y1} L${x2},${y2}`;
+      out += `<path class="${isMerged(need) ? 'done' : ''}" data-from="${need}" data-to="${s.n}" d="${d}"/>`;
     }
   }
   svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
   svg.innerHTML = out;
+  // During the opening sequence the curves draw themselves in once the tiles have arrived.
+  const since = performance.now() - OPENED;
+  if (MOTION && since < 2000) {
+    svg.querySelectorAll('path').forEach((p, i) => {
+      p.style.setProperty('--len', p.getTotalLength());
+      p.style.setProperty('--d', `${1050 + i * 18 - since}ms`);
+      p.classList.add('intro');
+    });
+  }
   applyHighlight();
 }
 
@@ -518,9 +707,13 @@ function applyHighlight() {
 }
 
 buildCards();
+// Once a curve has drawn itself in, it drops the opening style so hovering can make it flow.
+flow.querySelector('.links').addEventListener('animationend', e => {
+  if (e.animationName === 'draw') e.target.classList.remove('intro');
+});
 render();
-document.fonts && document.fonts.ready.then(drawLinks);
-new ResizeObserver(drawLinks).observe(page);
+document.fonts && document.fonts.ready.then(layout);
+new ResizeObserver(layout).observe(page);
 setInterval(() => { if (checkedAt) render(); }, 60000);
 
 const hoverable = matchMedia('(hover: hover)').matches;
@@ -628,12 +821,17 @@ async function loadGitHub() {
 const refreshButton = document.getElementById('refresh');
 let busy = false;
 let pausedUntil = 0;
+let nextCheck = null;
 async function refresh() {
   if (busy || Date.now() < pausedUntil) return;
   busy = true;
   refreshButton.disabled = true;
+  refreshButton.classList.add('spinning');
+  let changed = [];
   try {
-    STATUS = await loadGitHub();
+    const next = await loadGitHub();
+    if (checkedAt) changed = STORIES.filter(s => ((next[s.key] || {}).state || 'none') !== stateOf(s));
+    STATUS = next;
     checkedAt = new Date().toISOString();
     liveError = null;
     saved.set('gh:status', { STATUS, checkedAt });
@@ -645,7 +843,17 @@ async function refresh() {
   } finally {
     busy = false;
     refreshButton.disabled = false;
+    refreshButton.classList.remove('spinning');
     render();
+    announce(changed);
+    // The line under Refresh fills up until the next check.
+    const wait = Date.now() < pausedUntil ? pausedUntil - Date.now() + 1000 : EVERY;
+    refreshButton.style.setProperty('--every', wait + 'ms');
+    refreshButton.classList.remove('counting');
+    void refreshButton.offsetWidth;
+    refreshButton.classList.add('counting');
+    clearTimeout(nextCheck);
+    nextCheck = setTimeout(() => { if (!document.hidden) refresh(); }, wait);
   }
 }
 
@@ -653,7 +861,13 @@ const last = saved.get('gh:status');
 if (last) { STATUS = last.STATUS || {}; checkedAt = last.checkedAt; render(); }
 refresh();
 refreshButton.addEventListener('click', refresh);
-setInterval(() => { if (!document.hidden) refresh(); }, EVERY);
+flow.addEventListener('pointermove', e => {
+  const c = e.target.closest('.card');
+  if (!c) return;
+  const r = c.getBoundingClientRect();
+  c.style.setProperty('--mx', `${e.clientX - r.left}px`);
+  c.style.setProperty('--my', `${e.clientY - r.top}px`);
+});
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && (!checkedAt || Date.now() - new Date(checkedAt) > 2 * 60000)) refresh();
 });
