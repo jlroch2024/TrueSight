@@ -166,13 +166,25 @@ h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 
   position: relative; display: flex; flex-direction: column; gap: 10px; padding: 13px 14px 13px; cursor: pointer; outline: none;
   background: linear-gradient(180deg, var(--panel-top) 0%, var(--panel) 100%);
   border: 1px solid var(--edge);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 10px 24px -12px rgb(0 0 0 / 85%), 0 2px 4px rgb(0 0 0 / 30%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
   transition: opacity .2s, border-color .2s, box-shadow .2s, transform .2s;
 }
+/* The corner is cut away (so lines behind show through it); this draws the cut's edge. */
 .card::before {
   content: ""; position: absolute; top: -1px; right: -1px; width: 12px; height: 12px;
-  background: linear-gradient(225deg, var(--bg) 0 50%, var(--edge) 50% calc(50% + var(--edge-w, 1.3px)), transparent calc(50% + var(--edge-w, 1.3px)));
+  background: linear-gradient(225deg, transparent 0 50%, var(--edge) 50% calc(50% + var(--edge-w, 1.3px)), transparent calc(50% + var(--edge-w, 1.3px)));
 }
+/* The cut clips the tile's own shadows, so a wrapper draws them, following the cut shape. */
+.tile { display: flex; min-width: 0; filter: drop-shadow(0 8px 10px rgb(0 0 0 / 55%)); }
+.tile > .card { flex: 1; min-width: 0; }
+.tile:has(> .is-open), .tile:has(> .is-draft) {
+  filter: drop-shadow(0 8px 10px rgb(0 0 0 / 55%)) drop-shadow(0 4px 12px rgb(45 212 191 / 30%));
+}
+.lit .tile:has(> .need) { filter: drop-shadow(0 0 11px rgb(45 212 191 / 60%)); }
+.lit .tile:has(> .unlock) { filter: drop-shadow(0 0 11px rgb(196 243 106 / 55%)); }
+.tile:has(> .changed) { animation: glow 1.6s ease-out 2; }
+@keyframes glow { 35% { filter: drop-shadow(0 0 18px rgb(196 243 106 / 65%)); } }
 .card:hover, .card:focus-visible { transform: translateY(-2px); --edge: var(--border-strong); }
 .card:focus-visible { --edge: var(--text); }
 .card .top { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 500; }
@@ -211,7 +223,7 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
 .chip.bad { color: var(--danger); border-color: rgb(255 122 122 / 50%); }
 
 .card.is-started { --edge: rgb(45 212 191 / 40%); }
-.card.is-open, .card.is-draft { --edge: rgb(45 212 191 / 75%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 10px 26px -12px rgb(45 212 191 / 35%), 0 2px 4px rgb(0 0 0 / 30%); }
+.card.is-open, .card.is-draft { --edge: rgb(45 212 191 / 75%); }
 .card.is-merged {
   --edge: rgb(196 243 106 / 55%);
   background: linear-gradient(180deg, #1d3a2a 0%, #132a22 100%);
@@ -226,13 +238,11 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
 
 /* Highlight: a story with what it needs and unlocks, or one person's stories */
 .lit .card { opacity: .2; }
-/* The thicker edge is drawn inside the tile, so the corner piece covers it and the cut corner stays cut. */
-.lit .card.sel, .lit .card.need, .lit .card.unlock {
-  opacity: 1; --edge-w: 2px; box-shadow: inset 0 0 0 1px var(--edge), 0 0 28px -6px var(--glow, transparent);
-}
+/* The thicker edge is drawn inside the tile, so the cut corner stays cut; the glow comes from the tile's wrapper. */
+.lit .card.sel, .lit .card.need, .lit .card.unlock { opacity: 1; --edge-w: 2px; box-shadow: inset 0 0 0 1px var(--edge); }
 .lit .card.sel { --edge: var(--text); }
-.lit .card.need { --edge: var(--accent); --glow: rgb(45 212 191 / 55%); }
-.lit .card.unlock { --edge: var(--lime); --glow: rgb(196 243 106 / 50%); }
+.lit .card.need { --edge: var(--accent); }
+.lit .card.unlock { --edge: var(--lime); }
 
 
 /* Motion: an opening sequence (header, panels, tiles step by step, then the curves draw), figures that count, pulses
@@ -243,7 +253,7 @@ a.chip:hover { border-color: var(--text); color: var(--text); }
 @keyframes sheen { 0%, 50% { background-position: 140% 0; } 100% { background-position: -40% 0; } }
 @keyframes flash {
   0% { box-shadow: inset 0 0 0 0 rgb(196 243 106 / 0%), 0 0 0 0 rgb(196 243 106 / 0%); }
-  35% { box-shadow: inset 0 0 0 2px rgb(196 243 106 / 95%), 0 0 44px 2px rgb(196 243 106 / 35%); }
+  35% { box-shadow: inset 0 0 0 2px rgb(196 243 106 / 95%), 0 0 0 0 rgb(196 243 106 / 0%); }
   100% { box-shadow: inset 0 0 0 0 rgb(196 243 106 / 0%), 0 0 0 0 rgb(196 243 106 / 0%); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -520,7 +530,10 @@ function buildCards() {
         <div class="who">${avatar(s.who, true)}${PEOPLE[s.who].name}</div>
         <div class="status" data-chip></div>
         <div class="detail" data-detail></div>`;
-      cards.appendChild(el);
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.appendChild(el);
+      cards.appendChild(tile);
     }
     flow.appendChild(col);
   }
