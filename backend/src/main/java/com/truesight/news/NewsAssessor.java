@@ -1,5 +1,9 @@
 package com.truesight.news;
 
+import com.truesight.ai.AiAnswer;
+import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiPurpose;
+import com.truesight.ai.AiRequest;
 import com.truesight.relationship.GeminiClient;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -77,17 +81,19 @@ public class NewsAssessor implements NewsCheckStep {
     private final NewsArticleRepository articles;
     private final NewsAssessmentRepository assessments;
     private final GeminiClient gemini;
+    private final AiCallLog calls;
     private final NewsAssessmentReader reader = new NewsAssessmentReader();
 
     // Two portfolios sharing a company could otherwise judge the same article at the same moment.
     private final Object lock = new Object();
 
     public NewsAssessor(NewsCheckService newsCheck, NewsArticleRepository articles,
-                        NewsAssessmentRepository assessments, GeminiClient gemini) {
+                        NewsAssessmentRepository assessments, GeminiClient gemini, AiCallLog calls) {
         this.newsCheck = newsCheck;
         this.articles = articles;
         this.assessments = assessments;
         this.gemini = gemini;
+        this.calls = calls;
     }
 
     @Override
@@ -117,17 +123,28 @@ public class NewsAssessor implements NewsCheckStep {
         return prompt.toString();
     }
 
-    /** Asks Gemini, and asks once more if the answer cannot be read. */
+    /** Asks Gemini, and asks once more if the answer cannot be read. Each unreadable answer is recorded as such. */
     private Map<Integer, NewsAssessmentReader.Judgement> ask(String prompt, int headlineCount) {
+        AiRequest request = AiRequest.of(AiPurpose.JUDGE_NEWS, prompt); // headlines only: no report text to hide
         try {
-            return reader.read(gemini.generate(prompt, NEWS_SCHEMA), headlineCount);
+            return read(request, headlineCount);
         } catch (NewsAssessmentReader.UnreadableAnswerException first) {
             try {
-                return reader.read(gemini.generate(prompt, NEWS_SCHEMA), headlineCount);
+                return read(request, headlineCount);
             } catch (NewsAssessmentReader.UnreadableAnswerException second) {
                 throw new GeminiClient.GeminiException(
                         "The AI's answer could not be read, even when asked a second time.", second);
             }
+        }
+    }
+
+    private Map<Integer, NewsAssessmentReader.Judgement> read(AiRequest request, int headlineCount) {
+        AiAnswer answer = gemini.generate(request, NEWS_SCHEMA);
+        try {
+            return reader.read(answer.text(), headlineCount);
+        } catch (NewsAssessmentReader.UnreadableAnswerException exception) {
+            calls.unreadable(answer.callId());
+            throw exception;
         }
     }
 

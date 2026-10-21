@@ -1,6 +1,9 @@
 package com.truesight.news;
 
 import com.truesight.company.Company;
+import static com.truesight.support.FakeAi.answer;
+import com.truesight.ai.AiRequest;
+import com.truesight.ai.AiAnswer;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
@@ -70,7 +73,7 @@ class NewsAssessorIT {
     void startFromTsmcWithNoArticles() {
         reset(news, gemini);
         when(news.search(anyString())).thenReturn(List.of());
-        when(gemini.generate(anyString(), any())).thenReturn(Examples.geminiNewsAssessment());
+        when(gemini.generate(any(AiRequest.class), any())).thenReturn(answer(Examples.geminiNewsAssessment()));
         tsmc = companyDirectory.findOrCreate("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM",
                 List.of());
         articles.deleteByCompanyId(tsmc.getId()); // its assessments go with it
@@ -86,7 +89,7 @@ class NewsAssessorIT {
 
         assertThat(assessmentsOf(saved)).hasSize(20)
                 .extracting(NewsAssessment::getArticleId).doesNotHaveDuplicates();
-        verify(gemini, times(1)).generate(anyString(), any());
+        verify(gemini, times(1)).generate(any(AiRequest.class), any());
     }
 
     @Test
@@ -99,7 +102,7 @@ class NewsAssessorIT {
         checkNews(second, "assess-shared-b@example.com", NewsStatus.IDLE);
 
         assertThat(assessmentsOf(saved)).hasSize(20);
-        verify(gemini, times(1)).generate(anyString(), any());
+        verify(gemini, times(1)).generate(any(AiRequest.class), any());
     }
 
     @Test
@@ -131,11 +134,11 @@ class NewsAssessorIT {
 
         checkNews(portfolio, "assess-prompt@example.com", NewsStatus.IDLE);
 
-        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<AiRequest> prompt = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini).generate(prompt.capture(), eq(NewsAssessor.NEWS_SCHEMA));
-        assertThat(prompt.getValue()).startsWith(NewsAssessor.PROMPT);
+        assertThat(prompt.getValue().prompt()).startsWith(NewsAssessor.PROMPT);
         for (int i = 0; i < saved.size(); i++) {
-            assertThat(prompt.getValue())
+            assertThat(prompt.getValue().prompt())
                     .contains("\n" + (i + 1) + ". [Taiwan Semiconductor Manufacturing] " + saved.get(i).getTitle() + "\n");
         }
     }
@@ -147,10 +150,10 @@ class NewsAssessorIT {
 
         checkNews(portfolio, "assess-batches@example.com", NewsStatus.IDLE);
 
-        ArgumentCaptor<String> prompts = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<AiRequest> prompts = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini, times(2)).generate(prompts.capture(), any());
-        assertThat(prompts.getAllValues().get(0)).contains("\n20. [").doesNotContain("\n21. [");
-        assertThat(prompts.getAllValues().get(1)).contains("\n5. [").doesNotContain("\n6. [");
+        assertThat(prompts.getAllValues().get(0).prompt()).contains("\n20. [").doesNotContain("\n21. [");
+        assertThat(prompts.getAllValues().get(1).prompt()).contains("\n5. [").doesNotContain("\n6. [");
         assertThat(assessmentsOf(saved)).hasSize(25);
     }
 
@@ -159,7 +162,7 @@ class NewsAssessorIT {
         List<NewsArticle> saved = saveSampleArticles(2);
         Portfolio portfolio = analysedPortfolio("assess-missing@example.com");
         // A hand-made answer that judges headline 1 and leaves out headline 2.
-        when(gemini.generate(anyString(), any())).thenReturn(gemini(
+        when(gemini.generate(any(AiRequest.class), any())).thenReturn(gemini(
                 "{\"assessments\": [{\"index\": 1, \"isEvent\": false, \"eventType\": \"\", \"severity\": \"\","
                         + " \"confidence\": \"HIGH\", \"summary\": \"\", \"reason\": \"Stock commentary.\"}]}"));
 
@@ -167,13 +170,13 @@ class NewsAssessorIT {
 
         assertThat(assessmentsByArticle(saved)).containsOnlyKeys(saved.get(0).getId());
 
-        when(gemini.generate(anyString(), any())).thenReturn(Examples.geminiNewsAssessment());
+        when(gemini.generate(any(AiRequest.class), any())).thenReturn(answer(Examples.geminiNewsAssessment()));
         checkNews(portfolio, "assess-missing@example.com", NewsStatus.IDLE);
 
         assertThat(assessmentsByArticle(saved)).containsOnlyKeys(saved.get(0).getId(), saved.get(1).getId());
-        ArgumentCaptor<String> prompts = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<AiRequest> prompts = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini, times(2)).generate(prompts.capture(), any());
-        assertThat(prompts.getAllValues().get(1))
+        assertThat(prompts.getAllValues().get(1).prompt())
                 .contains("1. [Taiwan Semiconductor Manufacturing] " + saved.get(1).getTitle())
                 .doesNotContain(saved.get(0).getTitle());
     }
@@ -182,7 +185,7 @@ class NewsAssessorIT {
     void anAnswerNamingAnUnknownEventTypeIsStoredAsNoiseThatCouldNotBeUsed() throws Exception {
         List<NewsArticle> saved = saveSampleArticles(1);
         Portfolio portfolio = analysedPortfolio("assess-unknown-type@example.com");
-        when(gemini.generate(anyString(), any())).thenReturn(gemini(
+        when(gemini.generate(any(AiRequest.class), any())).thenReturn(gemini(
                 "{\"assessments\": [{\"index\": 1, \"isEvent\": true, \"eventType\": \"ALIEN_INVASION\","
                         + " \"severity\": \"HIGH\", \"confidence\": \"HIGH\", \"summary\": \"Something happened.\","
                         + " \"reason\": \"A reason.\"}]}"));
@@ -199,13 +202,13 @@ class NewsAssessorIT {
     void anAnswerThatCannotBeReadIsAskedForOnceMore() throws Exception {
         List<NewsArticle> saved = saveSampleArticles(20);
         Portfolio portfolio = analysedPortfolio("assess-ask-again@example.com");
-        when(gemini.generate(anyString(), any()))
+        when(gemini.generate(any(AiRequest.class), any()))
                 .thenReturn(gemini("Sorry, I cannot help with that."))
-                .thenReturn(Examples.geminiNewsAssessment());
+                .thenReturn(answer(Examples.geminiNewsAssessment()));
 
         checkNews(portfolio, "assess-ask-again@example.com", NewsStatus.IDLE);
 
-        verify(gemini, times(2)).generate(anyString(), any());
+        verify(gemini, times(2)).generate(any(AiRequest.class), any());
         assertThat(assessmentsOf(saved)).hasSize(20);
     }
 
@@ -214,7 +217,7 @@ class NewsAssessorIT {
         List<NewsArticle> saved = saveSampleArticles(20);
         String email = "assess-gemini-fails@example.com";
         Portfolio portfolio = analysedPortfolio(email);
-        when(gemini.generate(anyString(), any()))
+        when(gemini.generate(any(AiRequest.class), any()))
                 .thenThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null));
 
         checkNews(portfolio, email, NewsStatus.FAILED);
@@ -227,7 +230,7 @@ class NewsAssessorIT {
                         .value("The AI could not assess the news. Please try again later."));
 
         reset(gemini);
-        when(gemini.generate(anyString(), any())).thenReturn(Examples.geminiNewsAssessment());
+        when(gemini.generate(any(AiRequest.class), any())).thenReturn(answer(Examples.geminiNewsAssessment()));
         checkNews(portfolio, email, NewsStatus.IDLE);
 
         assertThat(assessmentsOf(saved)).hasSize(20);
@@ -239,11 +242,11 @@ class NewsAssessorIT {
         List<NewsArticle> saved = saveSampleArticles(20);
         String email = "assess-unreadable@example.com";
         Portfolio portfolio = analysedPortfolio(email);
-        when(gemini.generate(anyString(), any())).thenReturn(gemini("Not JSON."));
+        when(gemini.generate(any(AiRequest.class), any())).thenReturn(gemini("Not JSON."));
 
         checkNews(portfolio, email, NewsStatus.FAILED);
 
-        verify(gemini, times(2)).generate(anyString(), any());
+        verify(gemini, times(2)).generate(any(AiRequest.class), any());
         assertThat(assessmentsOf(saved)).isEmpty();
         assertThat(portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatusReason())
                 .isEqualTo("The AI could not assess the news. Please try again later.");
@@ -255,7 +258,7 @@ class NewsAssessorIT {
 
         checkNews(portfolio, "assess-nothing-new@example.com", NewsStatus.IDLE);
 
-        verify(gemini, never()).generate(anyString(), any());
+        verify(gemini, never()).generate(any(AiRequest.class), any());
     }
 
     /** The first {@code count} articles of the saved Google News sample, saved for TSMC in order. */
@@ -304,8 +307,8 @@ class NewsAssessorIT {
     }
 
     /** A whole Gemini API response whose answer text is {@code answer}. */
-    private static String gemini(String answer) {
-        return JSON.writeValueAsString(Map.of("candidates", List.of(Map.of(
-                "content", Map.of("role", "model", "parts", List.of(Map.of("text", answer)))))));
+    private static AiAnswer gemini(String answer) {
+        return answer(JSON.writeValueAsString(Map.of("candidates", List.of(Map.of(
+                "content", Map.of("role", "model", "parts", List.of(Map.of("text", answer))))))));
     }
 }

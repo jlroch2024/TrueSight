@@ -1,6 +1,9 @@
 package com.truesight.portfolio;
 
 import com.truesight.company.CompanyDirectory;
+import static org.mockito.ArgumentMatchers.any;
+import static com.truesight.support.FakeAi.answer;
+import com.truesight.ai.AiRequest;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.report.Report;
@@ -46,7 +49,7 @@ class AnnualReportAnalysisIT {
 
     @BeforeEach
     void clearSavedReportsForSampleCompanies() {
-        when(gemini.generate(anyString())).thenReturn(Examples.geminiNvidia());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         companies.findByCik("0001045810").ifPresent(company -> reports.deleteByCompanyId(company.getId()));
         companies.findByCik("0000937966").ifPresent(company -> reports.deleteByCompanyId(company.getId()));
     }

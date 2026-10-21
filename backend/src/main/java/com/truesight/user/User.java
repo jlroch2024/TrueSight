@@ -37,6 +37,10 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role = Role.PORTFOLIO_MANAGER;
 
+    /** The name shown instead of the email, once the user sets one. */
+    @Column(name = "display_name", length = 100)
+    private String displayName;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -68,6 +72,14 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
     }
 
     /** Takes a hash, never the password as typed. */
