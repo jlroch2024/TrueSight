@@ -636,7 +636,7 @@ function layout() {
   drawLinks();
 }
 
-// One straight line per "needs", from the right edge of what is needed to the left edge of what needs it.
+// One straight line per "needs", from the centre of what is needed to the centre of what needs it, behind the tiles.
 function drawLinks() {
   const svg = flow.querySelector('.links');
   if (getComputedStyle(svg).display === 'none') return;
@@ -648,8 +648,8 @@ function drawLinks() {
     for (const need of s.needs) {
       const a = at(need);
       const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-      const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
-      const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
+      const x1 = ra.left + ra.width / 2 - box.left, y1 = ra.top + ra.height / 2 - box.top;
+      const x2 = rb.left + rb.width / 2 - box.left, y2 = rb.top + rb.height / 2 - box.top;
       if (x2 <= x1) continue;
       const d = `M${x1},${y1} L${x2},${y2}`;
       out += `<path class="${isMerged(need) ? 'done' : ''}" data-from="${need}" data-to="${s.n}" d="${d}"/>`;
