@@ -11,12 +11,12 @@ import { setLoggedOutHandler } from './api/client';
 import { Layout } from './components/Layout';
 import { RequireLogIn } from './components/RequireLogIn';
 import { AlertsPage } from './pages/AlertsPage';
+import { AnalystDeskPage } from './pages/AnalystDeskPage';
 import { LogInPage } from './pages/LogInPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OpenFirstPortfolioPage } from './pages/OpenFirstPortfolioPage';
 import { PortfolioPage } from './pages/PortfolioPage';
 import { PortfolioStart } from './pages/PortfolioStart';
-import { ReviewPage } from './pages/ReviewPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { SupplyChainPage } from './pages/SupplyChainPage';
 import { paths } from './paths';
@@ -38,7 +38,7 @@ export function App() {
           <Route index element={<OpenFirstPortfolioPage />} />
           <Route path={paths.portfolios} element={<PortfolioStart />} />
           <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
-          <Route path={paths.review} element={<ReviewPage />} />
+          <Route path={paths.review} element={<AnalystDeskPage />} />
           <Route path={paths.supplyChain(':portfolioId')} element={<SupplyChainPage />} />
           <Route path={paths.alerts(':portfolioId')} element={<AlertsPage />} />
           <Route path="*" element={<NotFoundPage />} />

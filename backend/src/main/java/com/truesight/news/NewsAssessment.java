@@ -25,6 +25,24 @@ public class NewsAssessment {
     private String reason;
     @CreationTimestamp @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    // The AI's own judgement, copied here the first time an analyst changes it. The columns above always hold the
+    // judgement in force, so the rest of TrueSight never needs to look at these.
+    @Column(name = "ai_is_event")
+    private Boolean aiEvent;
+    @Enumerated(EnumType.STRING) @Column(name = "ai_event_type", length = 30)
+    private EventType aiEventType;
+    @Enumerated(EnumType.STRING) @Column(name = "ai_severity", length = 10)
+    private Severity aiSeverity;
+
+    @Enumerated(EnumType.STRING) @Column(length = 10)
+    private AssessmentDecision decision;
+    @Column(name = "decided_by")
+    private Long decidedBy;
+    @Column(name = "decided_at")
+    private Instant decidedAt;
+    @Column(name = "decision_note", length = 500)
+    private String decisionNote;
     protected NewsAssessment() {}
     public NewsAssessment(Long articleId, boolean event, EventType eventType, Severity severity,
                           Confidence confidence, String summary, String reason) {
@@ -51,4 +69,19 @@ public class NewsAssessment {
     public void setConfidence(Confidence confidence) { this.confidence = confidence; }
     public void setSummary(String summary) { this.summary = summary; }
     public void setReason(String reason) { this.reason = reason; }
+
+    public Boolean getAiEvent() { return aiEvent; }
+    public EventType getAiEventType() { return aiEventType; }
+    public Severity getAiSeverity() { return aiSeverity; }
+    public AssessmentDecision getDecision() { return decision; }
+    public Long getDecidedBy() { return decidedBy; }
+    public Instant getDecidedAt() { return decidedAt; }
+    public String getDecisionNote() { return decisionNote; }
+    public void setAiEvent(Boolean aiEvent) { this.aiEvent = aiEvent; }
+    public void setAiEventType(EventType aiEventType) { this.aiEventType = aiEventType; }
+    public void setAiSeverity(Severity aiSeverity) { this.aiSeverity = aiSeverity; }
+    public void setDecision(AssessmentDecision decision) { this.decision = decision; }
+    public void setDecidedBy(Long decidedBy) { this.decidedBy = decidedBy; }
+    public void setDecidedAt(Instant decidedAt) { this.decidedAt = decidedAt; }
+    public void setDecisionNote(String decisionNote) { this.decisionNote = decisionNote; }
 }

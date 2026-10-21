@@ -1,5 +1,9 @@
 package com.truesight.relationship;
 
+import com.truesight.ai.AiAnswer;
+import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiPurpose;
+import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.report.Report;
@@ -27,6 +31,9 @@ import java.util.Set;
  *
  * <p>Reports are public, so a report that already has relationships is never sent to the AI again, whichever
  * portfolio asks.
+ *
+ * <p>Each call is recorded in the AI Audit Trail with the report's text replaced by a marker, and with how many quotes
+ * were kept and how many dropped because they were not in the report.
  */
 @Service
 public class RelationshipFinder {
@@ -55,13 +62,15 @@ public class RelationshipFinder {
     private final GeminiAnswer answers;
     private final CompanyDirectory companies;
     private final RelationshipRepository relationships;
+    private final AiCallLog calls;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
-                              RelationshipRepository relationships) {
+                              RelationshipRepository relationships, AiCallLog calls) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
         this.relationships = relationships;
+        this.calls = calls;
     }
 
     /**
@@ -76,16 +85,20 @@ public class RelationshipFinder {
         if (relationships.existsByReportId(report.getId())) {
             return;
         }
-        String prompt = PROMPT.formatted(company.getName(), report.getForm(),
-                ReportSection.forAi(report.getForm(), report.getText()));
-        List<GeminiAnswer.Found> found = ask(prompt);
+        String section = ReportSection.forAi(report.getForm(), report.getText());
+        AiRequest request = new AiRequest(AiPurpose.FIND_RELATIONSHIPS,
+                PROMPT.formatted(company.getName(), report.getForm(), section), report.getId(),
+                PROMPT.formatted(company.getName(), report.getForm(), AiRequest.reportMarker(report.getId(), section)));
+        Asked asked = ask(request);
 
         QuoteChecker checker = new QuoteChecker(report.getText());
         Set<String> saved = new HashSet<>();
         List<Relationship> proven = new ArrayList<>();
-        for (GeminiAnswer.Found item : found) {
+        int dropped = 0;
+        for (GeminiAnswer.Found item : asked.found()) {
             Optional<String> evidence = checker.evidenceFor(item.quote());
             if (evidence.isEmpty()) {
+                dropped++;
                 continue;
             }
             Company counterparty = companies.findOrCreate(cut(item.company(), MAX_NAME), null, null,
@@ -98,19 +111,34 @@ public class RelationshipFinder {
                     item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES), evidence.get()));
         }
         relationships.saveAll(proven);
+        calls.finish(asked.callId(), proven.size(), dropped);
     }
 
-    /** Asks Gemini, and asks once more if the answer cannot be read. */
-    private List<GeminiAnswer.Found> ask(String prompt) {
+    /** What Gemini found, and the record of the call that found it. */
+    private record Asked(List<GeminiAnswer.Found> found, Long callId) {
+    }
+
+    /** Asks Gemini, and asks once more if the answer cannot be read. Each unreadable answer is marked so. */
+    private Asked ask(AiRequest request) {
         try {
-            return answers.read(gemini.generate(prompt));
+            return read(request);
         } catch (GeminiAnswer.UnreadableAnswerException first) {
             try {
-                return answers.read(gemini.generate(prompt));
+                return read(request);
             } catch (GeminiAnswer.UnreadableAnswerException second) {
                 throw new GeminiClient.GeminiException(
                         "The AI's answer could not be read, even when asked a second time.", second);
             }
+        }
+    }
+
+    private Asked read(AiRequest request) {
+        AiAnswer answer = gemini.generate(request);
+        try {
+            return new Asked(answers.read(answer.text()), answer.callId());
+        } catch (GeminiAnswer.UnreadableAnswerException exception) {
+            calls.unreadable(answer.callId());
+            throw exception;
         }
     }
 
