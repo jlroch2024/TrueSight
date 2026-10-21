@@ -214,12 +214,107 @@ export function focusOn(nodeId: string, edges: GraphEdge[]): Focus {
   return { nodeIds, edgeIds };
 }
 
-// A flow marker takes this long to travel from supplier to customer, independent of the review line style.
-export const FLOW_DURATION_MS = 2200;
+// The colours of the holdings' chains, handed out in this order. Checked as a set against the graph's dark panel
+// (#0b2028) with the dataviz skill's palette validator, every pair against every other: each pair is told apart with
+// full colour vision (difference at least 15) and with each kind of colour blindness (at least 9), and each stands out
+// from the panel by at least 3:1. None is the teal, lime or amber that already mean holding, chosen and shared.
+export const CHAIN_COLOURS = ['#d7587e', '#185afa', '#0fac13', '#8480f2', '#a25927', '#2c9fbb', '#9d45ab'];
 
-/** Progress of the flow marker from supplier (0) to customer (1), wrapping once per cycle. */
-export function flowProgressAt(elapsedMs: number): number {
-  return (((elapsedMs % FLOW_DURATION_MS) + FLOW_DURATION_MS) % FLOW_DURATION_MS) / FLOW_DURATION_MS;
+/** A holding whose chain has a colour, for the graph's key: its ticker (or name), and the colour. */
+export type ChainKey = { id: string; label: string; colour: string };
+
+/**
+ * Gives each holding's chain its own colour, so the user can follow it across the graph: every arrow into or out of a
+ * holding takes that holding's colour, and an arrow further out (a supplier's supplier) takes the colour of the
+ * holding it leads to. An arrow from one holding to another takes its customer's colour. Holdings with arrows get
+ * colours in the order of their tickers (names for those without); there are only as many colours as CHAIN_COLOURS
+ * holds, and a colour is never used twice, so the arrows of any further holding keep no colour (the graph draws them
+ * grey), as do arrows that lead to no holding at all.
+ */
+export function chainColours(
+  nodes: Pick<GraphNode, 'id' | 'name' | 'ticker' | 'isHolding'>[],
+  edges: Pick<GraphEdge, 'id' | 'source' | 'target'>[],
+): { edges: Map<string, string>; key: ChainKey[] } {
+  const linked = new Set(edges.flatMap((edge) => [edge.source, edge.target]));
+  const labelOf = (node: Pick<GraphNode, 'name' | 'ticker'>) => node.ticker ?? displayName(node.name);
+  const holdings = nodes
+    .filter((node) => node.isHolding && linked.has(node.id))
+    .sort((a, b) => labelOf(a).localeCompare(labelOf(b)));
+  const key = holdings
+    .slice(0, CHAIN_COLOURS.length)
+    .map((node, index) => ({ id: node.id, label: labelOf(node), colour: CHAIN_COLOURS[index]! }));
+  const colourOf = new Map(key.map((entry) => [entry.id, entry.colour]));
+  const rank = new Map(holdings.map((node, index) => [node.id, index]));
+
+  // The nearest holding along the arrows, walking towards customers (or towards suppliers): of those equally near, the
+  // first in ticker order.
+  const nearest = (start: string, towards: 'target' | 'source'): string | null => {
+    const from = towards === 'target' ? 'source' : 'target';
+    const seen = new Set([start]);
+    let ring = [start];
+    while (ring.length) {
+      const found = ring.filter((id) => rank.has(id)).sort((a, b) => rank.get(a)! - rank.get(b)!);
+      if (found.length) return found[0]!;
+      const next: string[] = [];
+      for (const id of ring) {
+        for (const edge of edges) {
+          const onward = edge[towards];
+          if (edge[from] === id && !seen.has(onward)) {
+            seen.add(onward);
+            next.push(onward);
+          }
+        }
+      }
+      ring = next;
+    }
+    return null;
+  };
+
+  const result = new Map<string, string>();
+  for (const edge of edges) {
+    // Its customer if that is a holding, else its supplier if that is, else the holding it leads to (or comes from).
+    const holding = rank.has(edge.target)
+      ? edge.target
+      : rank.has(edge.source)
+        ? edge.source
+        : (nearest(edge.target, 'target') ?? nearest(edge.source, 'source'));
+    const colour = holding ? colourOf.get(holding) : undefined;
+    if (colour) result.set(edge.id, colour);
+  }
+  return { edges: result, key };
+}
+
+/** A colour mixed with white: share 0 is the colour itself, 1 is white. For the bright packets that flow along a line. */
+export function tint(hex: string, share: number): string {
+  const channels = [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16));
+  return `#${channels
+    .map((value) => Math.round(value + (255 - value) * share).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+// The packets that flow along every line: how far apart they are and how fast they go, in the graph's own units (so
+// they keep their spacing as the user zooms), how many one line can carry, and how far from each end they fade.
+export const PACKET_SPACING = 120;
+export const PACKET_SPEED = 60;
+export const MAX_PACKETS = 8;
+const PACKET_FADE = 12;
+
+/**
+ * Where the packets on a line of the given length (on screen) are at a moment, from supplier (0) to customer (1), each
+ * with how visible it is: all lines carry packets at the same speed and spacing, whatever their length, so the whole
+ * graph flows evenly, the way the prototype did. A packet fades in as it leaves the supplier and out as it reaches the
+ * customer. A line too long for MAX_PACKETS spaces them further apart.
+ */
+export function packetsAlong(length: number, elapsedMs: number, zoom: number): { at: number; opacity: number }[] {
+  if (!(length > 0)) return [];
+  const spacing = Math.max(PACKET_SPACING * zoom, length / MAX_PACKETS);
+  const travelled = (elapsedMs / 1000) * PACKET_SPEED * zoom;
+  const offset = ((travelled % spacing) + spacing) % spacing;
+  const packets: { at: number; opacity: number }[] = [];
+  for (let distance = offset; distance < length && packets.length < MAX_PACKETS; distance += spacing) {
+    packets.push({ at: distance / length, opacity: Math.min(1, distance / PACKET_FADE, (length - distance) / PACKET_FADE) });
+  }
+  return packets;
 }
 
 /**
@@ -495,150 +590,6 @@ export function flowLayout(
     });
   }
   return positions;
-}
-
-/** The space a company takes on the graph, its tile and label box together, in the graph's own coordinates. */
-export type Box = { x1: number; y1: number; x2: number; y2: number };
-
-/** How an arrow curves around a company it would otherwise cross: how far its control point sits from the straight
- * line (Cytoscape's control-point-distances), and where along the arrow (control-point-weights, 0 to 1). */
-export type Detour = { distance: number; weight: number };
-
-// How many points along an arrow are checked, and how far a curved arrow keeps from the company it goes around.
-const DETOUR_STEPS = 50;
-const DETOUR_MARGIN = 16;
-// A curve is only judged clear if it also keeps this far from every other company: Cytoscape draws it from the
-// tiles' edges rather than their middles, so the drawn curve runs a little apart from the one checked here.
-const DETOUR_GAP = 10;
-// The wider search, when no gentle curve is clear: control-point distances in these steps, up to this far.
-const DETOUR_STEP = 20;
-const WIDEST_SWING = 400;
-
-/**
- * The arrows that would pass straight through another company's tile or label box (boxes), each with the curve that
- * takes it around. Each arrow runs between the middles of its two companies' tiles (tiles). A column layout keeps most arrows clear, but an arrow that skips a column (a supplier's supplier straight to
- * a holding) can meet a company in between. The first company an arrow meets decides its curve, which bends away from
- * that company's centre, opposite its middle, just far enough to clear its box; if that curve would meet another
- * company, it bends the other way or wider; in a crowded column, it swings as wide as it must to clear every one.
- */
-export function detours(
-  boxes: Map<string, Box>,
-  tiles: Map<string, Point>,
-  edges: Pick<GraphEdge, 'id' | 'source' | 'target'>[],
-): Map<string, Detour> {
-  const centre = (box: Box): Point => ({ x: (box.x1 + box.x2) / 2, y: (box.y1 + box.y2) / 2 });
-  const result = new Map<string, Detour>();
-  for (const edge of edges) {
-    // An arrow runs between the middles of the two tiles, not of their boxes, whose label hangs below the tile.
-    const from = tiles.get(edge.source);
-    const to = tiles.get(edge.target);
-    if (!from || !to || edge.source === edge.target) continue;
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const length = Math.hypot(dx, dy);
-    if (length === 0) continue;
-
-    let crossed: { box: Box } | null = null;
-    for (let step = 1; step < DETOUR_STEPS && !crossed; step++) {
-      const at = step / DETOUR_STEPS;
-      const point = { x: from.x + dx * at, y: from.y + dy * at };
-      for (const [id, box] of boxes) {
-        if (id === edge.source || id === edge.target) continue;
-        if (point.x > box.x1 && point.x < box.x2 && point.y > box.y1 && point.y < box.y2) {
-          crossed = { box };
-          break;
-        }
-      }
-    }
-    if (!crossed) continue;
-
-    // How far a point lies to one side of the arrow's line (negative: the other side).
-    const across = (point: Point) => (dx * (point.y - from.y) - dy * (point.x - from.x)) / length;
-    const box = crossed.box;
-    const corners = [
-      { x: box.x1, y: box.y1 },
-      { x: box.x2, y: box.y1 },
-      { x: box.x1, y: box.y2 },
-      { x: box.x2, y: box.y2 },
-    ].map(across);
-    // The arrow passes on the side away from the company's centre, just beyond the box's furthest corner on that side.
-    const middle = centre(box);
-    const side = across(middle);
-    const away = side > 0 ? -1 : 1;
-    const clearance = (side > 0 ? -Math.min(...corners) : Math.max(...corners)) + DETOUR_MARGIN;
-    const otherClearance = (side > 0 ? Math.max(...corners) : -Math.min(...corners)) + DETOUR_MARGIN;
-    // The curve bends most opposite the company's middle.
-    const along = ((middle.x - from.x) * dx + (middle.y - from.y) * dy) / (length * length);
-    const weight = Math.min(0.85, Math.max(0.15, along));
-    // A curve with one control point strays from the straight line by 2·w·(1 − w) of the control point's distance.
-    const spread = 2 * weight * (1 - weight);
-
-    // How many other companies a curve with this control-point distance would still pass through.
-    const normal = { x: -dy / length, y: dx / length };
-    const companiesCrossed = (distance: number, at: number): number => {
-      const control = {
-        x: from.x + dx * at + normal.x * distance,
-        y: from.y + dy * at + normal.y * distance,
-      };
-      const crossedIds = new Set<string>();
-      for (let step = 1; step < DETOUR_STEPS; step++) {
-        const t = step / DETOUR_STEPS;
-        const u = 1 - t;
-        const point = {
-          x: u * u * from.x + 2 * u * t * control.x + t * t * to.x,
-          y: u * u * from.y + 2 * u * t * control.y + t * t * to.y,
-        };
-        for (const [id, other] of boxes) {
-          if (id === edge.source || id === edge.target) continue;
-          if (
-            point.x > other.x1 - DETOUR_GAP &&
-            point.x < other.x2 + DETOUR_GAP &&
-            point.y > other.y1 - DETOUR_GAP &&
-            point.y < other.y2 + DETOUR_GAP
-          ) {
-            crossedIds.add(id);
-          }
-        }
-      }
-      return crossedIds.size;
-    };
-    // The first curve that clears every company: away from the company first, then the other way, each a little wider
-    // in turn. If none is clear, the one that crosses fewest.
-    const choices = [away * clearance, -away * otherClearance].flatMap((offset) =>
-      [1, 1.5, 2].map((wider) => (offset * wider) / spread),
-    );
-    let distance = choices[0]!;
-    let fewest = Number.POSITIVE_INFINITY;
-    for (const choice of choices) {
-      const crossedCount = companiesCrossed(choice, weight);
-      if (crossedCount < fewest) {
-        distance = choice;
-        fewest = crossedCount;
-      }
-      if (crossedCount === 0) break;
-    }
-    // In a crowded column none of those may be clear: then the gentlest curve that is, bending anywhere along the
-    // arrow, however wide it has to swing. An arrow through a company would read as a relationship with it.
-    let bendAt = weight;
-    if (fewest > 0) {
-      let gentlest = Number.POSITIVE_INFINITY;
-      for (let at = 0.15; at <= 0.85 + 1e-9; at += 0.1) {
-        for (let wider = 1; wider <= WIDEST_SWING / DETOUR_STEP; wider++) {
-          for (const sign of [1, -1]) {
-            const candidate = sign * wider * DETOUR_STEP;
-            const strays = 2 * at * (1 - at) * Math.abs(candidate);
-            if (strays < gentlest && companiesCrossed(candidate, at) === 0) {
-              gentlest = strays;
-              distance = candidate;
-              bendAt = at;
-            }
-          }
-        }
-      }
-    }
-    result.set(edge.id, { distance, weight: bendAt });
-  }
-  return result;
 }
 
 /** What the user did to a portfolio's graph: the companies they dragged, and the zoom and pan. */

@@ -1042,12 +1042,18 @@ table.holdings td:nth-child(7) {
 
 .graph-legend-flow i {
   position: absolute;
-  top: -4px;
-  left: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
+  top: -2.5px;
+  left: 6px;
+  width: 8px;
+  height: 3px;
+  background: var(--text);
+  box-shadow: 0 0 5px var(--text);
+}
+
+/* A holding's chain colour, as a short glowing line. */
+.graph-legend-chain {
+  width: 16px;
+  height: 3px;
 }
 
 .graph-legend-line {

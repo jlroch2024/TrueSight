@@ -9,28 +9,28 @@
 // with an amber border, and its label box says what it supplies or buys, e.g. "Supplies 4 Holdings".
 //
 // Layout: a flow, worked out before the graph is drawn (spreadLayout): each company in a band by its place in the
-// chain, so every arrow runs left to right from supplier to customer, spread out inside its band so the graph takes
-// the frame's shape, with separate groups packed into the frame's shape too. The legend and buttons sit in a bar under
-// the graph, so no company can hide behind them. The view is fitted once and the graph fades in; nothing rearranges it afterwards. Dragging a company tugs its
-// direct suppliers and customers along like elastic, and they ease back when it is let go; nothing else moves.
-// An arrow that would pass through another company curves around it. What the user did (the companies they moved, the
-// zoom and pan) is remembered per portfolio while the browser tab is open, so leaving the page and coming back changes
-// nothing; Reset Layout returns to the calculated arrangement, and Fit to Screen brings everything back into view.
-// A visitor whose computer is set to reduce motion gets no easing and no moving flow markers.
+// chain, so every arrow runs left to right from supplier to customer, spread out inside its band so the graph takes the
+// frame's shape, with separate groups packed into the frame's shape too. The legend and buttons sit in a bar under the
+// graph, so no company can hide behind them. The view is fitted once and the graph fades in; nothing rearranges it
+// afterwards. Dragging a company tugs its direct suppliers and customers along like elastic, and they ease back when it
+// is let go; nothing else moves. Every arrow is a straight line in the colour of its holding's chain (chainColours),
+// with a soft glow of that colour, and bright packets flow along it from supplier to customer; a key under the graph
+// names each colour. What the user did (the companies they moved, the zoom and pan) is remembered per portfolio while
+// the browser tab is open, so leaving the page and coming back changes nothing; Reset Layout returns to the calculated
+// arrangement, and Fit to Screen brings everything back into view. A visitor whose computer is set to reduce motion
+// gets no easing and no moving flow markers.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
 // Clicking a company chooses it: corner brackets close in around it and dashed crosshair lines run through it. Clicking
 // the background lets go. Cytoscape's own grey press circle and selection overlay are switched off.
 import cytoscape, { type Core, type ElementDefinition, type NodeSingular } from 'cytoscape';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { GraphLegend } from './GraphLegend';
 import {
-  type Box,
-  detours,
+  chainColours,
   displayName,
   easeTowards,
-  flowProgressAt,
   focusOn,
   followTarget,
   forgetLayout,
@@ -39,13 +39,16 @@ import {
   type GraphEdge,
   type GraphNode,
   logoUrl,
+  MAX_PACKETS,
   nodeLabel,
+  packetsAlong,
   plainName,
   type Point,
   readSavedLayout,
   saveLayout,
   spreadLayout,
   TILE_SIZE,
+  tint,
 } from '../pages/supplyChain';
 
 
@@ -58,7 +61,6 @@ const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
 const PANEL_RAISED = '#102a33';
 const WHITE = '#ffffff';
-const PANEL = '#0b2028';
 
 // The teal border that marks a holding. Tile sizes live in supplyChain.ts, beside holdingSize.
 const HOLDING_BORDER_WIDTH = 3;
@@ -86,6 +88,13 @@ function letterTile(name: string): string {
 
 // How faded the companies and arrows outside the focus are.
 const FADED_OPACITY = 0.15;
+// The glow around each arrow: how strong, and how far it reaches either side of the line.
+const GLOW_OPACITY = 0.22;
+const GLOW_WIDTH = 3;
+// The packets that flow along the arrows: how long and thick each is, and how much white brightens its line's colour.
+const PACKET_LENGTH = 10;
+const PACKET_THICKNESS = 3;
+const PACKET_TINT = 0.55;
 
 // How far out and in the user can zoom: far enough to see a big portfolio whole, close enough to read any label.
 const MIN_ZOOM = 0.3;
@@ -100,10 +109,8 @@ const BRACKET_GAP = 7;
 // Approximate room for the arrow sentence, used to put it on the other side of the pointer near an edge.
 const TOOLTIP_WIDTH = 320;
 const TOOLTIP_HEIGHT = 90;
-// How long after the user stops zooming or panning the view is remembered, and how long after a company is let go the
-// arrows are checked again (its neighbours have eased back by then).
+// How long after the user stops zooming or panning the view is remembered.
 const REMEMBER_DELAY_MS = 500;
-const DETOUR_DELAY_MS = 600;
 
 // A label box's height for the layout: each line, plus its padding and the gap under the tile.
 const LABEL_LINE = 14;
@@ -171,6 +178,10 @@ export function SupplyChainGraph({
   selectedRelationshipRef.current = selectedRelationshipId;
   // Set by the graph once it is drawn: puts every company back where the layout placed it.
   const resetLayoutRef = useRef<() => void>(() => {});
+  // Each holding's chain in its own colour, for the arrows and for the key under the graph.
+  const chains = useMemo(() => chainColours(nodes, edges), [nodes, edges]);
+  // The packets' glow filter, named for this graph alone.
+  const glowId = `packet-glow${useId().replace(/:/g, '')}`;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -226,6 +237,8 @@ export function SupplyChainGraph({
           target: edge.target,
           relationshipId: edge.relationshipId,
           reviewStatus: edge.reviewStatus,
+          // The colour of the holding's chain it belongs to (see chainColours); grey when it has none.
+          colour: chains.edges.get(edge.id) ?? MUTED,
         },
       })),
     ];
@@ -306,29 +319,23 @@ export function SupplyChainGraph({
         { selector: 'node.hover', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
         // Chosen on the page: a lime border (the brackets and crosshair are drawn over the graph).
         { selector: 'node.chosen', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
-        // Arrows in the muted grey, which shows on the dark panel (the border colour hardly did).
+        // Straight arrows in the colour of their holding's chain, each with a soft glow of the same colour around it.
         {
           selector: 'edge',
           style: {
-            width: 1.5,
-            'line-color': MUTED,
-            'target-arrow-color': MUTED,
+            width: 2,
+            'line-color': 'data(colour)',
+            'target-arrow-color': 'data(colour)',
+            'underlay-color': 'data(colour)',
+            'underlay-opacity': GLOW_OPACITY,
+            'underlay-padding': GLOW_WIDTH,
             'target-arrow-shape': 'triangle',
             'arrow-scale': 1,
-            'curve-style': 'bezier',
+            'curve-style': 'straight',
             'line-style': 'solid',
             'overlay-opacity': 0,
             'transition-property': 'width, line-color, target-arrow-color',
             'transition-duration': HOVER_TRANSITION,
-          },
-        },
-        // An arrow that would pass through another company curves around it (see applyDetours).
-        {
-          selector: 'edge.detour',
-          style: {
-            'curve-style': 'unbundled-bezier',
-            'control-point-distances': 'data(bend)',
-            'control-point-weights': 'data(bendAt)',
           },
         },
         { selector: 'edge[reviewStatus = "APPROVED"]', style: { 'line-style': 'solid' } },
@@ -400,11 +407,6 @@ export function SupplyChainGraph({
     } else {
       cy.fit(cy.elements(), PADDING);
     }
-    applyDetours(cy, edges);
-    // Cytoscape measures the label boxes when it first draws them, so the arrows are checked again once it has.
-    cy.one('render', () => {
-      if (!cy.destroyed()) applyDetours(cy, edges);
-    });
     schedule();
 
     // Dragging a company tugs its direct suppliers and customers along like elastic; they ease back when it is let go.
@@ -420,15 +422,9 @@ export function SupplyChainGraph({
       window.clearTimeout(viewTimer);
       viewTimer = window.setTimeout(remember, REMEMBER_DELAY_MS);
     });
-    let detourTimer: number | undefined;
     cy.on('dragfree', 'node', (event) => {
       moved[event.target.id()] = { ...event.target.position() };
       remember();
-      // Once the neighbours have eased back, the arrows are checked again against where everything now is.
-      window.clearTimeout(detourTimer);
-      detourTimer = window.setTimeout(() => {
-        if (!cy.destroyed()) applyDetours(cy, edges);
-      }, DETOUR_DELAY_MS);
     });
 
     resetLayoutRef.current = () => {
@@ -442,7 +438,6 @@ export function SupplyChainGraph({
         if (point) node.position(point);
       });
       cy.fit(cy.elements(), PADDING);
-      applyDetours(cy, edges);
       schedule();
     };
 
@@ -505,16 +500,15 @@ export function SupplyChainGraph({
     });
     applyFocus(cy, edges, selectedNodeRef.current);
 
-    // Teal markers carry flow direction independently from the status shown by the base line.
+    // Bright packets flow along every arrow, from supplier to customer, in the arrow's own colour, all at the same speed
+    // and spacing (see packetsAlong). Those on a faded arrow fade with it.
     let flowFrame: number | undefined;
     const flowLayer = flowLayerRef.current;
-    const markersByEdge = new Map<string, SVGCircleElement[]>();
-    flowLayer?.querySelectorAll<SVGCircleElement>('[data-flow-edge]').forEach((marker) => {
-      const edgeId = marker.dataset.flowEdge;
+    const packetsByEdge = new Map<string, SVGRectElement[]>();
+    flowLayer?.querySelectorAll<SVGRectElement>('[data-flow-edge]').forEach((packet) => {
+      const edgeId = packet.dataset.flowEdge;
       if (!edgeId) return;
-      const markers = markersByEdge.get(edgeId) ?? [];
-      markers.push(marker);
-      markersByEdge.set(edgeId, markers);
+      packetsByEdge.set(edgeId, [...(packetsByEdge.get(edgeId) ?? []), packet]);
     });
     if (flowLayer) flowLayer.style.visibility = reducesMotion ? 'hidden' : 'visible';
     if (!reducesMotion && edges.length > 0 && typeof window.requestAnimationFrame === 'function') {
@@ -522,15 +516,23 @@ export function SupplyChainGraph({
       const step = (now: number) => {
         if (cy.destroyed()) return;
         startedAt ??= now;
-        const progress = flowProgressAt(now - startedAt);
+        const zoom = cy.zoom();
         cy.edges().forEach((edge) => {
-          const markers = markersByEdge.get(edge.id()) ?? [];
-          markers.forEach((marker, index) => {
-            const markerProgress = (progress + index / Math.max(markers.length, 1)) % 1;
-            const point = pointAlongEdge(edge, markerProgress);
-            marker.setAttribute('cx', String(point.x));
-            marker.setAttribute('cy', String(point.y));
-            marker.setAttribute('opacity', String(Math.min(1, markerProgress * 8, (1 - markerProgress) * 8)));
+          const from = edge.renderedSourceEndpoint();
+          const to = edge.renderedTargetEndpoint();
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const placed = packetsAlong(Math.hypot(dx, dy), now - startedAt!, zoom);
+          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+          const shown = edge.hasClass('faded') ? FADED_OPACITY : 1;
+          (packetsByEdge.get(edge.id()) ?? []).forEach((packet, index) => {
+            const at = placed[index];
+            if (!at) {
+              packet.setAttribute('opacity', '0');
+              return;
+            }
+            packet.setAttribute('transform', `translate(${from.x + dx * at.at} ${from.y + dy * at.at}) rotate(${angle})`);
+            packet.setAttribute('opacity', String(at.opacity * shown));
           });
         });
         flowFrame = window.requestAnimationFrame(step);
@@ -542,7 +544,6 @@ export function SupplyChainGraph({
       setEdgeTooltip(null);
       if (flowFrame !== undefined) window.cancelAnimationFrame(flowFrame);
       window.clearTimeout(viewTimer);
-      window.clearTimeout(detourTimer);
       elastic.stop();
       observer?.disconnect();
       resetLayoutRef.current = () => {};
@@ -553,7 +554,7 @@ export function SupplyChainGraph({
     // onEdgeSelect is deliberately left out: it is read through the ref above, so that selecting an edge (which
     // changes the page's state, and so gives onEdgeSelect a new identity) does not recreate the whole graph and
     // throw away its pan, zoom and node positions.
-  }, [nodes, edges, layoutKey]);
+  }, [nodes, edges, chains, layoutKey]);
 
   // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
   // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
@@ -629,20 +630,32 @@ export function SupplyChainGraph({
         <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
         <div className="graph-overlay" aria-hidden="true">
           <svg ref={flowLayerRef} className="flow-marker-layer" style={{ visibility: 'hidden' }}>
-            {edges.flatMap((edge) =>
-              [0, 1].map((markerIndex) => (
-                <circle
-                  key={`${edge.id}-flow-${markerIndex}`}
-                  data-flow-edge={edge.id}
-                  cx="0"
-                  cy="0"
-                  r="3"
-                  fill={ACCENT}
-                  stroke={PANEL}
-                  strokeWidth="1.5"
-                />
-              )),
-            )}
+            {/* One glow for every packet: each is blurred in its own colour, under a crisp copy of itself. */}
+            <defs>
+              <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2.5" result="glow" />
+                <feMerge>
+                  <feMergeNode in="glow" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <g filter={`url(#${glowId})`}>
+              {edges.flatMap((edge) =>
+                Array.from({ length: MAX_PACKETS }, (_, index) => (
+                  <rect
+                    key={`${edge.id}-packet-${index}`}
+                    data-flow-edge={edge.id}
+                    x={-PACKET_LENGTH / 2}
+                    y={-PACKET_THICKNESS / 2}
+                    width={PACKET_LENGTH}
+                    height={PACKET_THICKNESS}
+                    fill={tint(chains.edges.get(edge.id) ?? MUTED, PACKET_TINT)}
+                    opacity="0"
+                  />
+                )),
+              )}
+            </g>
           </svg>
           <svg ref={crosshairRef} className="graph-crosshair">
             <line className="crosshair-x" />
@@ -680,6 +693,20 @@ export function SupplyChainGraph({
       {/* Under the graph, so no company can hide behind it: the key, how to use the graph, and its two buttons. */}
       <div className="graph-bar">
         <GraphLegend hasRelationships={edges.length > 0} />
+        {chains.key.length > 0 && (
+          <ul className="graph-legend" aria-label="Each holding's chain">
+            {chains.key.map((entry) => (
+              <li key={entry.id}>
+                <span
+                  className="graph-legend-chain"
+                  style={{ background: entry.colour, boxShadow: `0 0 6px ${entry.colour}` }}
+                  aria-hidden="true"
+                />
+                {entry.label}
+              </li>
+            ))}
+          </ul>
+        )}
         <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         <span className="graph-buttons">
           <button type="button" className="secondary" onClick={() => resetLayoutRef.current()}>
@@ -692,25 +719,6 @@ export function SupplyChainGraph({
       </div>
     </div>
   );
-}
-
-type EdgePath = {
-  renderedSourceEndpoint: () => Point;
-  renderedTargetEndpoint: () => Point;
-  renderedControlPoints: () => Point[];
-};
-
-function pointAlongEdge(edge: EdgePath, progress: number): Point {
-  const points = [edge.renderedSourceEndpoint(), ...edge.renderedControlPoints(), edge.renderedTargetEndpoint()];
-  for (let remaining = points.length - 1; remaining > 0; remaining--) {
-    for (let i = 0; i < remaining; i++) {
-      points[i] = {
-        x: points[i]!.x + (points[i + 1]!.x - points[i]!.x) * progress,
-        y: points[i]!.y + (points[i + 1]!.y - points[i]!.y) * progress,
-      };
-    }
-  }
-  return points[0]!;
 }
 
 /** A company's label box, line by line: its ticker and weight (or its name), its name, and what a shared one supplies. */
@@ -905,22 +913,6 @@ function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: 
       targets.clear();
     },
   };
-}
-
-/** Curves each arrow that would pass through another company around it, and straightens the others (see detours). */
-function applyDetours(cy: Core, edges: GraphEdge[]): void {
-  const boxes = new Map<string, Box>();
-  const tiles = new Map<string, Point>();
-  cy.nodes().forEach((node) => {
-    boxes.set(node.id(), node.boundingBox({ includeLabels: true }));
-    tiles.set(node.id(), { ...node.position() });
-  });
-  const found = detours(boxes, tiles, edges);
-  cy.edges().forEach((edge) => {
-    const detour = found.get(edge.id());
-    if (detour) edge.data({ bend: detour.distance, bendAt: detour.weight }).addClass('detour');
-    else edge.removeClass('detour');
-  });
 }
 
 /** Lights one company and its direct suppliers and customers, and fades the rest; with none, lights everything. */

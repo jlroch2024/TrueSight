@@ -5,7 +5,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { flowProgressAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
+import { CHAIN_COLOURS, type GraphEdge, type GraphNode, tint } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
 type Handler = (event: { target: unknown; renderedPosition?: { x: number; y: number } }) => void;
@@ -17,12 +17,13 @@ type Fake = {
   renderedControlPoints: () => { x: number; y: number }[];
   classes: Set<string>;
   toggleClass: (name: string, on: boolean) => Fake;
+  hasClass: (name: string) => boolean;
   removeClass: (name: string) => Fake;
   addClass: (name: string) => Fake;
   // Where a company is, and the box its tile and label take (the same for every stand-in company).
   position: (point?: { x: number; y: number }) => { x: number; y: number };
   boundingBox: () => { x1: number; y1: number; x2: number; y2: number; w: number; h: number };
-  // What the graph set on an arrow, e.g. its detour.
+  // What the graph set on a company or an arrow after drawing it.
   data: (values?: Record<string, unknown>) => Fake;
   values: Record<string, unknown>;
 };
@@ -85,6 +86,7 @@ function fake(id: string): Fake {
     renderedTargetEndpoint: () => ({ x: 100, y: 0 }),
     renderedControlPoints: () => [],
     classes: new Set(),
+    hasClass: (name) => item.classes.has(name),
     toggleClass: (name, on) => {
       if (on) item.classes.add(name);
       else item.classes.delete(name);
@@ -367,32 +369,41 @@ describe('SupplyChainGraph', () => {
     expect(options.style.find((rule) => rule.selector === 'node')!.style).toMatchObject({ 'transition-duration': 0.15 });
   });
 
-  describe('arrows that would cross a company (item 55)', () => {
-    it('curves an arrow around a company in its way, and leaves the others straight', () => {
-      // Supplier and customer in one row with the holding between them: the arrow straight from supplier to customer
-      // would pass through the holding.
-      made.placed = new Map([
-        ['supplier', { x: 0, y: 0 }],
-        ['holding', { x: 200, y: 0 }],
-        ['customer', { x: 400, y: 0 }],
-        ['other', { x: 200, y: 400 }],
-      ]);
-      const skip: GraphEdge = {
-        id: 'relationship-9', source: 'supplier', target: 'customer', relationshipId: 9,
-        reviewStatus: 'UNREVIEWED', summary: 'Supplier supplies Customer',
-      };
-      drawGraph(FOCUS_NODES, [...FOCUS_EDGES, skip]);
-
-      const curved = made.edges.find((edge) => edge.id() === 'relationship-9')!;
-      expect(curved.classes.has('detour')).toBe(true);
-      expect(Math.abs(curved.values.bend as number)).toBeGreaterThan(0);
-      expect(made.edges.filter((edge) => edge.classes.has('detour')).map((edge) => edge.id())).toEqual(['relationship-9']);
+  describe('straight, coloured arrows', () => {
+    it('draws every arrow as a straight line, even one that passes a company on its way', () => {
+      drawGraph();
 
       const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
+      const edgeStyles = options.style.filter((entry) => entry.selector.startsWith('edge'));
+      expect(edgeStyles).toContainEqual(
+        expect.objectContaining({ selector: 'edge', style: expect.objectContaining({ 'curve-style': 'straight' }) }),
+      );
+      for (const entry of edgeStyles) {
+        if (entry.selector !== 'edge') expect(entry.style).not.toHaveProperty('curve-style');
+      }
+    });
+
+    it("colours each arrow, its arrowhead and its glow in its holding's chain colour, and keys the colours under the graph", () => {
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
+
+      const elements = (made.options as { elements: Array<{ data: Record<string, unknown> }> }).elements;
+      const colourOf = (id: string) => elements.find((element) => element.data.id === id)!.data.colour;
+      // HLD and OTH, in ticker order: relationship-1 goes into HLD, relationship-2 out of it, relationship-3 into OTH.
+      expect(colourOf('relationship-1')).toBe(CHAIN_COLOURS[0]);
+      expect(colourOf('relationship-2')).toBe(CHAIN_COLOURS[0]);
+      expect(colourOf('relationship-3')).toBe(CHAIN_COLOURS[1]);
+      const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
       expect(options.style).toContainEqual(expect.objectContaining({
-        selector: 'edge.detour',
-        style: expect.objectContaining({ 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(bend)' }),
+        selector: 'edge',
+        style: expect.objectContaining({
+          'line-color': 'data(colour)',
+          'target-arrow-color': 'data(colour)',
+          'underlay-color': 'data(colour)',
+        }),
       }));
+
+      const key = screen.getByRole('list', { name: "Each holding's chain" });
+      expect([...key.querySelectorAll('li')].map((item) => item.textContent)).toEqual(['HLD', 'OTH']);
     });
   });
 
@@ -576,19 +587,20 @@ describe('SupplyChainGraph', () => {
       expect(screen.getByRole('tooltip')).toHaveTextContent(FOCUS_EDGES[1]!.summary);
     });
 
-    it('moves separate teal markers from supplier to customer without adding graph elements', () => {
+    it("flows bright packets along each arrow in its chain's colour, without adding graph elements", () => {
       const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
       const graphOptions = made.options as { elements: unknown[] };
-      const markers = [...container.querySelectorAll<SVGCircleElement>('[data-flow-edge="relationship-1"]')];
+      const packets = [...container.querySelectorAll<SVGRectElement>('[data-flow-edge="relationship-1"]')];
       expect(graphOptions.elements).toHaveLength(FOCUS_NODES.length + FOCUS_EDGES.length);
-      expect(markers).toHaveLength(2);
+      expect(packets[0]).toHaveAttribute('fill', tint(CHAIN_COLOURS[0]!, 0.55));
 
+      // The stand-in arrow runs 100 across: half a second in, the one packet that fits is 30 along it.
       runFrame(1000);
-      runFrame(1550);
+      runFrame(1500);
 
-      expect(markers.map((marker) => Number(marker.getAttribute('cx')))).toEqual([25, 75]);
-      expect(markers[0]).toHaveAttribute('fill', '#2dd4bf');
-      expect(flowProgressAt(550)).toBe(0.25);
+      expect(packets[0]).toHaveAttribute('transform', 'translate(30 0) rotate(0)');
+      expect(packets[0]).toHaveAttribute('opacity', '1');
+      expect(packets.slice(1).every((packet) => packet.getAttribute('opacity') === '0')).toBe(true);
     });
 
     it('keeps status strokes and hides moving markers when the computer is set to reduce motion', () => {

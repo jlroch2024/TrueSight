@@ -5,12 +5,11 @@ import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import {
-  type Box,
   buildGraphElements,
+  CHAIN_COLOURS,
+  chainColours,
   connectionsOf,
-  detours,
   forgetLayout,
-  flowProgressAt,
   displayName,
   easeTowards,
   flowLayout,
@@ -21,7 +20,11 @@ import {
   holdingSize,
   type GraphNode,
   logoUrl,
+  MAX_PACKETS,
   nodeLabel,
+  PACKET_SPACING,
+  PACKET_SPEED,
+  packetsAlong,
   plainName,
   readSavedLayout,
   relationshipSummary,
@@ -29,6 +32,7 @@ import {
   shortName,
   sharedCompanies,
   spreadLayout,
+  tint,
   sharedSummary,
   withSharedSummaries,
 } from './supplyChain';
@@ -232,12 +236,113 @@ describe('focusOn', () => {
   });
 });
 
-describe('flowProgressAt', () => {
-  it('moves from supplier to customer and wraps after one cycle', () => {
-    expect(flowProgressAt(0)).toBe(0);
-    expect(flowProgressAt(550)).toBe(0.25);
-    expect(flowProgressAt(2200)).toBe(0);
-    expect(flowProgressAt(2250)).toBeCloseTo(50 / 2200);
+describe('chainColours', () => {
+  it("colours every arrow into or out of a holding in that holding's own colour, with the real sample relationships", () => {
+    const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
+    const { edges: colours, key } = chainColours(nodes, edges);
+    const colourOf = new Map(key.map((entry) => [entry.id, entry.colour]));
+    const holdings = new Set(nodes.filter((node) => node.isHolding).map((node) => node.id));
+
+    expect(key.length).toBeGreaterThan(0);
+    for (const edge of edges) {
+      const holding = holdings.has(edge.target) ? edge.target : holdings.has(edge.source) ? edge.source : null;
+      if (holding && colourOf.has(holding)) expect(colours.get(edge.id), edge.summary).toBe(colourOf.get(holding));
+    }
+    expect(new Set(key.map((entry) => entry.colour)).size).toBe(key.length);
+  });
+
+  it('lists the holdings with arrows in ticker order, and leaves out a holding without any', () => {
+    const nodes = [
+      { id: 'b', name: 'Bee', ticker: 'BEE', isHolding: true },
+      { id: 'a', name: 'Ay', ticker: 'AY', isHolding: true },
+      { id: 'alone', name: 'Alone', ticker: 'AAA', isHolding: true },
+      { id: 's', name: 'Supplier', ticker: null, isHolding: false },
+    ];
+    const edges = [
+      { id: 'e1', source: 's', target: 'b' },
+      { id: 'e2', source: 's', target: 'a' },
+    ];
+
+    expect(chainColours(nodes, edges).key).toEqual([
+      { id: 'a', label: 'AY', colour: CHAIN_COLOURS[0] },
+      { id: 'b', label: 'BEE', colour: CHAIN_COLOURS[1] },
+    ]);
+  });
+
+  it("gives a supplier's supplier the colour of the holding its goods go on to, and a holding's supply to another holding the customer's colour", () => {
+    const nodes = [
+      { id: 'far', name: 'Far', ticker: null, isHolding: false },
+      { id: 'near', name: 'Near', ticker: null, isHolding: false },
+      { id: 'maker', name: 'Maker', ticker: 'MKR', isHolding: true },
+      { id: 'buyer', name: 'Buyer', ticker: 'BUY', isHolding: true },
+    ];
+    const edges = [
+      { id: 'far-near', source: 'far', target: 'near' },
+      { id: 'near-buyer', source: 'near', target: 'buyer' },
+      { id: 'maker-buyer', source: 'maker', target: 'buyer' },
+      { id: 'maker-near', source: 'maker', target: 'near' },
+    ];
+    const { edges: colours, key } = chainColours(nodes, edges);
+    const buyer = key.find((entry) => entry.id === 'buyer')!.colour;
+    const maker = key.find((entry) => entry.id === 'maker')!.colour;
+
+    expect(colours.get('far-near')).toBe(buyer);
+    expect(colours.get('near-buyer')).toBe(buyer);
+    expect(colours.get('maker-buyer')).toBe(buyer);
+    expect(colours.get('maker-near')).toBe(maker);
+  });
+
+  it('never uses a colour twice: holdings beyond the colours there are keep grey arrows', () => {
+    const holdings = Array.from({ length: CHAIN_COLOURS.length + 2 }, (_, index) => ({
+      id: `h${index}`, name: `Holding ${index}`, ticker: `H${String(index).padStart(2, '0')}`, isHolding: true,
+    }));
+    const nodes = [...holdings, { id: 's', name: 'Supplier', ticker: null, isHolding: false }];
+    const edges = holdings.map((holding) => ({ id: `to-${holding.id}`, source: 's', target: holding.id }));
+    const { edges: colours, key } = chainColours(nodes, edges);
+
+    expect(key).toHaveLength(CHAIN_COLOURS.length);
+    expect(new Set(colours.values()).size).toBe(CHAIN_COLOURS.length);
+    expect(colours.has(`to-h${CHAIN_COLOURS.length}`)).toBe(false);
+  });
+});
+
+describe('tint', () => {
+  it('mixes a colour with white by the given share', () => {
+    expect(tint('#d7587e', 0)).toBe('#d7587e');
+    expect(tint('#000000', 0.5)).toBe('#808080');
+    expect(tint('#185afa', 1)).toBe('#ffffff');
+  });
+});
+
+describe('packetsAlong', () => {
+  it('moves packets at the same speed and spacing on a short line and a long one', () => {
+    const short = packetsAlong(300, 1000, 1);
+    const long = packetsAlong(900, 1000, 1);
+
+    expect(short.map((packet) => packet.at * 300)).toEqual([PACKET_SPEED, PACKET_SPEED + PACKET_SPACING]);
+    expect(long.map((packet) => packet.at * 900).slice(0, 2)).toEqual(short.map((packet) => packet.at * 300));
+  });
+
+  it('fades a packet in as it leaves the supplier and out as it reaches the customer', () => {
+    expect(packetsAlong(300, 0, 1)[0]).toEqual({ at: 0, opacity: 0 });
+    // The last packet 5 short of the customer's end.
+    const length = PACKET_SPACING * 2 + 60;
+    const nearEnd = packetsAlong(length, ((length - 5 - PACKET_SPACING * 2) / PACKET_SPEED) * 1000, 1).at(-1)!;
+    expect(nearEnd.at * length).toBeCloseTo(length - 5);
+    expect(nearEnd.opacity).toBeGreaterThan(0);
+    expect(nearEnd.opacity).toBeLessThan(1);
+  });
+
+  it('keeps its spacing on screen in step with the zoom', () => {
+    const near = packetsAlong(600, 1000, 2).map((packet) => packet.at * 600);
+
+    expect(near.slice(0, 2)).toEqual([PACKET_SPEED * 2, (PACKET_SPEED + PACKET_SPACING) * 2]);
+  });
+
+  it(`spaces packets further apart on a line too long for ${MAX_PACKETS} of them`, () => {
+    const length = PACKET_SPACING * MAX_PACKETS * 2;
+
+    expect(packetsAlong(length, 0, 1)).toHaveLength(MAX_PACKETS);
   });
 });
 
@@ -806,107 +911,6 @@ function spreadGroupOf(edges: readonly { source: string; target: string }[], sta
   }
   return group;
 }
-
-describe('detours', () => {
-  // Three companies in a row, 200 apart, each a 60-wide tile with its label box: the arrow from the first to the third
-  // runs straight through the second.
-  const box = (x: number, y: number): Box => ({ x1: x - 30, y1: y - 30, x2: x + 30, y2: y + 50 });
-  const row = new Map([
-    ['left', box(0, 0)],
-    ['middle', box(200, 0)],
-    ['right', box(400, 0)],
-  ]);
-  // The arrows run between the tiles' middles, above the middles of the boxes (the label hangs below the tile).
-  const tiles = new Map([
-    ['left', { x: 0, y: 0 }],
-    ['middle', { x: 200, y: 0 }],
-    ['right', { x: 400, y: 0 }],
-  ]);
-
-  it('curves an arrow that would pass through a company, far enough to clear it', () => {
-    const found = detours(row, tiles, [{ id: 'skip', source: 'left', target: 'right' }]);
-
-    const detour = found.get('skip');
-    expect(detour).toBeDefined();
-    // The middle company sits halfway, so the curve bends most there.
-    expect(detour!.weight).toBeCloseTo(0.5, 5);
-    // Its box reaches 30 above the line and 50 below; its centre is below, so the arrow passes above, clear of the box's
-    // top by the margin. A curve strays 2·w·(1 − w) of its control point's distance.
-    const strays = 2 * detour!.weight * (1 - detour!.weight) * Math.abs(detour!.distance);
-    expect(strays).toBeGreaterThan(30);
-    expect(strays).toBeLessThan(60);
-  });
-
-  it('bends away from the side the company lies on', () => {
-    // The middle company sits a little below the arrow's line (y grows downwards), so the arrow bends the other way.
-    const below = new Map([...row, ['middle', box(200, 20)]]);
-    const above = new Map([...row, ['middle', box(200, -20)]]);
-
-    const bendBelow = detours(below, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!.distance;
-    const bendAbove = detours(above, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!.distance;
-
-    expect(Math.sign(bendBelow)).toBe(-Math.sign(bendAbove));
-  });
-
-  it('bends the other way when going round the first company would meet a second', () => {
-    // The middle company sits just below the arrow, so the arrow would bend up; but a second company sits above, where
-    // that curve would pass. Bending down, round the bottom of the middle company's box, clears both.
-    const crowded = new Map([...row, ['middle', box(200, 15)], ['above', box(200, -60)]]);
-
-    const detour = detours(crowded, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!;
-
-    // In these coordinates y grows downwards, and a positive distance bends the arrow down (to its right).
-    expect(detour.distance).toBeGreaterThan(0);
-    const strays = 2 * detour.weight * (1 - detour.weight) * detour.distance;
-    expect(strays).toBeGreaterThan(65); // below the middle company's box, which reaches 65 below the arrow
-  });
-
-  it('swings wide around a crowded column when no gentle curve is clear', () => {
-    // A column of four companies right across the arrow's path: bending a little either way meets one of them.
-    const column = new Map([
-      ...row,
-      ['middle', box(200, 0)],
-      ['up-1', box(200, -100)],
-      ['down-1', box(200, 100)],
-      ['up-2', box(200, -200)],
-    ]);
-
-    const detour = detours(column, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).get('skip')!;
-
-    // The curve (one control point, at the detour's weight and distance from the line) misses every box in the column.
-    const control = { x: 400 * detour.weight, y: detour.distance };
-    for (let step = 1; step < 50; step++) {
-      const t = step / 50;
-      const u = 1 - t;
-      const point = { x: 2 * u * t * control.x + t * t * 400, y: 2 * u * t * control.y };
-      for (const [id, b] of column) {
-        if (id === 'left' || id === 'right') continue;
-        expect(point.x > b.x1 && point.x < b.x2 && point.y > b.y1 && point.y < b.y2).toBe(false);
-      }
-    }
-  });
-
-  it('follows the arrow from tile to tile, so it catches a label box the arrow only clips', () => {
-    // The arrow runs along y = 0. With its tile 40 above, the middle company's label box (which hangs 50 below its tile's
-    // middle) reaches 10 below the arrow, so the arrow clips it; with its tile 60 above, the box ends 10 short of it.
-    const clipped = new Map([...row, ['middle', box(200, -40)]]);
-    const clear = new Map([...row, ['middle', box(200, -60)]]);
-
-    expect(detours(clipped, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).size).toBe(1);
-    expect(detours(clear, tiles, [{ id: 'skip', source: 'left', target: 'right' }]).size).toBe(0);
-  });
-
-  it('leaves arrows between neighbours, and arrows that miss every company, straight', () => {
-    const found = detours(row, tiles, [
-      { id: 'next', source: 'left', target: 'middle' },
-      { id: 'also-next', source: 'middle', target: 'right' },
-    ]);
-    const clear = detours(new Map([...row, ['middle', box(200, 300)]]), tiles, [{ id: 'skip', source: 'left', target: 'right' }]);
-
-    expect(found.size).toBe(0);
-    expect(clear.size).toBe(0);
-  });
-});
 
 describe('saved layouts', () => {
   afterEach(() => {
