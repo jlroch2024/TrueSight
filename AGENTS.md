@@ -150,6 +150,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   | `/portfolios` | Opens the first portfolio, or asks a user with none to create one. There is no Portfolios page: the header's Portfolio list switches portfolios and Manage Portfolios opens a window to create, rename and delete them | Manage My Portfolios, then One Portfolio Page |
   | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds holdings and upload, then the annual report story adds Analyse. |
   | `/portfolios/:portfolioId/supply-chain` | Supply Chain: the graph | See the Supply Chain as a Graph |
+  | `/review` | Analyst Desk (Analysts only): a tab per analyst tool, the open tab in the address (`?tab=relationships`). Relationships is the review list | Review, then Set Up Sprint 3 |
 
 - **The open portfolio is the one in the address.** A page reads it with `const { portfolioId } = useParams()`.
   Nothing else stores which portfolio is open.
@@ -255,6 +256,18 @@ file in the demo. Then they open the pull request.
 - Use HTTP 403 only when the signed-in user's role cannot perform an action. A portfolio owned by somebody else remains 404.
 - Analyst decisions apply to every user because relationships and news articles are shared data.
 - User roles used for authorization are read from the database on every request; the token's role claim is for display only.
+
+## Sprint 3 Shared Rules
+
+- All Sprint 3 table changes are in `V3__sprint_3_tables.sql`. No individual story adds another migration.
+- Every Gemini call goes through `GeminiClient.generate(AiRequest)` with an `AiPurpose`, so it is recorded in
+  `ai_calls`. Never copy a report's text into the record: pass the prompt with the report replaced by
+  `AiRequest.reportMarker(reportId, text)` as `recordedPrompt`. A caller that cannot read the answer calls
+  `AiCallLog.unreadable(callId)`. Never log or record the API key.
+- Analyst tools are tabs of the Analyst Desk (`AnalystDeskPage.tsx`, at `/review`), never new pages. A story adds one
+  entry to its `TABS`.
+- A portfolio manager's screen shows only what they act on. Analyst detail stays on the Analyst Desk.
+- Recommendations are research support, never investment advice: no buy, sell or hold, and no price targets.
 
 ## Definition of Done
 

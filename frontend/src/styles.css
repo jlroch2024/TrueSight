@@ -2026,3 +2026,36 @@ button.panel-row.chosen {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The Analyst Desk's row of tabs, one per analyst tool. */
+.desk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.desk-tab {
+  min-height: 38px;
+  margin-bottom: -1px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+  clip-path: none;
+}
+
+.desk-tab:hover:not(:disabled) {
+  color: var(--text);
+  background: transparent;
+}
+
+.desk-tab.active {
+  border-color: var(--border);
+  border-bottom-color: var(--bg);
+  border-top: 2px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
+}

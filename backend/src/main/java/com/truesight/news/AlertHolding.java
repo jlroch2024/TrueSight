@@ -16,6 +16,9 @@ public class AlertHolding {
     private Long holdingId;
     @Column(name = "relationship_id")
     private Long relationshipId;
+    /** The second link, when the event reaches the holding through a supplier's supplier. Empty for one step. */
+    @Column(name = "second_relationship_id")
+    private Long secondRelationshipId;
     protected AlertHolding() {}
     public AlertHolding(Long alertId, Long holdingId, Long relationshipId) {
         this.alertId = alertId;
@@ -25,4 +28,6 @@ public class AlertHolding {
     public Long getAlertId() { return alertId; }
     public Long getHoldingId() { return holdingId; }
     public Long getRelationshipId() { return relationshipId; }
+    public Long getSecondRelationshipId() { return secondRelationshipId; }
+    public void setSecondRelationshipId(Long secondRelationshipId) { this.secondRelationshipId = secondRelationshipId; }
 }

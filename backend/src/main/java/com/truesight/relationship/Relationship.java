@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
@@ -64,6 +65,41 @@ public class Relationship {
 
     @Column(name = "review_note", length = 500)
     private String reviewNote;
+
+    /** AI for one found in a report, ANALYST for one an analyst added. Every Sprint 1 and 2 relationship is AI. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private RelationshipSource source = RelationshipSource.AI;
+
+    @Column(name = "added_by")
+    private Long addedBy;
+
+    @Column(name = "edited_by")
+    private Long editedBy;
+
+    @Column(name = "edited_at")
+    private Instant editedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 15)
+    private Criticality criticality;
+
+    @Column(name = "criticality_evidence")
+    private String criticalityEvidence;
+
+    /** How closely the AI's quote matched the report, from 0 to 1. */
+    @Column(name = "quote_match", precision = 4, scale = 3)
+    private BigDecimal quoteMatch;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "second_check", length = 10)
+    private SecondCheck secondCheck;
+
+    @Column(name = "second_check_reason", length = 500)
+    private String secondCheckReason;
+
+    @Column(name = "second_checked_at")
+    private Instant secondCheckedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -120,6 +156,28 @@ public class Relationship {
     public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
     public void setReviewedAt(Instant reviewedAt) { this.reviewedAt = reviewedAt; }
     public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
+
+    public RelationshipSource getSource() { return source; }
+    public Long getAddedBy() { return addedBy; }
+    public Long getEditedBy() { return editedBy; }
+    public Instant getEditedAt() { return editedAt; }
+    public Criticality getCriticality() { return criticality; }
+    public String getCriticalityEvidence() { return criticalityEvidence; }
+    public BigDecimal getQuoteMatch() { return quoteMatch; }
+    public SecondCheck getSecondCheck() { return secondCheck; }
+    public String getSecondCheckReason() { return secondCheckReason; }
+    public Instant getSecondCheckedAt() { return secondCheckedAt; }
+
+    public void setSource(RelationshipSource source) { this.source = source; }
+    public void setAddedBy(Long addedBy) { this.addedBy = addedBy; }
+    public void setEditedBy(Long editedBy) { this.editedBy = editedBy; }
+    public void setEditedAt(Instant editedAt) { this.editedAt = editedAt; }
+    public void setCriticality(Criticality criticality) { this.criticality = criticality; }
+    public void setCriticalityEvidence(String criticalityEvidence) { this.criticalityEvidence = criticalityEvidence; }
+    public void setQuoteMatch(BigDecimal quoteMatch) { this.quoteMatch = quoteMatch; }
+    public void setSecondCheck(SecondCheck secondCheck) { this.secondCheck = secondCheck; }
+    public void setSecondCheckReason(String secondCheckReason) { this.secondCheckReason = secondCheckReason; }
+    public void setSecondCheckedAt(Instant secondCheckedAt) { this.secondCheckedAt = secondCheckedAt; }
 
     public Instant getCreatedAt() {
         return createdAt;

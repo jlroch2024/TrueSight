@@ -1,6 +1,16 @@
 package com.truesight.relationship;
 
 import com.truesight.company.Company;
+import java.time.Instant;
+import com.truesight.ai.AiPurpose;
+import com.truesight.ai.AiOutcome;
+import com.truesight.ai.AiCallRepository;
+import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiCall;
+import com.truesight.ai.AiAnswer;
+import static org.mockito.ArgumentMatchers.any;
+import static com.truesight.support.FakeAi.answer;
+import com.truesight.ai.AiRequest;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
@@ -34,7 +44,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,6 +79,8 @@ class FindSuppliersAndCustomersIT {
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
 
+    @Autowired AiCallLog aiCalls;
+    @Autowired AiCallRepository aiCallRows;
     @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
 
@@ -84,7 +95,7 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void analysingAPortfolioHoldingNvidiaListsTsmcAsASupplierWithNvidiasOwnSentence() throws Exception {
-        when(gemini.generate(anyString())).thenReturn(Examples.geminiNvidia());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         String email = "ai-tsmc@example.com";
         Portfolio portfolio = analyse(email, HoldingStatus.DONE);
 
@@ -105,7 +116,7 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void everyRelationshipShowsTheOtherCompanyWhichWayRoundWhatItProvidesAndTheEvidence() throws Exception {
-        when(gemini.generate(anyString())).thenReturn(Examples.geminiNvidia());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         String email = "ai-every-part@example.com";
         Portfolio portfolio = analyse(email, HoldingStatus.DONE);
 
@@ -132,7 +143,7 @@ class FindSuppliersAndCustomersIT {
                 "We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.",
                 "We purchase memory from SK Hynix Inc. and Micron Technology, Inc. under ten-year agreements.");
         assertThat(changed).isNotEqualTo(Examples.geminiNvidia());
-        when(gemini.generate(anyString())).thenReturn(changed);
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(changed));
         String email = "ai-bad-quote@example.com";
         Portfolio portfolio = analyse(email, HoldingStatus.DONE);
 
@@ -146,14 +157,14 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void analysingACompanyASecondTimeMakesNoNewRequestToTheAi() throws Exception {
-        when(gemini.generate(anyString())).thenReturn(Examples.geminiNvidia());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         analyse("ai-first-time@example.com", HoldingStatus.DONE);
 
         // A different user's portfolio: reports are public, so NVIDIA's relationships are reused.
         String email = "ai-second-time@example.com";
         Portfolio second = analyse(email, HoldingStatus.DONE);
 
-        verify(gemini, times(1)).generate(anyString());
+        verify(gemini, times(1)).generate(any(AiRequest.class));
         mockMvc.perform(get("/api/portfolios/{id}/relationships", second.getId())
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$", hasSize(7)));
@@ -161,12 +172,12 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void onlyTheBusinessAndRiskSectionsAreSentToTheAi() throws Exception {
-        when(gemini.generate(anyString())).thenReturn(Examples.geminiNvidia());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         analyse("ai-sections@example.com", HoldingStatus.DONE);
 
-        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<AiRequest> prompt = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini).generate(prompt.capture());
-        assertThat(prompt.getValue())
+        assertThat(prompt.getValue().prompt())
                 .startsWith("Below is part of NVIDIA Corporation's annual report (10-K).")
                 .contains("copied exactly from the text")
                 .contains("TEXT:\nItem 1. Business\nOur Company")
@@ -177,7 +188,7 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void ifTheAiFailsTheHoldingShowsFailedAndTheReason() throws Exception {
-        when(gemini.generate(anyString())).thenThrow(
+        when(gemini.generate(any(AiRequest.class))).thenThrow(
                 new GeminiClient.GeminiException("The AI returned an error (HTTP 503). Try again later.", null));
         String email = "ai-fails@example.com";
         Portfolio portfolio = analyse(email, HoldingStatus.FAILED);
@@ -194,11 +205,11 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void anAnswerThatIsNotValidJsonIsAskedForOnceMore() throws Exception {
-        when(gemini.generate(anyString())).thenReturn(cutOffAnswer(), Examples.geminiNvidia());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(cutOffAnswer()), answer(Examples.geminiNvidia()));
         String email = "ai-retry@example.com";
         Portfolio portfolio = analyse(email, HoldingStatus.DONE);
 
-        verify(gemini, times(2)).generate(anyString());
+        verify(gemini, times(2)).generate(any(AiRequest.class));
         mockMvc.perform(get("/api/portfolios/{id}/relationships", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$", hasSize(7)));
@@ -206,15 +217,67 @@ class FindSuppliersAndCustomersIT {
 
     @Test
     void anAnswerThatIsNotValidJsonTwiceMarksTheHoldingFailed() throws Exception {
-        when(gemini.generate(anyString())).thenReturn(cutOffAnswer());
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(cutOffAnswer()));
         String email = "ai-retry-fails@example.com";
         Portfolio portfolio = analyse(email, HoldingStatus.FAILED);
 
-        verify(gemini, times(2)).generate(anyString());
+        verify(gemini, times(2)).generate(any(AiRequest.class));
         mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$[0].statusReason")
                         .value("The AI's answer could not be read, even when asked a second time."));
+    }
+
+    @Test
+    void theAuditTrailRecordsHowManyQuotesWereKeptAndHowManyDropped() throws Exception {
+        // Gemini's real answer with the SK Hynix and Micron quote changed, as above: 5 are kept, those 2 dropped.
+        String changed = Examples.geminiNvidia().replace(
+                "We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.",
+                "We purchase memory from SK Hynix Inc. and Micron Technology, Inc. under ten-year agreements.");
+        Long callId = recordedCall();
+        when(gemini.generate(any(AiRequest.class))).thenReturn(new AiAnswer(changed, callId));
+
+        analyse("ai-audit-kept@example.com", HoldingStatus.DONE);
+
+        AiCall call = aiCallRows.findById(callId).orElseThrow();
+        assertThat(call.getKept()).isEqualTo(5);
+        assertThat(call.getDropped()).isEqualTo(2);
+    }
+
+    @Test
+    void anAnswerThatCannotBeReadIsRecordedAsUnreadableBothTimes() throws Exception {
+        Long first = recordedCall();
+        Long second = recordedCall();
+        when(gemini.generate(any(AiRequest.class)))
+                .thenReturn(new AiAnswer(cutOffAnswer(), first), new AiAnswer(cutOffAnswer(), second));
+
+        analyse("ai-audit-unreadable@example.com", HoldingStatus.FAILED);
+
+        assertThat(aiCallRows.findById(first).orElseThrow().getOutcome()).isEqualTo(AiOutcome.UNREADABLE);
+        assertThat(aiCallRows.findById(second).orElseThrow().getOutcome()).isEqualTo(AiOutcome.UNREADABLE);
+    }
+
+    @Test
+    void geminiIsSentTheReportButTheAuditTrailKeepsOnlyAMarkerNamingIt() throws Exception {
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
+
+        analyse("ai-audit-marker@example.com", HoldingStatus.DONE);
+
+        ArgumentCaptor<AiRequest> request = ArgumentCaptor.forClass(AiRequest.class);
+        verify(gemini).generate(request.capture());
+        Long reportId = reports.findByAccessionNumber("0001045810-26-000021").orElseThrow().getId();
+        assertThat(request.getValue().purpose()).isEqualTo(AiPurpose.FIND_RELATIONSHIPS);
+        assertThat(request.getValue().reportId()).isEqualTo(reportId);
+        assertThat(request.getValue().prompt()).contains("Taiwan Semiconductor Manufacturing Company Limited");
+        assertThat(request.getValue().recordedPrompt())
+                .containsPattern("\\[report " + reportId + ": \\d+ characters]")
+                .doesNotContain("Taiwan Semiconductor Manufacturing Company Limited");
+    }
+
+    /** A real row in the audit trail, as GeminiClient would save, for a fake answer to point at. */
+    private Long recordedCall() {
+        return aiCalls.record(AiRequest.of(AiPurpose.FIND_RELATIONSHIPS, "Recorded by the test."), "gemini-test-model",
+                null, AiOutcome.ANSWERED, null, Instant.now(), 1);
     }
 
     @Test
@@ -225,7 +288,7 @@ class FindSuppliersAndCustomersIT {
                         .header("Authorization", logins.bearer("ai-stranger@example.com")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Portfolio not found."));
-        verify(gemini, never()).generate(anyString());
+        verify(gemini, never()).generate(any(AiRequest.class));
     }
 
     /** Gemini's real answer with the end of its list cut off, as when Gemini stops early. Not valid JSON. */

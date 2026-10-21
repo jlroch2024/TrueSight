@@ -18,5 +18,5 @@ export const PORTFOLIO_NAV_ITEMS: PortfolioNavItem[] = [
   { label: 'Alerts', path: paths.alerts },
 ];
 
-// Analyst pages are registered here as they become available. Do not add buttons for unfinished pages.
-export const ANALYST_NAV_ITEMS: NavItem[] = [{ label: 'Review', path: paths.review }];
+// The Analyst Desk is the one analyst page: each analyst tool is a tab inside it (AnalystDeskPage), never a new page.
+export const ANALYST_NAV_ITEMS: NavItem[] = [{ label: 'Analyst Desk', path: paths.review }];
