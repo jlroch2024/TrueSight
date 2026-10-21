@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TrueSight Sprint 3</title>
+<meta name="description" content="Sprint 3 merge order and pull request status for TrueSight.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: the app's blueprint sheet. A summary band (progress, team), then Sprint 3 as a left-to-right merge-order
+   flow. Each story is a raised tile showing its owner and its pull request's state, read live from GitHub's public
+   API by the visitor's browser. Deliberately one dark look, the same as TrueSight itself. */
+:root {
+  color-scheme: dark;
+  --bg: #07141a;
+  --panel: #0c232b;
+  --panel-top: #12313b;
+  --border: #2a4a53;
+  --border-strong: #3b636c;
+  --text: #eef8f5;
+  --muted: #a6c2be;
+  --faint: #6a8c8e;
+  --accent: #2dd4bf;
+  --lime: #c4f36a;
+  --amber: #f5b73b;
+  --danger: #ff7a7a;
+  --setup: #93b5ff;
+  --font: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background-color: var(--bg);
+  background-image: linear-gradient(rgb(45 212 191 / 3%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(45 212 191 / 3%) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-block: 52px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 40px;
+}
+
+/* Header */
+.hero { display: grid; grid-template-columns: auto 1fr; gap: 8px 32px; align-items: end; }
+.sprint-num {
+  grid-row: span 3; font-size: clamp(88px, 11vw, 150px); line-height: .78; font-weight: 700; letter-spacing: -.05em;
+  color: transparent; -webkit-text-stroke: 2px var(--accent);
+}
+.eyebrow { display: flex; align-items: center; gap: 10px; color: var(--accent); font-weight: 600; font-size: 15px; letter-spacing: .03em; }
+.eyebrow svg { width: 22px; height: 22px; }
+h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 700; letter-spacing: -.03em; text-wrap: balance; }
+.live { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; color: var(--muted); font-size: 15px; }
+.live .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); display: inline-block; margin-right: 8px; vertical-align: 1px; }
+.live.on .dot { background: var(--lime); box-shadow: 0 0 0 4px rgb(196 243 106 / 15%); animation: pulse 2s ease-in-out infinite; }
+.live.stale .dot { background: var(--amber); }
+.live button {
+  font: inherit; font-size: 14px; color: var(--muted); background: transparent; border: 1px solid var(--border);
+  padding: 3px 10px; cursor: pointer;
+}
+.live button:hover:not(:disabled), .live button:focus-visible { color: var(--text); border-color: var(--border-strong); outline: none; }
+.live button:disabled { opacity: .5; cursor: default; }
+
+/* Summary band */
+.summary { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; }
+.panel {
+  background: linear-gradient(180deg, var(--panel-top), var(--panel));
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%), 0 18px 40px -24px rgb(0 0 0 / 80%);
+  padding: 20px 22px;
+}
+.panel h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+.figures { display: flex; flex-wrap: wrap; gap: 14px 34px; margin-bottom: 18px; }
+.figure b { display: block; font-size: 34px; line-height: 1.05; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.figure b small { font-size: 18px; color: var(--muted); font-weight: 500; }
+.figure span { color: var(--muted); font-size: 14px; }
+.bar { display: flex; height: 12px; background: rgb(255 255 255 / 4%); border: 1px solid var(--border); overflow: hidden; }
+.bar i { display: block; height: 100%; transition: width .6s ease; }
+.bar .merged { background: var(--lime); }
+.bar .open { background: var(--accent); }
+.bar .started { background: repeating-linear-gradient(135deg, rgb(45 212 191 / 55%) 0 5px, rgb(45 212 191 / 25%) 5px 10px); }
+.bar-key { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.bar-key i { display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: -1px; }
+.bar-key .merged { background: var(--lime); }
+.bar-key .open { background: var(--accent); }
+.bar-key .started { background: rgb(45 212 191 / 45%); }
+.bar-key .none { background: rgb(255 255 255 / 10%); }
+
+.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 8px; }
+.person {
+  display: flex; align-items: center; gap: 11px; padding: 9px 10px; min-width: 0; text-align: left;
+  background: rgb(7 20 26 / 55%); border: 1px solid var(--border); color: var(--text); font: inherit; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.person:hover, .person:focus-visible { border-color: var(--border-strong); background: rgb(7 20 26 / 85%); outline: none; }
+.person.on { border-color: var(--text); }
+.person div { min-width: 0; }
+.person div b { display: block; font-size: 15px; font-weight: 600; }
+.person div span { display: block; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.avatar {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; color: #08161b; background: var(--c);
+  box-shadow: 0 0 0 2px rgb(7 20 26 / 90%), 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.avatar.sm { width: 24px; height: 24px; font-size: 10.5px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 24px; color: var(--muted); font-size: 14px; align-items: center; }
+.legend i { display: inline-block; width: 11px; height: 11px; margin-right: 8px; vertical-align: -1px; }
+.legend .line { width: 24px; height: 2px; vertical-align: 3px; }
+.legend .sep { width: 1px; height: 16px; background: var(--border); }
+
+/* Flow */
+.flow { position: relative; display: grid; grid-template-columns: 1fr 3fr 1fr 1fr; gap: 46px; align-items: start; }
+.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
+.links path { fill: none; stroke: var(--faint); stroke-width: 1.3; opacity: .5; transition: opacity .2s, stroke .2s; }
+.links path.done { stroke: var(--lime); opacity: .35; }
+.links path.need { stroke: var(--accent); opacity: 1; stroke-width: 2; stroke-dasharray: 6 5; animation: flow 1s linear infinite; }
+.links path.unlock { stroke: var(--lime); opacity: 1; stroke-width: 2; stroke-dasharray: 6 5; animation: flow 1s linear infinite; }
+.links path.off { opacity: .05; }
+@keyframes flow { to { stroke-dashoffset: -11; } }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.stage { position: relative; z-index: 1; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.stage-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; padding-bottom: 9px; border-bottom: 1px solid var(--border-strong); }
+.stage-head b { font-size: 19px; font-weight: 600; }
+.stage-head span { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cards { display: grid; gap: 12px; }
+.stage.wide .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* A story tile: raised, with the app's top-right chamfer cut by a corner piece so the shadow survives */
+.card {
+  --edge: var(--border);
+  position: relative; display: grid; gap: 10px; padding: 13px 14px 13px; cursor: pointer; outline: none;
+  background: linear-gradient(180deg, var(--panel-top) 0%, var(--panel) 100%);
+  border: 1px solid var(--edge);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 10px 24px -12px rgb(0 0 0 / 85%), 0 2px 4px rgb(0 0 0 / 30%);
+  transition: opacity .2s, border-color .2s, box-shadow .2s, transform .2s;
+}
+.card::before {
+  content: ""; position: absolute; top: -1px; right: -1px; width: 12px; height: 12px;
+  background: linear-gradient(225deg, var(--bg) 0 50%, var(--edge) 50% calc(50% + 1.3px), transparent calc(50% + 1.3px));
+}
+.card:hover, .card:focus-visible { transform: translateY(-2px); --edge: var(--border-strong); }
+.card:focus-visible { --edge: var(--text); }
+.card .top { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 500; }
+.card .kind { width: 9px; height: 9px; flex: none; }
+.card .pts {
+  margin-left: auto; margin-right: 6px; min-width: 25px; height: 23px; padding: 0 6px; display: grid; place-items: center;
+  background: rgb(7 20 26 / 60%); border: 1px solid var(--border); color: var(--text); font-weight: 600; font-size: 13px;
+}
+.card .name { font-size: 16px; font-weight: 600; line-height: 1.28; text-wrap: pretty; letter-spacing: -.005em; }
+.card .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.card .who { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); font-weight: 500; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border); color: var(--muted); background: rgb(7 20 26 / 50%); text-decoration: none; white-space: nowrap;
+}
+a.chip:hover { border-color: var(--text); color: var(--text); }
+.chip svg { width: 13px; height: 13px; }
+.chip.started { color: var(--accent); border-color: rgb(45 212 191 / 40%); }
+.chip.open { color: #062019; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.chip.draft { color: var(--accent); border-color: rgb(45 212 191 / 55%); border-style: dashed; }
+.chip.merged { color: #11200a; background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.chip.changes { color: #2a0a0a; background: var(--danger); border-color: var(--danger); font-weight: 600; }
+.chip.ok { color: var(--lime); border-color: rgb(196 243 106 / 50%); }
+.chip.wait { color: var(--amber); border-color: rgb(245 183 59 / 45%); }
+.chip.bad { color: var(--danger); border-color: rgb(255 122 122 / 50%); }
+.extra { display: flex; flex-wrap: wrap; gap: 6px; }
+.extra:empty { display: none; }
+
+.card.is-started { --edge: rgb(45 212 191 / 40%); }
+.card.is-open, .card.is-draft { --edge: rgb(45 212 191 / 75%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%), 0 10px 26px -12px rgb(45 212 191 / 35%), 0 2px 4px rgb(0 0 0 / 30%); }
+.card.is-merged {
+  --edge: rgb(196 243 106 / 55%);
+  background: linear-gradient(180deg, #1d3a2a 0%, #132a22 100%);
+}
+.card.is-merged .name { color: #e9f8d6; }
+
+.kind-fix { background: var(--amber); }
+.kind-new { background: var(--accent); }
+.kind-setup { background: var(--setup); }
+.line.need { background: var(--accent); }
+.line.unlock { background: var(--lime); }
+
+/* Highlight: a story with what it needs and unlocks, or one person's stories */
+.lit .card { opacity: .2; }
+.lit .card.sel { opacity: 1; --edge: var(--text); }
+.lit .card.need { opacity: 1; --edge: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 26px rgb(45 212 191 / 30%); }
+.lit .card.unlock { opacity: 1; --edge: var(--lime); box-shadow: 0 0 0 1px var(--lime), 0 0 26px rgb(196 243 106 / 25%); }
+
+.foot-note { color: var(--faint); font-size: 14px; border-top: 1px solid var(--border); padding-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 24px; }
+
+/* Narrow screens: steps stack, curves give way to the highlight alone */
+@media (max-width: 1120px) {
+  .summary { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr; gap: 30px; }
+  .links { display: none; }
+  .stage .cards, .stage.wide .cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+@media (max-width: 560px) {
+  .page { padding-block: 30px 44px; gap: 30px; }
+  .hero { grid-template-columns: 1fr; }
+  .sprint-num { grid-row: auto; font-size: 88px; }
+  .figure b { font-size: 28px; }
+  .panel { padding: 16px; }
+  .stage .cards, .stage.wide .cards { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .links path.need, .links path.unlock, .live.on .dot { animation: none; }
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<main class="page" id="page">
+  <header class="hero">
+    <div class="sprint-num">3</div>
+    <div class="eyebrow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.3 11 16.7 6M7.3 13l9.4 5"/></svg>
+      TrueSight · Sprint 3
+    </div>
+    <h1>Recommend and Explain</h1>
+    <div class="live" id="live"><span><span class="dot"></span><span id="live-text">Reading GitHub</span></span><button type="button" id="refresh">Refresh</button></div>
+  </header>
+
+  <section class="summary">
+    <div class="panel">
+      <h2>Progress</h2>
+      <div class="figures" id="figures"></div>
+      <div class="bar" id="bar"><i class="merged"></i><i class="open"></i><i class="started"></i></div>
+      <div class="bar-key" id="bar-key"></div>
+    </div>
+    <div class="panel">
+      <h2>Team</h2>
+      <div class="team" id="team"></div>
+    </div>
+  </section>
+
+  <div class="legend">
+    <span><i class="kind-fix"></i>Fix</span>
+    <span><i class="kind-new"></i>New</span>
+    <span><i class="kind-setup"></i>Setup</span>
+    <span class="sep"></span>
+    <span><i class="line need"></i>Needs</span>
+    <span><i class="line unlock"></i>Unlocks</span>
+  </div>
+
+  <div class="flow" id="flow"><svg class="links" aria-hidden="true"></svg></div>
+
+  <footer class="foot-note">
+    <span>Push the branch, open a pull request, get one approval, then merge. Stories merge left to right.</span>
+    <span>Status comes from <a href="https://github.com/jlroch2024/TrueSight/pulls" target="_blank" rel="noopener">GitHub pull requests and branches</a>, every 5 minutes.</span>
+  </footer>
+</main>
+
+<script>
+// Team, initials and colours as in Jira.
+const PEOPLE = {
+  JR: { name: 'Jeremy', init: 'JR', c: '#3fbf86' },
+  ZY: { name: 'Zyik', init: 'Z', c: '#f4cf4f' },
+  LA: { name: 'Zhe An', init: 'LA', c: '#f0814a' },
+  BY: { name: 'Ben', init: 'BY', c: '#4f8ff7' },
+  AY: { name: 'Allan', init: 'AY', c: '#9b7cf0' },
+  I: { name: 'Isaiah', init: 'I', c: '#f0627e' },
+};
+
+// Sprint 3 stories from Sprints-3-and-4-Plan.md and Jira: [number, key, name, kind, points, needs, assignee]
+const STORIES = [
+  [1, 168, 'Show Dates and Labels the Same Way', 'fix', 3, [], 'ZY'],
+  [2, 169, "Ask in TrueSight's Own Window", 'fix', 3, [], 'ZY'],
+  [3, 170, 'Polish Log In and Sign Up', 'fix', 1, [], 'JR'],
+  [4, 171, 'A Flowing Supply Chain Graph', 'fix', 8, [], 'JR'],
+  [5, 172, 'Clearer Alerts', 'fix', 5, [], 'ZY'],
+  [6, 173, 'Easier Review', 'fix', 2, [1], 'LA'],
+  [7, 174, 'Group Alerts About One Event', 'new', 5, [5], 'AY'],
+  [8, 175, 'Sharper Noise Filter', 'new', 3, [], 'BY'],
+  [9, 176, 'Spell Each Company as Its Own Report Does', 'fix', 8, [5], 'LA'],
+  [10, 177, 'Say When Something Fails', 'fix', 3, [2], 'BY'],
+  [11, 178, 'One Workspace', 'new', 8, [2, 4, 5, 10, 14], 'JR'],
+  [12, 179, 'Faster Analyse and Check News', 'new', 5, [15], 'AY'],
+  [13, 180, 'Name Companies the Way People Know Them', 'fix', 8, [15], 'I'],
+  [14, 181, 'Alerts Are the One Source of News', 'fix', 5, [5], 'I'],
+  [15, 182, 'Set Up Sprint 3', 'setup', 5, [], 'ZY'],
+  [16, 183, 'Get a Recommendation', 'new', 8, [15, 5], 'AY'],
+  [17, 184, 'Confirm or Overrule an Event', 'new', 5, [15], 'ZY'],
+  [18, 185, 'Fix or Add a Relationship', 'new', 5, [15], 'BY'],
+  [19, 186, 'How Critical Each Supplier Is', 'new', 5, [15], 'AY'],
+  [20, 187, 'Two Steps Along the Graph', 'new', 3, [15, 5], 'BY'],
+  [21, 188, 'See How Confident TrueSight Is', 'new', 5, [15, 22], 'LA'],
+  [22, 189, 'Second AI Checks the First', 'new', 5, [15], 'I'],
+  [23, 190, 'AI Audit Trail', 'new', 5, [15], 'BY'],
+  [24, 191, 'AI Quality Dashboard', 'new', 5, [16, 17, 22], 'LA'],
+  [25, 192, 'Edit My Profile', 'new', 3, [15], 'I'],
+  [26, 193, 'Edit or Remove Holdings', 'new', 3, [2], 'I'],
+].map(([n, key, name, kind, pts, needs, who]) => ({ n, key: 'TS-' + key, name, kind, pts, needs, who }));
+const BY_N = Object.fromEntries(STORIES.map(s => [s.n, s]));
+
+// Merge order from the plan: each step merges once what it needs has.
+const STAGES = [
+  { label: 'First', ids: [15, 1, 2, 3, 5, 4] },
+  { label: 'Then', wide: true, ids: [6, 10, 26, 7, 9, 14, 16, 20, 25, 17, 18, 22, 19, 23, 13, 12, 8] },
+  { label: 'Next', ids: [21, 24] },
+  { label: 'Last', ids: [11] },
+];
+
+const ICON = {
+  check: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 8.5 3.2 3L13 4.5"/></svg>',
+  cross: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m4 4 8 8M12 4l-8 8"/></svg>',
+  clock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3"/></svg>',
+  branch: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4.5" cy="3.5" r="1.6"/><circle cx="4.5" cy="12.5" r="1.6"/><circle cx="11.5" cy="5.5" r="1.6"/><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2 3-7 4"/></svg>',
+};
+
+// Live state, read from GitHub. States: merged, approved, changes (changes requested), review (waiting for review),
+// draft, branch (pushed, no pull request yet) and none.
+let STATUS = {};
+let checkedAt = null;
+let liveError = null;
+const CARD_LOOK = { branch: 'started', review: 'open', approved: 'open', changes: 'open' };
+const stateOf = s => (STATUS[s.key] && STATUS[s.key].state) || 'none';
+const isMerged = n => stateOf(BY_N[n]) === 'merged';
+
+const flow = document.getElementById('flow');
+const page = document.getElementById('page');
+
+function avatar(code, sm) {
+  const p = PEOPLE[code];
+  return `<span class="avatar${sm ? ' sm' : ''}" style="--c:${p.c}" aria-hidden="true">${p.init}</span>`;
+}
+
+function buildCards() {
+  for (const stage of STAGES) {
+    const col = document.createElement('div');
+    col.className = 'stage' + (stage.wide ? ' wide' : '');
+    col.innerHTML = `<div class="stage-head"><b>${stage.label}</b><span data-stage></span></div><div class="cards"></div>`;
+    const cards = col.querySelector('.cards');
+    for (const n of stage.ids) {
+      const s = BY_N[n];
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.id = n;
+      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      el.innerHTML = `<div class="top"><span class="kind kind-${s.kind}"></span>${s.key}<span class="pts" title="Story points">${s.pts}</span></div>
+        <div class="name">${s.name}</div>
+        <div class="foot"><span class="who">${avatar(s.who, true)}${PEOPLE[s.who].name}</span><span data-chip></span></div>
+        <div class="extra" data-extra></div>`;
+      cards.appendChild(el);
+    }
+    flow.appendChild(col);
+  }
+}
+
+const title = t => t.replace(/\b\w/g, c => c.toUpperCase());
+function ago(iso) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+  if (mins < 1) return 'Just Now';
+  if (mins < 60) return `${mins} Minute${mins === 1 ? '' : 's'} Ago`;
+  const h = Math.round(mins / 60);
+  if (h < 48) return `${h} Hour${h === 1 ? '' : 's'} Ago`;
+  return `${Math.round(h / 24)} Days Ago`;
+}
+
+function render() {
+  STAGES.forEach((stage, i) => {
+    const stories = stage.ids.map(n => BY_N[n]);
+    const done = stories.filter(s => stateOf(s) === 'merged').length;
+    flow.querySelectorAll('[data-stage]')[i].textContent =
+      `${done} of ${stories.length} Merged · ${stories.reduce((t, s) => t + s.pts, 0)} Points`;
+  });
+
+  for (const el of flow.querySelectorAll('.card')) {
+    const s = BY_N[+el.dataset.id];
+    const st = STATUS[s.key] || {};
+    const state = stateOf(s);
+    el.className = el.className.replace(/\bis-\w+/g, '').trim() + ' is-' + (CARD_LOOK[state] || state);
+    const prLink = (cls, label) => `<a class="chip ${cls}" href="${st.url}" target="_blank" rel="noopener">${label} #${st.pr}</a>`;
+    let chip = '';
+    if (state === 'merged') chip = prLink('merged', ICON.check + 'Merged');
+    else if (state === 'approved') chip = prLink('open', ICON.check + 'Approved');
+    else if (state === 'changes') chip = prLink('changes', 'Changes Requested');
+    else if (state === 'review') chip = prLink('open', 'Waiting for Review');
+    else if (state === 'draft') chip = prLink('draft', 'Draft');
+    else if (state === 'branch') chip = `<span class="chip started" title="A branch for this story is on GitHub">${ICON.branch}In Progress</span>`;
+    else chip = `<span class="chip">Not Started</span>`;
+    el.querySelector('[data-chip]').innerHTML = chip;
+
+    const extra = [];
+    if (CARD_LOOK[state] === 'open' || state === 'draft') {
+      if (st.checks === 'pass') extra.push(`<span class="chip ok">${ICON.check}Checks Pass</span>`);
+      else if (st.checks === 'fail') extra.push(`<span class="chip bad">${ICON.cross}Checks Fail</span>`);
+      else if (st.checks === 'pending') extra.push(`<span class="chip wait">${ICON.clock}Checks Running</span>`);
+      const waiting = s.needs.filter(n => !isMerged(n)).map(n => BY_N[n].key);
+      if (waiting.length) extra.push(`<span class="chip wait">Waits for ${waiting.join(', ')}</span>`);
+      else if (state === 'approved' && st.checks !== 'fail') extra.push(`<span class="chip ok">${ICON.check}Ready to Merge</span>`);
+    }
+    el.querySelector('[data-extra]').innerHTML = extra.join('');
+    el.setAttribute('aria-label', `${s.key} ${s.name}, ${s.pts} points, ${PEOPLE[s.who].name}, ${el.querySelector('[data-chip]').textContent}`);
+  }
+
+  // Progress
+  const total = STORIES.reduce((t, s) => t + s.pts, 0);
+  const groups = { merged: [], open: [], started: [], none: [] };
+  STORIES.forEach(s => groups[{ draft: 'open', branch: 'started' }[stateOf(s)] || CARD_LOOK[stateOf(s)] || stateOf(s)].push(s));
+  const pts = list => list.reduce((t, s) => t + s.pts, 0);
+  const count = state => STORIES.filter(s => stateOf(s) === state).length;
+  document.getElementById('figures').innerHTML = [
+    [`${groups.merged.length}<small> / ${STORIES.length}</small>`, 'Stories Merged'],
+    [`${pts(groups.merged)}<small> / ${total}</small>`, 'Points Merged'],
+    [count('review') + count('changes'), 'Waiting for Review'],
+    [count('approved'), 'Approved'],
+    [groups.started.length, 'In Progress'],
+  ].map(([v, l]) => `<div class="figure"><b>${v}</b><span>${l}</span></div>`).join('');
+  const bars = document.querySelectorAll('#bar i');
+  ['merged', 'open', 'started'].forEach((k, i) => { bars[i].style.width = (pts(groups[k]) / total * 100) + '%'; });
+  document.getElementById('bar-key').innerHTML = [
+    ['merged', 'Merged'], ['open', 'Pull Request Open'], ['started', 'In Progress'], ['none', 'Not Started'],
+  ].map(([k, l]) => `<span><i class="${k}"></i>${l} · ${pts(groups[k])} Points</span>`).join('');
+
+  // Team
+  document.getElementById('team').innerHTML = Object.entries(PEOPLE).map(([code, p]) => {
+    const mine = STORIES.filter(s => s.who === code);
+    const done = mine.filter(s => stateOf(s) === 'merged').length;
+    return `<button type="button" class="person${person === code ? ' on' : ''}" data-person="${code}">${avatar(code)}
+      <div><b>${p.name}</b><span>${done} of ${mine.length} Merged · ${pts(mine)} Pts</span></div></button>`;
+  }).join('');
+
+  // Live line
+  const live = document.getElementById('live');
+  const text = document.getElementById('live-text');
+  if (liveError) {
+    live.className = 'live stale';
+    text.textContent = liveError + (checkedAt ? ` Showing the status from ${ago(checkedAt).toLowerCase()}.` : ' Try Refresh in a minute.');
+  } else if (checkedAt) {
+    live.className = 'live on';
+    text.textContent = `Updated From GitHub ${ago(checkedAt)}`;
+  }
+
+  drawLinks();
+}
+
+// One curve per "needs", from the right edge of what is needed to the left edge of what needs it.
+function drawLinks() {
+  const svg = flow.querySelector('.links');
+  if (getComputedStyle(svg).display === 'none') return;
+  const box = flow.getBoundingClientRect();
+  const at = n => flow.querySelector(`.card[data-id="${n}"]`);
+  let out = '';
+  for (const s of STORIES) {
+    const b = at(s.n);
+    for (const need of s.needs) {
+      const a = at(need);
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top;
+      const x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top;
+      if (x2 <= x1) continue;
+      const dx = Math.max(30, (x2 - x1) * .5);
+      out += `<path class="${isMerged(need) ? 'done' : ''}" data-from="${need}" data-to="${s.n}" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
+    }
+  }
+  svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+  svg.innerHTML = out;
+  applyHighlight();
+}
+
+// Highlight: one story (what it needs and unlocks) or one person's stories.
+let selected = null, hovered = null, person = null;
+function applyHighlight() {
+  const n = hovered ?? selected;
+  const cards = flow.querySelectorAll('.card');
+  const paths = flow.querySelectorAll('.links path');
+  if (n == null && !person) {
+    page.classList.remove('lit');
+    cards.forEach(c => c.classList.remove('sel', 'need', 'unlock'));
+    paths.forEach(p => p.classList.remove('need', 'unlock', 'off'));
+    return;
+  }
+  page.classList.add('lit');
+  if (n != null) {
+    const needs = new Set(BY_N[n].needs);
+    const unlocks = new Set(STORIES.filter(x => x.needs.includes(n)).map(x => x.n));
+    cards.forEach(c => {
+      const id = +c.dataset.id;
+      c.classList.toggle('sel', id === n);
+      c.classList.toggle('need', needs.has(id));
+      c.classList.toggle('unlock', unlocks.has(id));
+    });
+    paths.forEach(p => {
+      const from = +p.dataset.from, to = +p.dataset.to;
+      p.classList.toggle('need', to === n);
+      p.classList.toggle('unlock', from === n);
+      p.classList.toggle('off', to !== n && from !== n);
+    });
+  } else {
+    cards.forEach(c => {
+      c.classList.toggle('sel', BY_N[+c.dataset.id].who === person);
+      c.classList.remove('need', 'unlock');
+    });
+    paths.forEach(p => { p.classList.remove('need', 'unlock'); p.classList.add('off'); });
+  }
+}
+
+buildCards();
+render();
+document.fonts && document.fonts.ready.then(drawLinks);
+new ResizeObserver(drawLinks).observe(page);
+setInterval(() => { if (checkedAt) render(); }, 60000);
+
+const hoverable = matchMedia('(hover: hover)').matches;
+flow.addEventListener('mouseover', e => {
+  if (!hoverable) return;
+  const c = e.target.closest('.card');
+  const n = c ? +c.dataset.id : null;
+  if (n !== hovered) { hovered = n; applyHighlight(); }
+});
+flow.addEventListener('mouseleave', () => { hovered = null; applyHighlight(); });
+document.addEventListener('click', e => {
+  if (e.target.closest('a')) return;
+  const who = e.target.closest('.person');
+  if (who) {
+    person = person === who.dataset.person ? null : who.dataset.person;
+    selected = null;
+    render();
+    return;
+  }
+  const c = e.target.closest('.card');
+  selected = c && selected !== +c.dataset.id ? +c.dataset.id : null;
+  if (c) person = null;
+  render();
+});
+flow.addEventListener('keydown', e => {
+  const c = e.target.closest('.card');
+  if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { selected = null; person = null; render(); } });
+
+// Live PR status, read from GitHub's public API by this browser. GitHub allows 60 requests an hour per network
+// without signing in, shared by everyone on that network, so the page reads every 5 minutes while it is on screen
+// (2 requests, plus 2 per open pull request), keeps finished check results, and waits out the limit if it is hit.
+const API = 'https://api.github.com/repos/jlroch2024/TrueSight';
+const EVERY = 5 * 60000;
+const FAILED = new Set(['failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure', 'stale']);
+const PASSED = new Set(['success', 'neutral', 'skipped']);
+const saved = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage full or blocked: refetch next time */ } },
+};
+
+async function getJson(path, slim) {
+  const res = await fetch(API + path, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+  if (!res.ok) {
+    const err = new Error(res.status === 403 || res.status === 429 ? 'limit' : 'http');
+    err.reset = +res.headers.get('x-ratelimit-reset') * 1000 || null;
+    throw err;
+  }
+  return slim(await res.json());
+}
+
+// A commit's checks never change once they have passed or failed, so those results are kept by commit.
+async function checksFor(sha) {
+  const done = saved.get('gh:checks') || {};
+  if (done[sha]) return done[sha];
+  const runs = await getJson(`/commits/${sha}/check-runs?per_page=100`, body => body.check_runs.map(c => ({ status: c.status, conclusion: c.conclusion })));
+  const result = checksOf(runs);
+  if (result === 'pass' || result === 'fail') saved.set('gh:checks', { ...done, [sha]: result });
+  return result;
+}
+
+const belongs = (key, branch, prTitle) => branch === key || branch.startsWith(key + '-') || prTitle.startsWith(key + ' ');
+
+function checksOf(runs) {
+  if (!runs.length) return null;
+  if (runs.some(r => FAILED.has(r.conclusion))) return 'fail';
+  if (runs.every(r => r.status === 'completed' && PASSED.has(r.conclusion))) return 'pass';
+  return 'pending';
+}
+
+async function loadGitHub() {
+  const [pulls, branches] = await Promise.all([
+    getJson('/pulls?state=all&per_page=100', list => list.map(p => ({
+      number: p.number, title: p.title, ref: p.head.ref, sha: p.head.sha, open: p.state === 'open',
+      draft: p.draft, merged: p.merged_at, url: p.html_url,
+    }))),
+    getJson('/branches?per_page=100', list => list.map(b => b.name)),
+  ]);
+  const next = {};
+  for (const s of STORIES) {
+    const mine = pulls.filter(p => belongs(s.key, p.ref, p.title));
+    const merged = mine.filter(p => p.merged).sort((a, b) => b.merged.localeCompare(a.merged));
+    const open = mine.filter(p => p.open).sort((a, b) => a.draft - b.draft || b.number - a.number);
+    const pr = merged[0] || open[0];
+    if (pr) next[s.key] = { pr: pr.number, url: pr.url, sha: pr.sha, state: pr.merged ? 'merged' : pr.draft ? 'draft' : 'review' };
+    else if (branches.some(b => belongs(s.key, b, ''))) next[s.key] = { state: 'branch' };
+  }
+  // Reviews and checks, for open pull requests only. Each reviewer's latest verdict counts.
+  await Promise.all(Object.values(next).filter(st => st.state === 'review' || st.state === 'draft').map(async st => {
+    const [reviews, checks] = await Promise.all([
+      getJson(`/pulls/${st.pr}/reviews?per_page=100`, list => list.map(r => ({ who: r.user && r.user.login, state: r.state }))),
+      checksFor(st.sha),
+    ]);
+    const latest = {};
+    reviews.filter(r => r.state !== 'COMMENTED' && r.state !== 'PENDING').forEach(r => { latest[r.who] = r.state; });
+    const verdicts = Object.values(latest);
+    if (st.state === 'review' && verdicts.includes('CHANGES_REQUESTED')) st.state = 'changes';
+    else if (st.state === 'review' && verdicts.includes('APPROVED')) st.state = 'approved';
+    st.checks = checks;
+  }));
+  return next;
+}
+
+const refreshButton = document.getElementById('refresh');
+let busy = false;
+let pausedUntil = 0;
+async function refresh() {
+  if (busy || Date.now() < pausedUntil) return;
+  busy = true;
+  refreshButton.disabled = true;
+  try {
+    STATUS = await loadGitHub();
+    checkedAt = new Date().toISOString();
+    liveError = null;
+    saved.set('gh:status', { STATUS, checkedAt });
+  } catch (e) {
+    if (e.message === 'limit') pausedUntil = e.reset || Date.now() + EVERY;
+    liveError = e.message === 'limit'
+      ? `GitHub's hourly limit for this network is used up${e.reset ? ` until ${new Date(e.reset).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}.`
+      : "Couldn't reach GitHub.";
+  } finally {
+    busy = false;
+    refreshButton.disabled = false;
+    render();
+  }
+}
+
+const last = saved.get('gh:status');
+if (last) { STATUS = last.STATUS || {}; checkedAt = last.checkedAt; render(); }
+refresh();
+refreshButton.addEventListener('click', refresh);
+setInterval(() => { if (!document.hidden) refresh(); }, EVERY);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (!checkedAt || Date.now() - new Date(checkedAt) > 2 * 60000)) refresh();
+});
+</script>
+</body>
+</html>
