@@ -214,107 +214,20 @@ export function focusOn(nodeId: string, edges: GraphEdge[]): Focus {
   return { nodeIds, edgeIds };
 }
 
-// The colours of the holdings' chains, handed out in this order. Checked as a set against the graph's dark panel
-// (#0b2028) with the dataviz skill's palette validator, every pair against every other: each pair is told apart with
-// full colour vision (difference at least 15) and with each kind of colour blindness (at least 9), and each stands out
-// from the panel by at least 3:1. None is the teal, lime or amber that already mean holding, chosen and shared.
-export const CHAIN_COLOURS = ['#d7587e', '#185afa', '#0fac13', '#8480f2', '#a25927', '#2c9fbb', '#9d45ab'];
-
-/** A holding whose chain has a colour, for the graph's key: its ticker (or name), and the colour. */
-export type ChainKey = { id: string; label: string; colour: string };
+// The arrows are dashes that travel from supplier to customer: 8 px of line, then a 5 px gap, repeating, at 20 px a
+// second.
+export const DASH_PATTERN = [8, 5];
+const DASH_PERIOD = 13;
+const DASH_SPEED = 20;
 
 /**
- * Gives each holding's chain its own colour, so the user can follow it across the graph: every arrow into or out of a
- * holding takes that holding's colour, and an arrow further out (a supplier's supplier) takes the colour of the
- * holding it leads to. An arrow from one holding to another takes its customer's colour. Holdings with arrows get
- * colours in the order of their tickers (names for those without); there are only as many colours as CHAIN_COLOURS
- * holds, and a colour is never used twice, so the arrows of any further holding keep no colour (the graph draws them
- * grey), as do arrows that lead to no holding at all.
+ * Where the dash pattern sits after {@code elapsedMs} of animation, as a value for Cytoscape's {@code line-dash-offset}.
+ * An arrow is drawn from its supplier to its customer, and a larger offset slides the pattern back towards the
+ * supplier, so for the dashes to travel towards the customer the offset gets smaller as time passes. It wraps once a
+ * whole dash and gap have gone by, so it never grows without end.
  */
-export function chainColours(
-  nodes: Pick<GraphNode, 'id' | 'name' | 'ticker' | 'isHolding'>[],
-  edges: Pick<GraphEdge, 'id' | 'source' | 'target'>[],
-): { edges: Map<string, string>; key: ChainKey[] } {
-  const linked = new Set(edges.flatMap((edge) => [edge.source, edge.target]));
-  const labelOf = (node: Pick<GraphNode, 'name' | 'ticker'>) => node.ticker ?? displayName(node.name);
-  const holdings = nodes
-    .filter((node) => node.isHolding && linked.has(node.id))
-    .sort((a, b) => labelOf(a).localeCompare(labelOf(b)));
-  const key = holdings
-    .slice(0, CHAIN_COLOURS.length)
-    .map((node, index) => ({ id: node.id, label: labelOf(node), colour: CHAIN_COLOURS[index]! }));
-  const colourOf = new Map(key.map((entry) => [entry.id, entry.colour]));
-  const rank = new Map(holdings.map((node, index) => [node.id, index]));
-
-  // The nearest holding along the arrows, walking towards customers (or towards suppliers): of those equally near, the
-  // first in ticker order.
-  const nearest = (start: string, towards: 'target' | 'source'): string | null => {
-    const from = towards === 'target' ? 'source' : 'target';
-    const seen = new Set([start]);
-    let ring = [start];
-    while (ring.length) {
-      const found = ring.filter((id) => rank.has(id)).sort((a, b) => rank.get(a)! - rank.get(b)!);
-      if (found.length) return found[0]!;
-      const next: string[] = [];
-      for (const id of ring) {
-        for (const edge of edges) {
-          const onward = edge[towards];
-          if (edge[from] === id && !seen.has(onward)) {
-            seen.add(onward);
-            next.push(onward);
-          }
-        }
-      }
-      ring = next;
-    }
-    return null;
-  };
-
-  const result = new Map<string, string>();
-  for (const edge of edges) {
-    // Its customer if that is a holding, else its supplier if that is, else the holding it leads to (or comes from).
-    const holding = rank.has(edge.target)
-      ? edge.target
-      : rank.has(edge.source)
-        ? edge.source
-        : (nearest(edge.target, 'target') ?? nearest(edge.source, 'source'));
-    const colour = holding ? colourOf.get(holding) : undefined;
-    if (colour) result.set(edge.id, colour);
-  }
-  return { edges: result, key };
-}
-
-/** A colour mixed with white: share 0 is the colour itself, 1 is white. For the bright packets that flow along a line. */
-export function tint(hex: string, share: number): string {
-  const channels = [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16));
-  return `#${channels
-    .map((value) => Math.round(value + (255 - value) * share).toString(16).padStart(2, '0'))
-    .join('')}`;
-}
-
-// The packets that flow along every line: how far apart they are and how fast they go, in the graph's own units (so
-// they keep their spacing as the user zooms), how many one line can carry, and how far from each end they fade.
-export const PACKET_SPACING = 120;
-export const PACKET_SPEED = 60;
-export const MAX_PACKETS = 8;
-const PACKET_FADE = 12;
-
-/**
- * Where the packets on a line of the given length (on screen) are at a moment, from supplier (0) to customer (1), each
- * with how visible it is: all lines carry packets at the same speed and spacing, whatever their length, so the whole
- * graph flows evenly, the way the prototype did. A packet fades in as it leaves the supplier and out as it reaches the
- * customer. A line too long for MAX_PACKETS spaces them further apart.
- */
-export function packetsAlong(length: number, elapsedMs: number, zoom: number): { at: number; opacity: number }[] {
-  if (!(length > 0)) return [];
-  const spacing = Math.max(PACKET_SPACING * zoom, length / MAX_PACKETS);
-  const travelled = (elapsedMs / 1000) * PACKET_SPEED * zoom;
-  const offset = ((travelled % spacing) + spacing) % spacing;
-  const packets: { at: number; opacity: number }[] = [];
-  for (let distance = offset; distance < length && packets.length < MAX_PACKETS; distance += spacing) {
-    packets.push({ at: distance / length, opacity: Math.min(1, distance / PACKET_FADE, (length - distance) / PACKET_FADE) });
-  }
-  return packets;
+export function dashOffsetAt(elapsedMs: number): number {
+  return 0 - (((elapsedMs / 1000) * DASH_SPEED) % DASH_PERIOD);
 }
 
 /**

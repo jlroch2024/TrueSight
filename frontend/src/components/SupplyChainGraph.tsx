@@ -13,22 +13,22 @@
 // frame's shape, with separate groups packed into the frame's shape too. The legend and buttons sit in a bar under the
 // graph, so no company can hide behind them. The view is fitted once and the graph fades in; nothing rearranges it
 // afterwards. Dragging a company tugs its direct suppliers and customers along like elastic, and they ease back when it
-// is let go; nothing else moves. Every arrow is a straight line in the colour of its holding's chain (chainColours),
-// with a soft glow of that colour, and bright packets flow along it from supplier to customer; a key under the graph
-// names each colour. What the user did (the companies they moved, the zoom and pan) is remembered per portfolio while
-// the browser tab is open, so leaving the page and coming back changes nothing; Reset Layout returns to the calculated
-// arrangement, and Fit to Screen brings everything back into view. A visitor whose computer is set to reduce motion
-// gets no easing and no moving flow markers.
+// is let go; nothing else moves. Every arrow is a straight line of dashes that travel from supplier to customer, fading
+// from teal to lime, with a soft glow; one not yet reviewed by an analyst is a little thinner and fainter. What the user did
+// (the companies they moved, the zoom and pan) is remembered per portfolio while the browser tab is open, so leaving
+// the page and coming back changes nothing; Reset Layout returns to the calculated arrangement, and Fit to Screen
+// brings everything back into view. A visitor whose computer is set to reduce motion gets no easing and still dashes.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
 // Clicking a company chooses it: corner brackets close in around it and dashed crosshair lines run through it. Clicking
 // the background lets go. Cytoscape's own grey press circle and selection overlay are switched off.
 import cytoscape, { type Core, type ElementDefinition, type NodeSingular } from 'cytoscape';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GraphLegend } from './GraphLegend';
 import {
-  chainColours,
+  DASH_PATTERN,
+  dashOffsetAt,
   displayName,
   easeTowards,
   focusOn,
@@ -39,16 +39,13 @@ import {
   type GraphEdge,
   type GraphNode,
   logoUrl,
-  MAX_PACKETS,
   nodeLabel,
-  packetsAlong,
   plainName,
   type Point,
   readSavedLayout,
   saveLayout,
   spreadLayout,
   TILE_SIZE,
-  tint,
 } from '../pages/supplyChain';
 
 
@@ -56,7 +53,6 @@ import {
 const ACCENT = '#2dd4bf';
 const LIME = '#c4f36a';
 const AMBER = '#f5b73b';
-const MUTED = '#8ba9a5';
 const TEXT = '#e4f3ef';
 const BORDER = '#25434b';
 const PANEL_RAISED = '#102a33';
@@ -89,13 +85,12 @@ function letterTile(name: string): string {
 // How faded the companies and arrows outside the focus are.
 const FADED_OPACITY = 0.15;
 // The glow around each arrow: how strong, and how far it reaches either side of the line.
-const GLOW_OPACITY = 0.22;
+const GLOW_OPACITY = 0.16;
 const GLOW_WIDTH = 3;
-// The packets that flow along the arrows: how long and thick each is, and how much white brightens its line's colour.
-const PACKET_LENGTH = 10;
-const PACKET_THICKNESS = 3;
-const PACKET_TINT = 0.55;
-
+// An arrow's width; one not yet reviewed by an analyst is a little thinner and fainter, with no glow.
+const EDGE_WIDTH = 2.5;
+const UNREVIEWED_WIDTH = 2;
+const UNREVIEWED_OPACITY = 0.7;
 // How far out and in the user can zoom: far enough to see a big portfolio whole, close enough to read any label.
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3;
@@ -159,7 +154,6 @@ export function SupplyChainGraph({
   const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltip | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const flowLayerRef = useRef<SVGSVGElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
   const crosshairRef = useRef<SVGSVGElement | null>(null);
@@ -178,10 +172,7 @@ export function SupplyChainGraph({
   selectedRelationshipRef.current = selectedRelationshipId;
   // Set by the graph once it is drawn: puts every company back where the layout placed it.
   const resetLayoutRef = useRef<() => void>(() => {});
-  // Each holding's chain in its own colour, for the arrows and for the key under the graph.
-  const chains = useMemo(() => chainColours(nodes, edges), [nodes, edges]);
-  // The packets' glow filter, named for this graph alone.
-  const glowId = `packet-glow${useId().replace(/:/g, '')}`;
+
 
   useEffect(() => {
     const container = containerRef.current;
@@ -237,8 +228,6 @@ export function SupplyChainGraph({
           target: edge.target,
           relationshipId: edge.relationshipId,
           reviewStatus: edge.reviewStatus,
-          // The colour of the holding's chain it belongs to (see chainColours); grey when it has none.
-          colour: chains.edges.get(edge.id) ?? MUTED,
         },
       })),
     ];
@@ -319,29 +308,42 @@ export function SupplyChainGraph({
         { selector: 'node.hover', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
         // Chosen on the page: a lime border (the brackets and crosshair are drawn over the graph).
         { selector: 'node.chosen', style: { 'border-color': LIME, 'border-width': HOLDING_BORDER_WIDTH + 1 } },
-        // Straight arrows in the colour of their holding's chain, each with a soft glow of the same colour around it.
+        // Straight arrows of dashes that travel from supplier to customer, the line fading from teal at the supplier to
+        // lime at the customer, with a soft teal glow around it.
         {
           selector: 'edge',
           style: {
-            width: 2,
-            'line-color': 'data(colour)',
-            'target-arrow-color': 'data(colour)',
-            'underlay-color': 'data(colour)',
+            width: EDGE_WIDTH,
+            'line-fill': 'linear-gradient',
+            'line-gradient-stop-colors': [ACCENT, LIME],
+            'line-style': 'dashed',
+            'line-dash-pattern': DASH_PATTERN,
+            'target-arrow-color': LIME,
+            'underlay-color': ACCENT,
             'underlay-opacity': GLOW_OPACITY,
             'underlay-padding': GLOW_WIDTH,
             'target-arrow-shape': 'triangle',
             'arrow-scale': 1,
             'curve-style': 'straight',
-            'line-style': 'solid',
             'overlay-opacity': 0,
-            'transition-property': 'width, line-color, target-arrow-color',
+            'transition-property': 'width, opacity',
             'transition-duration': HOVER_TRANSITION,
           },
         },
-        { selector: 'edge[reviewStatus = "APPROVED"]', style: { 'line-style': 'solid' } },
-        { selector: 'edge[reviewStatus = "UNREVIEWED"]', style: { 'line-style': 'dashed' } },
-        { selector: 'edge.hover', style: { width: 3, 'line-color': TEXT, 'target-arrow-color': TEXT } },
-        { selector: 'edge.chosen', style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME } },
+        // Not yet reviewed by an analyst: a little thinner and fainter, without the glow.
+        {
+          selector: 'edge[reviewStatus = "UNREVIEWED"]',
+          style: { width: UNREVIEWED_WIDTH, opacity: UNREVIEWED_OPACITY, 'underlay-opacity': 0 },
+        },
+        // Under the pointer, or chosen: one bright colour, at full strength.
+        {
+          selector: 'edge.hover',
+          style: { width: 3, opacity: 1, 'line-fill': 'solid', 'line-color': TEXT, 'target-arrow-color': TEXT },
+        },
+        {
+          selector: 'edge.chosen',
+          style: { width: 3, opacity: 1, 'line-fill': 'solid', 'line-color': LIME, 'target-arrow-color': LIME },
+        },
         // Last, so it wins: what is outside the focus fades.
         { selector: '.faded', style: { opacity: FADED_OPACITY } },
       ],
@@ -500,41 +502,14 @@ export function SupplyChainGraph({
     });
     applyFocus(cy, edges, selectedNodeRef.current);
 
-    // Bright packets flow along every arrow, from supplier to customer, in the arrow's own colour, all at the same speed
-    // and spacing (see packetsAlong). Those on a faded arrow fade with it.
+    // Moving dashes. The offset gets smaller over time, which is what carries the dashes from supplier to customer.
     let flowFrame: number | undefined;
-    const flowLayer = flowLayerRef.current;
-    const packetsByEdge = new Map<string, SVGRectElement[]>();
-    flowLayer?.querySelectorAll<SVGRectElement>('[data-flow-edge]').forEach((packet) => {
-      const edgeId = packet.dataset.flowEdge;
-      if (!edgeId) return;
-      packetsByEdge.set(edgeId, [...(packetsByEdge.get(edgeId) ?? []), packet]);
-    });
-    if (flowLayer) flowLayer.style.visibility = reducesMotion ? 'hidden' : 'visible';
     if (!reducesMotion && edges.length > 0 && typeof window.requestAnimationFrame === 'function') {
       let startedAt: number | undefined;
       const step = (now: number) => {
         if (cy.destroyed()) return;
         startedAt ??= now;
-        const zoom = cy.zoom();
-        cy.edges().forEach((edge) => {
-          const from = edge.renderedSourceEndpoint();
-          const to = edge.renderedTargetEndpoint();
-          const dx = to.x - from.x;
-          const dy = to.y - from.y;
-          const placed = packetsAlong(Math.hypot(dx, dy), now - startedAt!, zoom);
-          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-          const shown = edge.hasClass('faded') ? FADED_OPACITY : 1;
-          (packetsByEdge.get(edge.id()) ?? []).forEach((packet, index) => {
-            const at = placed[index];
-            if (!at) {
-              packet.setAttribute('opacity', '0');
-              return;
-            }
-            packet.setAttribute('transform', `translate(${from.x + dx * at.at} ${from.y + dy * at.at}) rotate(${angle})`);
-            packet.setAttribute('opacity', String(at.opacity * shown));
-          });
-        });
+        cy.edges().style('line-dash-offset', dashOffsetAt(now - startedAt));
         flowFrame = window.requestAnimationFrame(step);
       };
       flowFrame = window.requestAnimationFrame(step);
@@ -554,7 +529,7 @@ export function SupplyChainGraph({
     // onEdgeSelect is deliberately left out: it is read through the ref above, so that selecting an edge (which
     // changes the page's state, and so gives onEdgeSelect a new identity) does not recreate the whole graph and
     // throw away its pan, zoom and node positions.
-  }, [nodes, edges, chains, layoutKey]);
+  }, [nodes, edges, layoutKey]);
 
   // Logos. Each is loaded first, off the graph: one that loads replaces the letter, one Logo.dev does not know
   // (fallback=404 makes it answer "not found") leaves the letter. Cytoscape loads images for "anonymous" use, which
@@ -629,34 +604,6 @@ export function SupplyChainGraph({
       <div className="graph-stage">
         <div ref={containerRef} className="supply-chain-graph" role="application" aria-label="Supply chain graph" />
         <div className="graph-overlay" aria-hidden="true">
-          <svg ref={flowLayerRef} className="flow-marker-layer" style={{ visibility: 'hidden' }}>
-            {/* One glow for every packet: each is blurred in its own colour, under a crisp copy of itself. */}
-            <defs>
-              <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2.5" result="glow" />
-                <feMerge>
-                  <feMergeNode in="glow" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            <g filter={`url(#${glowId})`}>
-              {edges.flatMap((edge) =>
-                Array.from({ length: MAX_PACKETS }, (_, index) => (
-                  <rect
-                    key={`${edge.id}-packet-${index}`}
-                    data-flow-edge={edge.id}
-                    x={-PACKET_LENGTH / 2}
-                    y={-PACKET_THICKNESS / 2}
-                    width={PACKET_LENGTH}
-                    height={PACKET_THICKNESS}
-                    fill={tint(chains.edges.get(edge.id) ?? MUTED, PACKET_TINT)}
-                    opacity="0"
-                  />
-                )),
-              )}
-            </g>
-          </svg>
           <svg ref={crosshairRef} className="graph-crosshair">
             <line className="crosshair-x" />
             <line className="crosshair-y" />
@@ -693,20 +640,6 @@ export function SupplyChainGraph({
       {/* Under the graph, so no company can hide behind it: the key, how to use the graph, and its two buttons. */}
       <div className="graph-bar">
         <GraphLegend hasRelationships={edges.length > 0} />
-        {chains.key.length > 0 && (
-          <ul className="graph-legend" aria-label="Each holding's chain">
-            {chains.key.map((entry) => (
-              <li key={entry.id}>
-                <span
-                  className="graph-legend-chain"
-                  style={{ background: entry.colour, boxShadow: `0 0 6px ${entry.colour}` }}
-                  aria-hidden="true"
-                />
-                {entry.label}
-              </li>
-            ))}
-          </ul>
-        )}
         <p className="graph-hint">Drag to Move · Scroll to Zoom · Click an Arrow for Its Evidence</p>
         <span className="graph-buttons">
           <button type="button" className="secondary" onClick={() => resetLayoutRef.current()}>

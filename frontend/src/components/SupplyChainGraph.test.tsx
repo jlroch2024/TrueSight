@@ -5,7 +5,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHAIN_COLOURS, type GraphEdge, type GraphNode, tint } from '../pages/supplyChain';
+import { dashOffsetAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
 type Handler = (event: { target: unknown; renderedPosition?: { x: number; y: number } }) => void;
@@ -383,27 +383,20 @@ describe('SupplyChainGraph', () => {
       }
     });
 
-    it("colours each arrow, its arrowhead and its glow in its holding's chain colour, and keys the colours under the graph", () => {
+    it('fades every arrow from teal at the supplier to lime at the customer, in dashes, with a glow', () => {
       drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
-      const elements = (made.options as { elements: Array<{ data: Record<string, unknown> }> }).elements;
-      const colourOf = (id: string) => elements.find((element) => element.data.id === id)!.data.colour;
-      // HLD and OTH, in ticker order: relationship-1 goes into HLD, relationship-2 out of it, relationship-3 into OTH.
-      expect(colourOf('relationship-1')).toBe(CHAIN_COLOURS[0]);
-      expect(colourOf('relationship-2')).toBe(CHAIN_COLOURS[0]);
-      expect(colourOf('relationship-3')).toBe(CHAIN_COLOURS[1]);
       const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
       expect(options.style).toContainEqual(expect.objectContaining({
         selector: 'edge',
         style: expect.objectContaining({
-          'line-color': 'data(colour)',
-          'target-arrow-color': 'data(colour)',
-          'underlay-color': 'data(colour)',
+          'line-fill': 'linear-gradient',
+          'line-gradient-stop-colors': ['#2dd4bf', '#c4f36a'],
+          'line-style': 'dashed',
+          'target-arrow-color': '#c4f36a',
+          'underlay-color': '#2dd4bf',
         }),
       }));
-
-      const key = screen.getByRole('list', { name: "Each holding's chain" });
-      expect([...key.querySelectorAll('li')].map((item) => item.textContent)).toEqual(['HLD', 'OTH']);
     });
   });
 
@@ -488,7 +481,7 @@ describe('SupplyChainGraph', () => {
   });
 
   describe('the arrows', () => {
-    it('uses solid and dashed base strokes for review status', () => {
+    it('draws an arrow not yet reviewed a little thinner and fainter than an approved one, without the glow', () => {
       drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
       const options = made.options as {
@@ -497,14 +490,12 @@ describe('SupplyChainGraph', () => {
       };
       expect(options.elements.filter((element) => element.data.source !== undefined).map((element) => element.data.reviewStatus))
         .toEqual(['APPROVED', 'UNREVIEWED', 'UNREVIEWED']);
-      expect(options.style).toContainEqual(expect.objectContaining({
-        selector: 'edge[reviewStatus = "APPROVED"]',
-        style: expect.objectContaining({ 'line-style': 'solid' }),
-      }));
-      expect(options.style).toContainEqual(expect.objectContaining({
-        selector: 'edge[reviewStatus = "UNREVIEWED"]',
-        style: expect.objectContaining({ 'line-style': 'dashed' }),
-      }));
+      // Every arrow is dashed now (the dashes move), so review status is shown by strength instead.
+      const edge = options.style.find((entry) => entry.selector === 'edge')!.style;
+      const unreviewed = options.style.find((entry) => entry.selector === 'edge[reviewStatus = "UNREVIEWED"]')!.style;
+      expect(unreviewed.width as number).toBeLessThan(edge.width as number);
+      expect(unreviewed.opacity as number).toBeLessThan(1);
+      expect(unreviewed['underlay-opacity']).toBe(0);
     });
 
     it('highlights a hovered arrow and shows its sentence above the pointer until the pointer leaves', () => {
@@ -587,41 +578,36 @@ describe('SupplyChainGraph', () => {
       expect(screen.getByRole('tooltip')).toHaveTextContent(FOCUS_EDGES[1]!.summary);
     });
 
-    it("flows bright packets along each arrow in its chain's colour, without adding graph elements", () => {
-      const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
+    it('moves the dashes from supplier to customer, without adding graph elements', () => {
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
       const graphOptions = made.options as { elements: unknown[] };
-      const packets = [...container.querySelectorAll<SVGRectElement>('[data-flow-edge="relationship-1"]')];
       expect(graphOptions.elements).toHaveLength(FOCUS_NODES.length + FOCUS_EDGES.length);
-      expect(packets[0]).toHaveAttribute('fill', tint(CHAIN_COLOURS[0]!, 0.55));
 
-      // The stand-in arrow runs 100 across: half a second in, the one packet that fits is 30 along it.
       runFrame(1000);
       runFrame(1500);
 
-      expect(packets[0]).toHaveAttribute('transform', 'translate(30 0) rotate(0)');
-      expect(packets[0]).toHaveAttribute('opacity', '1');
-      expect(packets.slice(1).every((packet) => packet.getAttribute('opacity') === '0')).toBe(true);
+      expect(made.style).toHaveBeenLastCalledWith('line-dash-offset', dashOffsetAt(500));
+      expect(dashOffsetAt(500)).toBeLessThan(0);
     });
 
-    it('keeps status strokes and hides moving markers when the computer is set to reduce motion', () => {
+    it('keeps the review styles and holds the dashes still when the computer is set to reduce motion', () => {
       setReducedMotion(true);
 
-      const { container } = drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
 
       const options = made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> };
       expect(options.style).toContainEqual(expect.objectContaining({
         selector: 'edge',
-        style: expect.objectContaining({ 'line-style': 'solid' }),
+        style: expect.objectContaining({ 'line-style': 'dashed' }),
       }));
       expect(options.style).toContainEqual(expect.objectContaining({
         selector: 'edge[reviewStatus = "UNREVIEWED"]',
-        style: expect.objectContaining({ 'line-style': 'dashed' }),
+        style: expect.objectContaining({ 'underlay-opacity': 0 }),
       }));
       runFrame(1000);
       runFrame(1500);
-      expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1); // one layout overlay frame, no repeating flow frame
+      expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1); // one layout overlay frame, no repeating dash frame
       expect(made.style).not.toHaveBeenCalled();
-      expect(container.querySelector('.flow-marker-layer')?.getAttribute('style')).toContain('hidden');
       expect(made.fit).toHaveBeenCalled(); // laid out once, still, and shown at once
     });
 

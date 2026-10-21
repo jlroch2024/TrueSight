@@ -6,8 +6,7 @@ import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import {
   buildGraphElements,
-  CHAIN_COLOURS,
-  chainColours,
+  dashOffsetAt,
   connectionsOf,
   forgetLayout,
   displayName,
@@ -21,11 +20,7 @@ import {
   type GraphNode,
   lineCrosses,
   logoUrl,
-  MAX_PACKETS,
   nodeLabel,
-  PACKET_SPACING,
-  PACKET_SPEED,
-  packetsAlong,
   plainName,
   readSavedLayout,
   relationshipSummary,
@@ -33,7 +28,6 @@ import {
   shortName,
   sharedCompanies,
   spreadLayout,
-  tint,
   sharedSummary,
   withSharedSummaries,
 } from './supplyChain';
@@ -248,113 +242,12 @@ describe('lineCrosses', () => {
   });
 });
 
-describe('chainColours', () => {
-  it("colours every arrow into or out of a holding in that holding's own colour, with the real sample relationships", () => {
-    const { nodes, edges } = buildGraphElements(sampleRelationships, sampleHoldings());
-    const { edges: colours, key } = chainColours(nodes, edges);
-    const colourOf = new Map(key.map((entry) => [entry.id, entry.colour]));
-    const holdings = new Set(nodes.filter((node) => node.isHolding).map((node) => node.id));
-
-    expect(key.length).toBeGreaterThan(0);
-    for (const edge of edges) {
-      const holding = holdings.has(edge.target) ? edge.target : holdings.has(edge.source) ? edge.source : null;
-      if (holding && colourOf.has(holding)) expect(colours.get(edge.id), edge.summary).toBe(colourOf.get(holding));
-    }
-    expect(new Set(key.map((entry) => entry.colour)).size).toBe(key.length);
-  });
-
-  it('lists the holdings with arrows in ticker order, and leaves out a holding without any', () => {
-    const nodes = [
-      { id: 'b', name: 'Bee', ticker: 'BEE', isHolding: true },
-      { id: 'a', name: 'Ay', ticker: 'AY', isHolding: true },
-      { id: 'alone', name: 'Alone', ticker: 'AAA', isHolding: true },
-      { id: 's', name: 'Supplier', ticker: null, isHolding: false },
-    ];
-    const edges = [
-      { id: 'e1', source: 's', target: 'b' },
-      { id: 'e2', source: 's', target: 'a' },
-    ];
-
-    expect(chainColours(nodes, edges).key).toEqual([
-      { id: 'a', label: 'AY', colour: CHAIN_COLOURS[0] },
-      { id: 'b', label: 'BEE', colour: CHAIN_COLOURS[1] },
-    ]);
-  });
-
-  it("gives a supplier's supplier the colour of the holding its goods go on to, and a holding's supply to another holding the customer's colour", () => {
-    const nodes = [
-      { id: 'far', name: 'Far', ticker: null, isHolding: false },
-      { id: 'near', name: 'Near', ticker: null, isHolding: false },
-      { id: 'maker', name: 'Maker', ticker: 'MKR', isHolding: true },
-      { id: 'buyer', name: 'Buyer', ticker: 'BUY', isHolding: true },
-    ];
-    const edges = [
-      { id: 'far-near', source: 'far', target: 'near' },
-      { id: 'near-buyer', source: 'near', target: 'buyer' },
-      { id: 'maker-buyer', source: 'maker', target: 'buyer' },
-      { id: 'maker-near', source: 'maker', target: 'near' },
-    ];
-    const { edges: colours, key } = chainColours(nodes, edges);
-    const buyer = key.find((entry) => entry.id === 'buyer')!.colour;
-    const maker = key.find((entry) => entry.id === 'maker')!.colour;
-
-    expect(colours.get('far-near')).toBe(buyer);
-    expect(colours.get('near-buyer')).toBe(buyer);
-    expect(colours.get('maker-buyer')).toBe(buyer);
-    expect(colours.get('maker-near')).toBe(maker);
-  });
-
-  it('never uses a colour twice: holdings beyond the colours there are keep grey arrows', () => {
-    const holdings = Array.from({ length: CHAIN_COLOURS.length + 2 }, (_, index) => ({
-      id: `h${index}`, name: `Holding ${index}`, ticker: `H${String(index).padStart(2, '0')}`, isHolding: true,
-    }));
-    const nodes = [...holdings, { id: 's', name: 'Supplier', ticker: null, isHolding: false }];
-    const edges = holdings.map((holding) => ({ id: `to-${holding.id}`, source: 's', target: holding.id }));
-    const { edges: colours, key } = chainColours(nodes, edges);
-
-    expect(key).toHaveLength(CHAIN_COLOURS.length);
-    expect(new Set(colours.values()).size).toBe(CHAIN_COLOURS.length);
-    expect(colours.has(`to-h${CHAIN_COLOURS.length}`)).toBe(false);
-  });
-});
-
-describe('tint', () => {
-  it('mixes a colour with white by the given share', () => {
-    expect(tint('#d7587e', 0)).toBe('#d7587e');
-    expect(tint('#000000', 0.5)).toBe('#808080');
-    expect(tint('#185afa', 1)).toBe('#ffffff');
-  });
-});
-
-describe('packetsAlong', () => {
-  it('moves packets at the same speed and spacing on a short line and a long one', () => {
-    const short = packetsAlong(300, 1000, 1);
-    const long = packetsAlong(900, 1000, 1);
-
-    expect(short.map((packet) => packet.at * 300)).toEqual([PACKET_SPEED, PACKET_SPEED + PACKET_SPACING]);
-    expect(long.map((packet) => packet.at * 900).slice(0, 2)).toEqual(short.map((packet) => packet.at * 300));
-  });
-
-  it('fades a packet in as it leaves the supplier and out as it reaches the customer', () => {
-    expect(packetsAlong(300, 0, 1)[0]).toEqual({ at: 0, opacity: 0 });
-    // The last packet 5 short of the customer's end.
-    const length = PACKET_SPACING * 2 + 60;
-    const nearEnd = packetsAlong(length, ((length - 5 - PACKET_SPACING * 2) / PACKET_SPEED) * 1000, 1).at(-1)!;
-    expect(nearEnd.at * length).toBeCloseTo(length - 5);
-    expect(nearEnd.opacity).toBeGreaterThan(0);
-    expect(nearEnd.opacity).toBeLessThan(1);
-  });
-
-  it('keeps its spacing on screen in step with the zoom', () => {
-    const near = packetsAlong(600, 1000, 2).map((packet) => packet.at * 600);
-
-    expect(near.slice(0, 2)).toEqual([PACKET_SPEED * 2, (PACKET_SPEED + PACKET_SPACING) * 2]);
-  });
-
-  it(`spaces packets further apart on a line too long for ${MAX_PACKETS} of them`, () => {
-    const length = PACKET_SPACING * MAX_PACKETS * 2;
-
-    expect(packetsAlong(length, 0, 1)).toHaveLength(MAX_PACKETS);
+describe('dashOffsetAt', () => {
+  it('slides the dashes from supplier to customer, 20 px a second, and wraps after each dash and gap', () => {
+    expect(dashOffsetAt(0)).toBe(0);
+    expect(dashOffsetAt(500)).toBe(-10);
+    expect(dashOffsetAt(1000)).toBeCloseTo(-7);
+    expect(dashOffsetAt(650)).toBeCloseTo(0);
   });
 });
 
