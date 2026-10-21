@@ -639,11 +639,12 @@ const SPREAD_BAND_GAP = 90;
  * Lays the graph out to fill a frame of the given shape (width ÷ height), still reading left to right. Each column of
  * the flow (suppliers' suppliers, suppliers, holdings, customers) becomes a band across the frame. A band holding many
  * companies gets several lanes side by side instead of standing in one tall line, and every band spreads its rows
- * evenly over the same height, so a band with few companies fills it too. The height is chosen so the whole group comes
- * closest to the frame's shape. Within a band, companies keep the flow's order (which keeps arrows from crossing), row
- * by row, and every other lane sits half a row lower, so the graph does not look like a grid. No two companies can
- * overlap, and as bands never overlap, every arrow still runs from left to right. Separate groups are laid out on their
- * own (the graph packs them afterwards). Nothing is random: the same graph always comes out the same.
+ * evenly over the same height, so a band with few companies fills it too. The height is chosen so the whole group
+ * comes closest to the frame's shape. Within a band, companies keep the flow's order (which keeps arrows from
+ * crossing), row by row (in a row, those sending more arrows onwards further right), and every other lane sits half a
+ * row lower, so the graph does not look like a grid. No two companies can overlap, and as bands never overlap, every
+ * arrow still runs from left to right. Separate groups are laid out on their own (the graph packs them afterwards).
+ * Nothing is random: the same graph always comes out the same.
  */
 export function spreadLayout(
   nodeIds: string[],
@@ -719,13 +720,23 @@ export function spreadLayout(
     }
 
     let left = 0;
+    // How far left and right each company may later move without leaving its band.
+    const bandOf = new Map<string, { from: number; to: number }>();
     arrange(height).forEach(({ rows, lanes }, b) => {
       const band = filled[b]!;
       const cell = cells[b]!;
       // Rows spread evenly over the whole height; every other lane half a row lower, the band then centred again.
       const rowHeight = height / rows;
       const sway = rows > 1 && lanes > 1 ? rowHeight / 2 : 0;
-      band.forEach((id, index) => {
+      // Within a row, a company sending more arrows onwards than it receives sits further right: its arrows leave
+      // to the right, so they do not run through the row's other companies (and arrows coming in from the left do not
+      // run through it).
+      const leaning = (id: string) =>
+        edges.filter((edge) => edge.source === id).length - edges.filter((edge) => edge.target === id).length;
+      const ordered = Array.from({ length: rows }, (_, row) =>
+        band.slice(row * lanes, (row + 1) * lanes).sort((a, b) => leaning(a) - leaning(b)),
+      ).flat();
+      ordered.forEach((id, index) => {
         const row = Math.floor(index / lanes);
         const lane = index % lanes;
         const middle = (row + 0.5) * rowHeight + (lane % 2) * sway - sway / 2;
@@ -734,8 +745,138 @@ export function spreadLayout(
           y: middle - boxOf(id).below,
         });
       });
+      for (const id of band) {
+        const half = boxOf(id).width / 2 + SPREAD_GAP_X / 2;
+        bandOf.set(id, { from: left + half, to: left + lanes * cell.width - half });
+      }
       left += lanes * cell.width + SPREAD_BAND_GAP;
     });
+    clearTheLines(group, edges, positions, boxOf, bandOf);
   }
   return positions;
+}
+
+// How far a line keeps from a company it passes, how finely a company's new height is searched for, and how far up or
+// down it may move.
+const LINE_CLEARANCE = 8;
+const CLEAR_STEP = 6;
+const CLEAR_REACH = 300;
+
+/** The box a company at this point takes, with room around it. */
+function boxAround(box: NodeBox, at: Point, room: number) {
+  const middle = at.y + box.below;
+  return {
+    x1: at.x - box.width / 2 - room,
+    x2: at.x + box.width / 2 + room,
+    y1: middle - box.height / 2 - room,
+    y2: middle + box.height / 2 + room,
+  };
+}
+
+/** Whether the straight line from a to b passes through the box (clipping the line to the box, Liang–Barsky). */
+export function lineCrosses(a: Point, b: Point, box: { x1: number; x2: number; y1: number; y2: number }): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  let enter = 0;
+  let leave = 1;
+  for (const [p, q] of [
+    [-dx, a.x - box.x1],
+    [dx, box.x2 - a.x],
+    [-dy, a.y - box.y1],
+    [dy, box.y2 - a.y],
+  ] as const) {
+    if (p === 0) {
+      if (q < 0) return false;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) {
+      if (r > leave) return false;
+      enter = Math.max(enter, r);
+    } else {
+      if (r < enter) return false;
+      leave = Math.min(leave, r);
+    }
+  }
+  return true;
+}
+
+/**
+ * Arrows are straight, so a company standing on the line between two others would sit on an arrow that is not its own
+ * (as Panasonic would on Contemporary Amperex's arrow to Tesla). Each such company moves the shortest way, up, down or
+ * sideways within its band, to where no arrow passes through it, its own arrows pass through no other company, and it
+ * overlaps none; when it finds no such place within reach, the arrow's customer or supplier moves instead. Companies
+ * keep their bands, so arrows still run left to right. The reach is kept short so the graph keeps the frame's shape:
+ * where very many arrows meet one company (a dozen suppliers of one holding), one may still pass behind a company.
+ */
+function clearTheLines(
+  group: string[],
+  edges: Pick<GraphEdge, 'source' | 'target'>[],
+  positions: Map<string, Point>,
+  boxOf: (id: string) => NodeBox,
+  bandOf: Map<string, { from: number; to: number }>,
+): void {
+  const inGroup = new Set(group);
+  const lines = edges.filter(({ source, target }) => source !== target && inGroup.has(source) && inGroup.has(target));
+  const at = (id: string) => positions.get(id)!;
+  const sitsOnLine = (id: string, point: Point) =>
+    lines.some(
+      ({ source, target }) =>
+        source !== id &&
+        target !== id &&
+        lineCrosses(at(source), at(target), boxAround(boxOf(id), point, LINE_CLEARANCE)),
+    );
+  const fits = (id: string, point: Point) => {
+    if (sitsOnLine(id, point)) return false;
+    const mine = boxAround(boxOf(id), point, SPREAD_GAP_Y / 2);
+    for (const other of group) {
+      if (other === id) continue;
+      const theirs = boxAround(boxOf(other), at(other), SPREAD_GAP_Y / 2);
+      if (mine.x1 < theirs.x2 && theirs.x1 < mine.x2 && mine.y1 < theirs.y2 && theirs.y1 < mine.y2) return false;
+      const box = boxAround(boxOf(other), at(other), LINE_CLEARANCE);
+      for (const { source, target } of lines) {
+        if (source !== id && target !== id) continue;
+        if (source === other || target === other) continue;
+        const from = source === id ? point : at(source);
+        const to = target === id ? point : at(target);
+        if (lineCrosses(from, to, box)) return false;
+      }
+    }
+    return true;
+  };
+
+  // Every move a company might make, the shortest first: up and down, and sideways within its band.
+  const offsets: Point[] = [];
+  for (let dx = -CLEAR_REACH; dx <= CLEAR_REACH; dx += CLEAR_STEP * 2) {
+    for (let dy = -CLEAR_REACH; dy <= CLEAR_REACH; dy += CLEAR_STEP) {
+      if (dx !== 0 || dy !== 0) offsets.push({ x: dx, y: dy });
+    }
+  }
+  offsets.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y) || a.x - b.x || a.y - b.y);
+  // Moves a company to the nearest place that fits; false when there is none within reach.
+  const move = (id: string) => {
+    const start = at(id);
+    const band = bandOf.get(id) ?? { from: start.x, to: start.x };
+    for (const offset of offsets) {
+      const point = { x: start.x + offset.x, y: start.y + offset.y };
+      if (point.x < band.from || point.x > band.to) continue;
+      if (fits(id, point)) {
+        positions.set(id, point);
+        return true;
+      }
+    }
+    return false;
+  };
+  for (let pass = 0; pass < 6; pass++) {
+    let moved = false;
+    for (const { source, target } of lines) {
+      for (const id of group) {
+        if (id === source || id === target) continue;
+        if (!lineCrosses(at(source), at(target), boxAround(boxOf(id), at(id), LINE_CLEARANCE))) continue;
+        // The company in the way moves; failing that, the arrow's customer or its supplier does.
+        if (move(id) || move(target) || move(source)) moved = true;
+      }
+    }
+    if (!moved) break;
+  }
 }

@@ -19,6 +19,7 @@ import {
   holdingNodeIds,
   holdingSize,
   type GraphNode,
+  lineCrosses,
   logoUrl,
   MAX_PACKETS,
   nodeLabel,
@@ -233,6 +234,17 @@ describe('focusOn', () => {
 
     expect([...focus.nodeIds]).toEqual(['holding-10']);
     expect(focus.edgeIds.size).toBe(0);
+  });
+});
+
+describe('lineCrosses', () => {
+  const box = { x1: 40, x2: 60, y1: -10, y2: 10 };
+
+  it('finds a line through a box, and none past it or stopping short of it', () => {
+    expect(lineCrosses({ x: 0, y: 0 }, { x: 100, y: 0 }, box)).toBe(true);
+    expect(lineCrosses({ x: 0, y: 30 }, { x: 100, y: 30 }, box)).toBe(false);
+    expect(lineCrosses({ x: 0, y: 0 }, { x: 30, y: 0 }, box)).toBe(false);
+    expect(lineCrosses({ x: 0, y: -50 }, { x: 100, y: 50 }, box)).toBe(true);
   });
 });
 
@@ -886,6 +898,40 @@ describe('spreadLayout', () => {
     const tall = extent(spreadLayout(crowded.ids, crowded.edges, () => box, 0.8), crowded.ids);
 
     expect(wide.width / wide.height).toBeGreaterThan(tall.width / tall.height);
+  });
+
+  // Whether any straight arrow passes through a company that is not one of its two ends.
+  const crossings = (
+    positions: Map<string, { x: number; y: number }>,
+    graphEdges: readonly { source: string; target: string }[],
+  ) =>
+    graphEdges.flatMap(({ source, target }) =>
+      [...positions.keys()]
+        .filter((id) => id !== source && id !== target && spreadGroupOf(graphEdges, source).has(id))
+        .filter((id) => {
+          const point = positions.get(id)!;
+          const middle = point.y + box.below;
+          return lineCrosses(positions.get(source)!, positions.get(target)!, {
+            x1: point.x - box.width / 2, x2: point.x + box.width / 2,
+            y1: middle - box.height / 2, y2: middle + box.height / 2,
+          });
+        })
+        .map((id) => `${source} > ${target} through ${id}`),
+    );
+
+  it("keeps two suppliers of one company off each other's arrow (item 55)", () => {
+    // Contemporary Amperex and Panasonic both supply Tesla: placed side by side, one arrow ran through the other.
+    const twoSuppliers = [
+      { source: 'catl', target: 'tesla' },
+      { source: 'panasonic', target: 'tesla' },
+    ];
+    const positions = spreadLayout(['catl', 'panasonic', 'tesla'], twoSuppliers, () => box, 3);
+
+    expect(crossings(positions, twoSuppliers)).toEqual([]);
+  });
+
+  it('draws no straight arrow through another company, with the real sample relationships', () => {
+    expect(crossings(spreadLayout(ids, edges, () => box, 1.8), edges)).toEqual([]);
   });
 
   it('lays the same graph out the same way every time', () => {
