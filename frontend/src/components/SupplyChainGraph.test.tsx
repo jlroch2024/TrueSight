@@ -5,7 +5,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHAIN_COLOURS, dashOffsetAt, type GraphEdge, type GraphNode } from '../pages/supplyChain';
+import { CHAIN_COLOURS, dashOffsetAt, FLOAT_FADE_MS, FLOAT_REACH, type GraphEdge, type GraphNode } from '../pages/supplyChain';
 
 type Layout = { options: Record<string, unknown>; run: () => void; stop: () => void; one: (event: string, fn: () => void) => void; fire: () => void };
 type Handler = (event: { target: unknown; renderedPosition?: { x: number; y: number } }) => void;
@@ -18,6 +18,9 @@ type Fake = {
   classes: Set<string>;
   toggleClass: (name: string, on: boolean) => Fake;
   hasClass: (name: string) => boolean;
+  // Whether the user is holding this company with the pointer (set by a test).
+  held: boolean;
+  grabbed: () => boolean;
   removeClass: (name: string) => Fake;
   addClass: (name: string) => Fake;
   // Where a company is, and the box its tile and label take (the same for every stand-in company).
@@ -87,6 +90,8 @@ function fake(id: string): Fake {
     renderedControlPoints: () => [],
     classes: new Set(),
     hasClass: (name) => item.classes.has(name),
+    held: false,
+    grabbed: () => item.held,
     toggleClass: (name, on) => {
       if (on) item.classes.add(name);
       else item.classes.delete(name);
@@ -405,6 +410,50 @@ describe('SupplyChainGraph', () => {
 
       const key = screen.getByRole('list', { name: "Each holding's chain" });
       expect([...key.querySelectorAll('li')].map((item) => item.textContent)).toEqual(['HLD', 'OTH']);
+    });
+  });
+
+  describe('floating', () => {
+    const positionOf = (id: string) => ({ ...made.nodes.find((node) => node.id() === id)!.position() });
+
+    it('floats every company a few pixels around where it rests, fading the drift in', () => {
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      const rest = new Map(FOCUS_NODES.map((node) => [node.id, positionOf(node.id)]));
+
+      runFrame(1000);
+      // The first frame: the drift has not faded in yet, so nothing has moved.
+      for (const node of FOCUS_NODES) expect(positionOf(node.id)).toEqual(rest.get(node.id));
+
+      runFrame(1000 + FLOAT_FADE_MS + 2500);
+      const drifts = FOCUS_NODES.map((node) => {
+        const now = positionOf(node.id);
+        return Math.hypot(now.x - rest.get(node.id)!.x, now.y - rest.get(node.id)!.y);
+      });
+      expect(drifts.every((drift) => drift > 0 && drift <= FLOAT_REACH)).toBe(true);
+    });
+
+    it('holds a company still while the user holds it', () => {
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      const held = made.nodes.find((node) => node.id() === 'holding')!;
+      runFrame(1000);
+      held.held = true;
+      made.handlers.get('grab node')!({ target: held });
+      const where = positionOf('holding');
+
+      runFrame(1000 + FLOAT_FADE_MS + 2500);
+
+      expect(positionOf('holding')).toEqual(where);
+    });
+
+    it('does not float when the computer is set to reduce motion', () => {
+      setReducedMotion(true);
+      drawGraph(FOCUS_NODES, FOCUS_EDGES);
+      const rest = positionOf('supplier');
+
+      runFrame(1000);
+      runFrame(1000 + FLOAT_FADE_MS + 2500);
+
+      expect(positionOf('supplier')).toEqual(rest);
     });
   });
 

@@ -13,6 +13,8 @@ import {
   forgetLayout,
   displayName,
   easeTowards,
+  FLOAT_REACH,
+  floatOffset,
   flowLayout,
   focusOn,
   followTarget,
@@ -702,6 +704,38 @@ describe('displayName', () => {
     expect(displayName('Apple Inc.')).toBe('Apple');
     expect(displayName('NVIDIA Corporation')).toBe('NVIDIA');
     expect(displayName('Taiwan Semiconductor Manufacturing Company Limited')).toBe('Taiwan Semiconductor Manufacturing');
+  });
+});
+
+describe('floatOffset', () => {
+  const ids = ['nvidia', 'amd', 'supplier-1', 'supplier-2', 'Taiwan Semiconductor'];
+  const moments = Array.from({ length: 200 }, (_, index) => index * 157);
+
+  it('keeps every company within a few pixels of where it rests, and a holding a little closer', () => {
+    for (const id of ids) {
+      for (const at of moments) {
+        expect(Math.hypot(floatOffset(id, at, false).x, floatOffset(id, at, false).y)).toBeLessThanOrEqual(FLOAT_REACH);
+        const holding = floatOffset(id, at, true);
+        expect(Math.hypot(holding.x, holding.y)).toBeLessThan(FLOAT_REACH);
+      }
+    }
+  });
+
+  it('moves smoothly: less than a pixel from one frame to the next', () => {
+    for (const id of ids) {
+      for (const at of moments) {
+        const now = floatOffset(id, at, false);
+        const next = floatOffset(id, at + 16, false);
+        expect(Math.hypot(next.x - now.x, next.y - now.y)).toBeLessThan(1);
+      }
+    }
+  });
+
+  it('gives each company its own path, the same every time', () => {
+    const paths = ids.map((id) => JSON.stringify(moments.slice(0, 10).map((at) => floatOffset(id, at, false))));
+
+    expect(new Set(paths).size).toBe(ids.length);
+    expect(floatOffset('amd', 4321, false)).toEqual(floatOffset('amd', 4321, false));
   });
 });
 

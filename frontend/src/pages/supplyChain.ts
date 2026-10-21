@@ -454,6 +454,37 @@ export function easeTowards(current: Point, target: Point, ease: number = EASE):
   return { position: { x: current.x + dx * ease, y: current.y + dy * ease }, arrived: false };
 }
 
+// How far a floating company drifts from where it rests (a holding, as the heavier, a little less), how long one of its
+// slow sways takes, and how long its drift takes to fade back in once it has been moved.
+export const FLOAT_REACH = 10;
+const HOLDING_FLOAT_REACH = 7;
+const FLOAT_PERIOD_MS = 9000;
+export const FLOAT_FADE_MS = 1200;
+
+/**
+ * How far a company has floated from where it rests, {@code elapsedMs} into the animation: each company sways along its
+ * own slow, looping path, two gentle sways on each axis at unrelated speeds, so no two move in step and none repeats
+ * soon. The path comes from the company's id, so it is the same every time the graph is drawn. It never goes further
+ * than FLOAT_REACH from the resting place (a holding no further than HOLDING_FLOAT_REACH).
+ */
+export function floatOffset(id: string, elapsedMs: number, isHolding: boolean): Point {
+  let hash = 0;
+  for (const character of id) hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0;
+  const seed = (shift: number) => ((hash >>> shift) & 255) / 255;
+  // Each axis sways at most this far, so together they never go further than the reach.
+  const reach = (isHolding ? HOLDING_FLOAT_REACH : FLOAT_REACH) / Math.SQRT2;
+  // Each company's own pace: its sways take between 0.8 and 1.3 times the usual period.
+  const speedX = (2 * Math.PI) / (FLOAT_PERIOD_MS * (0.8 + seed(0) * 0.5));
+  const speedY = (2 * Math.PI) / (FLOAT_PERIOD_MS * (0.8 + seed(8) * 0.5));
+  const phaseX = seed(16) * 2 * Math.PI;
+  const phaseY = seed(24) * 2 * Math.PI;
+  const t = elapsedMs;
+  return {
+    x: reach * (0.7 * Math.sin(t * speedX + phaseX) + 0.3 * Math.cos(t * speedX * 1.618 + phaseY)),
+    y: reach * (0.7 * Math.cos(t * speedY + phaseY) + 0.3 * Math.sin(t * speedY * 1.414 + phaseX)),
+  };
+}
+
 /**
  * Lays the graph out as a flow, the way goods move: every company in a column by its place in the chain, so each
  * arrow runs left to right from supplier to customer (suppliers' suppliers, suppliers, then their customers). Within a
@@ -739,8 +770,9 @@ export function spreadLayout(
   return positions;
 }
 
-// How far a line keeps from a company it passes, how finely a company's new height is searched for, and how far up or
-// down it may move.
+// How far a line keeps from a company it passes, how finely a company's new place is searched for, and how far it may
+// move. The clearance is kept a little under how far a floating company drifts (FLOAT_REACH): more would stretch a
+// crowded graph tall, and a company only brushes a line's edge for a moment at the far end of a sway.
 const LINE_CLEARANCE = 8;
 const CLEAR_STEP = 6;
 const CLEAR_REACH = 300;

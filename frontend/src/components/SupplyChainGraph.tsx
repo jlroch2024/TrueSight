@@ -13,12 +13,13 @@
 // frame's shape, with separate groups packed into the frame's shape too. The legend and buttons sit in a bar under the
 // graph, so no company can hide behind them. The view is fitted once and the graph fades in; nothing rearranges it
 // afterwards. Dragging a company tugs its direct suppliers and customers along like elastic, and they ease back when it
-// is let go; nothing else moves. Every arrow is a straight line of dashes that travel from supplier to customer, in the
-// colour of its holding's chain (chainColours), with a soft glow of that colour, and a key under the graph names each
-// colour; one not yet reviewed by an analyst is a little thinner and fainter. What the user did (the companies they
-// moved, the zoom and pan) is remembered per portfolio while the browser tab is open, so leaving the page and coming
-// back changes nothing; Reset Layout returns to the calculated arrangement, and Fit to Screen brings everything back
-// into view. A visitor whose computer is set to reduce motion gets no easing and still dashes.
+// is let go. The rest of the time every company floats, drifting slowly a few pixels around where it rests
+// (moveCompanies). Every arrow is a straight line of dashes that travel from supplier to customer, in the colour of its
+// holding's chain (chainColours), with a soft glow of that colour, and a key under the graph names each colour; one not
+// yet reviewed by an analyst is a little thinner and fainter. What the user did (the companies they moved, the zoom and
+// pan) is remembered per portfolio while the browser tab is open, so leaving the page and coming back changes nothing;
+// Reset Layout returns to the calculated arrangement, and Fit to Screen brings everything back into view. A visitor
+// whose computer is set to reduce motion gets no easing, no floating and still dashes.
 //
 // It reacts to the pointer: a company's border and an arrow brighten and thicken under it, smoothly. Pointing at a
 // company also keeps it, its direct suppliers and customers, and the arrows between them lit, and fades the rest.
@@ -33,6 +34,8 @@ import {
   dashOffsetAt,
   displayName,
   easeTowards,
+  FLOAT_FADE_MS,
+  floatOffset,
   focusOn,
   followTarget,
   forgetLayout,
@@ -418,7 +421,9 @@ export function SupplyChainGraph({
     schedule();
 
     // Dragging a company tugs its direct suppliers and customers along like elastic; they ease back when it is let go.
-    const elastic = reducesMotion ? { stop: () => {}, forget: () => {} } : elasticDrag(cy, schedule);
+    // Meanwhile every company floats around where it rests.
+    const holdingIds = new Set(nodes.filter((node) => node.isHolding).map((node) => node.id));
+    const elastic = reducesMotion ? { stop: () => {}, forget: () => {} } : moveCompanies(cy, holdingIds, schedule);
 
     // Remembered for the tab: a company the user lets go, and a zoom or pan the user makes (not one the graph makes).
     const remember = () => {
@@ -789,14 +794,21 @@ function packGroups(cy: Core, frameRatio: number): void {
 }
 
 /**
- * Makes dragging feel elastic: while a company is dragged, its direct suppliers and customers follow a share of its move
- * (followTarget), easing towards it frame by frame; when it is let go, it stays where it was dropped and they ease back
- * to where they were. Nothing else moves. Returns stop, which ends any easing still running, and forget, which drops
- * the remembered resting places (after Reset Layout).
+ * Moves the companies: dragging is elastic, and every company floats.
+ *
+ * While a company is dragged, its direct suppliers and customers follow a share of its move (followTarget), easing
+ * towards it frame by frame; when it is let go, it stays where it was dropped and they ease back to where they rest.
+ *
+ * The rest of the time, every company floats: it drifts slowly, a few pixels each way, around where it rests
+ * (floatOffset). A company being dragged or easing does not float; once it is still again its drift fades back in from
+ * nothing (FLOAT_FADE_MS), so it never jumps. Returns stop, which ends the motion, and forget, which drops the
+ * remembered resting places (after Reset Layout) so they are read again from where the companies then are.
  */
-function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: () => void } {
+function moveCompanies(cy: Core, holdingIds: Set<string>, onMove: () => void): { stop: () => void; forget: () => void } {
   const rest = new Map<string, Point>();
   const targets = new Map<string, Point>();
+  // When each still company began floating, so its drift fades in from then.
+  const floatingSince = new Map<string, number>();
   let dragged: NodeSingular | null = null;
   let from: Point | null = null;
   let frame: number | undefined;
@@ -806,7 +818,7 @@ function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: 
     if (!rest.has(node.id())) rest.set(node.id(), { ...node.position() });
     return rest.get(node.id())!;
   };
-  const tick = () => {
+  const tick = (now: number) => {
     frame = undefined;
     if (cy.destroyed()) return;
     for (const [id, target] of targets) {
@@ -817,18 +829,28 @@ function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: 
       }
       const { position, arrived } = easeTowards(node.position(), target);
       node.position(position);
-      if (arrived && dragged === null) targets.delete(id);
+      if (arrived && dragged === null) {
+        targets.delete(id);
+        floatingSince.delete(id);
+      }
     }
+    cy.nodes().forEach((node) => {
+      const id = node.id();
+      if (targets.has(id) || node.grabbed()) return;
+      const anchor = restOf(node);
+      if (!floatingSince.has(id)) floatingSince.set(id, now);
+      const fade = Math.min(1, Math.max(0, (now - floatingSince.get(id)!) / FLOAT_FADE_MS));
+      const offset = floatOffset(id, now, holdingIds.has(id));
+      node.position({ x: anchor.x + offset.x * fade, y: anchor.y + offset.y * fade });
+    });
     onMove();
-    if (targets.size > 0) frame = window.requestAnimationFrame(tick);
-  };
-  const run = () => {
-    if (frame === undefined) frame = window.requestAnimationFrame(tick);
+    frame = window.requestAnimationFrame(tick);
   };
 
   cy.on('grab', 'node', (event) => {
     dragged = event.target as NodeSingular;
     from = restOf(dragged);
+    floatingSince.delete(dragged.id());
   });
   cy.on('drag', 'node', (event) => {
     const held = dragged;
@@ -836,21 +858,23 @@ function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: 
     if (!held || !start || event.target !== held) return;
     const to = held.position();
     held.neighborhood('node').forEach((neighbour) => {
-      if (!neighbour.grabbed()) targets.set(neighbour.id(), followTarget(restOf(neighbour), start, to));
+      if (neighbour.grabbed()) return;
+      targets.set(neighbour.id(), followTarget(restOf(neighbour), start, to));
+      floatingSince.delete(neighbour.id());
     });
-    run();
   });
   cy.on('free', 'node', (event) => {
     const held = dragged;
     if (!held || event.target !== held) return;
     rest.set(held.id(), { ...held.position() });
+    floatingSince.delete(held.id());
     held.neighborhood('node').forEach((neighbour) => {
       targets.set(neighbour.id(), restOf(neighbour));
     });
     dragged = null;
     from = null;
-    run();
   });
+  frame = window.requestAnimationFrame(tick);
 
   return {
     stop: () => {
@@ -860,6 +884,7 @@ function elasticDrag(cy: Core, onMove: () => void): { stop: () => void; forget: 
     forget: () => {
       rest.clear();
       targets.clear();
+      floatingSince.clear();
     },
   };
 }
