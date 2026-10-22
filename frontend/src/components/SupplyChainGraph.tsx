@@ -175,6 +175,7 @@ export function SupplyChainGraph({
           target: edge.target,
           relationshipId: edge.relationshipId,
           reviewStatus: edge.reviewStatus,
+          criticality: edge.criticality ?? '',
         },
       })),
     ];
@@ -273,6 +274,10 @@ export function SupplyChainGraph({
         },
         { selector: 'edge[reviewStatus = "APPROVED"]', style: { 'line-style': 'solid' } },
         { selector: 'edge[reviewStatus = "UNREVIEWED"]', style: { 'line-style': 'dashed' } },
+        {
+          selector: 'edge[criticality = "SOLE_SOURCE"], edge[criticality = "SINGLE_SOURCE"]',
+          style: { width: 3 },
+        },
         { selector: 'edge.hover', style: { width: 3, 'line-color': TEXT, 'target-arrow-color': TEXT } },
         { selector: 'edge.chosen', style: { width: 3, 'line-color': LIME, 'target-arrow-color': LIME } },
         // Last, so it wins: what is outside the focus fades.

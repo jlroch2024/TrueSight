@@ -13,10 +13,15 @@ export function GraphLegend({ hasRelationships }: Props) {
         <li><span className="graph-legend-flow" aria-hidden="true"><i /></span>Supplier to Customer</li>
       </ul>
       {hasRelationships && (
-        <ul className="graph-legend" aria-label="Relationship review status">
-          <li><span className="graph-legend-line approved" aria-hidden="true" />Approved</li>
-          <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not Yet Reviewed</li>
-        </ul>
+        <>
+          <ul className="graph-legend" aria-label="Relationship review status">
+            <li><span className="graph-legend-line approved" aria-hidden="true" />Approved</li>
+            <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not Yet Reviewed</li>
+          </ul>
+          <ul className="graph-legend" aria-label="Relationship criticality">
+            <li><span className="graph-legend-line criticality" aria-hidden="true" />Sole or Single Source</li>
+          </ul>
+        </>
       )}
     </div>
   );

@@ -18,6 +18,10 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     boolean existsByReportId(Long reportId);
 
+    List<Relationship> findByReportIdIn(Collection<Long> reportIds);
+
+    List<Relationship> findByReportIdOrderByIdAsc(Long reportId);
+
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
 
     /**

@@ -52,6 +52,13 @@ public class RelationshipFinder {
             - relationship: SUPPLIER if it supplies %1$s, CUSTOMER if it buys from %1$s
             - provides: what is supplied, in a few words
             - quote: one sentence copied exactly from the text that shows the relationship
+            - criticality: SOLE_SOURCE if the report says this is the only possible supplier, SINGLE_SOURCE if it says
+              this is the one supplier used though others exist, or an empty string when it says neither
+            - criticalityQuote: one sentence copied exactly from the text that supports criticality, or an empty string
+              when criticality is empty
+
+            Never infer sole or single source from words such as "primary", "key" or "significant" alone. Only report
+            criticality when the report explicitly says so.
 
             Only include companies the text names explicitly. Answer with JSON only.
 
@@ -107,8 +114,16 @@ public class RelationshipFinder {
                     || !saved.add(counterparty.getId() + " " + item.relationship() + " " + evidence.get())) {
                 continue; // the company itself, or the same relationship twice
             }
-            proven.add(new Relationship(report.getId(), company.getId(), counterparty.getId(), item.relationship(),
-                    item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES), evidence.get()));
+            Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
+                    item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
+                    evidence.get());
+            if (item.criticality() != null) {
+                checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
+                    relationship.setCriticality(item.criticality());
+                    relationship.setCriticalityEvidence(criticalityEvidence);
+                });
+            }
+            proven.add(relationship);
         }
         relationships.saveAll(proven);
         calls.finish(asked.callId(), proven.size(), dropped);

@@ -11,7 +11,8 @@ import java.util.Locale;
 
 /**
  * Reads Gemini's answer: the text in {@code candidates[0].content.parts}, which should be a JSON list of
- * {@code { company, alsoKnownAs, relationship, provides, quote }}. See {@code docs/examples/gemini-nvidia.json}.
+ * {@code { company, alsoKnownAs, relationship, provides, quote, criticality, criticalityQuote }}. See
+ * {@code docs/examples/gemini-nvidia.json}.
  *
  * <p>An answer that is not a JSON list throws {@link UnreadableAnswerException}, so the caller can ask once more. An
  * item in the list with no company or quote, or a relationship other than SUPPLIER or CUSTOMER, is left out.
@@ -27,8 +28,11 @@ public class GeminiAnswer {
 
     /** One relationship as the AI gave it. Its quote is not checked yet. */
     public record Found(String company, String alsoKnownAs, RelationshipType relationship, String provides,
-                        String quote) {
+                        String quote, Criticality criticality, String criticalityQuote) {
     }
+
+    /** A criticality answer matched to an already-known counterparty. */
+    public record CriticalityFound(String company, Criticality criticality, String quote) { }
 
     public List<Found> read(String response) {
         JsonNode list;
@@ -48,7 +52,29 @@ public class GeminiAnswer {
             if (company.isEmpty() || quote.isEmpty() || type == null) {
                 continue;
             }
-            found.add(new Found(company, text(item, "alsoKnownAs"), type, text(item, "provides"), quote));
+            found.add(new Found(company, text(item, "alsoKnownAs"), type, text(item, "provides"), quote,
+                    criticality(text(item, "criticality")), text(item, "criticalityQuote")));
+        }
+        return found;
+    }
+
+    /** Reads answers for the criticality-only pass; malformed or empty claims are ignored, not relationship data. */
+    public List<CriticalityFound> readCriticalities(String response) {
+        JsonNode list;
+        try {
+            list = mapper.readTree(answerText(response));
+        } catch (JacksonException exception) {
+            throw new UnreadableAnswerException();
+        }
+        if (list == null || !list.isArray()) throw new UnreadableAnswerException();
+        List<CriticalityFound> found = new ArrayList<>();
+        for (JsonNode item : list) {
+            String company = text(item, "company");
+            Criticality criticality = criticality(text(item, "criticality"));
+            String quote = text(item, "criticalityQuote");
+            if (!company.isEmpty() && criticality != null) {
+                found.add(new CriticalityFound(company, criticality, quote));
+            }
         }
         return found;
     }
@@ -93,6 +119,14 @@ public class GeminiAnswer {
     public static class UnreadableAnswerException extends RuntimeException {
         public UnreadableAnswerException() {
             super("The AI's answer was not the JSON list that was asked for.");
+        }
+    }
+
+    private static Criticality criticality(String value) {
+        try {
+            return value.isEmpty() ? null : Criticality.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            return null;
         }
     }
 }

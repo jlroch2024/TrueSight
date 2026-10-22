@@ -13,6 +13,7 @@ import type { NewsArticle } from '../api/news';
 import type { Holding, Portfolio } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { tokenStore } from '../api/client';
+import { showInReportUrl } from '../format';
 import { TSMC, sampleNews } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 import { SupplyChainPage } from './SupplyChainPage';
@@ -71,6 +72,8 @@ function relationship(overrides: Partial<Relationship> = {}): Relationship {
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence: tsmcSentence,
+    criticality: null,
+    criticalityEvidence: null,
     report: {
       form: '10-K',
       filingDate: '2026-02-25',
@@ -399,6 +402,27 @@ describe('Supply Chain workspace', () => {
 
     await userEvent.click(within(inspector()).getByRole('button', { name: /AAPL/ }));
     expect(screen.getByTestId('selected-node')).toHaveTextContent('18');
+  });
+
+  it('shows criticality evidence and opens the report at that sentence', async () => {
+    const source = sampleRelationships[15]!;
+    const critical = {
+      ...source,
+      criticality: 'SOLE_SOURCE' as const,
+      criticalityEvidence: source.evidence,
+    };
+    vi.stubGlobal('fetch', fakeFetch([critical], [holding({ id: 16, ticker: 'ASML', companyName: source.company.name })]));
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: `Select edge ${source.id}` }));
+
+    const criticality = inspector().querySelector<HTMLElement>('.criticality-evidence')!;
+    expect(within(inspector()).getByText('Sole Source')).toBeInTheDocument();
+    expect(within(criticality).getByText(source.evidence)).toBeInTheDocument();
+    await userEvent.click(within(criticality).getByRole('button', { name: 'Show in Report' }));
+    expect(open).toHaveBeenCalledWith(showInReportUrl(source.report.url, source.evidence), '_blank', 'noopener,noreferrer');
   });
 
   it('shows when an analyst approved a relationship and the note', async () => {

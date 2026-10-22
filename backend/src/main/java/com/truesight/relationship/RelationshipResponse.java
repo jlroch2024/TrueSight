@@ -20,6 +20,8 @@ public record RelationshipResponse(
         RelationshipType type,
         String provides,
         String evidence,
+        Criticality criticality,
+        String criticalityEvidence,
         ReportSummary report,
         ReviewStatus reviewStatus,
         Instant reviewedAt,

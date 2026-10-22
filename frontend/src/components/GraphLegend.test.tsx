@@ -11,6 +11,7 @@ describe('GraphLegend', () => {
     expect(key).toHaveTextContent('Suppliers and Customers');
     expect(key).toHaveTextContent('Shared Companies');
     expect(key).toHaveTextContent('Supplier to Customer');
+    expect(screen.getByRole('list', { name: 'Relationship criticality' })).toHaveTextContent('Sole or Single Source');
     expect(container.querySelector('.graph-legend-tile.holding')).toBeInTheDocument();
     expect(container.querySelector('.graph-legend-tile.shared')).toBeInTheDocument();
     expect(container.querySelector('.graph-legend-flow i')).toBeInTheDocument();

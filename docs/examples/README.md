@@ -154,6 +154,8 @@ the prompt, the saved answer still works for testing how answers are read and ch
   "type": "SUPPLIER",
   "provides": "semiconductor wafers",
   "evidence": "We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, ...",
+  "criticality": null,
+  "criticalityEvidence": null,
   "report": { "form": "10-K", "filingDate": "2026-02-25", "url": "https://www.sec.gov/Archives/edgar/data/..." }
 }
 ```

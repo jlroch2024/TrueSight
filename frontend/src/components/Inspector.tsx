@@ -224,6 +224,23 @@ function RelationshipDetails({
       {relationship.reviewStatus === 'APPROVED' && relationship.reviewNote && (
         <p className="muted small review-note">{relationship.reviewNote}</p>
       )}
+      {relationship.criticality && relationship.criticalityEvidence && (
+        <figure className="evidence criticality-evidence">
+          <figcaption>
+            <span className="chip chip-shared">
+              {relationship.criticality === 'SOLE_SOURCE' ? 'Sole Source' : 'Single Source'}
+            </span>
+          </figcaption>
+          <blockquote>{relationship.criticalityEvidence}</blockquote>
+          <button
+            type="button"
+            className="secondary small-button"
+            onClick={() => openInNewTab(showInReportUrl(relationship.report.url, relationship.criticalityEvidence!))}
+          >
+            Show in Report
+          </button>
+        </figure>
+      )}
       <figure className="evidence">
         <figcaption>Evidence From the Annual Report</figcaption>
         <blockquote>{relationship.evidence}</blockquote>

@@ -1057,6 +1057,11 @@ table.holdings td:nth-child(7) {
   border-top-style: dashed;
 }
 
+.graph-legend-line.criticality {
+  border-top-width: 3px;
+  border-top-color: var(--lime);
+}
+
 .graph-tooltip {
   position: absolute;
   z-index: 4;
@@ -1524,6 +1529,10 @@ button.panel-row.chosen {
   margin: 0;
   font-style: italic;
   line-height: 1.5;
+}
+
+.criticality-evidence button {
+  margin-top: 8px;
 }
 
 .inspector-section {

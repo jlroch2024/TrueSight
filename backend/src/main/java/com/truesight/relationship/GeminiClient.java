@@ -40,7 +40,7 @@ public class GeminiClient {
 
     private static final String URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
-    /** A list of { company, alsoKnownAs, relationship, provides, quote }, with relationship SUPPLIER or CUSTOMER. */
+    /** A list of relationship findings, including any report-backed criticality. */
     private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
             "type", "ARRAY",
             "items", Map.of(
@@ -50,9 +50,25 @@ public class GeminiClient {
                             "alsoKnownAs", Map.of("type", "STRING"),
                             "relationship", Map.of("type", "STRING", "enum", List.of("SUPPLIER", "CUSTOMER")),
                             "provides", Map.of("type", "STRING"),
-                            "quote", Map.of("type", "STRING")),
-                    "required", List.of("company", "alsoKnownAs", "relationship", "provides", "quote"),
-                    "propertyOrdering", List.of("company", "alsoKnownAs", "relationship", "provides", "quote")));
+                            "quote", Map.of("type", "STRING"),
+                            "criticality", Map.of("type", "STRING", "enum", List.of("SOLE_SOURCE", "SINGLE_SOURCE", "")),
+                            "criticalityQuote", Map.of("type", "STRING")),
+                    "required", List.of("company", "alsoKnownAs", "relationship", "provides", "quote",
+                            "criticality", "criticalityQuote"),
+                    "propertyOrdering", List.of("company", "alsoKnownAs", "relationship", "provides", "quote",
+                            "criticality", "criticalityQuote")));
+
+    /** A criticality-only response, matched against known counterparties by name. */
+    private static final Map<String, Object> CRITICALITY_SCHEMA = Map.of(
+            "type", "ARRAY",
+            "items", Map.of(
+                    "type", "OBJECT",
+                    "properties", Map.of(
+                            "company", Map.of("type", "STRING"),
+                            "criticality", Map.of("type", "STRING", "enum", List.of("SOLE_SOURCE", "SINGLE_SOURCE", "")),
+                            "criticalityQuote", Map.of("type", "STRING")),
+                    "required", List.of("company", "criticality", "criticalityQuote"),
+                    "propertyOrdering", List.of("company", "criticality", "criticalityQuote")));
 
     private final RestClient client;
     private final String apiKey;
@@ -81,6 +97,11 @@ public class GeminiClient {
      */
     public AiAnswer generate(AiRequest request) {
         return generate(request, RESPONSE_SCHEMA);
+    }
+
+    /** Asks for criticality-only answers, matched to previously found counterparties. */
+    public AiAnswer generateCriticality(AiRequest request) {
+        return generate(request, CRITICALITY_SCHEMA);
     }
 
     /** As {@link #generate(AiRequest)}, with the caller's JSON response schema. */

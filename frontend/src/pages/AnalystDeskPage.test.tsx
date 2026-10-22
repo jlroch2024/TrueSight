@@ -24,6 +24,8 @@ const waiting: ReviewItem = {
     evidence,
     report: { form: '10-K', filingDate: '2026-02-25', url: 'https://www.sec.gov/report-1' },
     reviewStatus: 'UNREVIEWED',
+    criticality: null,
+    criticalityEvidence: null,
     reviewedAt: null,
     reviewNote: null,
   },

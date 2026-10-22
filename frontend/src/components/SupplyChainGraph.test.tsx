@@ -184,15 +184,15 @@ const FOCUS_NODES: GraphNode[] = [
 const FOCUS_EDGES: GraphEdge[] = [
   {
     id: 'relationship-1', source: 'supplier', target: 'holding', relationshipId: 1,
-    reviewStatus: 'APPROVED', summary: 'Supplier supplies Holding: semiconductor wafers',
+    reviewStatus: 'APPROVED', criticality: null, summary: 'Supplier supplies Holding: semiconductor wafers',
   },
   {
     id: 'relationship-2', source: 'holding', target: 'customer', relationshipId: 2,
-    reviewStatus: 'UNREVIEWED', summary: 'Holding supplies Customer',
+    reviewStatus: 'UNREVIEWED', criticality: null, summary: 'Holding supplies Customer',
   },
   {
     id: 'relationship-3', source: 'supplier', target: 'other', relationshipId: 3,
-    reviewStatus: 'UNREVIEWED', summary: 'Supplier supplies Other',
+    reviewStatus: 'UNREVIEWED', criticality: null, summary: 'Supplier supplies Other',
   },
 ];
 
@@ -539,6 +539,16 @@ describe('SupplyChainGraph', () => {
     const elementsDrawn = () => (made.options as { elements: Element[] }).elements;
     const styles = () => (made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> }).style;
     const letterIn = (image: string) => decodeURIComponent(image).match(/>([^<]+)<\/text>/)?.[1];
+
+    it('draws sole- or single-source arrows thicker than ordinary arrows', () => {
+      drawGraph(FOCUS_NODES, [{ ...FOCUS_EDGES[0]!, criticality: 'SOLE_SOURCE' }]);
+
+      const styles = (made.options as { style: Array<{ selector: string; style: Record<string, unknown> }> }).style;
+      expect(styles).toContainEqual(expect.objectContaining({
+        selector: 'edge[criticality = "SOLE_SOURCE"], edge[criticality = "SINGLE_SOURCE"]',
+        style: { width: 3 },
+      }));
+    });
 
     it("gives every company a label box: a holding's ticker and weight over its name, others' ticker over their name", () => {
       const { container } = drawGraph(TILE_NODES);

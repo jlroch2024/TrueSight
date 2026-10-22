@@ -21,7 +21,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 2,
@@ -45,7 +47,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 3,
@@ -69,7 +73,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 4,
@@ -93,7 +99,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 5,
@@ -117,7 +125,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 6,
@@ -141,7 +151,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 7,
@@ -165,7 +177,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 8,
@@ -189,7 +203,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 9,
@@ -213,7 +229,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 10,
@@ -229,7 +247,7 @@
     },
     "type": "SUPPLIER",
     "provides": "front-end wafer manufacturing",
-    "evidence": "The majority of our front-end wafer manufacturing operations is outsourced to external foundries, including Taiwan Semiconductor Manufacturing Company Limited (“TSMC”).",
+    "evidence": "The majority of our front-end wafer manufacturing operations is outsourced to external foundries, including Taiwan Semiconductor Manufacturing Company Limited (\u201cTSMC\u201d).",
     "report": {
       "form": "10-K",
       "filingDate": "2025-12-18",
@@ -237,7 +255,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 11,
@@ -261,7 +281,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 12,
@@ -285,7 +307,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 13,
@@ -309,7 +333,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 14,
@@ -333,7 +359,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 15,
@@ -349,7 +377,7 @@
     },
     "type": "CUSTOMER",
     "provides": null,
-    "evidence": "For fiscal years 2026, 2025, and 2024, we had one end customer, Apple Inc., who purchased through multiple contract manufacturers and represented approximately 91 percent, 89 percent, and 87 percent, of the Company’s total net sales, respectively.",
+    "evidence": "For fiscal years 2026, 2025, and 2024, we had one end customer, Apple Inc., who purchased through multiple contract manufacturers and represented approximately 91 percent, 89 percent, and 87 percent, of the Company\u2019s total net sales, respectively.",
     "report": {
       "form": "10-K",
       "filingDate": "2026-05-21",
@@ -357,7 +385,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 16,
@@ -381,7 +411,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 17,
@@ -405,6 +437,8 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   }
 ]
