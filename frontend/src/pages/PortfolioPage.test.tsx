@@ -1,6 +1,7 @@
-// Upload a Portfolio CSV, as the user sees it: the holdings table, Upload CSV, and the confirmation before replacing.
+// Upload a Portfolio CSV, as the user sees it: the holdings table, Upload CSV, and TrueSight's own confirmation before
+// replacing.
 // The backend is a small fake that keeps each portfolio's holdings in memory.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -76,7 +77,6 @@ beforeEach(() => {
 
 describe('Portfolio page', () => {
   it('shows the holdings after uploading into an empty portfolio, without asking first', async () => {
-    const confirm = vi.spyOn(window, 'confirm');
     renderAt('/portfolios/1');
 
     expect(await screen.findByText('No holdings yet. Upload CSV adds them from a file with a ticker column.')).toBeInTheDocument();
@@ -84,28 +84,34 @@ describe('Portfolio page', () => {
 
     expect(await screen.findByRole('cell', { name: 'NVDA' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'AMD' })).toBeInTheDocument();
-    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('asks before replacing existing holdings, then shows only the new ones', async () => {
     holdings['1'] = ['IBM', 'ORCL', 'SAP'];
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderAt('/portfolios/1');
 
     await userEvent.upload(await screen.findByLabelText('CSV file'), csv('ticker\nNVDA\n'));
 
-    expect(confirm).toHaveBeenCalledWith('This replaces the 3 holdings in Tech.');
+    const ask = await screen.findByRole('alertdialog', { name: 'Replace Holdings' });
+    expect(ask).toHaveAccessibleDescription('This replaces the 3 holdings in Tech.');
+    expect(uploads).toBe(0);
+    const replace = within(ask).getByRole('button', { name: 'Replace Holdings' });
+    expect(replace).toHaveClass('danger');
+    await userEvent.click(replace);
     expect(await screen.findByRole('cell', { name: 'NVDA' })).toBeInTheDocument();
     expect(screen.queryByRole('cell', { name: 'IBM' })).not.toBeInTheDocument();
   });
 
   it('leaves the old holdings unchanged when the confirmation is cancelled', async () => {
     holdings['1'] = ['IBM'];
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderAt('/portfolios/1');
 
     await userEvent.upload(await screen.findByLabelText('CSV file'), csv('ticker\nNVDA\n'));
+    const ask = await screen.findByRole('alertdialog', { name: 'Replace Holdings' });
+    await userEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
 
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(uploads).toBe(0);
     expect(screen.getByRole('cell', { name: 'IBM' })).toBeInTheDocument();
   });

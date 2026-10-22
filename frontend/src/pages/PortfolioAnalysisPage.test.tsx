@@ -48,7 +48,7 @@ describe('Portfolio annual report analysis', () => {
     expect(await screen.findByText('NVIDIA')).toBeInTheDocument();
     expect(screen.getByText('Done')).toBeInTheDocument();
     expect(screen.getByText('10-K')).toBeInTheDocument();
-    expect(screen.getByText('2026-02-25')).toBeInTheDocument();
+    expect(screen.getByText('Feb 25, 2026')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Last Analysed' })).toBeInTheDocument();
     expect(screen.getByText(formatDateTime('2026-03-01T09:30:00Z'))).toBeInTheDocument();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);

@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Alert, AlertStatus, AlertsResponse, EventType } from '../api/alerts';
 import { tokenStore } from '../api/client';
@@ -54,39 +54,52 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
 }
 
 let savedAlerts: Alert[];
+let otherPortfolioAlerts: Alert[];
 let weighted: boolean;
 let checkedPortfolio: Portfolio;
+const otherPortfolio: Portfolio = { ...portfolio, id: 8, name: 'Other Portfolio' };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
 
 function fakeBackend(url: string, init: RequestInit = {}): Response {
-  if (url === '/api/portfolios') return json([checkedPortfolio]);
+  if (url === '/api/portfolios') return json([checkedPortfolio, otherPortfolio]);
   if (url === '/api/portfolios/7/news-check') return new Response(null, { status: 202 });
-  if (url.startsWith('/api/portfolios/7/alerts/') && init.method === 'PUT') {
-    const id = Number(url.split('/').at(-1));
+  const statusPath = url.match(/^\/api\/portfolios\/(7|8)\/alerts\/(\d+)$/);
+  if (statusPath && init.method === 'PUT') {
+    const currentAlerts = statusPath[1] === '7' ? savedAlerts : otherPortfolioAlerts;
+    const id = Number(statusPath[2]);
     const status = JSON.parse(String(init.body)).status as AlertStatus;
-    savedAlerts = savedAlerts.map((item) => item.id === id ? { ...item, status } : item);
-    return json(savedAlerts.find((item) => item.id === id));
+    const updated = currentAlerts.map((item) => item.id === id ? { ...item, status } : item);
+    if (statusPath[1] === '7') savedAlerts = updated;
+    else otherPortfolioAlerts = updated;
+    return json(updated.find((item) => item.id === id));
   }
-  if (url.startsWith('/api/portfolios/7/alerts')) {
+  const alertsPath = url.match(/^\/api\/portfolios\/(7|8)\/alerts/);
+  if (alertsPath) {
+    const currentAlerts = alertsPath[1] === '7' ? savedAlerts : otherPortfolioAlerts;
     const includeDismissed = url.includes('includeDismissed=true');
     const response: AlertsResponse = {
       weighted,
       holdingCount: 7,
-      alerts: savedAlerts.filter((item) => includeDismissed || item.status !== 'DISMISSED'),
+      alerts: currentAlerts.filter((item) => includeDismissed || item.status !== 'DISMISSED'),
     };
     return json(response);
   }
   return json({ message: 'Not found.' }, 404);
 }
 
+function SwitchPortfolioButton() {
+  const navigate = useNavigate();
+  return <button type="button" onClick={() => navigate('/portfolios/8/alerts')}>Switch portfolio</button>;
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/portfolios/7/alerts']}>
       <Routes>
-        <Route path="/portfolios/:portfolioId/alerts" element={<AlertsPage />} />
+        <Route path="/portfolios/:portfolioId/alerts" element={<><SwitchPortfolioButton /><AlertsPage /></>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -101,6 +114,7 @@ beforeEach(() => {
   checkedPortfolio = { ...portfolio };
   weighted = true;
   savedAlerts = [alert(7, 'HIGH'), alert(8, 'LOW', secondArticle!)];
+  otherPortfolioAlerts = [alert(7, 'HIGH')];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => fakeBackend(url, init)));
 });
 
@@ -127,6 +141,7 @@ describe('Alerts page', () => {
     expect(high).toHaveTextContent('The headline reports a production stoppage.');
     expect(high).toHaveTextContent('Based on the Headline Only');
     expect(high).toHaveTextContent('NVDA');
+    expect(high).toHaveTextContent('Taiwan Semiconductor Manufacturing supplies NVIDIA');
     expect(high).toHaveTextContent('Not Yet Reviewed by an Analyst');
     expect(within(high).getByRole('button', { name: 'Open Article' })).toBeInTheDocument();
   });
@@ -266,6 +281,23 @@ describe('Alerts page', () => {
     expect(await screen.findByRole('heading', { level: 2 })).toHaveTextContent(firstArticle!.title);
     expect(savedAlerts[0]!.status).toBe('NEW');
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('clears Undo when switching portfolios, even when the other portfolio has the same alert ID', async () => {
+    savedAlerts = [alert(7, 'HIGH')];
+    otherPortfolioAlerts = [alert(7, 'HIGH')];
+    renderPage();
+    const card = await firstCard();
+
+    await userEvent.click(within(card).getByRole('button', { name: 'Dismiss' }));
+    expect(await screen.findByRole('button', { name: 'Undo' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Switch portfolio' }));
+
+    expect(await screen.findByRole('heading', { level: 2 })).toHaveTextContent(firstArticle!.title);
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      url === '/api/portfolios/8/alerts/7' && init?.method === 'PUT')).toBe(false);
+    expect(otherPortfolioAlerts[0]?.status).toBe('NEW');
   });
 
   it('offers Undo for 8 seconds', async () => {

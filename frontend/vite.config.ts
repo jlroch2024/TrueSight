@@ -20,5 +20,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // Vitest empties CSS files; this lets the Select test read styles.css as text. Imported styles stay empty.
+    css: { include: [/styles\.css\?raw/] },
   },
 });

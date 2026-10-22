@@ -172,6 +172,8 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
   `<select>`, checkbox or radio button.
+  Ask for confirmation with `useConfirm()` from `components/ConfirmDialog.tsx`, never `window.confirm`, `alert` or
+  `prompt`, which some browsers never show.
 - **Forms:** every input has a visible label. Disable the button while a request is running, so it cannot be sent
   twice.
 

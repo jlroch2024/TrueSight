@@ -1,12 +1,14 @@
 // The Manage Portfolios window, opened from the header. It lists every portfolio, marks the open one Active, and gives
 // each Open, Rename and Delete. A box at the bottom creates one. Everything is a button: the window has no links.
 //
-// Creating a portfolio opens it. Deleting the open portfolio opens another, or /portfolios when none is left.
+// Creating a portfolio opens it. Deleting asks first, then the open portfolio opens another, or /portfolios when none
+// is left.
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { type Portfolio, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { paths } from '../paths';
+import { useConfirm } from './ConfirmDialog';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -42,7 +44,11 @@ export function ManagePortfolios({ openId, onClose }: Props) {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameTo, setRenameTo] = useState('');
   const [busy, setBusy] = useState(false);
+  // The portfolio whose Rename button gets the focus back once its rename is saved or cancelled.
+  const [renameDone, setRenameDone] = useState<number | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
+  const renameButtons = useRef(new Map<number, HTMLButtonElement>());
+  const { confirm, dialog } = useConfirm();
 
   function load() {
     return portfolioApi
@@ -62,14 +68,26 @@ export function ManagePortfolios({ openId, onClose }: Props) {
     windowRef.current?.focus();
   }, []);
 
-  // Escape closes the window, as Close does.
+  // Escape closes the window, as Close does. While a confirmation is open, Escape closes only the confirmation.
+  const confirming = dialog !== null;
   useEffect(() => {
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && !confirming) onClose();
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
-  }, [onClose]);
+  }, [onClose, confirming]);
+
+  useEffect(() => {
+    if (renameDone === null || renamingId !== null) return;
+    renameButtons.current.get(renameDone)?.focus();
+    setRenameDone(null);
+  }, [renameDone, renamingId, portfolios]);
+
+  function stopRenaming(id: number) {
+    setRenamingId(null);
+    setRenameDone(id);
+  }
 
   // Tab and Shift+Tab go round the window's own controls, never to the page behind it.
   function keepFocusInside(event: KeyboardEvent<HTMLDivElement>) {
@@ -121,13 +139,19 @@ export function ManagePortfolios({ openId, onClose }: Props) {
   async function rename(event: FormEvent, id: number) {
     event.preventDefault();
     if ((await run(() => portfolioApi.rename(id, renameTo))).ok) {
-      setRenamingId(null);
       await load();
+      stopRenaming(id);
     }
   }
 
   async function remove(portfolio: Portfolio) {
-    if (!window.confirm(`Delete "${portfolio.name}" and all its holdings? This cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: 'Delete Portfolio',
+      message: `Delete "${portfolio.name}" and all its holdings? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!confirmed) return;
     if (!(await run(() => portfolioApi.remove(portfolio.id))).ok) return;
     const left = await load();
     if (String(portfolio.id) === openId) {
@@ -175,12 +199,19 @@ export function ManagePortfolios({ openId, onClose }: Props) {
                         id={`rename-${portfolio.id}`}
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         maxLength={100}
+                        autoFocus
                       />
                       <button type="submit" disabled={busy || !renameTo.trim()}>
                         Save
                       </button>
-                      <button type="button" className="secondary" onClick={() => setRenamingId(null)} disabled={busy}>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => stopRenaming(portfolio.id)}
+                        disabled={busy}
+                      >
                         Cancel
                       </button>
                     </form>
@@ -201,6 +232,10 @@ export function ManagePortfolios({ openId, onClose }: Props) {
                           Open
                         </button>
                         <button
+                          ref={(button) => {
+                            if (button) renameButtons.current.set(portfolio.id, button);
+                            else renameButtons.current.delete(portfolio.id);
+                          }}
                           type="button"
                           className="secondary"
                           disabled={busy}
@@ -238,6 +273,7 @@ export function ManagePortfolios({ openId, onClose }: Props) {
           </button>
         </form>
       </div>
+      {dialog}
     </div>
   );
 }

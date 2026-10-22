@@ -15,7 +15,7 @@ export function GraphLegend({ hasRelationships }: Props) {
       {hasRelationships && (
         <ul className="graph-legend" aria-label="Relationship review status">
           <li><span className="graph-legend-line approved" aria-hidden="true" />Approved</li>
-          <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not yet reviewed</li>
+          <li><span className="graph-legend-line unreviewed" aria-hidden="true" />Not Yet Reviewed</li>
         </ul>
       )}
     </div>

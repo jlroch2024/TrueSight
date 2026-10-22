@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import styles from '../styles.css?raw';
 import { Select } from './Select';
 
 const OPTIONS = [
@@ -104,5 +105,17 @@ describe('Select', () => {
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('points the arrow down when closed and up only when open', async () => {
+    renderSelect();
+
+    const button = screen.getByLabelText('Open Portfolio');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    const openRule = styles.match(/([^{}]+)\{[^}]*rotate\(-135deg\)/);
+    expect(openRule?.[1]).toContain(".select-button[aria-expanded='true'] .select-chevron");
+
+    await userEvent.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
   });
 });

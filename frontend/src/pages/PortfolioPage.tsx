@@ -4,8 +4,9 @@ import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../api/client';
 import { type Holding, type Portfolio, holdingApi, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { paths } from '../paths';
-import { STATUS_LABELS, formatDateTime, openInNewTab } from '../format';
+import { STATUS_LABELS, formatDate, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
+import { useConfirm } from '../components/ConfirmDialog';
 import { newsApi } from '../api/news';
 import { portfolioSubtitle } from './portfolioSubtitle';
 import { displayName } from './supplyChain';
@@ -25,6 +26,7 @@ export function PortfolioPage() {
   const [uploading, setUploading] = useState(false);
   const [starting, setStarting] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
+  const { confirm, dialog } = useConfirm();
 
   const loadHoldings = useCallback(async () => {
     try {
@@ -99,7 +101,13 @@ export function PortfolioPage() {
     if (!file || !portfolio) return;
     if (holdings.length > 0) {
       const count = holdings.length === 1 ? '1 holding' : `${holdings.length} holdings`;
-      if (!window.confirm(`This replaces the ${count} in ${portfolio.name}.`)) return;
+      const confirmed = await confirm({
+        title: 'Replace Holdings',
+        message: `This replaces the ${count} in ${portfolio.name}.`,
+        confirmLabel: 'Replace Holdings',
+        danger: true,
+      });
+      if (!confirmed) return;
     }
     setUploading(true);
     setUploadError(null);
@@ -200,7 +208,7 @@ export function PortfolioPage() {
                     </td>
                     <td>{h.status === 'DONE' && h.lastAnalysed ? formatDateTime(h.lastAnalysed) : '—'}</td>
                     <td>{h.reportType ?? '—'}</td>
-                    <td>{h.reportDate ?? '—'}</td>
+                    <td>{h.reportDate ? formatDate(h.reportDate) : '—'}</td>
                     <td>{h.status === 'DONE' && h.reportLink && <button type="button" onClick={() => openInNewTab(h.reportLink!)}>Show Report</button>}</td>
                   </tr>
                 ))}
@@ -209,6 +217,7 @@ export function PortfolioPage() {
           </div>
         )}
       </div>
+      {dialog}
     </section>
   );
 }
