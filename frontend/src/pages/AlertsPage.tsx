@@ -27,6 +27,7 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
 const UNDO_MS = 8_000;
 
 type Filter = 'OPEN' | 'DISMISSED' | 'ALL';
+type UndoAlert = { portfolioId: string; alertId: number };
 
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
@@ -120,7 +121,11 @@ export function AlertsPage() {
   const [filter, setFilter] = useState<Filter>('OPEN');
   const [busyAlert, setBusyAlert] = useState<number | null>(null);
   // The alert just dismissed, while its Undo is offered.
-  const [undoAlert, setUndoAlert] = useState<number | null>(null);
+  const [undoAlert, setUndoAlert] = useState<UndoAlert | null>(null);
+
+  useEffect(() => {
+    setUndoAlert(null);
+  }, [portfolioId]);
 
   useEffect(() => {
     let active = true;
@@ -159,16 +164,18 @@ export function AlertsPage() {
     return () => clearTimeout(timer);
   }, [undoAlert]);
 
-  async function changeStatus(alertId: number, status: AlertStatus) {
+  async function changeStatus(alertId: number, status: AlertStatus, targetPortfolioId = portfolioId) {
     setBusyAlert(alertId);
     setError(null);
     try {
-      const updated = await alertApi.setStatus(portfolioId, alertId, status);
-      setResponse((current) => current && ({
-        ...current,
-        alerts: current.alerts.map((item) => item.id === updated.id ? updated : item),
-      }));
-      setUndoAlert(status === 'DISMISSED' ? alertId : null);
+      const updated = await alertApi.setStatus(targetPortfolioId, alertId, status);
+      if (targetPortfolioId === portfolioId) {
+        setResponse((current) => current && ({
+          ...current,
+          alerts: current.alerts.map((item) => item.id === updated.id ? updated : item),
+        }));
+        setUndoAlert(status === 'DISMISSED' ? { portfolioId: targetPortfolioId, alertId } : null);
+      }
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -209,10 +216,12 @@ export function AlertsPage() {
         />
       </div>
 
-      {undoAlert !== null && (
+      {undoAlert?.portfolioId === portfolioId && (
         <p role="status" className="alert-undo">
           Alert Dismissed.{' '}
-          <button type="button" className="text-button" onClick={() => { void changeStatus(undoAlert, 'NEW'); }}>
+          <button type="button" className="text-button" onClick={() => {
+            void changeStatus(undoAlert.alertId, 'NEW', undoAlert.portfolioId);
+          }}>
             Undo
           </button>
         </p>
