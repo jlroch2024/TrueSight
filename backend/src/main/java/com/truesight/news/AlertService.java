@@ -2,7 +2,6 @@ package com.truesight.news;
 
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
-import com.truesight.company.CompanyNameRepository;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
@@ -14,7 +13,6 @@ import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +28,7 @@ public class AlertService {
 
     private static final String PORTFOLIO_NOT_FOUND = "Portfolio not found.";
     private static final String ALERT_NOT_FOUND = "Alert not found.";
+    private static final String OPEN_OR_DISMISSED = "An alert is either open or dismissed.";
 
     private final PortfolioRepository portfolios;
     private final AlertRepository alerts;
@@ -37,22 +36,18 @@ public class AlertService {
     private final HoldingRepository holdings;
     private final RelationshipRepository relationships;
     private final CompanyRepository companies;
-    private final CompanyNameRepository companyNames;
-    private final NewsListService news;
     private final CurrentUser currentUser;
 
     public AlertService(PortfolioRepository portfolios, AlertRepository alerts,
                         AlertHoldingRepository alertHoldings, HoldingRepository holdings,
                         RelationshipRepository relationships, CompanyRepository companies,
-                        CompanyNameRepository companyNames, NewsListService news, CurrentUser currentUser) {
+                        CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.alerts = alerts;
         this.alertHoldings = alertHoldings;
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
-        this.companyNames = companyNames;
-        this.news = news;
         this.currentUser = currentUser;
     }
 
@@ -60,12 +55,13 @@ public class AlertService {
     public AlertsResponse list(Long portfolioId, boolean includeDismissed) {
         requirePortfolio(portfolioId);
         List<AlertRow> rows = alerts.findOrdered(portfolioId, includeDismissed);
-        NewsListService.Counts counts = news.counts(portfolioId);
-        return new AlertsResponse(counts.articlesChecked(), counts.noiseCount(), responses(rows));
+        List<Holding> held = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId);
+        return new AlertsResponse(AlertBuilder.weighted(held), held.size(), responses(rows));
     }
 
     @Transactional
     public AlertResponse setStatus(Long portfolioId, Long alertId, AlertStatus status) {
+        if (status == AlertStatus.ACKNOWLEDGED) throw ApiException.badRequest(OPEN_OR_DISMISSED);
         requirePortfolio(portfolioId);
         Alert alert = alerts.findByIdAndPortfolioId(alertId, portfolioId)
                 .orElseThrow(() -> ApiException.notFound(ALERT_NOT_FOUND));
@@ -96,7 +92,6 @@ public class AlertService {
                 .collect(Collectors.toSet());
         Map<Long, Company> companyById = companies.findAllById(companyIds).stream()
                 .collect(Collectors.toMap(Company::getId, Function.identity()));
-        Map<Long, String> shortestName = shortestNames(companyIds, companyById);
         Map<Long, List<AlertHolding>> reachedByAlert = reached.stream()
                 .collect(Collectors.groupingBy(AlertHolding::getAlertId));
 
@@ -106,12 +101,12 @@ public class AlertService {
             NewsAssessment assessment = row.assessment();
             List<AlertResponse.ReachedHolding> reachedHoldings = reachedByAlert
                     .getOrDefault(alert.getId(), List.of()).stream()
-                    .map(found -> reachedHolding(found, holdingById, relationshipById, shortestName))
+                    .map(found -> reachedHolding(found, holdingById, relationshipById, companyById))
                     .filter(Objects::nonNull)
                     .sorted(Comparator.comparing(AlertResponse.ReachedHolding::ticker))
                     .toList();
             return new AlertResponse(
-                    alert.getId(), alert.getStatus(), alert.getExposure(), alert.getCreatedAt(),
+                    alert.getId(), openOrDismissed(alert.getStatus()), alert.getExposure(), alert.getCreatedAt(),
                     new AlertResponse.Article(article.getTitle(), article.getSource(), article.getPublishedAt(),
                             article.getUrl()),
                     new AlertResponse.Assessment(assessment.getEventType(), assessment.getSeverity(),
@@ -124,12 +119,12 @@ public class AlertService {
             AlertHolding found,
             Map<Long, Holding> holdingById,
             Map<Long, Relationship> relationshipById,
-            Map<Long, String> shortestName) {
+            Map<Long, Company> companyById) {
         Holding holding = holdingById.get(found.getHoldingId());
         if (holding == null) return null;
         if (found.getRelationshipId() == null) {
             return new AlertResponse.ReachedHolding(
-                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null);
+                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null, null);
         }
         Relationship relationship = relationshipById.get(found.getRelationshipId());
         if (relationship == null) return null;
@@ -137,18 +132,18 @@ public class AlertService {
                 ? relationship.getCounterpartyId() : relationship.getCompanyId();
         Long customerId = relationship.getType() == RelationshipType.SUPPLIER
                 ? relationship.getCompanyId() : relationship.getCounterpartyId();
-        String link = shortestName.get(supplierId) + " supplies " + shortestName.get(customerId);
-        return new AlertResponse.ReachedHolding(
-                holding.getId(), holding.getTicker(), holding.getWeight(), link, relationship.getReviewStatus());
+        return new AlertResponse.ReachedHolding(holding.getId(), holding.getTicker(), holding.getWeight(),
+                nameOf(companyById.get(supplierId)), nameOf(companyById.get(customerId)),
+                relationship.getReviewStatus());
     }
 
-    private Map<Long, String> shortestNames(Collection<Long> companyIds, Map<Long, Company> companyById) {
-        Map<Long, String> result = companyById.values().stream()
-                .collect(Collectors.toMap(Company::getId, company -> NewsSearchName.of(company.getName())));
-        companyNames.findByCompanyIdIn(companyIds).forEach(name ->
-                result.merge(name.getCompanyId(), NewsSearchName.of(name.getName()),
-                        (current, candidate) -> candidate.length() < current.length() ? candidate : current));
-        return result;
+    private static String nameOf(Company company) {
+        return company == null ? null : company.getName();
+    }
+
+    /** An alert is open until it is dismissed. Rows stored as Acknowledged, from before that rule, read as New. */
+    private static AlertStatus openOrDismissed(AlertStatus status) {
+        return status == AlertStatus.ACKNOWLEDGED ? AlertStatus.NEW : status;
     }
 
     private void requirePortfolio(Long portfolioId) {

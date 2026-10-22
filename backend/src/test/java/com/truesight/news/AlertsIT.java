@@ -94,8 +94,10 @@ class AlertsIT {
         mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.articlesChecked").value(1))
-                .andExpect(jsonPath("$.noiseCount").value(0))
+                .andExpect(jsonPath("$.weighted").value(true))
+                .andExpect(jsonPath("$.holdingCount").value(1))
+                .andExpect(jsonPath("$.articlesChecked").doesNotExist())
+                .andExpect(jsonPath("$.noiseCount").doesNotExist())
                 .andExpect(jsonPath("$.alerts", hasSize(1)))
                 .andExpect(jsonPath("$.alerts[0].id").value(alert.getId()))
                 .andExpect(jsonPath("$.alerts[0].status").value("NEW"))
@@ -115,8 +117,37 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].holdingId").value(holding.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].ticker").value("NVDA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].weight").value(40.0))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].link").value("TSMC supplies NVIDIA"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value(tsmc.getName()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].link").doesNotExist())
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
+    }
+
+    @Test
+    void anUnweightedPortfolioCountsItsHoldingsAndAnEventAboutAHoldingNamesNoCompanies() throws Exception {
+        String email = "alerts-unweighted@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding heldNvidia = hold(portfolio, nvidia, null);
+        Holding heldTsmc = hold(portfolio, tsmc, null);
+        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        event(article, Severity.HIGH, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "2", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(alert.getId(), heldNvidia.getId(), tsmcSuppliesNvidia.getId()));
+        alertHoldings.save(new AlertHolding(alert.getId(), heldTsmc.getId(), null));
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weighted").value(false))
+                .andExpect(jsonPath("$.holdingCount").value(2))
+                .andExpect(jsonPath("$.alerts[0].exposure").value(2.0))
+                .andExpect(jsonPath("$.alerts[0].holdings", hasSize(2)))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].ticker").value("NVDA"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].weight").doesNotExist())
+                .andExpect(jsonPath("$.alerts[0].holdings[1].ticker").value("TSM"))
+                .andExpect(jsonPath("$.alerts[0].holdings[1].supplierName").doesNotExist())
+                .andExpect(jsonPath("$.alerts[0].holdings[1].customerName").doesNotExist())
+                .andExpect(jsonPath("$.alerts[0].holdings[1].reviewStatus").doesNotExist());
     }
 
     @Test
@@ -141,7 +172,7 @@ class AlertsIT {
     }
 
     @Test
-    void acknowledgingPersistsAndDismissingPersistsAndHidesTheAlert() throws Exception {
+    void acknowledgingIsRefusedAndDismissingPersistsAndHidesTheAlert() throws Exception {
         String email = "alerts-status@example.com";
         Portfolio portfolio = portfolio(email);
         Holding holding = hold(portfolio, nvidia, "40");
@@ -151,11 +182,9 @@ class AlertsIT {
         alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
 
         changeStatus(email, portfolio, alert, "ACKNOWLEDGED")
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACKNOWLEDGED"));
-        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
-                        .header("Authorization", logins.bearer(email)))
-                .andExpect(jsonPath("$.alerts[0].status").value("ACKNOWLEDGED"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("An alert is either open or dismissed."));
+        assertThat(alerts.findById(alert.getId()).orElseThrow().getStatus()).isEqualTo(AlertStatus.NEW);
 
         changeStatus(email, portfolio, alert, "DISMISSED")
                 .andExpect(status().isOk())
@@ -164,6 +193,23 @@ class AlertsIT {
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(jsonPath("$.alerts", hasSize(0)));
         assertThat(alerts.findById(alert.getId()).orElseThrow().getStatus()).isEqualTo(AlertStatus.DISMISSED);
+    }
+
+    @Test
+    void anAlertStoredAsAcknowledgedIsReportedAsNew() throws Exception {
+        String email = "alerts-acknowledged@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        event(article, Severity.HIGH, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "40", AlertStatus.ACKNOWLEDGED);
+        alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts", hasSize(1)))
+                .andExpect(jsonPath("$.alerts[0].status").value("NEW"));
     }
 
     @Test
@@ -191,7 +237,7 @@ class AlertsIT {
     }
 
     @Test
-    void filteredNewsListsOnlyNoiseWithTheAisReasonsAndCountsAssessedArticles() throws Exception {
+    void filteredNewsListsOnlyNoiseWithTheAisReasons() throws Exception {
         String email = "alerts-noise@example.com";
         Portfolio portfolio = portfolio(email);
         hold(portfolio, nvidia, "40");
@@ -214,10 +260,6 @@ class AlertsIT {
                 .andExpect(jsonPath("$[0].assessment.isEvent").value(false))
                 .andExpect(jsonPath("$[0].assessment.reason").value(judgements.get(1).reason()))
                 .andExpect(jsonPath("$[1].assessment.reason").value(judgements.get(2).reason()));
-        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
-                        .header("Authorization", logins.bearer(email)))
-                .andExpect(jsonPath("$.articlesChecked").value(3))
-                .andExpect(jsonPath("$.noiseCount").value(2));
     }
 
     @Test
@@ -254,7 +296,8 @@ class AlertsIT {
     }
 
     private Holding hold(Portfolio portfolio, Company company, String weight) {
-        Holding holding = new Holding(portfolio.getId(), company.getTicker(), new BigDecimal(weight));
+        Holding holding = new Holding(portfolio.getId(), company.getTicker(),
+                weight == null ? null : new BigDecimal(weight));
         holding.setCompanyId(company.getId());
         holding.setStatus(HoldingStatus.DONE);
         return holdings.save(holding);

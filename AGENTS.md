@@ -247,7 +247,7 @@ file in the demo. Then they open the pull request.
 | Alert | A disruption event that reaches a portfolio, with the affected holdings recorded |
 | Event Type | The kind of disruption reported, such as a supply shortage, labour action or cyber attack |
 | Severity, Confidence | How serious an event is, and how sure the assessment is, each Low, Medium or High |
-| Alert Status | Whether an alert is New, Acknowledged or Dismissed |
+| Alert Status | Whether an alert is Open or Dismissed. It is Open until Dismissed; Restore makes it Open again |
 
 ## Sprint 2 Shared Rules
 

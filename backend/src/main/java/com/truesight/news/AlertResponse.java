@@ -23,7 +23,8 @@ public record AlertResponse(
                              String reason) {
     }
 
-    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String link,
-                                 ReviewStatus reviewStatus) {
+    /** supplierName and customerName are the stored company names, or null when the event is about the holding. */
+    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String supplierName,
+                                 String customerName, ReviewStatus reviewStatus) {
     }
 }

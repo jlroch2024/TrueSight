@@ -68,16 +68,6 @@ public class NewsListService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public Counts counts(Long portfolioId) {
-        NewsSelection selection = selection(portfolioId);
-        int articlesChecked = selection.assessmentByArticle().size();
-        int noiseCount = (int) selection.assessmentByArticle().values().stream()
-                .filter(assessment -> !assessment.isEvent())
-                .count();
-        return new Counts(articlesChecked, noiseCount);
-    }
-
     private NewsSelection selection(Long portfolioId) {
         portfolios.findByIdAndUserId(portfolioId, currentUser.id())
                 .orElseThrow(() -> ApiException.notFound(NOT_FOUND));
@@ -107,9 +97,6 @@ public class NewsListService {
 
     private boolean isNoise(NewsAssessment assessment) {
         return assessment != null && !assessment.isEvent();
-    }
-
-    public record Counts(int articlesChecked, int noiseCount) {
     }
 
     private record NewsSelection(
