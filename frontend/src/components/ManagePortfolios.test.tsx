@@ -169,27 +169,69 @@ describe('Manage Portfolios window', () => {
     expect(await within(window).findByText('You already have a portfolio with this name.')).toBeInTheDocument();
   });
 
-  it('deletes a portfolio only after the user confirms', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+  it('deletes a portfolio only after the user confirms in TrueSight\'s own window', async () => {
+    renderAt('/portfolios/1');
+    const manage = await openWindow();
+    const deletes = () => vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === 'DELETE');
+
+    await userEvent.click(within(manage).getByRole('button', { name: 'Delete Energy Book' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Delete Portfolio' });
+    expect(ask).toHaveAccessibleDescription('Delete "Energy Book" and all its holdings? This cannot be undone.');
+    expect(within(ask).getByRole('button', { name: 'Delete' })).toHaveClass('danger');
+    expect(deletes()).toHaveLength(0);
+
+    await userEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(within(manage).getByText('Energy Book')).toBeInTheDocument();
+    expect(deletes()).toHaveLength(0);
+
+    await userEvent.click(within(manage).getByRole('button', { name: 'Delete Energy Book' }));
+    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
+    await vi.waitFor(() => expect(within(manage).queryByText('Energy Book')).not.toBeInTheDocument());
+    expect(deletes()).toHaveLength(1);
+    expect(screen.getByRole('dialog', { name: 'Manage Portfolios' })).toBeInTheDocument();
+    expect(address()).toHaveTextContent('/portfolios/1');
+  });
+
+  it('Escape in the confirmation closes only the confirmation', async () => {
     renderAt('/portfolios/1');
     const manage = await openWindow();
 
     await userEvent.click(within(manage).getByRole('button', { name: 'Delete Energy Book' }));
-    expect(confirm).toHaveBeenCalledOnce();
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Manage Portfolios' })).toBeInTheDocument();
     expect(within(manage).getByText('Energy Book')).toBeInTheDocument();
 
-    await userEvent.click(within(manage).getByRole('button', { name: 'Delete Energy Book' }));
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    await vi.waitFor(() => expect(within(manage).queryByText('Energy Book')).not.toBeInTheDocument());
-    expect(address()).toHaveTextContent('/portfolios/1');
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('Rename selects the whole name, and Save or Cancel gives the focus back to Rename', async () => {
+    renderAt('/portfolios/1');
+    const manage = await openWindow();
+
+    await userEvent.click(within(manage).getByRole('button', { name: 'Rename Energy Book' }));
+    const input = within(manage).getByLabelText<HTMLInputElement>('New Name');
+    expect(input).toHaveFocus();
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 'Energy Book'.length]);
+
+    await userEvent.click(within(manage).getByRole('button', { name: 'Cancel' }));
+    expect(within(manage).getByRole('button', { name: 'Rename Energy Book' })).toHaveFocus();
+
+    await userEvent.click(within(manage).getByRole('button', { name: 'Rename Energy Book' }));
+    await userEvent.keyboard('Utilities Book');
+    await userEvent.click(within(manage).getByRole('button', { name: 'Save' }));
+    expect(await within(manage).findByRole('button', { name: 'Rename Utilities Book' })).toHaveFocus();
   });
 
   it('deleting the open portfolio opens another', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderAt('/portfolios/1');
     const manage = await openWindow();
 
     await userEvent.click(within(manage).getByRole('button', { name: 'Delete Tech Book' }));
+    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
 
     await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

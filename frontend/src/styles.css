@@ -794,6 +794,27 @@ select {
   font-size: 18px;
 }
 
+/* A confirmation opens above any other window, such as Manage Portfolios. */
+.confirm-backdrop {
+  z-index: 60;
+}
+
+.confirm-window {
+  width: min(440px, 100%);
+}
+
+.confirm-window h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
 .window-create {
   margin-top: 16px;
   padding-top: 16px;
