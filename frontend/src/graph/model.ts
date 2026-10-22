@@ -63,10 +63,11 @@ export type LiveGraph = {
 };
 
 // Tile sides, in the graph's own units: a supplier or customer, a shared one, and the smallest and largest holding.
-export const COMPANY_SIZE = 46;
-export const SHARED_SIZE = 52;
-const HOLDING_MIN = 52;
-const HOLDING_MAX = 68;
+// A holding is marked by its colour and chamfer, so it is only a little bigger, and other logos stay readable.
+export const COMPANY_SIZE = 50;
+export const SHARED_SIZE = 54;
+const HOLDING_MIN = 54;
+const HOLDING_MAX = 62;
 // The gap between a tile and its label, and each label line's height.
 export const LABEL_GAP = 9;
 export const TITLE_LINE = 15;
@@ -79,7 +80,7 @@ const TITLE_MAX = 24;
 /** How big a holding's tile is: bigger the more of the portfolio it is, by the square root so small ones still show. */
 export function holdingTile(weight: number | null): number {
   if (weight === null || !Number.isFinite(weight) || weight <= 0) return HOLDING_MIN;
-  return Math.min(HOLDING_MAX, HOLDING_MIN + 4 * Math.sqrt(weight));
+  return Math.min(HOLDING_MAX, HOLDING_MIN + 2 * Math.sqrt(weight));
 }
 
 /** A name cut to fit under a tile, with an ellipsis. */
@@ -271,16 +272,17 @@ export function eventLabel(eventType: string): string {
     .join(' ');
 }
 
-// The drill-down. Zoomed out past 1:1, a holding shrinks at half the rate of the graph (it is drawn this much bigger
-// than its size, at most), while its suppliers and customers shrink with the graph and then recede: from DRILL_FULL
-// down to DRILL_GONE they grow smaller and fainter, until only the holdings stand out. Zooming in brings them back.
+// The drill-down. While every company is fully shown, holdings and the others shrink alike with the graph. Zoomed out
+// past DRILL_FULL, suppliers and customers recede (smaller and fainter, until DRILL_GONE), while a holding shrinks at
+// half the rate of the graph (drawn this much bigger than its size, at most), until only the holdings stand out.
+// Zooming in brings them back.
 const MOST_HOLDING_GROWTH = 2.6;
 const DRILL_FULL = 0.45;
 const DRILL_GONE = 0.18;
 
-/** How much bigger than its size a holding is drawn at a zoom, so on screen it shrinks at half the graph's rate. */
+/** How much bigger than its size a holding is drawn at a zoom: past DRILL_FULL, it shrinks at half the graph's rate. */
 export function holdingGrowth(k: number): number {
-  return k >= 1 ? 1 : Math.min(MOST_HOLDING_GROWTH, 1 / Math.sqrt(k));
+  return k >= DRILL_FULL ? 1 : Math.min(MOST_HOLDING_GROWTH, Math.sqrt(DRILL_FULL / k));
 }
 
 /** How present a supplier or customer is at a zoom, 0 to 1: fully above DRILL_FULL, gone at DRILL_GONE. */

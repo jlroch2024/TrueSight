@@ -70,7 +70,7 @@ describe('the living graph model', () => {
   it('makes a bigger holding a bigger tile, within limits', () => {
     expect(holdingTile(20)).toBeGreaterThan(holdingTile(5));
     expect(holdingTile(null)).toBe(holdingTile(0));
-    expect(holdingTile(10_000)).toBe(68);
+    expect(holdingTile(10_000)).toBe(62);
   });
 
   it('gives a company without a logo initials and a colour of its own, the same every time', () => {
@@ -154,11 +154,12 @@ describe('disruptions and zoom', () => {
 });
 
 describe('the zoom drill-down', () => {
-  it('shrinks a holding at half the rate of the graph when zoomed out, and not past a limit', () => {
-    // On screen a holding is its size × zoom × growth: at a quarter zoom, half its size.
-    expect(holdingGrowth(1)).toBe(1);
+  it('shrinks a holding with the graph while every company shows, then at half the rate, and not past a limit', () => {
+    // On screen a holding is its size × zoom × growth: from 0.45 down to a quarter of that zoom, it halves.
     expect(holdingGrowth(2)).toBe(1);
-    expect(0.25 * holdingGrowth(0.25)).toBeCloseTo(0.5);
+    expect(holdingGrowth(1)).toBe(1);
+    expect(holdingGrowth(0.45)).toBe(1);
+    expect((0.45 / 4) * holdingGrowth(0.45 / 4)).toBeCloseTo(0.45 / 2);
     expect(holdingGrowth(0.01)).toBe(2.6);
   });
 
@@ -171,12 +172,13 @@ describe('the zoom drill-down', () => {
     expect(drawnShare({ isHolding: false }, 0.1)).toBeCloseTo(0.55);
   });
 
-  it('keeps every holding larger on screen, relative to the others, the further the view zooms out', () => {
+  it('keeps holdings and the others in proportion while all show, then holdings larger the further it zooms out', () => {
     const ratio = (k: number) => drawnShare({ isHolding: true }, k) / drawnShare({ isHolding: false }, k);
 
     expect(ratio(1)).toBe(1);
-    expect(ratio(0.5)).toBeGreaterThan(ratio(1));
-    expect(ratio(0.2)).toBeGreaterThan(ratio(0.5));
+    expect(ratio(0.5)).toBe(1);
+    expect(ratio(0.3)).toBeGreaterThan(1);
+    expect(ratio(0.15)).toBeGreaterThan(ratio(0.3));
   });
 });
 
