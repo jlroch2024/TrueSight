@@ -37,8 +37,10 @@ that flashes as each wave arrives. A link not yet reviewed is fainter.
 - **Disruptions on the graph.** A link an open alert runs through takes the disruption's colour (High red, Medium
 orange, Low yellow), its conveyor stalls and pulses, and a diamond marks its middle; its hover card names the event.
 This needs one backend addition: each alert's reached holding also gives the relationship's id.
-- **Zoom as drill-down.** Zooming out, holdings shrink at half the graph's rate and never touch; suppliers and
-customers recede, and their labels fade before the holdings'. Zooming in brings them back.
+- **Holdings stand out by colour, not size.** A holding's coloured outline and chamfer mark it, so its tile is only a
+little bigger than a supplier's, and the other logos and the shared-holdings marker stay readable.
+- **Zoom as drill-down.** Zooming out far enough that suppliers and customers recede, holdings shrink at half the
+graph's rate and never touch, and the others' labels fade before the holdings'. Zooming in brings them back.
 - **Logos, normalised (item 40).** Each logo's built-in margin is trimmed; a logo with its own background fills its
 tile, a light one sits on a dark tile, any other on a white tile at one size. A company Logo.dev does not know shows
 its initials on a gradient of its own. Companies without a ticker get a logo only when Logo.dev knows a brand of
