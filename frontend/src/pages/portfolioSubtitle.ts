@@ -10,7 +10,7 @@ export type PortfolioSubtitle = { text: string; showSupplyChain: boolean };
  */
 export function portfolioSubtitle(holdings: Holding[]): PortfolioSubtitle {
   const total = holdings.length;
-  if (total === 0) return { text: 'Upload a CSV of Your Holdings to Begin', showSupplyChain: false };
+  if (total === 0) return { text: 'Upload a CSV of your holdings to begin.', showSupplyChain: false };
 
   const analysed = holdings.filter((h) => h.status !== 'WAITING' && h.status !== 'ANALYSING').length;
   if (holdings.some((h) => h.status === 'ANALYSING')) {

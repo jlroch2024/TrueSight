@@ -523,17 +523,7 @@ select:focus {
   display: grid;
 }
 
-.select-value,
-.select-sizer {
-  grid-area: 1 / 1;
-  white-space: nowrap;
-}
-
-.select-sizer {
-  visibility: hidden;
-}
-
-.select-chevron {
+.select-button[aria-expanded='true'] .select-chevron {
   margin-top: 4px;
   transform: rotate(-135deg);
 }

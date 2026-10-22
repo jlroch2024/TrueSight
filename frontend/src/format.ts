@@ -9,16 +9,44 @@ export const STATUS_LABELS: Record<HoldingStatus, string> = {
   NO_REPORT_FOUND: 'No Report Found',
 };
 
+// One date style on every page and in every browser language: "Oct 18, 2026" and "Oct 18, 2026, 4:55 AM".
 export function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
+/**
+ * A date with no time, "Oct 18, 2026". A date-only string such as a filing date, "2026-02-24", is read as that calendar
+ * day; new Date() would read it as midnight UTC, which is the day before west of Greenwich.
+ */
 export function formatDate(value: string): string {
-  const date = new Date(value);
+  const calendarDay = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = calendarDay
+    ? new Date(Number(calendarDay[1]), Number(calendarDay[2]) - 1, Number(calendarDay[3]))
+    : new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(date);
+}
+
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'with']);
+
+/**
+ * Text as a label: "lithium-ion battery cells" becomes "Lithium-Ion Battery Cells". Small words such as "and" and "of"
+ * stay lower case unless they come first. No letter is made lower case, so "AMD GPUs" and "SoC" keep their capitals.
+ */
+export function titleCase(text: string): string {
+  return text
+    .split(' ')
+    .map((word, i) =>
+      i > 0 && SMALL_WORDS.has(word)
+        ? word
+        : word
+            .split('-')
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join('-'),
+    )
+    .join(' ');
 }
 
 /**
@@ -36,7 +64,7 @@ export function formatAge(value: string, now: number = Date.now()): string {
   if (hours < 24) return ago(hours, 'Hour');
   const days = Math.floor(hours / 24);
   if (days <= 7) return ago(days, 'Day');
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(then);
+  return formatDate(value);
 }
 
 export function openInNewTab(url: string): void {

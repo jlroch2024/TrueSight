@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../api/client';
 import { type Holding, type Portfolio, holdingApi, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { paths } from '../paths';
-import { STATUS_LABELS, formatDateTime, openInNewTab } from '../format';
+import { STATUS_LABELS, formatDate, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { newsApi } from '../api/news';
 import { portfolioSubtitle } from './portfolioSubtitle';
@@ -200,7 +200,7 @@ export function PortfolioPage() {
                     </td>
                     <td>{h.status === 'DONE' && h.lastAnalysed ? formatDateTime(h.lastAnalysed) : '—'}</td>
                     <td>{h.reportType ?? '—'}</td>
-                    <td>{h.reportDate ?? '—'}</td>
+                    <td>{h.reportDate ? formatDate(h.reportDate) : '—'}</td>
                     <td>{h.status === 'DONE' && h.reportLink && <button type="button" onClick={() => openInNewTab(h.reportLink!)}>Show Report</button>}</td>
                   </tr>
                 ))}
