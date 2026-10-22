@@ -27,7 +27,7 @@ import { type Bounds, CameraRig, centredOn, fitCamera, toWorld } from './camera'
 import { edgeAt, nodeAt } from './geometry';
 import { LogoBook } from './logos';
 import { type LiveEdge, type LiveNode, type Risk, boxOf, buildLiveGraph, estimateWidth, eventLabel } from './model';
-import { settleForView } from './physics';
+import { restoreSettled, settleForView } from './physics';
 import { FONT, type MapFrame, mapFrame, render, renderMinimap } from './render';
 import { Scene } from './scene';
 import './livingGraph.css';
@@ -160,12 +160,21 @@ export function LivingGraph({
     const rig = rigRef.current;
     const key = latest.current.layoutKey;
     if (!scene || !rig || !key) return;
+    // Every company's place, so coming back shows the graph exactly as it was; and which of them the user placed.
     const positions: Record<string, { x: number; y: number }> = {};
+    const placed: string[] = [];
     for (const node of scene.graph.nodes) {
-      if (node.anchorX != null && node.anchorY != null) positions[node.id] = { x: node.anchorX, y: node.anchorY };
+      if (node.anchorX != null && node.anchorY != null) {
+        positions[node.id] = { x: node.anchorX, y: node.anchorY };
+        placed.push(node.id);
+      } else {
+        positions[node.id] = { x: node.x, y: node.y };
+      }
     }
     saveLayout(key, {
       positions,
+      placed,
+      labelRoom: scene.graph.nodes[0]?.labelRoom ?? 1,
       ...(viewChosenRef.current ? { zoom: rig.camera.k, pan: { x: rig.camera.x, y: rig.camera.y } } : {}),
     });
   }, []);
@@ -208,17 +217,25 @@ export function LivingGraph({
     const height = rect.height || root.clientHeight || 500;
 
     // What the user did to this portfolio's graph earlier in the tab: companies they placed, and the view.
+    // When every company of this graph has a saved place, it is put back exactly; otherwise (a company has come or
+    // gone since) it settles again, with the companies the user placed held where they were put.
     const saved = latest.current.layoutKey ? readSavedLayout(latest.current.layoutKey) : null;
+    const placed = new Set(saved?.placed ?? Object.keys(saved?.positions ?? {}));
+    const complete = saved?.placed !== undefined && graph.nodes.every((node) => saved.positions[node.id]);
     for (const node of graph.nodes) {
       const point = saved?.positions[node.id];
-      if (point) {
-        node.x = node.anchorX = point.x;
-        node.y = node.anchorY = point.y;
+      if (!point || !(complete || placed.has(node.id))) continue;
+      node.x = point.x;
+      node.y = point.y;
+      if (placed.has(node.id)) {
+        node.anchorX = point.x;
+        node.anchorY = point.y;
       }
     }
     const scene = new Scene(graph, still);
+    if (complete) restoreSettled(scene.physics, saved.labelRoom ?? 1);
     // Settled for the view it opens in: every label with room at that zoom, every link clear of other companies.
-    settleForView(scene.physics, (bounds) => fitCamera(bounds, width, height, FIT_ROOM).k);
+    else settleForView(scene.physics, (bounds) => fitCamera(bounds, width, height, FIT_ROOM).k);
     sceneRef.current = scene;
     const rig = new CameraRig(still);
     rig.setSize(width, height);

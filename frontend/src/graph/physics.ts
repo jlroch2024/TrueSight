@@ -218,6 +218,20 @@ export function settleForView(
 }
 
 /**
+ * Puts back a graph exactly as the user left it earlier in the tab (every company already where it was): nothing
+ * moves, and it is ready to be touched.
+ */
+export function restoreSettled(physics: Simulation<LiveNode, Link>, labelRoom: number) {
+  for (const node of physics.nodes()) {
+    node.labelRoom = labelRoom;
+    node.vx = 0;
+    node.vy = 0;
+  }
+  physics.alpha(0);
+  goLive(physics);
+}
+
+/**
  * Makes a settled graph ready to be touched: overlaps are eased apart rather than put right at once, and the companies
  * move through a thicker medium, so a drag nudges the companies around it like molecules in a suspension: they drift
  * aside, and glide to rest, without snapping or bouncing.

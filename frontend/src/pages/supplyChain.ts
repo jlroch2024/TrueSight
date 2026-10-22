@@ -607,7 +607,15 @@ export function flowLayout(
 }
 
 /** What the user did to a portfolio's graph: the companies they dragged, and the zoom and pan. */
-export type SavedLayout = { positions: Record<string, Point>; zoom?: number; pan?: Point };
+export type SavedLayout = {
+  positions: Record<string, Point>;
+  zoom?: number;
+  pan?: Point;
+  // Which of the positions the user placed (the rest are where the graph settled); without it, every position was
+  // placed by the user. And the room labels were given when the graph settled, so it can be put back exactly.
+  placed?: string[];
+  labelRoom?: number;
+};
 
 /** The saved layout under this key, or null when there is none, it cannot be read, or the browser's storage is off. */
 export function readSavedLayout(key: string): SavedLayout | null {

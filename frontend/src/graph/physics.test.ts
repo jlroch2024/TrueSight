@@ -21,7 +21,7 @@ import {
   initialsOf,
   neighbourhood,
 } from './model';
-import { BREATHING_ROOM, boundsOf, createPhysics, settle, settleForView } from './physics';
+import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView } from './physics';
 import { fitCamera } from './camera';
 import { lineCrosses } from '../pages/supplyChain';
 
@@ -227,6 +227,22 @@ describe('the living graph physics', () => {
     const second = settled().graph.nodes.map((node) => [node.id, Math.round(node.x), Math.round(node.y)]);
 
     expect(second).toEqual(first);
+  });
+
+  it('puts a graph back exactly where the user left it, with nothing moving by itself', () => {
+    const { graph } = settled();
+    const left = new Map(graph.nodes.map((node) => [node.id, { x: node.x + 13, y: node.y - 7 }]));
+
+    const again = sampleGraph();
+    for (const node of again.nodes) Object.assign(node, left.get(node.id));
+    const physics = createPhysics(again.nodes, again.edges);
+    restoreSettled(physics, 1.4);
+
+    expect(physics.alpha()).toBe(0);
+    for (const node of again.nodes) {
+      expect({ x: node.x, y: node.y }).toEqual(left.get(node.id));
+      expect(node.labelRoom).toBe(1.4);
+    }
   });
 
   it('holds a company the user placed where they put it, once the web settles around it', () => {
