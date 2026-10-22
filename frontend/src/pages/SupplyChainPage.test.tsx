@@ -1,9 +1,8 @@
 // The Supply Chain page: loading, error, empty and loaded states, and clicking an edge.
 //
-// SupplyChainGraph draws with Cytoscape, which needs a real <canvas> that jsdom does not provide (see
-// SupplyChainGraph.tsx). It is replaced here with a fake that renders one button per edge, so a click can be
-// simulated without a browser. What the real graph draws (nodes, shapes, colours) is Cytoscape's own job; what goes
-// into it is buildGraphElements, already tested on its own in supplyChain.test.ts.
+// The graph (LivingGraph) draws on a <canvas>, which jsdom cannot draw on. It is replaced here with a fake that renders
+// one button per edge, so a click can be simulated without a browser. What the real graph does is tested on its own in
+// src/graph/; what goes into it is buildGraphElements, tested in supplyChain.test.ts.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
@@ -17,8 +16,8 @@ import { TSMC, sampleNews } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 import { SupplyChainPage } from './SupplyChainPage';
 
-vi.mock('../components/SupplyChainGraph', () => ({
-  SupplyChainGraph: ({
+vi.mock('../graph/LivingGraph', () => ({
+  LivingGraph: ({
     nodes,
     edges,
     onEdgeSelect,

@@ -1,5 +1,5 @@
-// Turns a portfolio's holdings and relationships into graph elements. Kept apart from SupplyChainGraph.tsx (which
-// draws it with Cytoscape) so this logic can be tested on its own, in milliseconds.
+// Turns a portfolio's holdings and relationships into graph elements. Kept apart from the graph that draws them
+// (src/graph/) so this logic can be tested on its own, in milliseconds.
 import type { Holding } from '../api/portfolios';
 import type { Relationship, ReviewStatus } from '../api/relationships';
 

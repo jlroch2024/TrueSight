@@ -10,6 +10,7 @@
 // address opens the News tab, as the Portfolio page's See News does.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { type Alert, alertApi } from '../api/alerts';
 import { ApiError } from '../api/client';
 import { type NewsArticle, newsApi } from '../api/news';
 import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
@@ -19,7 +20,8 @@ import { settingsApi } from '../api/settings';
 import { HoldingsPanel } from '../components/HoldingsPanel';
 import { Inspector } from '../components/Inspector';
 import { NewsPanel } from '../components/NewsPanel';
-import { SupplyChainGraph } from '../components/SupplyChainGraph';
+import { LivingGraph } from '../graph/LivingGraph';
+import { risksFrom } from '../graph/model';
 import { paths } from '../paths';
 import { type Selection, buildGraphElements, holdingNodeIds, sharedCompanies, withSharedSummaries } from './supplyChain';
 
@@ -111,6 +113,26 @@ export function SupplyChainPage() {
       active = false;
     };
   }, [portfolioId, newsCheckedAt, newsChecking]);
+
+  // The portfolio's open alerts, loaded with the news: the graph marks the links they run through.
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  useEffect(() => {
+    if (newsChecking) return;
+    let active = true;
+    alertApi
+      .list(portfolioId)
+      .then((found) => {
+        if (active) setAlerts(found.alerts ?? []);
+      })
+      // The graph is still useful without them.
+      .catch(() => {
+        if (active) setAlerts([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [portfolioId, newsCheckedAt, newsChecking]);
+  const risks = useMemo(() => risksFrom(alerts), [alerts]);
 
   const { nodes, edges } = useMemo(
     () => buildGraphElements(relationships ?? [], holdings),
@@ -252,7 +274,7 @@ export function SupplyChainPage() {
         </aside>
 
         <div className="workspace-graph">
-          <SupplyChainGraph
+          <LivingGraph
             nodes={graphNodes}
             edges={edges}
             onEdgeSelect={selectRelationship}
@@ -262,6 +284,7 @@ export function SupplyChainPage() {
             logoToken={logoToken}
             logoDomains={logoDomains}
             layoutKey={`truesight.graph.${portfolioId}`}
+            risks={risks}
           />
         </div>
 
