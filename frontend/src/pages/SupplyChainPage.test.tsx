@@ -198,7 +198,7 @@ describe('Supply Chain page', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
 
     expect(screen.getByText(tsmcSentence)).toBeInTheDocument();
-    expect(screen.getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
+    expect(screen.getByText('10-K, Filed Feb 25, 2026')).toBeInTheDocument();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     await userEvent.click(screen.getByRole('button', { name: 'Show in Report' }));
     expect(open).toHaveBeenCalledWith(
@@ -393,7 +393,7 @@ describe('Supply Chain workspace', () => {
     expect(screen.getByTestId('selected-node')).toHaveTextContent('1');
     expect(within(inspector()).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
     expect(within(inspector()).getByText('Holding · 18% of the Portfolio')).toBeInTheDocument();
-    expect(within(inspector()).getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
+    expect(within(inspector()).getByText('10-K, Filed Feb 25, 2026')).toBeInTheDocument();
   });
 
   it("shows a company clicked on the graph with its suppliers and customers, and opens one's relationship", async () => {
@@ -403,6 +403,7 @@ describe('Supply Chain workspace', () => {
 
     expect(within(inspector()).getByText('Not Held')).toBeInTheDocument();
     const customers = within(inspector()).getByRole('region', { name: 'Customers' });
+    expect(within(customers).getByText('Semiconductor Wafers')).toBeInTheDocument();
     await userEvent.click(within(customers).getByRole('button', { name: /NVDA/ }));
 
     expect(
@@ -437,7 +438,7 @@ describe('Supply Chain workspace', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
 
-    expect(within(inspector()).getByText('Approved by an analyst on 14 October 2026')).toBeInTheDocument();
+    expect(within(inspector()).getByText('Approved by an Analyst on Oct 14, 2026')).toBeInTheDocument();
     expect(within(inspector()).getByText('Confirmed against the annual report.')).toBeInTheDocument();
   });
 
@@ -453,11 +454,11 @@ describe('Supply Chain workspace', () => {
     await screen.findByTestId('fake-graph');
 
     await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
-    expect(within(inspector()).getByText('Approved by an analyst on 14 October 2026')).toBeInTheDocument();
+    expect(within(inspector()).getByText('Approved by an Analyst on Oct 14, 2026')).toBeInTheDocument();
     expect(inspector().querySelector('.review-note')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Select edge 15' }));
-    expect(within(inspector()).getByText('Not yet reviewed by an analyst')).toBeInTheDocument();
+    expect(within(inspector()).getByText('Not Yet Reviewed by an Analyst')).toBeInTheDocument();
   });
 
   it('lets go of the choice when the background is clicked', async () => {

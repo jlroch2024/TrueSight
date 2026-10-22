@@ -11,7 +11,7 @@ function holdings(...statuses: HoldingStatus[]): Holding[] {
 
 describe('portfolioSubtitle', () => {
   it('asks for a CSV when there are no holdings', () => {
-    expect(portfolioSubtitle([])).toEqual({ text: 'Upload a CSV of Your Holdings to Begin', showSupplyChain: false });
+    expect(portfolioSubtitle([])).toEqual({ text: 'Upload a CSV of your holdings to begin.', showSupplyChain: false });
   });
 
   it('explains Analyse when no holding has been analysed', () => {

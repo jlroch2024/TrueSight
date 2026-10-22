@@ -119,7 +119,7 @@ describe('Alerts page', () => {
     expect(high).toHaveTextContent('Based on the headline only');
     expect(high).toHaveTextContent('NVDA');
     expect(high).toHaveTextContent('TSMC supplies NVIDIA');
-    expect(high).toHaveTextContent('Not yet reviewed by an analyst');
+    expect(high).toHaveTextContent('Not Yet Reviewed by an Analyst');
     expect(within(high).getByRole('button', { name: 'Open Article' })).toBeInTheDocument();
   });
 

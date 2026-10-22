@@ -64,7 +64,7 @@ function AlertCard({
               <span>{holding.weight === null ? 'Weight not provided' : `${holding.weight}%`}</span>
               <span>{holding.link ?? 'The event is about this company'}</span>
               {holding.reviewStatus === 'UNREVIEWED' && (
-                <span className="muted small">Not yet reviewed by an analyst</span>
+                <span className="muted small">Not Yet Reviewed by an Analyst</span>
               )}
             </li>
           ))}
