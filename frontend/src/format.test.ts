@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import sampleRelationshipsJson from '../../docs/examples/relationships.json';
 import type { Relationship } from './api/relationships';
-import { formatAge, formatDate, showInReportUrl } from './format';
+import { formatAge, formatDate, formatDateTime, showInReportUrl, titleCase } from './format';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
 const evidenceOf = (company: string, counterparty: string) =>
@@ -48,17 +48,49 @@ describe('formatAge', () => {
   });
 
   it('gives the date itself past a week, and a dash for a bad date', () => {
-    expect(formatAge('2026-09-01T00:00:00Z', now)).not.toMatch(/Ago/);
+    expect(formatAge('2026-09-01T12:00:00Z', now)).toBe('Sep 1, 2026');
     expect(formatAge('not a date', now)).toBe('—');
   });
 });
 
 describe('formatDate', () => {
-  it('shows the day, full month and year', () => {
-    expect(formatDate('2026-10-14T12:00:00Z')).toBe('14 October 2026');
+  it('shows the short month, day and year', () => {
+    expect(formatDate('2026-10-14T12:00:00Z')).toBe('Oct 14, 2026');
+  });
+
+  it('keeps the calendar day of a date with no time', () => {
+    expect(formatDate('2026-02-24')).toBe('Feb 24, 2026');
   });
 
   it('uses a dash for a bad date', () => {
     expect(formatDate('not a date')).toBe('—');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('shows the short month, day, year and time', () => {
+    const date = new Date(2026, 9, 18, 4, 55);
+    expect(formatDateTime(date.toISOString())).toBe('Oct 18, 2026, 4:55 AM');
+  });
+
+  it('uses a dash for a bad date', () => {
+    expect(formatDateTime('not a date')).toBe('—');
+  });
+});
+
+describe('titleCase', () => {
+  it('capitalises each word and each part of a hyphenated word', () => {
+    expect(titleCase('wafer production')).toBe('Wafer Production');
+    expect(titleCase('lithium-ion battery cells')).toBe('Lithium-Ion Battery Cells');
+  });
+
+  it('keeps small words lower case unless they come first', () => {
+    expect(titleCase('assembly, testing and packaging')).toBe('Assembly, Testing and Packaging');
+    expect(titleCase('the design of chips')).toBe('The Design of Chips');
+  });
+
+  it('never makes a letter lower case', () => {
+    expect(titleCase('AMD GPUs')).toBe('AMD GPUs');
+    expect(titleCase('mobile SoC designs')).toBe('Mobile SoC Designs');
   });
 });

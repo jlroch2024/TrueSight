@@ -9,7 +9,7 @@
 import type { NewsArticle } from '../api/news';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
-import { formatDate, openInNewTab, showInReportUrl } from '../format';
+import { formatDate, openInNewTab, showInReportUrl, titleCase } from '../format';
 import {
   type Connection,
   type GraphNode,
@@ -113,7 +113,7 @@ function CompanyDetails({
           <div>
             <dt>Annual Report</dt>
             <dd>
-              {holding.reportType}, Filed {holding.reportDate}
+              {holding.reportType}, Filed {formatDate(holding.reportDate)}
             </dd>
           </div>
           {holding.reportLink && (
@@ -180,7 +180,7 @@ function ConnectionList({
                   {company.ticker && <span className="ticker">{company.ticker}</span>}
                   <span className="panel-name">{displayName(company.name)}</span>
                 </span>
-                {relationship.provides && <span className="panel-row-detail">{relationship.provides}</span>}
+                {relationship.provides && <span className="panel-row-detail">{titleCase(relationship.provides)}</span>}
               </button>
             </li>
           ))}
@@ -216,10 +216,10 @@ function RelationshipDetails({
       </header>
       <p className="muted small review-status">
         {relationship.reviewStatus === 'APPROVED'
-          ? `Approved by an analyst${relationship.reviewedAt ? ` on ${formatDate(relationship.reviewedAt)}` : ''}`
+          ? `Approved by an Analyst${relationship.reviewedAt ? ` on ${formatDate(relationship.reviewedAt)}` : ''}`
           : relationship.reviewStatus === 'UNREVIEWED'
-            ? 'Not yet reviewed by an analyst'
-            : 'Rejected by an analyst'}
+            ? 'Not Yet Reviewed by an Analyst'
+            : 'Rejected by an Analyst'}
       </p>
       {relationship.reviewStatus === 'APPROVED' && relationship.reviewNote && (
         <p className="muted small review-note">{relationship.reviewNote}</p>
@@ -232,7 +232,7 @@ function RelationshipDetails({
         <div>
           <dt>Annual Report</dt>
           <dd>
-            {relationship.report.form}, Filed {relationship.report.filingDate}
+            {relationship.report.form}, Filed {formatDate(relationship.report.filingDate)}
           </dd>
         </div>
       </dl>

@@ -425,7 +425,7 @@ describe('SupplyChainGraph', () => {
 
       const legend = screen.getByRole('list', { name: 'Relationship review status' });
       expect(legend).toHaveTextContent('Approved');
-      expect(legend).toHaveTextContent('Not yet reviewed');
+      expect(legend).toHaveTextContent('Not Yet Reviewed');
       expect(legend.querySelector('.graph-legend-line.approved')).toBeInTheDocument();
       expect(legend.querySelector('.graph-legend-line.unreviewed')).toBeInTheDocument();
 

@@ -21,7 +21,7 @@ describe('GraphLegend', () => {
     const status = screen.getByRole('list', { name: 'Relationship review status' });
 
     expect(within(status).getByText('Approved')).toBeInTheDocument();
-    expect(within(status).getByText('Not yet reviewed')).toBeInTheDocument();
+    expect(within(status).getByText('Not Yet Reviewed')).toBeInTheDocument();
 
     rerender(<GraphLegend hasRelationships={false} />);
     expect(screen.queryByRole('list', { name: 'Relationship review status' })).not.toBeInTheDocument();
