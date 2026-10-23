@@ -117,7 +117,7 @@ public class RelationshipFinder {
             Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
                     item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
                     evidence.get());
-            if (item.criticality() != null) {
+            if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
                 checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
                     relationship.setCriticality(item.criticality());
                     relationship.setCriticalityEvidence(criticalityEvidence);

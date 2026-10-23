@@ -2,6 +2,7 @@ package com.truesight.relationship;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -18,7 +19,8 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     boolean existsByReportId(Long reportId);
 
-    List<Relationship> findByReportIdIn(Collection<Long> reportIds);
+    @Query("select distinct r.reportId from Relationship r where r.type = :type and r.criticality is null")
+    List<Long> findReportIdsWithoutCriticality(@Param("type") RelationshipType type);
 
     List<Relationship> findByReportIdOrderByIdAsc(Long reportId);
 

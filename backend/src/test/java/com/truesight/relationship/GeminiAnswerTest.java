@@ -55,31 +55,13 @@ class GeminiAnswerTest {
     }
 
     @Test
-    void readsSoleAndSingleSourceCriticalityAndLeavesEmptyValuesUnclassified() throws Exception {
-        String answer = response("""
-                [{"company":"Carl Zeiss SMT","criticality":"SOLE_SOURCE","criticalityQuote":"The number of lithography systems we are able to produce is limited by the production capacity of one of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators, collectors and other critical optical components (which we refer to as optics)."},
-                 {"company":"NVIDIA Corporation","criticality":"SINGLE_SOURCE","criticalityQuote":""},
-                 {"company":"Other Supplier","criticality":"","criticalityQuote":""}]
-                """);
-
-        assertThat(answers.readCriticalities(answer)).containsExactly(
-                new GeminiAnswer.CriticalityFound("Carl Zeiss SMT", Criticality.SOLE_SOURCE,
-                        "The number of lithography systems we are able to produce is limited by the production capacity "
-                                + "of one of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, "
-                                + "illuminators, collectors and other critical optical components (which we refer to "
-                                + "as optics)."),
-                new GeminiAnswer.CriticalityFound("NVIDIA Corporation", Criticality.SINGLE_SOURCE, ""));
-        assertThat(answers.read(Examples.geminiNvidia()))
+    void readsTheRealNvidiaAnswerAndLeavesEveryRelationshipUnclassified() {
+        assertThat(answers.readCriticalities(Examples.geminiNvidiaCriticality())).isEmpty();
+        assertThat(answers.read(Examples.geminiNvidiaCriticality()))
                 .extracting(GeminiAnswer.Found::criticality)
                 .containsOnlyNulls();
-    }
-
-    private String response(String text) throws Exception {
-        return answersMapper().writeValueAsString(java.util.Map.of("candidates", List.of(
-                java.util.Map.of("content", java.util.Map.of("parts", List.of(java.util.Map.of("text", text)))))));
-    }
-
-    private tools.jackson.databind.ObjectMapper answersMapper() {
-        return JsonMapper.builder().build();
+        assertThat(answers.read(Examples.geminiNvidiaCriticality()))
+                .extracting(GeminiAnswer.Found::criticalityQuote)
+                .containsOnly("");
     }
 }

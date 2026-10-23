@@ -51,7 +51,7 @@ public class GeminiClient {
                             "relationship", Map.of("type", "STRING", "enum", List.of("SUPPLIER", "CUSTOMER")),
                             "provides", Map.of("type", "STRING"),
                             "quote", Map.of("type", "STRING"),
-                            "criticality", Map.of("type", "STRING", "enum", List.of("SOLE_SOURCE", "SINGLE_SOURCE", "")),
+                            "criticality", Map.of("type", "STRING"),
                             "criticalityQuote", Map.of("type", "STRING")),
                     "required", List.of("company", "alsoKnownAs", "relationship", "provides", "quote",
                             "criticality", "criticalityQuote"),
@@ -65,7 +65,7 @@ public class GeminiClient {
                     "type", "OBJECT",
                     "properties", Map.of(
                             "company", Map.of("type", "STRING"),
-                            "criticality", Map.of("type", "STRING", "enum", List.of("SOLE_SOURCE", "SINGLE_SOURCE", "")),
+                            "criticality", Map.of("type", "STRING"),
                             "criticalityQuote", Map.of("type", "STRING")),
                     "required", List.of("company", "criticality", "criticalityQuote"),
                     "propertyOrdering", List.of("company", "criticality", "criticalityQuote")));

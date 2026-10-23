@@ -3,6 +3,7 @@ package com.truesight.relationship;
 import com.truesight.ai.AiAnswer;
 import com.truesight.ai.AiCallLog;
 import com.truesight.ai.AiCallRepository;
+import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
@@ -10,7 +11,6 @@ import com.truesight.company.CompanyRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,10 +50,11 @@ public class CriticalityPassService {
     private final GeminiAnswer answers;
     private final AiCallLog calls;
     private final AiCallRepository callRows;
+    private final CriticalityResultSaver resultSaver;
 
     public CriticalityPassService(ReportRepository reports, RelationshipRepository relationships,
                                   CompanyRepository companies, GeminiClient gemini, GeminiAnswer answers,
-                                  AiCallLog calls, AiCallRepository callRows) {
+                                  AiCallLog calls, AiCallRepository callRows, CriticalityResultSaver resultSaver) {
         this.reports = reports;
         this.relationships = relationships;
         this.companies = companies;
@@ -61,38 +62,30 @@ public class CriticalityPassService {
         this.answers = answers;
         this.calls = calls;
         this.callRows = callRows;
+        this.resultSaver = resultSaver;
     }
 
     /** Reports that have existing relationships still needing a criticality assessment. */
-    @Transactional(readOnly = true)
     public List<Long> pendingReportIds() {
-        List<Report> stored = reports.findAll();
-        if (stored.isEmpty()) return List.of();
-        Map<Long, List<Relationship>> byReport = relationships.findByReportIdIn(
-                        stored.stream().map(Report::getId).toList())
-                .stream().collect(Collectors.groupingBy(Relationship::getReportId));
-        return stored.stream()
-                .filter(report -> {
-                    List<Relationship> found = byReport.getOrDefault(report.getId(), List.of());
-                    return !found.isEmpty()
-                            && found.stream().anyMatch(item -> item.getCriticality() == null)
-                            && !callRows.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
-                                    report.getId(), AiPurpose.CRITICALITY, com.truesight.ai.AiOutcome.ANSWERED);
-                })
-                .map(Report::getId)
-                .sorted()
-                .toList();
+        return relationships.findReportIdsWithoutCriticality(RelationshipType.SUPPLIER).stream()
+                .filter(reportId -> !callRows.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                        reportId, AiPurpose.CRITICALITY, AiOutcome.ANSWERED))
+                .filter(reportId -> !callRows.existsByReportIdAndPurposeAndOutcomeAndPromptContaining(
+                        reportId, AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED, "criticalityQuote"))
+                .distinct().sorted().toList();
     }
 
     /** Runs one Gemini call for a report, keeping every relationship field except criticality untouched. */
-    @Transactional
     public void assess(Long reportId) {
         Report report = reports.findById(reportId).orElse(null);
         if (report == null || callRows.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
-                reportId, AiPurpose.CRITICALITY, com.truesight.ai.AiOutcome.ANSWERED)) return;
+                reportId, AiPurpose.CRITICALITY, AiOutcome.ANSWERED)
+                || callRows.existsByReportIdAndPurposeAndOutcomeAndPromptContaining(
+                        reportId, AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED, "criticalityQuote")) return;
 
         List<Relationship> pending = relationships.findByReportIdOrderByIdAsc(reportId).stream()
                 .filter(item -> item.getCriticality() == null)
+                .filter(item -> item.getType() == RelationshipType.SUPPLIER)
                 .toList();
         if (pending.isEmpty()) return;
 
@@ -122,7 +115,7 @@ public class CriticalityPassService {
         Asked asked = ask(request);
 
         QuoteChecker checker = new QuoteChecker(report.getText());
-        int kept = 0;
+        Map<Long, CriticalityResultSaver.VerifiedCriticality> verified = new HashMap<>();
         int dropped = 0;
         for (GeminiAnswer.CriticalityFound found : asked.found()) {
             List<Relationship> matching = byCounterpartyName.get(key(found.company()));
@@ -137,12 +130,11 @@ public class CriticalityPassService {
             }
             for (Relationship relationship : matching) {
                 if (relationship.getCriticality() != null) continue;
-                relationship.setCriticality(found.criticality());
-                relationship.setCriticalityEvidence(evidence.get());
-                kept++;
+                verified.put(relationship.getId(), new CriticalityResultSaver.VerifiedCriticality(
+                        found.criticality(), evidence.get()));
             }
         }
-        calls.finish(asked.callId(), kept, dropped);
+        resultSaver.save(reportId, asked.callId(), verified, dropped);
     }
 
     private Asked ask(AiRequest request) {

@@ -421,7 +421,7 @@ describe('Supply Chain workspace', () => {
     const criticality = inspector().querySelector<HTMLElement>('.criticality-evidence')!;
     expect(within(inspector()).getByText('Sole Source')).toBeInTheDocument();
     expect(within(criticality).getByText(source.evidence)).toBeInTheDocument();
-    await userEvent.click(within(criticality).getByRole('button', { name: 'Show in Report' }));
+    await userEvent.click(within(criticality).getByRole('button', { name: 'Show Criticality in Report' }));
     expect(open).toHaveBeenCalledWith(showInReportUrl(source.report.url, source.evidence), '_blank', 'noopener,noreferrer');
   });
 

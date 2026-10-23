@@ -1059,7 +1059,6 @@ table.holdings td:nth-child(7) {
 
 .graph-legend-line.criticality {
   border-top-width: 3px;
-  border-top-color: var(--lime);
 }
 
 .graph-tooltip {

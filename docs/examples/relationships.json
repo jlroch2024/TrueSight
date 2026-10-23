@@ -247,7 +247,7 @@
     },
     "type": "SUPPLIER",
     "provides": "front-end wafer manufacturing",
-    "evidence": "The majority of our front-end wafer manufacturing operations is outsourced to external foundries, including Taiwan Semiconductor Manufacturing Company Limited (\u201cTSMC\u201d).",
+    "evidence": "The majority of our front-end wafer manufacturing operations is outsourced to external foundries, including Taiwan Semiconductor Manufacturing Company Limited (“TSMC”).",
     "report": {
       "form": "10-K",
       "filingDate": "2025-12-18",
@@ -377,7 +377,7 @@
     },
     "type": "CUSTOMER",
     "provides": null,
-    "evidence": "For fiscal years 2026, 2025, and 2024, we had one end customer, Apple Inc., who purchased through multiple contract manufacturers and represented approximately 91 percent, 89 percent, and 87 percent, of the Company\u2019s total net sales, respectively.",
+    "evidence": "For fiscal years 2026, 2025, and 2024, we had one end customer, Apple Inc., who purchased through multiple contract manufacturers and represented approximately 91 percent, 89 percent, and 87 percent, of the Company’s total net sales, respectively.",
     "report": {
       "form": "10-K",
       "filingDate": "2026-05-21",

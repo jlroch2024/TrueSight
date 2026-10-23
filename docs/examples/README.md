@@ -8,6 +8,7 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns. Every one is `UNREVIEWED`: `reviewStatus` is `"UNREVIEWED"`, and `reviewedAt` and `reviewNote` are `null` | See the Supply Chain as a Graph, until the real endpoint exists; Review AI Findings |
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
+| `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |
 | `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
 | `news-labels.csv` | The team's own event-or-noise label for each of those 20 headlines, made by hand before looking at Gemini's answer | Filter Out Noise, to measure how often Gemini is right |
@@ -143,6 +144,13 @@ TEXT:
 The request also set `responseMimeType` to `application/json` with a matching `responseSchema`, which makes Gemini
 answer in exactly that shape. Find Suppliers and Customers with AI can use the same prompt, or its own. If it changes
 the prompt, the saved answer still works for testing how answers are read and checked.
+
+## The NVIDIA Criticality Answer
+
+`gemini-nvidia-criticality.json` is the complete, unchanged Gemini API response saved on 23 October 2026 using the
+criticality-enabled relationship prompt and `gemini-3.8-flash`, at temperature 0. The report names no supplier as a
+sole or single source, so all seven criticality values and quotes are empty. It used 30,670 input tokens and 579 output
+tokens (35,887 total, including 4,638 thinking tokens).
 
 ## The Shape of a Relationship
 

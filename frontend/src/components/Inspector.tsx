@@ -235,6 +235,7 @@ function RelationshipDetails({
           <button
             type="button"
             className="secondary small-button"
+            aria-label="Show Criticality in Report"
             onClick={() => openInNewTab(showInReportUrl(relationship.report.url, relationship.criticalityEvidence!))}
           >
             Show in Report

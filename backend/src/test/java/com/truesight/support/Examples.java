@@ -25,6 +25,11 @@ public final class Examples {
         return read("gemini-nvidia.json");
     }
 
+    /** Gemini's real answer to the criticality-enabled relationship prompt for NVIDIA's saved 10-K. */
+    public static String geminiNvidiaCriticality() {
+        return read("gemini-nvidia-criticality.json");
+    }
+
     /** A real Google News RSS response for the TSMC search used by Sprint 2. */
     public static String googleNewsTsmc() {
         return read("google-news-tsmc.xml");
