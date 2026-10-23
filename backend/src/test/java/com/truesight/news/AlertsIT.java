@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +44,24 @@ class AlertsIT {
 
     private static final String NVIDIA_CIK = "0001045810";
     private static final String TSMC_CIK = "0001046179";
+    private static final String GLOBALFOUNDRIES_REUTERS =
+            "GlobalFoundries to make key AI chip component for TSMC in $2 billion deal";
+    private static final String GLOBALFOUNDRIES_YAHOO =
+            "GlobalFoundries Signs $2 Billion Silicon Supply Deal With Taiwan Semiconductor Manufacturing";
+    private static final String GLOBALFOUNDRIES_TRADINGVIEW =
+            "Weekly Recap: Record Q3 revenue surge and $2B GlobalFoundries CoWoS deal";
+    private static final String QUALCOMM_VS_TSMC =
+            "Qualcomm vs. Taiwan Semiconductor Manufacturing: Which Technology Stock Is a Better Buy in 2026?";
+    private static final String TSMC_CHEAP_SMARTPHONES_TRADINGVIEW =
+            "The Death of Cheap Smartphones? Taiwan Semiconductor Could Profit From Major Market Shift";
+    private static final String TSMC_RECORD_PROFIT_REUTERS =
+            "TSMC expected to report sixth straight quarter of record profit thanks to AI boom";
+    private static final String TSMC_BOMBSHELL_YAHOO =
+            "Taiwan Semiconductor Manufacturing Just Dropped a Major Bombshell Investors Must Be Aware Of";
+    private static final String REUTERS = "Reuters";
+    private static final String YAHOO_FINANCE = "Yahoo Finance";
+    private static final String TRADINGVIEW = "TradingView";
+    private static final String MOTLEY_FOOL = "The Motley Fool";
     private static final String EVIDENCE = "We utilize foundries, such as Taiwan Semiconductor Manufacturing "
             + "Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor "
             + "wafers.";
@@ -60,14 +78,21 @@ class AlertsIT {
     @Autowired AlertRepository alerts;
     @Autowired AlertHoldingRepository alertHoldings;
 
-    private List<NewsItem> sample;
+    private Map<HeadlineKey, NewsItem> sampleByHeadline;
     private Company nvidia;
     private Company tsmc;
     private Relationship tsmcSuppliesNvidia;
 
     @BeforeEach
     void makeNvidiaAndTsmcSupplyChain() {
-        sample = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
+        // Headline metadata comes from docs/examples/google-news-tsmc.xml, the Google News sample captured 14 October
+        // 2026. Shift every timestamp by the same offset so the sample stays recent without changing its time gaps.
+        List<NewsItem> savedSample = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
+        Instant newestPublishedAt = savedSample.stream().map(NewsItem::publishedAt).max(Instant::compareTo).orElseThrow();
+        Duration sampleShift = Duration.between(newestPublishedAt, Instant.now().minus(Duration.ofHours(1)));
+        sampleByHeadline = savedSample.stream()
+                .map(item -> new NewsItem(item.title(), item.url(), item.source(), item.publishedAt().plus(sampleShift)))
+                .collect(Collectors.toMap(item -> new HeadlineKey(item.title(), item.source()), item -> item));
         nvidia = companyDirectory.findOrCreate("NVIDIA Corporation", NVIDIA_CIK, "NVDA", List.of("NVIDIA"));
         tsmc = companyDirectory.findOrCreate(
                 "Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM", List.of("TSMC"));
@@ -88,7 +113,7 @@ class AlertsIT {
         String email = "alerts-fields@example.com";
         Portfolio portfolio = portfolio(email);
         Holding holding = hold(portfolio, nvidia, "40");
-        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        NewsArticle article = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
         NewsAssessment assessment = event(article, Severity.HIGH, Confidence.MEDIUM);
         Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
@@ -131,11 +156,11 @@ class AlertsIT {
         String email = "alerts-order@example.com";
         Portfolio portfolio = portfolio(email);
         Holding holding = hold(portfolio, nvidia, "100");
-        NewsArticle lowArticle = article(tsmc, 0, Duration.ofMinutes(5));
+        NewsArticle lowArticle = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(lowArticle, Severity.LOW, Confidence.HIGH);
         Alert low = alert(portfolio, lowArticle, "100", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(low.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle highArticle = article(tsmc, 1, Duration.ofDays(2));
+        NewsArticle highArticle = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(highArticle, Severity.HIGH, Confidence.HIGH);
         Alert high = alert(portfolio, highArticle, "5", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(high.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
@@ -156,11 +181,11 @@ class AlertsIT {
         String email = "alerts-tie-order@example.com";
         Portfolio portfolio = portfolio(email);
         Holding holding = hold(portfolio, nvidia, "100");
-        NewsArticle older = article(tsmc, 0, Duration.ofDays(2));
+        NewsArticle older = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(older, Severity.HIGH, Confidence.LOW);
         Alert olderAlert = alert(portfolio, older, "15", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(olderAlert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle newer = article(tsmc, 1, Duration.ofHours(1));
+        NewsArticle newer = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(newer, Severity.HIGH, Confidence.HIGH);
         Alert newerAlert = alert(portfolio, newer, "10", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(newerAlert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
@@ -174,16 +199,19 @@ class AlertsIT {
     }
 
     @Test
-    void threeSameDayReportsForTheSameEventBecomeOneCardWithEveryPublisherAndHolding() throws Exception {
+    void sameDayReutersAndYahooReportsGroupAndLaterTradingViewReportStaysSeparate() throws Exception {
         String email = "alerts-grouped@example.com";
         Portfolio portfolio = portfolio(email);
         Holding nvidiaHolding = hold(portfolio, nvidia, "40");
         Holding tsmcHolding = hold(portfolio, tsmc, "20");
-        Severity[] severities = {Severity.LOW, Severity.MEDIUM, Severity.HIGH};
-        Instant sameDayNoon = recentNoon();
-        for (int i = 0; i < severities.length; i++) {
-            NewsArticle article = article(tsmc, i, sameDayNoon.minus(Duration.ofMinutes(3 - i)));
-            event(article, EventType.SUPPLY_SHORTAGE, severities[i], Confidence.values()[i]);
+        List<NewsItem> eventReports = List.of(
+                headline(GLOBALFOUNDRIES_REUTERS, REUTERS),
+                headline(GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE),
+                headline(GLOBALFOUNDRIES_TRADINGVIEW, TRADINGVIEW));
+        for (int i = 0; i < eventReports.size(); i++) {
+            NewsArticle article = article(tsmc, eventReports.get(i));
+            Severity severity = i == 0 ? Severity.HIGH : (i == 1 ? Severity.MEDIUM : Severity.LOW);
+            event(article, EventType.SUPPLY_SHORTAGE, severity, Confidence.HIGH);
             Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
             alertHoldings.save(new AlertHolding(alert.getId(), nvidiaHolding.getId(), tsmcSuppliesNvidia.getId()));
             alertHoldings.save(new AlertHolding(alert.getId(), tsmcHolding.getId(), null));
@@ -192,29 +220,42 @@ class AlertsIT {
         mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.alerts", hasSize(1)))
-                .andExpect(jsonPath("$.alerts[0].alertIds", hasSize(3)))
-                .andExpect(jsonPath("$.alerts[0].sources", hasSize(3)))
-                .andExpect(jsonPath("$.alerts[0].sources[0].source").value(sample.get(2).source()))
-                .andExpect(jsonPath("$.alerts[0].sources[1].source").value(sample.get(1).source()))
-                .andExpect(jsonPath("$.alerts[0].sources[2].source").value(sample.get(0).source()))
+                .andExpect(jsonPath("$.alerts", hasSize(2)))
+                .andExpect(jsonPath("$.alerts[0].alertIds", hasSize(2)))
+                .andExpect(jsonPath("$.alerts[0].sources", hasSize(2)))
+                .andExpect(jsonPath("$.alerts[0].sources[0].title").value(GLOBALFOUNDRIES_YAHOO))
+                .andExpect(jsonPath("$.alerts[0].sources[0].source").value("Yahoo Finance"))
+                .andExpect(jsonPath("$.alerts[0].sources[0].publishedAt")
+                        .value(headline(GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE).publishedAt()
+                                .truncatedTo(ChronoUnit.MICROS).toString()))
+                .andExpect(jsonPath("$.alerts[0].sources[1].title").value(GLOBALFOUNDRIES_REUTERS))
+                .andExpect(jsonPath("$.alerts[0].sources[1].source").value("Reuters"))
+                .andExpect(jsonPath("$.alerts[0].sources[1].publishedAt")
+                        .value(headline(GLOBALFOUNDRIES_REUTERS, REUTERS).publishedAt()
+                                .truncatedTo(ChronoUnit.MICROS).toString()))
+                .andExpect(jsonPath("$.alerts[0].headline.article.title").value(GLOBALFOUNDRIES_REUTERS))
                 .andExpect(jsonPath("$.alerts[0].headline.assessment.severity").value("HIGH"))
                 .andExpect(jsonPath("$.alerts[0].headline.assessment.confidence").value("HIGH"))
                 .andExpect(jsonPath("$.alerts[0].exposure").value(60.0))
                 .andExpect(jsonPath("$.alerts[0].holdings", hasSize(2)))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
-                .andExpect(jsonPath("$.alerts[0].holdings[1].relationshipId").value(nullValue()));
+                .andExpect(jsonPath("$.alerts[0].holdings[1].relationshipId").value(nullValue()))
+                .andExpect(jsonPath("$.alerts[1].sources", hasSize(1)))
+                .andExpect(jsonPath("$.alerts[1].sources[0].title").value(GLOBALFOUNDRIES_TRADINGVIEW))
+                .andExpect(jsonPath("$.alerts[1].sources[0].source").value(TRADINGVIEW))
+                .andExpect(jsonPath("$.alerts[1].sources[0].publishedAt")
+                        .value(headline(GLOBALFOUNDRIES_TRADINGVIEW, TRADINGVIEW).publishedAt()
+                                .truncatedTo(ChronoUnit.MICROS).toString()));
     }
 
     @Test
     void twoAlertsAboutOneCompanyAndTypeFiveDaysApartStayTwoCards() throws Exception {
         String email = "alerts-five-days@example.com";
         Portfolio portfolio = portfolio(email);
-        Instant recent = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        NewsArticle oldArticle = article(tsmc, 0, recent.minus(Duration.ofDays(5)));
+        NewsArticle oldArticle = article(tsmc, QUALCOMM_VS_TSMC, MOTLEY_FOOL);
         event(oldArticle, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, oldArticle, "40", AlertStatus.NEW);
-        NewsArticle recentArticle = article(tsmc, 1, recent);
+        NewsArticle recentArticle = article(tsmc, TSMC_CHEAP_SMARTPHONES_TRADINGVIEW, TRADINGVIEW);
         event(recentArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         alert(portfolio, recentArticle, "40", AlertStatus.NEW);
 
@@ -230,10 +271,10 @@ class AlertsIT {
     void twoAlertsAboutOneCompanyWithDifferentEventTypesStayTwoCards() throws Exception {
         String email = "alerts-different-types@example.com";
         Portfolio portfolio = portfolio(email);
-        NewsArticle first = article(tsmc, 0, Duration.ofDays(1));
+        NewsArticle first = article(tsmc, TSMC_RECORD_PROFIT_REUTERS, REUTERS);
         event(first, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, first, "40", AlertStatus.NEW);
-        NewsArticle second = article(tsmc, 1, Duration.ZERO);
+        NewsArticle second = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
         event(second, EventType.LEGAL_OR_REGULATORY, Severity.MEDIUM, Confidence.MEDIUM);
         alert(portfolio, second, "40", AlertStatus.NEW);
 
@@ -249,11 +290,13 @@ class AlertsIT {
     void anAlertExactlyThreeDaysAfterTheFirstJoinsItsEvent() throws Exception {
         String email = "alerts-three-day-boundary@example.com";
         Portfolio portfolio = portfolio(email);
+        // The saved feed has no pair exactly 72 hours apart; these scenario timestamps pin the inclusive boundary.
         Instant firstAt = recentNoon().minus(Duration.ofDays(3));
-        NewsArticle first = article(tsmc, 0, firstAt);
+        NewsArticle first = article(tsmc, TSMC_RECORD_PROFIT_REUTERS, REUTERS, firstAt);
         event(first, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, first, "40", AlertStatus.NEW);
-        NewsArticle boundary = article(tsmc, 1, firstAt.plus(Duration.ofDays(3)));
+        NewsArticle boundary = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE,
+                firstAt.plus(Duration.ofDays(3)));
         event(boundary, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         alert(portfolio, boundary, "40", AlertStatus.NEW);
 
@@ -273,11 +316,11 @@ class AlertsIT {
                 LocalDate.parse("2026-02-25"), "https://example.com/nvda-second-report", Examples.nvidia10K()));
         Relationship secondLink = relationships.save(new Relationship(secondReport.getId(), nvidia.getId(),
                 tsmc.getId(), RelationshipType.SUPPLIER, "semiconductor wafers", EVIDENCE));
-        NewsArticle firstArticle = article(tsmc, 0, Duration.ofDays(2));
+        NewsArticle firstArticle = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(firstArticle, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         Alert first = alert(portfolio, firstArticle, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(first.getId(), nvda.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle secondArticle = article(tsmc, 1, Duration.ofDays(1));
+        NewsArticle secondArticle = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(secondArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         Alert second = alert(portfolio, secondArticle, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(second.getId(), nvda.getId(), secondLink.getId()));
@@ -298,11 +341,11 @@ class AlertsIT {
         Portfolio portfolio = portfolio(email);
         Holding nvda = hold(portfolio, nvidia, "40");
         Holding tsmcHolding = hold(portfolio, tsmc, "20");
-        NewsArticle firstArticle = article(tsmc, 0, Duration.ofHours(2));
+        NewsArticle firstArticle = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(firstArticle, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         Alert first = alert(portfolio, firstArticle, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(first.getId(), nvda.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle secondArticle = article(tsmc, 1, Duration.ofHours(1));
+        NewsArticle secondArticle = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(secondArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         Alert second = alert(portfolio, secondArticle, "20", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(second.getId(), tsmcHolding.getId(), null));
@@ -322,11 +365,11 @@ class AlertsIT {
         Portfolio portfolio = portfolio(email);
         Holding nvda = hold(portfolio, nvidia, null);
         Holding tsmcHolding = hold(portfolio, tsmc, null);
-        NewsArticle firstArticle = article(tsmc, 0, Duration.ofHours(2));
+        NewsArticle firstArticle = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(firstArticle, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         Alert first = alert(portfolio, firstArticle, "1", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(first.getId(), nvda.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle secondArticle = article(tsmc, 1, Duration.ofHours(1));
+        NewsArticle secondArticle = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(secondArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         Alert second = alert(portfolio, secondArticle, "1", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(second.getId(), tsmcHolding.getId(), null));
@@ -344,10 +387,10 @@ class AlertsIT {
     void eventStatusComesFromTheLeadAlertWhenGroupRowsHaveMixedStatuses() throws Exception {
         String email = "alerts-mixed-status@example.com";
         Portfolio portfolio = portfolio(email);
-        NewsArticle olderSevere = article(tsmc, 0, Duration.ofDays(2));
+        NewsArticle olderSevere = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(olderSevere, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, olderSevere, "40", AlertStatus.DISMISSED);
-        NewsArticle newerMild = article(tsmc, 1, Duration.ofDays(1));
+        NewsArticle newerMild = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(newerMild, EventType.SUPPLY_SHORTAGE, Severity.LOW, Confidence.LOW);
         alert(portfolio, newerMild, "40", AlertStatus.NEW);
 
@@ -368,7 +411,7 @@ class AlertsIT {
     void theSingleAlertStatusEndpointStillWorksAndRejectsAcknowledged() throws Exception {
         String email = "alerts-single-status@example.com";
         Portfolio portfolio = portfolio(email);
-        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        NewsArticle article = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(article, Severity.HIGH, Confidence.HIGH);
         Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
 
@@ -391,12 +434,12 @@ class AlertsIT {
         String email = "alerts-status@example.com";
         Portfolio portfolio = portfolio(email);
         Holding holding = hold(portfolio, nvidia, "40");
-        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        NewsArticle article = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(article, Severity.HIGH, Confidence.HIGH);
         Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle secondArticle = article(tsmc, 1, Duration.ofMinutes(20));
-        event(secondArticle, EventType.PRODUCTION_STOP, Severity.MEDIUM, Confidence.MEDIUM);
+        NewsArticle secondArticle = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
+        event(secondArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         Alert secondAlert = alert(portfolio, secondArticle, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(secondAlert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
 
@@ -415,11 +458,11 @@ class AlertsIT {
         String email = "alerts-restore@example.com";
         Portfolio portfolio = portfolio(email);
         Holding holding = hold(portfolio, nvidia, "40");
-        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        NewsArticle article = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(article, Severity.HIGH, Confidence.HIGH);
         Alert alert = alert(portfolio, article, "40", AlertStatus.DISMISSED);
         alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
-        NewsArticle secondArticle = article(tsmc, 1, Duration.ofMinutes(20));
+        NewsArticle secondArticle = article(tsmc, GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE);
         event(secondArticle, Severity.MEDIUM, Confidence.MEDIUM);
         Alert secondAlert = alert(portfolio, secondArticle, "40", AlertStatus.DISMISSED);
         alertHoldings.save(new AlertHolding(secondAlert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
@@ -449,13 +492,15 @@ class AlertsIT {
         hold(portfolio, nvidia, "40");
         NewsAssessmentReader reader = new NewsAssessmentReader();
         var judgements = reader.read(Examples.geminiNewsAssessment(), 20);
-        for (int index = 0; index < 2; index++) {
-            NewsArticle article = article(tsmc, index, Duration.ofHours(index + 1));
+        List<NewsItem> noiseHeadlines = List.of(
+                headline(TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE), headline(QUALCOMM_VS_TSMC, MOTLEY_FOOL));
+        for (int index = 0; index < noiseHeadlines.size(); index++) {
+            NewsArticle article = article(tsmc, noiseHeadlines.get(index));
             NewsAssessmentReader.Judgement judgement = judgements.get(index + 1);
             assessments.save(new NewsAssessment(article.getId(), false, null, null, judgement.confidence(), null,
                     judgement.reason()));
         }
-        NewsArticle eventArticle = article(tsmc, 2, Duration.ofHours(3));
+        NewsArticle eventArticle = article(tsmc, TSMC_RECORD_PROFIT_REUTERS, REUTERS);
         event(eventArticle, Severity.HIGH, Confidence.HIGH);
 
         mockMvc.perform(get("/api/portfolios/{id}/news", portfolio.getId())
@@ -479,7 +524,7 @@ class AlertsIT {
         String owner = "alerts-owner@example.com";
         Portfolio portfolio = portfolio(owner);
         Holding holding = hold(portfolio, nvidia, "40");
-        NewsArticle article = article(tsmc, 0, Duration.ofHours(1));
+        NewsArticle article = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(article, Severity.HIGH, Confidence.HIGH);
         Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
         alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
@@ -537,25 +582,25 @@ class AlertsIT {
         return holdings.save(holding);
     }
 
-    private NewsArticle article(Company company, int sampleIndex, Duration ago) {
-        NewsItem item = sample.get(sampleIndex);
-        return articles.save(new NewsArticle(company.getId(), item.url() + "#" + UUID.randomUUID(), item.title(),
-                item.source(), Instant.now().minus(ago).truncatedTo(ChronoUnit.MICROS)));
+    private NewsItem headline(String title, String source) {
+        NewsItem item = sampleByHeadline.get(new HeadlineKey(title, source));
+        if (item == null) throw new IllegalArgumentException("Headline is not in the saved Google News sample.");
+        return item;
     }
 
-    private NewsArticle article(Company company, int sampleIndex, Instant publishedAt) {
-        NewsItem item = sample.get(sampleIndex);
-        return articles.save(new NewsArticle(company.getId(), item.url() + "#" + UUID.randomUUID(), item.title(),
-                item.source(), publishedAt.truncatedTo(ChronoUnit.MICROS)));
+    private NewsArticle article(Company company, String title, String source) {
+        return article(company, headline(title, source));
     }
 
-    private NewsArticle article(Company company, String title, String source, Duration ago) {
-        return article(company, title, source, Instant.now().minus(ago).truncatedTo(ChronoUnit.MICROS));
+    private NewsArticle article(Company company, NewsItem item) {
+        return articles.save(new NewsArticle(company.getId(), item.url(), item.title(), item.source(),
+                item.publishedAt().truncatedTo(ChronoUnit.MICROS)));
     }
 
     private NewsArticle article(Company company, String title, String source, Instant publishedAt) {
-        return articles.save(new NewsArticle(company.getId(), "https://example.com/" + UUID.randomUUID(), title,
-                source, publishedAt.truncatedTo(ChronoUnit.MICROS)));
+        NewsItem item = headline(title, source);
+        return articles.save(new NewsArticle(company.getId(), item.url(), item.title(), item.source(),
+                publishedAt.truncatedTo(ChronoUnit.MICROS)));
     }
 
     private Instant recentNoon() {
@@ -595,5 +640,8 @@ class AlertsIT {
                 .header("Authorization", logins.bearer(email))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"" + status + "\"}"));
+    }
+
+    private record HeadlineKey(String title, String source) {
     }
 }
