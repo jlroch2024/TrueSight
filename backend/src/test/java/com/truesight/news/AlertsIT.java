@@ -293,6 +293,30 @@ class AlertsIT {
     }
 
     @Test
+    void anEventsWeightedExposureSumsEveryDistinctHoldingItReaches() throws Exception {
+        String email = "alerts-weighted-exposure@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding nvda = hold(portfolio, nvidia, "40");
+        Holding tsmcHolding = hold(portfolio, tsmc, "20");
+        NewsArticle firstArticle = article(tsmc, 0, Duration.ofHours(2));
+        event(firstArticle, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
+        Alert first = alert(portfolio, firstArticle, "40", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(first.getId(), nvda.getId(), tsmcSuppliesNvidia.getId()));
+        NewsArticle secondArticle = article(tsmc, 1, Duration.ofHours(1));
+        event(secondArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
+        Alert second = alert(portfolio, secondArticle, "20", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(second.getId(), tsmcHolding.getId(), null));
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weighted").value(true))
+                .andExpect(jsonPath("$.alerts", hasSize(1)))
+                .andExpect(jsonPath("$.alerts[0].exposure").value(60.0))
+                .andExpect(jsonPath("$.alerts[0].holdings", hasSize(2)));
+    }
+
+    @Test
     void anUnweightedEventsExposureCountsEveryDistinctHoldingItReaches() throws Exception {
         String email = "alerts-unweighted-exposure@example.com";
         Portfolio portfolio = portfolio(email);
