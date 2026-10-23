@@ -84,7 +84,7 @@ describe('Analyst Desk', () => {
         name: `${displayName('Taiwan Semiconductor Manufacturing Company Limited')} → ${displayName('NVIDIA Corporation')}`,
       }),
     ).toBeInTheDocument();
-    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/reviews?status=UNREVIEWED', expect.anything());
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/reviews', expect.anything());
   });
 
   it('opens the tab named in the address, so it survives a reload', () => {
