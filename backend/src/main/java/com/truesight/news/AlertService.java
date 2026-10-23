@@ -124,7 +124,7 @@ public class AlertService {
         if (holding == null) return null;
         if (found.getRelationshipId() == null) {
             return new AlertResponse.ReachedHolding(
-                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null, null);
+                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null, null, null);
         }
         Relationship relationship = relationshipById.get(found.getRelationshipId());
         if (relationship == null) return null;
@@ -134,7 +134,7 @@ public class AlertService {
                 ? relationship.getCompanyId() : relationship.getCounterpartyId();
         return new AlertResponse.ReachedHolding(holding.getId(), holding.getTicker(), holding.getWeight(),
                 nameOf(companyById.get(supplierId)), nameOf(companyById.get(customerId)),
-                relationship.getReviewStatus());
+                relationship.getReviewStatus(), relationship.getId());
     }
 
     private static String nameOf(Company company) {

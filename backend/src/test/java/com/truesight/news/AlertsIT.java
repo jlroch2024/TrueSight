@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -120,6 +121,7 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value(tsmc.getName()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].link").doesNotExist())
+                .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
     }
 
@@ -147,6 +149,8 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[1].ticker").value("TSM"))
                 .andExpect(jsonPath("$.alerts[0].holdings[1].supplierName").doesNotExist())
                 .andExpect(jsonPath("$.alerts[0].holdings[1].customerName").doesNotExist())
+                .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
+                .andExpect(jsonPath("$.alerts[0].holdings[1].relationshipId").value(nullValue()))
                 .andExpect(jsonPath("$.alerts[0].holdings[1].reviewStatus").doesNotExist());
     }
 

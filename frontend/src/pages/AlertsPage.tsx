@@ -219,7 +219,7 @@ export function AlertsPage() {
       {undoAlert?.portfolioId === portfolioId && (
         <p role="status" className="alert-undo">
           Alert Dismissed.{' '}
-          <button type="button" className="text-button" onClick={() => {
+          <button type="button" className="text-button" disabled={busyAlert === undoAlert.alertId} onClick={() => {
             void changeStatus(undoAlert.alertId, 'NEW', undoAlert.portfolioId);
           }}>
             Undo
@@ -231,9 +231,11 @@ export function AlertsPage() {
         <p className="muted">
           {filter === 'DISMISSED'
             ? 'No alerts have been dismissed.'
-            : portfolio.newsCheckedAt
-              ? 'No events found in the last 7 days.'
-              : 'News has not been checked yet.'}
+            : filter === 'OPEN' && dismissedCount > 0
+              ? 'No open alerts. Dismissed alerts are under Dismissed.'
+              : portfolio.newsCheckedAt
+                ? 'No events found in the last 7 days.'
+                : 'News has not been checked yet.'}
         </p>
       ) : (
         <ul className="alert-list">

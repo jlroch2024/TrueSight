@@ -49,6 +49,7 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
       supplierName: 'Taiwan Semiconductor Manufacturing Company Limited',
       customerName: 'NVIDIA Corporation',
       reviewStatus: 'UNREVIEWED',
+      relationshipId: 9,
     }],
   };
 }
@@ -151,7 +152,7 @@ describe('Alerts page', () => {
       ...alert(7, 'HIGH'),
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]! },
-        { holdingId: 4, ticker: 'TSM', weight: null, supplierName: null, customerName: null, reviewStatus: null },
+        { holdingId: 4, ticker: 'TSM', weight: null, supplierName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
     renderPage();
@@ -170,7 +171,7 @@ describe('Alerts page', () => {
       exposure: 2,
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]!, weight: null },
-        { holdingId: 4, ticker: 'TSM', weight: null, supplierName: null, customerName: null, reviewStatus: null },
+        { holdingId: 4, ticker: 'TSM', weight: null, supplierName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
     renderPage();
@@ -186,7 +187,7 @@ describe('Alerts page', () => {
       ...alert(7, 'HIGH'),
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]!, supplierName: 'ASML HOLDING NV', customerName: 'Taiwan Semiconductor Manufacturing Company Limited' },
-        { holdingId: 4, ticker: 'TSM', weight: 10, supplierName: null, customerName: null, reviewStatus: null },
+        { holdingId: 4, ticker: 'TSM', weight: 10, supplierName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
     renderPage();
@@ -261,12 +262,12 @@ describe('Alerts page', () => {
     const card = await firstCard();
 
     await userEvent.click(within(card).getByRole('button', { name: 'Dismiss' }));
-    expect(await screen.findByText('No events found in the last 7 days.')).toBeInTheDocument();
+    expect(await screen.findByText('No open alerts. Dismissed alerts are under Dismissed.')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Alert Dismissed. Undo');
 
     firstRender.unmount();
     renderPage();
-    expect(await screen.findByText('No events found in the last 7 days.')).toBeInTheDocument();
+    expect(await screen.findByText('No open alerts. Dismissed alerts are under Dismissed.')).toBeInTheDocument();
     expect(screen.getByLabelText('Dismissed (1)')).toBeInTheDocument();
   });
 
@@ -283,9 +284,31 @@ describe('Alerts page', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
-  it('clears Undo when switching portfolios, even when the other portfolio has the same alert ID', async () => {
+  it('disablesUndoWhileTheRestoreIsBeingSent', async () => {
     savedAlerts = [alert(7, 'HIGH')];
-    otherPortfolioAlerts = [alert(7, 'HIGH')];
+    renderPage();
+    const card = await firstCard();
+    await userEvent.click(within(card).getByRole('button', { name: 'Dismiss' }));
+    const undo = await screen.findByRole('button', { name: 'Undo' });
+
+    let finishRestore!: () => void;
+    const restoreGate = new Promise<void>((resolve) => { finishRestore = resolve; });
+    vi.mocked(fetch).mockImplementationOnce(async (url: RequestInfo | URL, init?: RequestInit) => {
+      await restoreGate;
+      return fakeBackend(String(url), init);
+    });
+
+    await userEvent.click(undo);
+    expect(undo).toBeDisabled();
+    finishRestore();
+
+    expect(await screen.findByRole('heading', { level: 2 })).toHaveTextContent(firstArticle!.title);
+    expect(savedAlerts[0]!.status).toBe('NEW');
+  });
+
+  it('clears Undo when switching portfolios', async () => {
+    savedAlerts = [alert(7, 'HIGH')];
+    otherPortfolioAlerts = [alert(8, 'HIGH')];
     renderPage();
     const card = await firstCard();
 
@@ -296,7 +319,7 @@ describe('Alerts page', () => {
     expect(await screen.findByRole('heading', { level: 2 })).toHaveTextContent(firstArticle!.title);
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
-      url === '/api/portfolios/8/alerts/7' && init?.method === 'PUT')).toBe(false);
+      String(url).startsWith('/api/portfolios/8/alerts/') && init?.method === 'PUT')).toBe(false);
     expect(otherPortfolioAlerts[0]?.status).toBe('NEW');
   });
 
@@ -333,6 +356,14 @@ describe('Alerts page', () => {
 
     expect(await screen.findByText('No events found in the last 7 days.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check News' })).toBeInTheDocument();
+  });
+
+  it('saysThereAreNoOpenAlertsWhenEveryAlertIsDismissed', async () => {
+    savedAlerts = [{ ...alert(7, 'HIGH'), status: 'DISMISSED' }];
+    renderPage();
+
+    expect(await screen.findByText('No open alerts. Dismissed alerts are under Dismissed.')).toBeInTheDocument();
+    expect(screen.queryByText('No events found in the last 7 days.')).not.toBeInTheDocument();
   });
 
   it('shows the not-yet-checked empty state and offers Check News', async () => {

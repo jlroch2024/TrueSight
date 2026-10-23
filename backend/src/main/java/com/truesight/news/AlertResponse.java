@@ -23,8 +23,8 @@ public record AlertResponse(
                              String reason) {
     }
 
-    /** supplierName and customerName are the stored company names, or null when the event is about the holding. */
+    /** Stored company names and the relationship reached; all are null when the event is about the holding itself. */
     public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String supplierName,
-                                 String customerName, ReviewStatus reviewStatus) {
+                                 String customerName, ReviewStatus reviewStatus, Long relationshipId) {
     }
 }

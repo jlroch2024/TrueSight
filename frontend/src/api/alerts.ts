@@ -24,6 +24,8 @@ export type ReachedHolding = {
   supplierName: string | null;
   customerName: string | null;
   reviewStatus: ReviewStatus | null;
+  // The relationship the event reaches the holding through; null when the event is about the holding itself.
+  relationshipId: number | null;
 };
 
 export type Alert = {
@@ -47,7 +49,8 @@ export type Alert = {
   holdings: ReachedHolding[];
 };
 
-// weighted: exposure is a total weight in %. Otherwise it is how many of the portfolio's holdingCount holdings it reaches.
+// weighted reflects the portfolio's current weights; alert exposure was stored when the alert was created.
+// When weighted, exposure is a total weight in %. Otherwise it is how many of holdingCount holdings it reaches.
 export type AlertsResponse = {
   weighted: boolean;
   holdingCount: number;
