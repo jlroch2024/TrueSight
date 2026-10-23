@@ -89,6 +89,15 @@ describe('LivingGraph', () => {
     expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Disruption');
   });
 
+  it('adds sole or single source to the key only when a link is critical', () => {
+    const { unmount } = drawGraph();
+    expect(screen.queryByText('Sole or Single Source')).not.toBeInTheDocument();
+    unmount();
+
+    drawGraph({ edges: [{ ...edges[0]!, criticality: 'SOLE_SOURCE' }] });
+    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Sole or Single Source');
+  });
+
   it('finds a company by name or ticker, and chooses it with Enter', async () => {
     const { onNodeSelect } = drawGraph();
     const nvidia = nodes.find((node) => node.name === 'NVIDIA Corporation')!;

@@ -815,7 +815,9 @@ export function LivingGraph({
                 ))}
               </ul>
             )}
-            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0) && (
+            {(graph.nodes.some((node) => node.sharedCount > 1) ||
+              risks.size > 0 ||
+              graph.edges.some((edge) => edge.critical)) && (
               <ul className="lg-legend" aria-label="Graph key">
                 {graph.nodes.some((node) => node.sharedCount > 1) && (
                   <li>
@@ -829,6 +831,12 @@ export function LivingGraph({
                   <li>
                     <span className="lg-legend-risk" aria-hidden="true" />
                     Disruption
+                  </li>
+                )}
+                {graph.edges.some((edge) => edge.critical) && (
+                  <li>
+                    <span className="lg-legend-critical" aria-hidden="true" />
+                    Sole or Single Source
                   </li>
                 )}
               </ul>
