@@ -93,6 +93,28 @@ class CriticalityPassIT {
     }
 
     @Test
+    void aCompletedPassWithNoCriticalityIsNotRunAgain() throws Exception {
+        Seed seed = seed("criticality-pass-no-criticality");
+        Long reportId = seed.report().getId();
+        stubAnswer(reportId, response(List.of()));
+        assertThat(pass.pendingReportIds()).contains(reportId);
+
+        pass.assess(reportId);
+
+        Relationship supplier = relationships.findById(seed.supplier().getId()).orElseThrow();
+        assertThat(supplier.getCriticality()).isNull();
+        assertThat(supplier.getCriticalityEvidence()).isNull();
+        assertThat(pass.pendingReportIds()).doesNotContain(reportId);
+        List<Relationship> first = relationships.findByReportIdOrderByIdAsc(reportId);
+
+        pass.assess(reportId);
+
+        assertThat(relationships.findByReportIdOrderByIdAsc(reportId))
+                .usingRecursiveComparison().isEqualTo(first);
+        verify(gemini, times(1)).generateCriticality(any(AiRequest.class));
+    }
+
+    @Test
     void analystsCanStartThePassAndReceiveAccepted() throws Exception {
         mockMvc.perform(post("/api/reports/criticality")
                         .header("Authorization", logins.analystBearer("analyst-criticality-accepted@example.com")))
@@ -148,7 +170,7 @@ class CriticalityPassIT {
         Company asml = companyDirectory.findOrCreate("ASML Holding N.V.", "0000937966", "ASML", List.of());
         Company carlZeiss = companyDirectory.findOrCreate("Carl Zeiss SMT", null, null, List.of());
         Company apple = companyDirectory.findOrCreate("Apple Inc.", "0000320193", "AAPL", List.of());
-        Report report = reports.save(new Report(asml.getId(), "20-F", "criticality-" + suffix,
+        Report report = reports.save(new Report(asml.getId(), "20-F", "test-" + Integer.toUnsignedString(suffix.hashCode()),
                 LocalDate.parse("2026-02-25"), ASML_REPORT_URL, SOLE_SOURCE_SENTENCE));
         Relationship supplier = relationships.save(new Relationship(report.getId(), asml.getId(), carlZeiss.getId(),
                 RelationshipType.SUPPLIER, "optics", SOLE_SOURCE_SENTENCE));
