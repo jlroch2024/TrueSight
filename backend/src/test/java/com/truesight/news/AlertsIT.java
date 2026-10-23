@@ -116,6 +116,7 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].ticker").value("NVDA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].weight").value(40.0))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].link").value("TSMC supplies NVIDIA"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
     }
 

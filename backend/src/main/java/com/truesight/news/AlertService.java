@@ -129,7 +129,7 @@ public class AlertService {
         if (holding == null) return null;
         if (found.getRelationshipId() == null) {
             return new AlertResponse.ReachedHolding(
-                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null);
+                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null, null);
         }
         Relationship relationship = relationshipById.get(found.getRelationshipId());
         if (relationship == null) return null;
@@ -139,7 +139,8 @@ public class AlertService {
                 ? relationship.getCompanyId() : relationship.getCounterpartyId();
         String link = shortestName.get(supplierId) + " supplies " + shortestName.get(customerId);
         return new AlertResponse.ReachedHolding(
-                holding.getId(), holding.getTicker(), holding.getWeight(), link, relationship.getReviewStatus());
+                holding.getId(), holding.getTicker(), holding.getWeight(), link, relationship.getReviewStatus(),
+                relationship.getId());
     }
 
     private Map<Long, String> shortestNames(Collection<Long> companyIds, Map<Long, Company> companyById) {

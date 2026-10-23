@@ -10,6 +10,8 @@ export type ReachedHolding = {
   weight: number | null;
   link: string | null;
   reviewStatus: ReviewStatus | null;
+  // The relationship the event reaches the holding through; null when the event is about the holding itself.
+  relationshipId?: number | null;
 };
 
 export type Alert = {
