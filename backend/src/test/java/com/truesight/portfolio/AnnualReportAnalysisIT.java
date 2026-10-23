@@ -6,6 +6,7 @@ import static com.truesight.support.FakeAi.answer;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
@@ -41,6 +42,7 @@ class AnnualReportAnalysisIT {
     @Autowired CompanyRepository companies;
     @Autowired CompanyDirectory companyDirectory;
     @Autowired ReportRepository reports;
+    @Autowired RelationshipRepository relationships;
 
     @MockitoBean SecClient sec;
     // Analysis goes on to ask the AI for each report. Tests never call Gemini: this fake gives its real NVIDIA answer,
@@ -179,6 +181,32 @@ class AnnualReportAnalysisIT {
     }
 
     @Test
+    void pressingAnalyseAgainRetriesCompletedHoldingsWhenNoRelationshipsWereSaved() throws Exception {
+        String email = "annual-report-empty-graph-retry@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021", "2026-02-25",
+                "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
+
+        // This saved real answer has no quote in the short test report, so the first completed analysis saves no links.
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        assertThat(relationships.findByCompanyIdIn(List.of(nvidiaId))).isEmpty();
+
+        // A later explicit Analyse retries the empty result. This answer cites the report's actual sentence.
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer("""
+                {"candidates":[{"content":{"parts":[{"text":"[{\\"company\\":\\"Example Supplier\\",\\"alsoKnownAs\\":\\"\\",\\"relationship\\":\\"SUPPLIER\\",\\"provides\\":\\"components\\",\\"quote\\":\\"Report text.\\"}]"}]}}]}
+                """));
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+
+        awaitRelationships(nvidiaId, 1);
+        assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()))
+                .singleElement().extracting(Holding::getStatus).isEqualTo(HoldingStatus.DONE);
+    }
+
+    @Test
     void analyseIsRefusedWhileAnAnalysisIsAlreadyRunning() throws Exception {
         String email = "annual-report-running@example.com";
         Portfolio portfolio = portfolioWith(email, "NVDA");
@@ -211,5 +239,13 @@ class AnnualReportAnalysisIT {
         }
         assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolioId))
                 .hasSize(count).allMatch(row -> row.getStatus() == status);
+    }
+
+    private void awaitRelationships(Long companyId, int count) throws Exception {
+        for (int attempt = 0; attempt < 200; attempt++) {
+            if (relationships.findByCompanyIdIn(List.of(companyId)).size() == count) return;
+            Thread.sleep(25);
+        }
+        assertThat(relationships.findByCompanyIdIn(List.of(companyId))).hasSize(count);
     }
 }

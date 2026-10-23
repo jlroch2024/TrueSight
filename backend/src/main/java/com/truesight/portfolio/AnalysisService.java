@@ -6,6 +6,7 @@ import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.RelationshipFinder;
+import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.ReportTextExtractor;
@@ -15,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class AnalysisService {
@@ -25,18 +30,21 @@ public class AnalysisService {
     private final CompanyDirectory companies;
     private final CompanyRepository companyRepository;
     private final ReportRepository reports;
+    private final RelationshipRepository relationships;
     private final SecClient sec;
     private final RelationshipFinder relationshipFinder;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyDirectory companies, CompanyRepository companyRepository,
-                          ReportRepository reports, SecClient sec, RelationshipFinder relationshipFinder) {
+                          ReportRepository reports, RelationshipRepository relationships, SecClient sec,
+                          RelationshipFinder relationshipFinder) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
         this.companies = companies;
         this.companyRepository = companyRepository;
         this.reports = reports;
+        this.relationships = relationships;
         this.sec = sec;
         this.relationshipFinder = relationshipFinder;
     }
@@ -44,8 +52,9 @@ public class AnalysisService {
     /**
      * Starts analysing the portfolio's holdings that are Waiting, and tries again those that Failed: a failure is
      * usually the SEC or the AI being briefly unreachable, so pressing Analyse again should retry it rather than
-     * leave the portfolio stuck. Holdings already Done or with No Report Found are left alone. Refused only while an
-     * analysis is already running for this portfolio.
+     * leave the portfolio stuck. If the portfolio has no saved relationships, an explicit retry also reprocesses
+     * holdings marked Done, since an earlier run may have completed without producing the graph data. Holdings with
+     * No Report Found are left alone. Refused only while an analysis is already running for this portfolio.
      */
     @Transactional
     public List<Long> start(Long portfolioId) {
@@ -57,6 +66,16 @@ public class AnalysisService {
         List<Holding> toAnalyse = rows.stream()
                 .filter(h -> h.getStatus() == HoldingStatus.WAITING || h.getStatus() == HoldingStatus.FAILED)
                 .toList();
+        Set<Long> companyIds = rows.stream().map(Holding::getCompanyId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        // A report with no saved relationships is ambiguous: the AI may have found none, or an earlier analysis may
+        // have completed without producing graph data. An explicit Analyse action retries completed holdings only
+        // while the portfolio has no saved relationships at all. Once the graph has data, reports are reused as-is.
+        if (!companyIds.isEmpty() && relationships.findByCompanyIdIn(companyIds).isEmpty()) {
+            toAnalyse = Stream.concat(toAnalyse.stream(), rows.stream()
+                            .filter(h -> h.getStatus() == HoldingStatus.DONE))
+                    .distinct().toList();
+        }
         // setStatus also clears a failed holding's old reason.
         toAnalyse.forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
         holdings.saveAll(toAnalyse);
