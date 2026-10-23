@@ -1,7 +1,9 @@
 package com.truesight.relationship;
 
 import com.truesight.ai.AiAnswer;
+import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
@@ -29,8 +31,8 @@ import java.util.Set;
  *       {@code alsoKnownAs} as another name.</li>
  * </ol>
  *
- * <p>Reports are public, so a report that already has relationships is never sent to the AI again, whichever
- * portfolio asks.
+ * <p>Reports are public, so a report that already has relationships or a completed relationship-finding answer is
+ * never sent to the AI again, whichever portfolio asks.
  *
  * <p>Each call is recorded in the AI Audit Trail with the report's text replaced by a marker, and with how many quotes
  * were kept and how many dropped because they were not in the report.
@@ -62,14 +64,16 @@ public class RelationshipFinder {
     private final GeminiAnswer answers;
     private final CompanyDirectory companies;
     private final RelationshipRepository relationships;
+    private final AiCallRepository aiCalls;
     private final AiCallLog calls;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
-                              RelationshipRepository relationships, AiCallLog calls) {
+                              RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
         this.relationships = relationships;
+        this.aiCalls = aiCalls;
         this.calls = calls;
     }
 
@@ -82,7 +86,15 @@ public class RelationshipFinder {
     // An AI failure must not undo the caller's work: it still saves the report and marks the holding Failed.
     @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
     public void findIn(Report report, Company company) {
-        if (relationships.existsByReportId(report.getId())) {
+        findIn(report, company, false);
+    }
+
+    /** Reassesses once when the saved report text was refreshed from its SEC filing. */
+    @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
+    public void findIn(Report report, Company company, boolean textWasRefreshed) {
+        if (relationships.existsByReportId(report.getId()) || (!textWasRefreshed
+                && aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED))) {
             return;
         }
         String section = ReportSection.forAi(report.getForm(), report.getText());

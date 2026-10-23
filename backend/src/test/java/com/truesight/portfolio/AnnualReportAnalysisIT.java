@@ -5,7 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static com.truesight.support.FakeAi.answer;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.CompanyRepository;
+import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiAnswer;
+import com.truesight.ai.AiOutcome;
+import com.truesight.ai.AiPurpose;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
@@ -20,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +40,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @IntegrationTest
 class AnnualReportAnalysisIT {
 
+    private static final String TSMC_SENTENCE = "We utilize foundries, such as Taiwan Semiconductor Manufacturing "
+            + "Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor "
+            + "wafers.";
+
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
     @Autowired PortfolioRepository portfolios;
@@ -41,10 +51,11 @@ class AnnualReportAnalysisIT {
     @Autowired CompanyRepository companies;
     @Autowired CompanyDirectory companyDirectory;
     @Autowired ReportRepository reports;
+    @Autowired RelationshipRepository relationships;
+    @Autowired AiCallLog aiCallLog;
 
     @MockitoBean SecClient sec;
-    // Analysis goes on to ask the AI for each report. Tests never call Gemini: this fake gives its real NVIDIA answer,
-    // whose quotes are not in these tests' short reports, so no relationships are saved.
+    // Tests never call Gemini; the default fake uses the saved real NVIDIA answer.
     @MockitoBean GeminiClient gemini;
 
     @BeforeEach
@@ -125,21 +136,86 @@ class AnnualReportAnalysisIT {
     }
 
     @Test
-    void pressingAnalyseAgainReusesTheSavedCompanyReport() throws Exception {
+    void pressingAnalyseOnAnAnalysedPortfolioWithRelationshipsAsksTheAiNothing() throws Exception {
         String email = "annual-report-reuse@example.com";
         Portfolio first = portfolioWith(email, "NVDA");
-        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021", "2026-02-25",
-                "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
+        String reportUrl = "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm";
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021",
+                "2026-02-25", reportUrl, TSMC_SENTENCE);
+        stubRecordedNvidiaAnswer();
         mockMvc.perform(post("/api/portfolios/{id}/analysis", first.getId()).header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
         awaitStatuses(first.getId(), 1, HoldingStatus.DONE);
+        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+        assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2);
 
         Portfolio second = portfolioWith(email, "NVDA");
         mockMvc.perform(post("/api/portfolios/{id}/analysis", second.getId()).header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
         awaitStatuses(second.getId(), 1, HoldingStatus.DONE);
 
-        verify(sec, times(1)).download("https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
-        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        verify(sec, times(1)).download(reportUrl);
+        verify(gemini, times(1)).generate(any(AiRequest.class));
         assertThat(reports.findAll().stream().filter(report -> report.getCompanyId().equals(nvidiaId))).hasSize(1);
+    }
+
+    @Test
+    void anAnsweredReportWithNoRelationshipsIsNotSentToTheAiAgain() throws Exception {
+        String email = "annual-report-empty-answer@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021",
+                "2026-02-25", "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm");
+        stubRecordedNvidiaAnswer();
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+        assertThat(relationshipsFor(reportId, nvidiaId)).isEmpty();
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+
+        // A different portfolio must also reuse the completed empty result for this shared report.
+        Portfolio second = portfolioWith(email, "NVDA");
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", second.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+        awaitStatuses(second.getId(), 1, HoldingStatus.DONE);
+
+        verify(gemini, times(1)).generate(any(AiRequest.class));
+    }
+
+    @Test
+    void aReportWithNoCompletedAnswerIsRetriedOnceUsingTheRealNvidiaAnswer() throws Exception {
+        String email = "annual-report-incomplete-answer@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        var company = companyDirectory.findOrCreate("NVIDIA Corporation", "0001045810", "NVDA", List.of());
+        String reportUrl = "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm";
+        Report report = reports.saveAndFlush(new Report(company.getId(), "10-K", "legacy-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
+                LocalDate.parse("2026-02-25"), reportUrl, TSMC_SENTENCE));
+        Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
+        holding.setCompanyId(company.getId());
+        holding.setStatus(HoldingStatus.DONE);
+        holdings.saveAndFlush(holding);
+        AiRequest unreadable = new AiRequest(AiPurpose.FIND_RELATIONSHIPS, "Earlier answer could not be read.",
+                report.getId(), AiRequest.reportMarker(report.getId(), TSMC_SENTENCE));
+        Long callId = aiCallLog.record(unreadable, "test-model", "{}", AiOutcome.UNREADABLE,
+                "The earlier answer could not be read.", Instant.now(), 1);
+        aiCallLog.attachReport(callId, report.getId());
+        stubRecordedNvidiaAnswer();
+        when(sec.companyForTicker("NVDA"))
+                .thenReturn(new SecClient.SecCompany("NVIDIA Corporation", "0001045810", "NVDA"));
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+        assertThat(relationshipsFor(report.getId(), company.getId())).hasSize(2);
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+        verify(gemini, times(1)).generate(any(AiRequest.class));
     }
 
     @Test
@@ -197,10 +273,32 @@ class AnnualReportAnalysisIT {
         return portfolio;
     }
 
+    private List<com.truesight.relationship.Relationship> relationshipsFor(Long reportId, Long companyId) {
+        return relationships.findByCompanyIdIn(List.of(companyId)).stream()
+                .filter(relationship -> relationship.getReportId().equals(reportId))
+                .toList();
+    }
+
     private void mockCompanyAndReport(String ticker, String name, String cik, String form, String accession, String filingDate, String url) {
+        mockCompanyAndReport(ticker, name, cik, form, accession, filingDate, url, "Report text.");
+    }
+
+    private void mockCompanyAndReport(String ticker, String name, String cik, String form, String accession,
+                                     String filingDate, String url, String reportText) {
         when(sec.companyForTicker(ticker)).thenReturn(new SecClient.SecCompany(name, cik, ticker));
         when(sec.latestAnnualFiling(cik)).thenReturn(new SecClient.SecFiling(form, accession, LocalDate.parse(filingDate), url));
-        when(sec.download(url)).thenReturn("<html><body><h1>Business</h1><p>Report text.</p></body></html>");
+        when(sec.download(url)).thenReturn("<html><body><h1>Business</h1><p>" + reportText + "</p></body></html>");
+    }
+
+    private void stubRecordedNvidiaAnswer() {
+        when(gemini.generate(any(AiRequest.class))).thenAnswer(invocation -> {
+            AiRequest request = invocation.getArgument(0);
+            String response = Examples.geminiNvidia();
+            Long callId = aiCallLog.record(request, "test-model", response, AiOutcome.ANSWERED, null,
+                    Instant.now(), 1);
+            aiCallLog.attachReport(callId, request.reportId());
+            return new AiAnswer(response, callId);
+        });
     }
 
     private void awaitStatuses(Long portfolioId, int count, HoldingStatus status) throws Exception {
