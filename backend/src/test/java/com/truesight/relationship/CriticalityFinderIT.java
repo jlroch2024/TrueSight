@@ -91,7 +91,8 @@ class CriticalityFinderIT {
     private Portfolio seed(String ticker, String name, String cik, String url, String text) {
         Company company = companyDirectory.findOrCreate(name, cik, ticker, List.of());
         reports.save(new Report(company.getId(), ticker.equals("ASML") ? "20-F" : "10-K",
-                "criticality-finder-" + ticker + "-" + System.nanoTime(), LocalDate.parse("2026-02-25"), url, text));
+                ticker.equals("ASML") ? "0001628280-26-011378" : "0001193125-26-174046",
+                LocalDate.parse("2026-02-25"), url, text));
         when(sec.companyForTicker(ticker)).thenReturn(new SecClient.SecCompany(name, cik, ticker));
         String email = "finder-" + ticker.toLowerCase() + "-" + System.nanoTime() + "@example.com";
         currentOwner = email;
