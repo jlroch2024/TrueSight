@@ -847,7 +847,7 @@ select {
 .visually-hidden {
   position: absolute;
   width: 1px;
-  height: 1px;
+  height: 1.5px;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
@@ -944,324 +944,6 @@ table.holdings td:nth-child(7) {
 .status-failed, .status-no_report_found { color: var(--danger); }
 .status-done { color: var(--lime); }
 
-/* Supply-chain graph. Cytoscape draws to a canvas, so its colors are set in the component too. */
-.graph-frame {
-  position: relative;
-  margin-top: 16px;
-}
-
-.graph-viewport {
-  position: relative;
-  height: 560px;
-}
-
-.supply-chain-graph {
-  width: 100%;
-  height: 100%;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.flow-marker-layer {
-  position: absolute;
-  z-index: 1;
-  inset: 1px;
-  width: calc(100% - 2px);
-  height: calc(100% - 2px);
-  overflow: visible;
-  pointer-events: none;
-}
-
-.graph-controls {
-  position: absolute;
-  z-index: 2;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.graph-legend {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
-  font-size: 11px;
-  list-style: none;
-}
-
-.graph-key {
-  display: grid;
-  gap: 8px;
-}
-
-.graph-legend li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.graph-legend-tile {
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--border);
-  background: var(--panel-raised);
-}
-
-.graph-legend-tile.holding {
-  border: 2px solid var(--accent);
-}
-
-.graph-legend-tile.shared {
-  border: 2px solid var(--amber);
-}
-
-.graph-legend-flow {
-  position: relative;
-  width: 24px;
-  height: 10px;
-  border-top: 2px solid var(--muted);
-}
-
-.graph-legend-flow::after {
-  position: absolute;
-  top: -5px;
-  right: -1px;
-  content: '';
-  border-block: 4px solid transparent;
-  border-left: 6px solid var(--muted);
-}
-
-.graph-legend-flow i {
-  position: absolute;
-  top: -4px;
-  left: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.graph-legend-line {
-  width: 22px;
-  border-top: 2px solid var(--muted);
-}
-
-.graph-legend-line.unreviewed {
-  border-top-style: dashed;
-}
-
-.graph-tooltip {
-  position: absolute;
-  z-index: 4;
-  max-width: 320px;
-  margin: 0;
-  padding: 7px 9px;
-  border: 1px solid var(--lime);
-  background: var(--panel-raised);
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.35;
-  pointer-events: none;
-  transform: translate(12px, 12px);
-}
-
-.graph-tooltip.flip-x {
-  transform: translate(calc(-100% - 12px), 12px);
-}
-
-.graph-tooltip.flip-y {
-  transform: translate(12px, calc(-100% - 12px));
-}
-
-.graph-tooltip.flip-x.flip-y {
-  transform: translate(calc(-100% - 12px), calc(-100% - 12px));
-}
-
-/* While the companies settle, the graph is out of sight; then it fades in, already arranged and fitted. */
-.supply-chain-graph,
-.graph-overlay {
-  transition: opacity 350ms ease;
-}
-
-.graph-frame.settling .supply-chain-graph,
-.graph-frame.settling .graph-overlay {
-  opacity: 0;
-}
-
-.graph-arranging {
-  position: absolute;
-  inset: 0;
-  display: none;
-  place-items: center;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  pointer-events: none;
-}
-
-.graph-frame.settling .graph-arranging {
-  display: grid;
-}
-
-/* The label boxes, the chosen company's brackets and its crosshair: HTML and SVG over the graph's canvas, moved by
-   SupplyChainGraph to where each company is drawn. They never take the pointer, so the graph underneath does. */
-.graph-overlay {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.graph-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: flex;
-  min-width: 56px;
-  max-width: 170px;
-  flex-direction: column;
-  gap: 1px;
-  padding: 3px 7px 4px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  font-size: 11px;
-  line-height: 1.25;
-  white-space: nowrap;
-  transform-origin: top center;
-  transition: opacity 150ms ease, border-color 150ms ease;
-}
-
-.graph-label.holding {
-  border-color: var(--accent);
-}
-
-.graph-label.shared {
-  border-color: var(--amber);
-}
-
-.graph-label.hover {
-  border-color: var(--lime);
-}
-
-.graph-label.faded {
-  opacity: 0.15;
-}
-
-.graph-label-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  color: var(--text);
-}
-
-.graph-label-top b {
-  overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
-}
-
-.graph-label-weight {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.graph-label-name {
-  overflow: hidden;
-  color: var(--muted);
-  text-overflow: ellipsis;
-}
-
-.graph-label-shared {
-  color: var(--amber);
-  font-size: 10px;
-}
-
-.graph-crosshair {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 200ms ease;
-}
-
-.graph-crosshair line {
-  stroke: var(--lime);
-  stroke-dasharray: 4 6;
-  stroke-opacity: 0.5;
-  stroke-width: 1;
-}
-
-.graph-brackets {
-  position: absolute;
-  opacity: 0;
-}
-
-.graph-crosshair.shown,
-.graph-brackets.shown {
-  opacity: 1;
-}
-
-/* The brackets close in around a newly chosen company. */
-.graph-brackets.shown.closing {
-  animation: brackets-close 260ms ease-out;
-}
-
-@keyframes brackets-close {
-  from {
-    opacity: 0;
-    transform: scale(1.45);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.bracket {
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  border: 0 solid var(--lime);
-}
-
-.bracket.top-left {
-  top: 0;
-  left: 0;
-  border-top-width: 2px;
-  border-left-width: 2px;
-}
-
-.bracket.top-right {
-  top: 0;
-  right: 0;
-  border-top-width: 2px;
-  border-right-width: 2px;
-}
-
-.bracket.bottom-left {
-  bottom: 0;
-  left: 0;
-  border-bottom-width: 2px;
-  border-left-width: 2px;
-}
-
-.bracket.bottom-right {
-  right: 0;
-  bottom: 0;
-  border-right-width: 2px;
-  border-bottom-width: 2px;
-}
-
 /* The Supply Chain workspace: holdings on the left, the graph in the middle, the Inspector on the right. The page
    does not scroll; a panel with too much in it scrolls inside. Below 1100 px they stack, the graph first. */
 .workspace-page > .muted {
@@ -1275,6 +957,76 @@ table.holdings td:nth-child(7) {
   height: calc(100vh - 300px);
   min-height: 520px;
   margin-top: 16px;
+}
+
+/* The side panels are drawers: the left one folds to a narrow strip, and the Inspector is shown only while something
+   is chosen, so the graph widens into the room they leave. */
+.workspace.inspector-closed {
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+
+.workspace.left-closed {
+  grid-template-columns: 40px minmax(0, 1fr) 320px;
+}
+
+.workspace.left-closed.inspector-closed {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.workspace.left-closed .workspace-left {
+  padding: 0;
+}
+
+.drawer-strip {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  clip-path: none;
+  font-size: 13px;
+  font-weight: 600;
+  writing-mode: vertical-rl;
+}
+
+.drawer-strip:hover:not(:disabled) {
+  border: 0;
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.drawer-close {
+  min-height: 0;
+  padding: 4px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  clip-path: none;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.drawer-close:hover:not(:disabled) {
+  border: 0;
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+.panel-tabs .drawer-close {
+  flex: none;
+}
+
+.workspace-inspector {
+  position: relative;
+}
+
+.inspector-close {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  right: 6px;
 }
 
 .workspace-panel {
@@ -1300,30 +1052,6 @@ table.holdings td:nth-child(7) {
   position: relative;
   min-width: 0;
   min-height: 0;
-}
-
-.workspace-graph .graph-frame {
-  height: 100%;
-  margin-top: 0;
-}
-
-.workspace-graph .graph-viewport {
-  height: 100%;
-}
-
-.workspace-graph .supply-chain-graph {
-  height: 100%;
-}
-
-.graph-hint {
-  position: absolute;
-  z-index: 2;
-  right: 12px;
-  bottom: 8px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  pointer-events: none;
 }
 
 .panel-list {
@@ -1793,7 +1521,10 @@ button.panel-row.chosen {
 }
 
 @media (max-width: 1100px) {
-  .workspace {
+  .workspace,
+  .workspace.left-closed,
+  .workspace.inspector-closed,
+  .workspace.left-closed.inspector-closed {
     grid-template-columns: minmax(0, 1fr);
     height: auto;
     min-height: 0;
@@ -1815,6 +1546,12 @@ button.panel-row.chosen {
 
   .workspace-panel {
     overflow-y: visible;
+  }
+
+  .drawer-strip {
+    padding: 10px 14px;
+    writing-mode: horizontal-tb;
+    text-align: left;
   }
 }
 
