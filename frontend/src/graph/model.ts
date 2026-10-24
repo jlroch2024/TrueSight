@@ -52,6 +52,7 @@ export type LiveEdge = {
   target: LiveNode;
   relationshipId: number;
   reviewed: boolean;
+  critical: boolean;
   colour: string;
   summary: string;
 };
@@ -178,6 +179,7 @@ export function buildLiveGraph(
         target,
         relationshipId: edge.relationshipId,
         reviewed: edge.reviewStatus === 'APPROVED',
+        critical: edge.criticality !== null,
         colour: chains.edges.get(edge.id) ?? NEUTRAL_EDGE,
         summary: edge.summary,
       },

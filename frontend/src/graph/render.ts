@@ -53,6 +53,7 @@ const RAIL_FROM = 2.6;
 const RAIL_TO = 1.1;
 const BLOOM_WIDTH = 9;
 const TRACK_WIDTH = 2.2;
+const CRITICAL_WIDTH = 1.8;
 const CHEVRON = 8;
 // The conveyor, in the graph's own units (so its segments keep their place on the arrow as the view zooms): how far
 // apart the segments are and how long each is; how far apart the waves of light are, how long a wave's fading trail is,
@@ -340,8 +341,9 @@ function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions) {
     }
 
     // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
-    const from = (RAIL_FROM + hover * 1) / k / 2;
-    const to = (RAIL_TO + hover * 0.6) / k / 2;
+    const criticalWidth = edge.critical ? CRITICAL_WIDTH : 1;
+    const from = (RAIL_FROM * criticalWidth + hover * 1) / k / 2;
+    const to = (RAIL_TO * criticalWidth + hover * 0.6) / k / 2;
     context.fillStyle = shade(0.16, 0.38 + hover * 0.3);
     context.beginPath();
     context.moveTo(start.x + across.x * from, start.y + across.y * from);
@@ -363,7 +365,7 @@ function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions) {
       return behind < WAVE_TRAIL ? (1 - behind / WAVE_TRAIL) ** 1.6 : 0;
     };
     const head = mix(colour, '#ffffff', (risk ? 0.2 : 0.5) + hover * 0.3);
-    const thick = (TRACK_WIDTH + hover * 0.6) / k;
+    const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) / k;
     context.save();
     context.translate(start.x, start.y);
     context.rotate(Math.atan2(along.y, along.x));

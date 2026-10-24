@@ -23,6 +23,8 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
       reviewStatus: 'UNREVIEWED',
+      criticality: null,
+      criticalityEvidence: null,
       reviewedAt: null,
       reviewNote: null,
     },

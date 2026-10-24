@@ -1254,6 +1254,10 @@ button.panel-row.chosen {
   line-height: 1.5;
 }
 
+.criticality-evidence button {
+  margin-top: 8px;
+}
+
 .inspector-section {
   margin-top: 20px;
 }

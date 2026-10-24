@@ -1,7 +1,7 @@
 // Turns a portfolio's holdings and relationships into graph elements. Kept apart from the graph that draws them
 // (src/graph/) so this logic can be tested on its own, in milliseconds.
 import type { Holding } from '../api/portfolios';
-import type { Relationship, ReviewStatus } from '../api/relationships';
+import type { Criticality, Relationship, ReviewStatus } from '../api/relationships';
 
 // weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
 // had no weight.
@@ -21,6 +21,7 @@ export type GraphEdge = {
   target: string;
   relationshipId: number;
   reviewStatus: ReviewStatus;
+  criticality: Criticality | null;
   summary: string;
 };
 
@@ -64,6 +65,7 @@ export function buildGraphElements(
       target,
       relationshipId: relationship.id,
       reviewStatus: relationship.reviewStatus,
+      criticality: relationship.criticality,
       summary: relationshipSummary(relationship),
     };
   });

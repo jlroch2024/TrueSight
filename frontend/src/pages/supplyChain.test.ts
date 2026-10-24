@@ -154,6 +154,8 @@ function relationship(
     type,
     provides: null,
     evidence: 'Evidence sentence.',
+    criticality: null,
+    criticalityEvidence: null,
     report: { form: '10-K', filingDate: '2026-01-01', url: 'https://www.sec.gov/example' },
     reviewStatus: 'UNREVIEWED',
     reviewedAt: null,
@@ -209,15 +211,15 @@ describe('focusOn', () => {
   it('does not light an arrow between two neighbours that does not touch the company', () => {
     const a = {
       id: 'a', source: 'supplier', target: 'focus', relationshipId: 1,
-      reviewStatus: 'UNREVIEWED' as const, summary: 'Supplier supplies Focus',
+      reviewStatus: 'UNREVIEWED' as const, criticality: null, summary: 'Supplier supplies Focus',
     };
     const b = {
       id: 'b', source: 'focus', target: 'customer', relationshipId: 2,
-      reviewStatus: 'UNREVIEWED' as const, summary: 'Focus supplies Customer',
+      reviewStatus: 'UNREVIEWED' as const, criticality: null, summary: 'Focus supplies Customer',
     };
     const between = {
       id: 'between', source: 'supplier', target: 'customer', relationshipId: 3,
-      reviewStatus: 'UNREVIEWED' as const, summary: 'Supplier supplies Customer',
+      reviewStatus: 'UNREVIEWED' as const, criticality: null, summary: 'Supplier supplies Customer',
     };
 
     const focus = focusOn('focus', [a, b, between]);
@@ -339,6 +341,17 @@ describe('review status on graph edges', () => {
 
     expect(edges).toContainEqual(expect.objectContaining({ relationshipId: 31, reviewStatus: 'APPROVED' }));
     expect(edges).toContainEqual(expect.objectContaining({ relationshipId: 32, reviewStatus: 'UNREVIEWED' }));
+  });
+
+  it('carries source criticality onto the matching graph edge', () => {
+    const source = sampleRelationships[15]!;
+    const { edges } = buildGraphElements([
+      { ...source, criticality: 'SOLE_SOURCE', criticalityEvidence: source.evidence },
+      { ...source, id: source.id + 100, criticality: null, criticalityEvidence: null },
+    ], []);
+
+    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: source.id, criticality: 'SOLE_SOURCE' }));
+    expect(edges).toContainEqual(expect.objectContaining({ relationshipId: source.id + 100, criticality: null }));
   });
 
   it('carries the relationship sentence onto its arrow', () => {

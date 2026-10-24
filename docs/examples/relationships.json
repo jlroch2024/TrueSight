@@ -21,7 +21,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 2,
@@ -45,7 +47,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 3,
@@ -69,7 +73,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 4,
@@ -93,7 +99,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 5,
@@ -117,7 +125,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 6,
@@ -141,7 +151,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 7,
@@ -165,7 +177,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 8,
@@ -189,7 +203,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 9,
@@ -213,7 +229,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 10,
@@ -237,7 +255,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 11,
@@ -261,7 +281,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 12,
@@ -285,7 +307,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 13,
@@ -309,7 +333,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 14,
@@ -333,7 +359,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 15,
@@ -357,7 +385,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 16,
@@ -381,7 +411,9 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   },
   {
     "id": 17,
@@ -405,6 +437,8 @@
     },
     "reviewStatus": "UNREVIEWED",
     "reviewedAt": null,
-    "reviewNote": null
+    "reviewNote": null,
+    "criticality": null,
+    "criticalityEvidence": null
   }
 ]
