@@ -3,11 +3,17 @@
 // every decision applies to every portfolio manager.
 //
 // Every relationship is loaded once; the filter, and the count beside each of its options, are worked out in the page.
-import { useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
-import type { ReviewStatus } from '../api/relationships';
+import {
+  relationshipApi,
+  type CompanyOption,
+  type RelationshipType,
+  type ReviewStatus,
+} from '../api/relationships';
 import { type ReviewFilter, type ReviewItem, reviewApi } from '../api/reviews';
 import { RadioGroup } from '../components/RadioGroup';
+import { Select } from '../components/Select';
 import { formatDate, formatDateTime, openInNewTab, showInReportUrl } from '../format';
 import { displayName } from './supplyChain';
 
@@ -40,6 +46,8 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
       : [relationship.company, relationship.counterparty];
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [provides, setProvides] = useState(relationship.provides ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +70,21 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
     }
   }
 
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await relationshipApi.edit<ReviewItem>(relationship.id, provides);
+      setEditing(false);
+      onChanged(updated);
+    } catch (e: unknown) {
+      setError(messageOf(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // Kept within reach while a rejection note is written, so the analyst can check the report as they explain.
   const showInReport = (
     <button type="button" onClick={() => openInNewTab(showInReportUrl(relationship.report.url, relationship.evidence))}>
@@ -74,12 +97,38 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
       <h2>
         {displayName(supplier.name)} {'\u2192'} {displayName(customer.name)}
       </h2>
-      <p className="muted small">
-        {relationship.type === 'SUPPLIER'
-          ? `${displayName(relationship.counterparty.name)} supplies ${displayName(relationship.company.name)}`
-          : `${displayName(relationship.counterparty.name)} buys from ${displayName(relationship.company.name)}`}
-        {relationship.provides ? `: ${relationship.provides}.` : '.'}
-      </p>
+      {editing ? (
+        <form className="inline-form" onSubmit={saveEdit}>
+          <label htmlFor={`provides-${relationship.id}`}>What Is Provided?</label>
+          <input
+            id={`provides-${relationship.id}`}
+            value={provides}
+            maxLength={500}
+            autoFocus
+            onChange={(event) => setProvides(event.target.value)}
+          />
+          <button type="submit" disabled={busy}>Save</button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={busy}
+            onClick={() => {
+              setEditing(false);
+              setProvides(relationship.provides ?? '');
+              setError(null);
+            }}
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <p className="muted small">
+          {relationship.type === 'SUPPLIER'
+            ? `${displayName(relationship.counterparty.name)} supplies ${displayName(relationship.company.name)}`
+            : `${displayName(relationship.counterparty.name)} buys from ${displayName(relationship.company.name)}`}
+          {relationship.provides ? `: ${relationship.provides}.` : '.'}
+        </p>
+      )}
       <blockquote>{relationship.evidence}</blockquote>
       <p className="muted small">
         {relationship.report.form}, Filed {formatDate(relationship.report.filingDate)}
@@ -130,6 +179,9 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
         // Only the decisions that would change something: an Approved card cannot be approved again.
         <div className="actions">
           {showInReport}
+          <button type="button" className="secondary" disabled={busy} onClick={() => setEditing(true)}>
+            Edit
+          </button>
           {item.reviewStatus !== 'APPROVED' && (
             <button type="button" disabled={busy} onClick={() => decide('APPROVED')}>
               Approve
@@ -147,11 +199,125 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
   );
 }
 
+function AddRelationshipForm({
+  onAdded,
+  onCancel,
+}: {
+  onAdded: (added: ReviewItem) => void;
+  onCancel: () => void;
+}) {
+  const [companies, setCompanies] = useState<CompanyOption[]>();
+  const [companyId, setCompanyId] = useState('');
+  const [counterpartyName, setCounterpartyName] = useState('');
+  const [type, setType] = useState<RelationshipType>('SUPPLIER');
+  const [provides, setProvides] = useState('');
+  const [sentence, setSentence] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    relationshipApi.companiesWithReport()
+      .then((found) => {
+        if (!active) return;
+        setCompanies(found);
+        setCompanyId(found[0] ? String(found[0].id) : '');
+      })
+      .catch((e: unknown) => {
+        if (active) setError(messageOf(e));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function add(event: FormEvent) {
+    event.preventDefault();
+    if (!companyId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const added = await relationshipApi.add<ReviewItem>({
+        companyId: Number(companyId),
+        counterpartyName: counterpartyName.trim(),
+        type,
+        provides: provides.trim(),
+        sentence: sentence.trim(),
+      });
+      onAdded(added);
+    } catch (e: unknown) {
+      setError(messageOf(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="card inline-form" onSubmit={add}>
+      <h2>Add Relationship</h2>
+      {error && <p className="error">{error}</p>}
+      {companies === undefined && !error ? (
+        <p className="muted">Loading Companies…</p>
+      ) : companies?.length === 0 ? (
+        <p className="muted">No companies have a stored annual report.</p>
+      ) : companies ? (
+        <>
+          <Select
+            id="relationship-company"
+            label="Company Whose Report Names It"
+            value={companyId}
+            options={companies.map((company) => ({ value: String(company.id), label: displayName(company.name) }))}
+            onChange={setCompanyId}
+          />
+          <label htmlFor="counterparty-name">Other Company</label>
+          <input
+            id="counterparty-name"
+            value={counterpartyName}
+            maxLength={300}
+            required
+            onChange={(event) => setCounterpartyName(event.target.value)}
+          />
+          <RadioGroup
+            name="relationship-type"
+            label="Relationship"
+            value={type}
+            options={[
+              { value: 'SUPPLIER', label: 'Supplier' },
+              { value: 'CUSTOMER', label: 'Customer' },
+            ]}
+            onChange={(chosen) => setType(chosen as RelationshipType)}
+          />
+          <label htmlFor="new-provides">What Is Provided?</label>
+          <input
+            id="new-provides"
+            value={provides}
+            maxLength={500}
+            onChange={(event) => setProvides(event.target.value)}
+          />
+          <label htmlFor="relationship-sentence">Sentence From the Annual Report</label>
+          <textarea
+            id="relationship-sentence"
+            value={sentence}
+            rows={4}
+            required
+            onChange={(event) => setSentence(event.target.value)}
+          />
+          <div className="actions">
+            <button type="submit" disabled={busy}>Add Relationship</button>
+            <button type="button" className="secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+          </div>
+        </>
+      ) : null}
+    </form>
+  );
+}
+
 export function ReviewPage() {
   const [filter, setFilter] = useState<ReviewFilter>('UNREVIEWED');
   // Every relationship, whatever its review status; undefined while loading.
   const [all, setAll] = useState<ReviewItem[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -186,6 +352,18 @@ export function ReviewPage() {
     <section>
       <h1>Review</h1>
       <p className="muted">Your decisions apply to every portfolio manager.</p>
+
+      {adding ? (
+        <AddRelationshipForm
+          onAdded={(added) => {
+            setAll((current) => [...(current ?? []), added]);
+            setAdding(false);
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      ) : (
+        <button type="button" onClick={() => setAdding(true)}>Add Relationship</button>
+      )}
 
       <RadioGroup
         name="review-filter"
