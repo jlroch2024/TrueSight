@@ -58,6 +58,8 @@ class AlertsIT {
             "TSMC expected to report sixth straight quarter of record profit thanks to AI boom";
     private static final String TSMC_BOMBSHELL_YAHOO =
             "Taiwan Semiconductor Manufacturing Just Dropped a Major Bombshell Investors Must Be Aware Of";
+    private static final String TSMC_EARNINGS_WATCH_MOTLEY =
+            "3 Things to Watch When Taiwan Semiconductor (TSMC) Reports Earnings on Oct. 15";
     private static final String REUTERS = "Reuters";
     private static final String YAHOO_FINANCE = "Yahoo Finance";
     private static final String TRADINGVIEW = "TradingView";
@@ -85,8 +87,10 @@ class AlertsIT {
 
     @BeforeEach
     void makeNvidiaAndTsmcSupplyChain() {
-        // Headline metadata comes from docs/examples/google-news-tsmc.xml, the Google News sample captured 14 October
-        // 2026. Shift every timestamp by the same offset so the sample stays recent without changing its time gaps.
+        // Every headline, publisher, URL and publication gap comes from docs/examples/google-news-tsmc.xml, the Google
+        // News sample captured 14 October 2026. The product owner agreed to use this saved sample instead of the
+        // 20 October GameStop headlines named in the story. Shift every timestamp by the same offset, as NewsCheckIT
+        // does, so the sample stays recent without changing the gaps between articles.
         List<NewsItem> savedSample = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
         Instant newestPublishedAt = savedSample.stream().map(NewsItem::publishedAt).max(Instant::compareTo).orElseThrow();
         Duration sampleShift = Duration.between(newestPublishedAt, Instant.now().minus(Duration.ofHours(1)));
@@ -204,6 +208,8 @@ class AlertsIT {
         Portfolio portfolio = portfolio(email);
         Holding nvidiaHolding = hold(portfolio, nvidia, "40");
         Holding tsmcHolding = hold(portfolio, tsmc, "20");
+        // Reuters and Yahoo Finance reported the GlobalFoundries deal on 8 October 2026. TradingView reported it on
+        // 11 October 2026 at 23:00 GMT, about 3 days 10 hours after Reuters, so it falls outside the three-day window.
         List<NewsItem> eventReports = List.of(
                 headline(GLOBALFOUNDRIES_REUTERS, REUTERS),
                 headline(GLOBALFOUNDRIES_YAHOO, YAHOO_FINANCE),
@@ -252,12 +258,16 @@ class AlertsIT {
     void twoAlertsAboutOneCompanyAndTypeFiveDaysApartStayTwoCards() throws Exception {
         String email = "alerts-five-days@example.com";
         Portfolio portfolio = portfolio(email);
+        // The Motley Fool headline is 7 October 2026 and the TradingView headline is 12 October 2026, about five days
+        // apart in docs/examples/google-news-tsmc.xml.
         NewsArticle oldArticle = article(tsmc, QUALCOMM_VS_TSMC, MOTLEY_FOOL);
         event(oldArticle, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, oldArticle, "40", AlertStatus.NEW);
         NewsArticle recentArticle = article(tsmc, TSMC_CHEAP_SMARTPHONES_TRADINGVIEW, TRADINGVIEW);
         event(recentArticle, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
         alert(portfolio, recentArticle, "40", AlertStatus.NEW);
+        assertThat(Duration.between(oldArticle.getPublishedAt(), recentArticle.getPublishedAt()))
+                .isGreaterThan(Duration.ofDays(5));
 
         mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
@@ -271,12 +281,16 @@ class AlertsIT {
     void twoAlertsAboutOneCompanyWithDifferentEventTypesStayTwoCards() throws Exception {
         String email = "alerts-different-types@example.com";
         Portfolio portfolio = portfolio(email);
+        // Both are real 12 October 2026 headlines from docs/examples/google-news-tsmc.xml, so the date gap cannot be
+        // what separates them.
         NewsArticle first = article(tsmc, TSMC_RECORD_PROFIT_REUTERS, REUTERS);
         event(first, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, first, "40", AlertStatus.NEW);
         NewsArticle second = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
         event(second, EventType.LEGAL_OR_REGULATORY, Severity.MEDIUM, Confidence.MEDIUM);
         alert(portfolio, second, "40", AlertStatus.NEW);
+        assertThat(Duration.between(first.getPublishedAt(), second.getPublishedAt()))
+                .isLessThan(Duration.ofDays(3));
 
         mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
@@ -287,18 +301,21 @@ class AlertsIT {
     }
 
     @Test
-    void anAlertExactlyThreeDaysAfterTheFirstJoinsItsEvent() throws Exception {
+    void anAlertJustInsideThreeDaysOfTheFirstJoinsItsEvent() throws Exception {
         String email = "alerts-three-day-boundary@example.com";
         Portfolio portfolio = portfolio(email);
-        // The saved feed has no pair exactly 72 hours apart; these scenario timestamps pin the inclusive boundary.
-        Instant firstAt = recentNoon().minus(Duration.ofDays(3));
-        NewsArticle first = article(tsmc, TSMC_RECORD_PROFIT_REUTERS, REUTERS, firstAt);
+        // Reuters is 8 October 2026 13:01 GMT and The Motley Fool is 11 October 2026 11:05 GMT in
+        // docs/examples/google-news-tsmc.xml: 2 days 22 hours apart, inside the three-day window. The sample has no
+        // pair exactly 72 hours apart.
+        NewsArticle first = article(tsmc, GLOBALFOUNDRIES_REUTERS, REUTERS);
         event(first, EventType.SUPPLY_SHORTAGE, Severity.HIGH, Confidence.HIGH);
         alert(portfolio, first, "40", AlertStatus.NEW);
-        NewsArticle boundary = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE,
-                firstAt.plus(Duration.ofDays(3)));
-        event(boundary, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
-        alert(portfolio, boundary, "40", AlertStatus.NEW);
+        NewsArticle later = article(tsmc, TSMC_EARNINGS_WATCH_MOTLEY, MOTLEY_FOOL);
+        event(later, EventType.SUPPLY_SHORTAGE, Severity.MEDIUM, Confidence.MEDIUM);
+        alert(portfolio, later, "40", AlertStatus.NEW);
+        assertThat(Duration.between(first.getPublishedAt(), later.getPublishedAt()))
+                .isPositive()
+                .isLessThanOrEqualTo(Duration.ofDays(3));
 
         mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
                         .header("Authorization", logins.bearer(email)))
@@ -595,18 +612,6 @@ class AlertsIT {
     private NewsArticle article(Company company, NewsItem item) {
         return articles.save(new NewsArticle(company.getId(), item.url(), item.title(), item.source(),
                 item.publishedAt().truncatedTo(ChronoUnit.MICROS)));
-    }
-
-    private NewsArticle article(Company company, String title, String source, Instant publishedAt) {
-        NewsItem item = headline(title, source);
-        return articles.save(new NewsArticle(company.getId(), item.url(), item.title(), item.source(),
-                publishedAt.truncatedTo(ChronoUnit.MICROS)));
-    }
-
-    private Instant recentNoon() {
-        Instant now = Instant.now();
-        Instant noonToday = now.truncatedTo(ChronoUnit.DAYS).plus(Duration.ofHours(12));
-        return now.isBefore(noonToday) ? noonToday.minus(Duration.ofDays(1)) : noonToday;
     }
 
     private NewsAssessment event(NewsArticle article, Severity severity, Confidence confidence) {
