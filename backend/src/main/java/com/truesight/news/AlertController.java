@@ -36,4 +36,11 @@ public class AlertController {
                                    @Valid @RequestBody AlertStatusRequest request) {
         return service.setStatus(portfolioId, alertId, request.status());
     }
+
+    @PutMapping("/status")
+    @Operation(summary = "Change the status of every alert about one event")
+    public AlertEventResponse setStatus(@PathVariable Long portfolioId,
+                                        @Valid @RequestBody AlertGroupStatusRequest request) {
+        return service.setEventStatus(portfolioId, request.alertIds(), request.status());
+    }
 }

@@ -1,5 +1,5 @@
-// The Review page: its four states, the cards, Approve, Reject with a required note, and the filter. The backend is
-// replaced by a fake fetch that remembers what was asked of it.
+// The Review page: its four states, the cards, Approve, Reject with a required note, and the filter with its counts. The
+// backend is replaced by a fake fetch that remembers what was asked of it.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -23,6 +23,8 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
       reviewStatus: 'UNREVIEWED',
+      criticality: null,
+      criticalityEvidence: null,
       reviewedAt: null,
       reviewNote: null,
     },
@@ -128,8 +130,17 @@ describe('Review page', () => {
     expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
     expect(screen.getByText('Supplier 1 supplies NVIDIA: semiconductor wafers.')).toBeInTheDocument();
     expect(screen.getByText(sentence)).toBeInTheDocument();
-    expect(screen.getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
+    expect(screen.getByText('10-K, Filed Feb 25, 2026')).toBeInTheDocument();
     expect(screen.getByText('Used by 3 Portfolios')).toBeInTheDocument();
+  });
+
+  it('reads the filing date like "Feb 25, 2026", never as the raw "2026-02-25"', async () => {
+    fakeBackend(() => [item(1)]);
+
+    renderPage();
+
+    expect(await screen.findByText(/Filed Feb 25, 2026/)).toBeInTheDocument();
+    expect(screen.queryByText(/2026-02-25/)).not.toBeInTheDocument();
   });
 
   it('says "1 portfolio", not "1 portfolios"', async () => {
@@ -267,21 +278,101 @@ describe('Review page', () => {
     expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
   });
 
-  it('shows the Unreviewed ones first, and asks the backend for each filter when it is changed', async () => {
+  it('shows the Unreviewed ones first, loads every relationship once, and filters them in the page', async () => {
+    fakeBackend(() => [item(1), approvedBy(item(2))]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' });
+    expect(screen.getByRole('group', { name: 'Show' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Unreviewed (1)' })).toBeChecked();
+    expect(screen.queryByRole('heading', { name: 'Supplier 2 → NVIDIA' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved (1)' }));
+    expect(screen.getByRole('heading', { name: 'Supplier 2 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Supplier 1 → NVIDIA' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'All (2)' }));
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+
+    expect(calls.map((call) => call.url)).toEqual(['/api/reviews']);
+  });
+
+  it('shows how many relationships each filter holds, and changes the counts after each decision', async () => {
+    fakeBackend(
+      () => [item(1), item(2), approvedBy(item(3))],
+      (id, body) =>
+        body.decision === 'APPROVED'
+          ? approvedBy(item(id))
+          : { ...item(id), reviewStatus: 'REJECTED', reviewNote: body.note, reviewedBy: 'analyst@firm.com' },
+    );
+    renderPage();
+    const counts = () => screen.getAllByRole('radio').map((radio) => radio.closest('label')!.textContent);
+
+    await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' });
+    expect(counts()).toEqual(['Unreviewed (2)', 'Approved (1)', 'Rejected (0)', 'All (3)']);
+
+    const first = screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' }).closest('li')!;
+    await userEvent.click(within(first).getByRole('button', { name: 'Approve' }));
+    expect(counts()).toEqual(['Unreviewed (1)', 'Approved (2)', 'Rejected (0)', 'All (3)']);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    await userEvent.type(screen.getByLabelText('Why is this rejected?'), 'Planned partner, not a supplier.');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm Reject' }));
+    expect(counts()).toEqual(['Unreviewed (0)', 'Approved (2)', 'Rejected (1)', 'All (3)']);
+  });
+
+  it('says what to do next on each empty filter', async () => {
     fakeBackend(() => []);
     renderPage();
-    await screen.findByText(/Nothing to review/);
-    expect(calls.at(-1)!.url).toBe('/api/reviews?status=UNREVIEWED');
-    expect(screen.getByRole('group', { name: 'Show' })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Approved' }));
-    expect(calls.at(-1)!.url).toBe('/api/reviews?status=APPROVED');
+    expect(
+      await screen.findByText('Nothing to review. Analyse a portfolio to find more relationships.'),
+    ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Rejected' }));
-    expect(calls.at(-1)!.url).toBe('/api/reviews?status=REJECTED');
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved (0)' }));
+    expect(screen.getByText('None approved yet. Approve one from Unreviewed.')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'All' }));
-    expect(calls.at(-1)!.url).toBe('/api/reviews');
+    await userEvent.click(screen.getByRole('radio', { name: 'Rejected (0)' }));
+    expect(screen.getByText('None rejected yet.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'All (0)' }));
+    expect(screen.getByText('Nothing to review. Analyse a portfolio to find more relationships.')).toBeInTheDocument();
+  });
+
+  it('puts the cursor in the note box when Reject is pressed, and keeps Show in Report beside it', async () => {
+    fakeBackend(() => [item(1)]);
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Reject' }));
+
+    expect(screen.getByLabelText('Why is this rejected?')).toHaveFocus();
+    const actions = screen.getByRole('button', { name: 'Confirm Reject' }).parentElement!;
+    expect(within(actions).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Show in Report',
+      'Confirm Reject',
+      'Cancel',
+    ]);
+    await userEvent.click(within(actions).getByRole('button', { name: 'Show in Report' }));
+    expect(open).toHaveBeenCalledWith(
+      'https://www.sec.gov/report-1#:~:text=We%20utilize%20foundries%2C%20such%20as,to%20produce%20our%20semiconductor%20wafers.',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  });
+
+  it('offers only the decisions that would change something', async () => {
+    const rejected = { ...item(3), reviewStatus: 'REJECTED' as const, reviewNote: 'Not a supplier.' };
+    fakeBackend(() => [item(1), approvedBy(item(2)), rejected]);
+    renderPage();
+    await userEvent.click(await screen.findByRole('radio', { name: 'All (3)' }));
+    const buttonsOn = (name: string) =>
+      within(screen.getByRole('heading', { name }).closest('li')!)
+        .getAllByRole('button')
+        .map((button) => button.textContent);
+
+    expect(buttonsOn('Supplier 1 → NVIDIA')).toEqual(['Show in Report', 'Approve', 'Reject']);
+    expect(buttonsOn('Supplier 2 → NVIDIA')).toEqual(['Show in Report', 'Reject']);
+    expect(buttonsOn('Supplier 3 → NVIDIA')).toEqual(['Show in Report', 'Approve']);
   });
 
   it('shows who decided, when, and why on a decided relationship, and keeps it in the All list when changed', async () => {
@@ -293,7 +384,7 @@ describe('Review page', () => {
     });
     fakeBackend(() => [rejected], (id) => approvedBy(item(id)));
     renderPage();
-    await userEvent.click(await screen.findByRole('radio', { name: 'All' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'All (1)' }));
 
     expect(await screen.findByText(/Rejected by analyst@firm.com.*Planned partner, not a supplier\./)).toBeInTheDocument();
 

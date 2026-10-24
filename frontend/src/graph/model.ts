@@ -1,6 +1,6 @@
 // The living graph's model: the page's companies and relationships turned into what the physics moves and the renderer
 // draws. Everything here is plain data and pure functions, so it can be tested without a browser.
-import type { Alert } from '../api/alerts';
+import type { AlertEvent } from '../api/alerts';
 import type { Severity } from '../api/news';
 import { type GraphEdge, type GraphNode, chainColours, displayName, flowLayout } from '../pages/supplyChain';
 
@@ -52,6 +52,7 @@ export type LiveEdge = {
   target: LiveNode;
   relationshipId: number;
   reviewed: boolean;
+  critical: boolean;
   colour: string;
   summary: string;
 };
@@ -178,6 +179,7 @@ export function buildLiveGraph(
         target,
         relationshipId: edge.relationshipId,
         reviewed: edge.reviewStatus === 'APPROVED',
+        critical: edge.criticality !== null,
         colour: chains.edges.get(edge.id) ?? NEUTRAL_EDGE,
         summary: edge.summary,
       },
@@ -248,16 +250,18 @@ const SEVERITY_ORDER: Severity[] = ['LOW', 'MEDIUM', 'HIGH'];
  * The relationships the portfolio's open alerts run through, each with its most serious disruption: the graph marks
  * them. An alert about a holding itself runs through no relationship, so it marks none.
  */
-export function risksFrom(alerts: Pick<Alert, 'status' | 'article' | 'assessment' | 'holdings'>[]): Map<number, Risk> {
+export function risksFrom(
+  events: Pick<AlertEvent, 'status' | 'headline' | 'holdings'>[],
+): Map<number, Risk> {
   const risks = new Map<number, Risk>();
-  for (const alert of alerts) {
-    if (alert.status === 'DISMISSED') continue;
-    const { severity, eventType } = alert.assessment;
-    for (const holding of alert.holdings) {
+  for (const event of events) {
+    if (event.status === 'DISMISSED') continue;
+    const { severity, eventType } = event.headline.assessment;
+    for (const holding of event.holdings) {
       if (holding.relationshipId == null) continue;
       const known = risks.get(holding.relationshipId);
       if (known && SEVERITY_ORDER.indexOf(known.severity) >= SEVERITY_ORDER.indexOf(severity)) continue;
-      risks.set(holding.relationshipId, { severity, eventType, title: alert.article.title });
+      risks.set(holding.relationshipId, { severity, eventType, title: event.headline.article.title });
     }
   }
   return risks;

@@ -2,6 +2,7 @@
 import { api } from './client';
 
 export type RelationshipType = 'SUPPLIER' | 'CUSTOMER';
+export type Criticality = 'SOLE_SOURCE' | 'SINGLE_SOURCE';
 
 // Where an Analyst's review of a relationship has got. Rejected relationships never reach a graph.
 export type ReviewStatus = 'UNREVIEWED' | 'APPROVED' | 'REJECTED';
@@ -21,6 +22,8 @@ export type Relationship = {
   type: RelationshipType;
   provides: string | null;
   evidence: string;
+  criticality: Criticality | null;
+  criticalityEvidence: string | null;
   report: ReportSummary;
   reviewStatus: ReviewStatus;
   reviewedAt: string | null;

@@ -563,6 +563,13 @@
   transform: rotate(45deg);
 }
 
+.lg-legend-critical {
+  width: 22px;
+  height: 3px;
+  flex: none;
+  background: #5d6b80;
+}
+
 .lg-legend-risk[data-severity='MEDIUM'] {
   background: #ff8a3d;
 }

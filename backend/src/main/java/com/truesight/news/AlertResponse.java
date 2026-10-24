@@ -23,12 +23,8 @@ public record AlertResponse(
                              String reason) {
     }
 
-    /**
-     * A holding the event reaches. link names the relationship it reaches it through ("TSMC supplies NVIDIA"), and
-     * relationshipId is that relationship, so the graph can mark it; both are null when the event is about the holding
-     * itself.
-     */
-    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String link,
-                                 ReviewStatus reviewStatus, Long relationshipId) {
+    /** Stored company names and the relationship reached; all are null when the event is about the holding itself. */
+    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String supplierName,
+                                 String customerName, ReviewStatus reviewStatus, Long relationshipId) {
     }
 }
