@@ -9,7 +9,6 @@ import type { ReviewStatus } from '../api/relationships';
 import { type ReviewFilter, type ReviewItem, reviewApi } from '../api/reviews';
 import { RadioGroup } from '../components/RadioGroup';
 import { formatDate, formatDateTime, openInNewTab, showInReportUrl } from '../format';
-import { displayName } from './supplyChain';
 
 const NOTHING_TO_REVIEW = 'Nothing to review. Analyse a portfolio to find more relationships.';
 
@@ -72,12 +71,12 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
   return (
     <li className="card review-card">
       <h2>
-        {displayName(supplier.name)} {'\u2192'} {displayName(customer.name)}
+        {supplier.displayName} {'\u2192'} {customer.displayName}
       </h2>
       <p className="muted small">
         {relationship.type === 'SUPPLIER'
-          ? `${displayName(relationship.counterparty.name)} supplies ${displayName(relationship.company.name)}`
-          : `${displayName(relationship.counterparty.name)} buys from ${displayName(relationship.company.name)}`}
+          ? `${relationship.counterparty.displayName} supplies ${relationship.company.displayName}`
+          : `${relationship.counterparty.displayName} buys from ${relationship.company.displayName}`}
         {relationship.provides ? `: ${relationship.provides}.` : '.'}
       </p>
       <blockquote>{relationship.evidence}</blockquote>

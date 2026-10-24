@@ -42,6 +42,8 @@ export type Holding = {
   ticker: string;
   weight: number | null;
   companyName: string | null;
+  // How every page shows the company; null until the holding is matched to one, like companyName.
+  companyDisplayName: string | null;
   status: HoldingStatus;
   statusReason: string | null;
   reportType: string | null;

@@ -27,23 +27,25 @@ import { lineCrosses } from '../pages/supplyChain';
 
 // The holdings the sample relationships belong to, as the Supply Chain page would have them.
 function sampleHoldings(): Holding[] {
-  const holdingOf: [string, string, number][] = [
-    ['NVDA', 'NVIDIA Corporation', 18],
-    ['AMD', 'Advanced Micro Devices, Inc.', 12],
-    ['QCOM', 'QUALCOMM Incorporated', 8],
-    ['TSLA', 'Tesla, Inc.', 15],
-    ['AVGO', 'Broadcom Inc.', 10],
-    ['LRCX', 'Lam Research Corporation', 9],
-    ['CRUS', 'Cirrus Logic, Inc.', 4],
-    ['ASML', 'ASML Holding N.V.', 11],
-    ['STM', 'STMicroelectronics N.V.', 6],
-    ['SONY', 'Sony Group Corporation', 7],
+  // Ticker, stored name, the display name the API sends for it, and weight.
+  const holdingOf: [string, string, string, number][] = [
+    ['NVDA', 'NVIDIA Corporation', 'NVIDIA', 18],
+    ['AMD', 'Advanced Micro Devices, Inc.', 'Advanced Micro Devices', 12],
+    ['QCOM', 'QUALCOMM Incorporated', 'QUALCOMM', 8],
+    ['TSLA', 'Tesla, Inc.', 'Tesla', 15],
+    ['AVGO', 'Broadcom Inc.', 'Broadcom', 10],
+    ['LRCX', 'Lam Research Corporation', 'Lam Research', 9],
+    ['CRUS', 'Cirrus Logic, Inc.', 'Cirrus Logic', 4],
+    ['ASML', 'ASML Holding N.V.', 'ASML Holding', 11],
+    ['STM', 'STMicroelectronics N.V.', 'STMicroelectronics', 6],
+    ['SONY', 'Sony Group Corporation', 'Sony Group', 7],
   ];
-  return holdingOf.map(([ticker, companyName, weight], i) => ({
+  return holdingOf.map(([ticker, companyName, companyDisplayName, weight], i) => ({
     id: i + 1,
     ticker,
     weight,
     companyName,
+    companyDisplayName,
     status: 'DONE',
     statusReason: null,
     reportType: '10-K',

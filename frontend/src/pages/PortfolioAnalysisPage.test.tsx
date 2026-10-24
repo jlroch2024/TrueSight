@@ -14,7 +14,9 @@ function row(status: string, extra: Record<string, unknown> = {}) {
     id: 1,
     ticker: 'NVDA',
     weight: null,
-    companyName: 'NVIDIA Corporation',
+    // The SEC's name for NVIDIA, and the display name the API sends for it: NVIDIA's own report writes "NVIDIA".
+    companyName: 'NVIDIA CORP',
+    companyDisplayName: 'NVIDIA',
     status,
     statusReason: null,
     reportType: status === 'DONE' ? '10-K' : null,
@@ -46,6 +48,7 @@ describe('Portfolio annual report analysis', () => {
     renderPage();
 
     expect(await screen.findByText('NVIDIA')).toBeInTheDocument();
+    expect(screen.queryByText('Nvidia')).not.toBeInTheDocument();
     expect(screen.getByText('Done')).toBeInTheDocument();
     expect(screen.getByText('10-K')).toBeInTheDocument();
     expect(screen.getByText('Feb 25, 2026')).toBeInTheDocument();
