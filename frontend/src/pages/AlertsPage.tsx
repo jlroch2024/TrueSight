@@ -47,6 +47,12 @@ function AlertCard({
 }) {
   const { article, assessment } = event.headline;
   const dismissed = event.status === 'DISMISSED';
+  const direct = new Set(event.holdings.filter((holding) => !holding.indirect).map((holding) => holding.holdingId)).size;
+  const indirect = new Set(event.holdings.filter((holding) => holding.indirect).map((holding) => holding.holdingId)).size;
+  const reachedCounts = [
+    direct > 0 ? `${direct} Direct` : null,
+    indirect > 0 ? `${indirect} Indirect` : null,
+  ].filter(Boolean).join(', ');
   return (
     <li className={`card alert-card${dismissed ? ' dismissed' : ''}`}>
       <div className="alert-card-heading">
@@ -96,14 +102,17 @@ function AlertCard({
       )}
 
       <div className="alert-holdings">
-        <h3>Holdings Reached</h3>
+        <h3>Holdings Reached{reachedCounts && ` (${reachedCounts})`}</h3>
         <ul className={weighted ? undefined : 'unweighted'}>
           {event.holdings.map((holding) => (
             <li key={`${holding.holdingId}-${holding.relationshipId ?? 'article'}`}>
               <strong>{holding.ticker}</strong>
               {weighted && <span>{holding.weight === null ? 'Weight Not Provided' : `${holding.weight}%`}</span>}
               <span>
-                {holding.supplierName && holding.customerName
+                {holding.indirect && <span className="news-tag">Indirect</span>}
+                {holding.supplierName && holding.middleName && holding.customerName
+                  ? ` ${displayName(holding.supplierName)} supplies ${displayName(holding.middleName)}, which supplies ${displayName(holding.customerName)}`
+                  : holding.supplierName && holding.customerName
                   ? `${displayName(holding.supplierName)} supplies ${displayName(holding.customerName)}`
                   : 'Named in the Article'}
               </span>
