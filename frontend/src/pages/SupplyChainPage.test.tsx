@@ -187,8 +187,8 @@ describe('Supply Chain page', () => {
         url: 'https://example.com/event',
       }],
       holdings: [
-        { holdingId: 1, ticker: 'NVDA', weight: 40, supplierName: 'TSMC', customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
-        { holdingId: 1, ticker: 'NVDA', weight: 40, supplierName: 'Samsung Electronics', customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
       ],
     };
     vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [], PORTFOLIO, [event]));

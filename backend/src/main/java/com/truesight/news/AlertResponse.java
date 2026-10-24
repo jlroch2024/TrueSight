@@ -23,8 +23,9 @@ public record AlertResponse(
                              String reason) {
     }
 
-    /** Stored company names and the relationship reached; all are null when the event is about the holding itself. */
-    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String supplierName,
-                                 String customerName, ReviewStatus reviewStatus, Long relationshipId) {
+    /** Stored company names and the path reached; all names are null when the event is about the holding itself. */
+    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, boolean indirect,
+                                 String supplierName, String middleName, String customerName,
+                                 ReviewStatus reviewStatus, Long relationshipId) {
     }
 }

@@ -9,6 +9,7 @@ import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
+import com.truesight.relationship.ReviewStatus;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -118,8 +119,10 @@ public class AlertService {
         Map<Long, Holding> holdingById = holdings.findAllById(
                         reached.stream().map(AlertHolding::getHoldingId).distinct().toList())
                 .stream().collect(Collectors.toMap(Holding::getId, Function.identity()));
-        Map<Long, Relationship> relationshipById = relationships.findAllById(
-                        reached.stream().map(AlertHolding::getRelationshipId).filter(Objects::nonNull).distinct().toList())
+        List<Long> relationshipIds = reached.stream()
+                .flatMap(found -> Stream.of(found.getRelationshipId(), found.getSecondRelationshipId()))
+                .filter(Objects::nonNull).distinct().toList();
+        Map<Long, Relationship> relationshipById = relationships.findAllById(relationshipIds)
                 .stream().collect(Collectors.toMap(Relationship::getId, Function.identity()));
         Set<Long> companyIds = relationshipById.values().stream()
                 .flatMap(relationship -> Stream.of(relationship.getCompanyId(), relationship.getCounterpartyId()))
@@ -139,17 +142,27 @@ public class AlertService {
         List<Long> alertIds = Stream.concat(Stream.of(lead), ordered.stream().filter(row -> row != lead))
                 .map(row -> row.alert().getId())
                 .toList();
-        Map<HoldingRelationshipKey, AlertEventResponse.ReachedHolding> reachedByPair = new LinkedHashMap<>();
+        Map<HoldingRelationshipKey, ReachedPath> reachedByPair = new LinkedHashMap<>();
         ordered.stream()
                 .flatMap(row -> data.reachedByAlert().getOrDefault(row.alert().getId(), List.of()).stream())
-                .map(found -> eventReachedHolding(found, data))
+                .map(found -> eventReachedPath(found, data))
                 .filter(Objects::nonNull)
                 .forEach(reached -> reachedByPair.putIfAbsent(
-                        new HoldingRelationshipKey(reached.holdingId(), reached.relationshipId()), reached));
+                        new HoldingRelationshipKey(reached.holding().holdingId(), reached.holding().relationshipId(),
+                                reached.secondRelationshipId()), reached));
+        Set<Long> directlyReached = reachedByPair.values().stream()
+                .filter(path -> !path.holding().indirect())
+                .map(path -> path.holding().holdingId())
+                .collect(Collectors.toSet());
         List<AlertEventResponse.ReachedHolding> reached = reachedByPair.values().stream()
-                .sorted(Comparator.comparing(AlertEventResponse.ReachedHolding::ticker)
-                        .thenComparing(AlertEventResponse.ReachedHolding::relationshipId,
+                .filter(path -> !path.holding().indirect()
+                        || !directlyReached.contains(path.holding().holdingId()))
+                .sorted(Comparator.comparing((ReachedPath path) -> path.holding().ticker())
+                        .thenComparing(path -> path.holding().relationshipId(),
+                                Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(ReachedPath::secondRelationshipId,
                                 Comparator.nullsFirst(Comparator.naturalOrder())))
+                .map(ReachedPath::holding)
                 .toList();
         Set<Long> distinctHoldingIds = reached.stream().map(AlertEventResponse.ReachedHolding::holdingId)
                 .collect(Collectors.toSet());
@@ -207,29 +220,57 @@ public class AlertService {
         return events;
     }
 
-    private AlertEventResponse.ReachedHolding eventReachedHolding(AlertHolding found, PageData data) {
+    private ReachedPath eventReachedPath(AlertHolding found, PageData data) {
         Holding holding = data.holdingById().get(found.getHoldingId());
         if (holding == null) return null;
         if (found.getRelationshipId() == null) {
-            return new AlertEventResponse.ReachedHolding(
-                    holding.getId(), holding.getTicker(), holding.getWeight(), null, null, null, null);
+            return new ReachedPath(new AlertEventResponse.ReachedHolding(
+                    holding.getId(), holding.getTicker(), holding.getWeight(), false,
+                    null, null, null, null, null), null);
         }
         Relationship relationship = data.relationshipById().get(found.getRelationshipId());
         if (relationship == null) return null;
-        Long supplierId = relationship.getType() == RelationshipType.SUPPLIER
-                ? relationship.getCounterpartyId() : relationship.getCompanyId();
-        Long customerId = relationship.getType() == RelationshipType.SUPPLIER
-                ? relationship.getCompanyId() : relationship.getCounterpartyId();
-        return new AlertEventResponse.ReachedHolding(holding.getId(), holding.getTicker(), holding.getWeight(),
-                nameOf(data.companyById().get(supplierId)), nameOf(data.companyById().get(customerId)),
-                relationship.getReviewStatus(), relationship.getId());
+        if (found.getSecondRelationshipId() == null) {
+            return new ReachedPath(new AlertEventResponse.ReachedHolding(
+                    holding.getId(), holding.getTicker(), holding.getWeight(), false,
+                    nameOf(data.companyById().get(supplierId(relationship))), null,
+                    nameOf(data.companyById().get(customerId(relationship))),
+                    relationship.getReviewStatus(), relationship.getId()), null);
+        }
+        Relationship second = data.relationshipById().get(found.getSecondRelationshipId());
+        if (second == null) return null;
+        return new ReachedPath(new AlertEventResponse.ReachedHolding(
+                holding.getId(), holding.getTicker(), holding.getWeight(), true,
+                nameOf(data.companyById().get(supplierId(relationship))),
+                nameOf(data.companyById().get(customerId(relationship))),
+                nameOf(data.companyById().get(customerId(second))),
+                weaker(relationship.getReviewStatus(), second.getReviewStatus()), relationship.getId()),
+                second.getId());
     }
 
     private AlertResponse.ReachedHolding singleReachedHolding(AlertHolding found, PageData data) {
-        AlertEventResponse.ReachedHolding reached = eventReachedHolding(found, data);
-        if (reached == null) return null;
+        ReachedPath path = eventReachedPath(found, data);
+        if (path == null) return null;
+        AlertEventResponse.ReachedHolding reached = path.holding();
         return new AlertResponse.ReachedHolding(reached.holdingId(), reached.ticker(), reached.weight(),
-                reached.supplierName(), reached.customerName(), reached.reviewStatus(), reached.relationshipId());
+                reached.indirect(), reached.supplierName(), reached.middleName(), reached.customerName(),
+                reached.reviewStatus(), reached.relationshipId());
+    }
+
+    private static Long supplierId(Relationship relationship) {
+        return relationship.getType() == RelationshipType.SUPPLIER
+                ? relationship.getCounterpartyId() : relationship.getCompanyId();
+    }
+
+    private static Long customerId(Relationship relationship) {
+        return relationship.getType() == RelationshipType.SUPPLIER
+                ? relationship.getCompanyId() : relationship.getCounterpartyId();
+    }
+
+    private static ReviewStatus weaker(ReviewStatus first, ReviewStatus second) {
+        if (first == ReviewStatus.REJECTED || second == ReviewStatus.REJECTED) return ReviewStatus.REJECTED;
+        if (first == ReviewStatus.UNREVIEWED || second == ReviewStatus.UNREVIEWED) return ReviewStatus.UNREVIEWED;
+        return ReviewStatus.APPROVED;
     }
 
     private static AlertEventResponse.Article article(NewsArticle article) {
@@ -292,7 +333,10 @@ public class AlertService {
     private record EventGroup(List<AlertRow> rows) {
     }
 
-    private record HoldingRelationshipKey(Long holdingId, Long relationshipId) {
+    private record HoldingRelationshipKey(Long holdingId, Long relationshipId, Long secondRelationshipId) {
+    }
+
+    private record ReachedPath(AlertEventResponse.ReachedHolding holding, Long secondRelationshipId) {
     }
 
     private record PageData(List<Holding> portfolioHoldings, Map<Long, Holding> holdingById,
