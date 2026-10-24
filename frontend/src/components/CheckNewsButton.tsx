@@ -79,6 +79,9 @@ export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews, 
           {typeof articleCount === 'number' && ` · ${articleCount} ${articleCount === 1 ? 'Article' : 'Articles'}`}
         </span>
       )}
+      {!checking && portfolio.newsStatus !== 'FAILED' && portfolio.newsStatusReason && (
+        <span className="muted small">{portfolio.newsStatusReason}</span>
+      )}
       {error && <span role="alert" className="error small">{error}</span>}
     </div>
   );

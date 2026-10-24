@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -32,17 +33,20 @@ public class NewsCheckJob {
         try {
             int attempted = 0;
             int succeeded = 0;
+            List<String> failed = new ArrayList<>();
             for (NewsCheckService.NewsCompany company : service.companiesFor(portfolioId)) {
                 synchronized (companyLocks.computeIfAbsent(company.id(), ignored -> new Object())) {
                     Instant now = Instant.now();
                     if (service.wasCheckedWithinTheLastHour(company.id(), now)) continue;
                     attempted++;
+                    String searchName = NewsSearchName.of(company.name());
                     try {
-                        List<NewsItem> recent = newestRecentItems(news.search(NewsSearchName.of(company.name())), now);
+                        List<NewsItem> recent = newestRecentItems(news.search(searchName), now);
                         service.save(company.id(), recent, now);
                         succeeded++;
                     } catch (NewsClient.NewsAccessException ignored) {
                         // A failed company stays unchecked so this portfolio, or another one, can try it again.
+                        failed.add(searchName);
                     }
                 }
             }
@@ -51,13 +55,28 @@ public class NewsCheckJob {
                 return;
             }
             steps.run(portfolioId);
-            service.finish(portfolioId, Instant.now());
+            service.finish(portfolioId, Instant.now(), failed.isEmpty() ? null : missedReason(failed, attempted));
         } catch (GeminiClient.GeminiException exception) {
             // The articles the AI did not judge stay unassessed, so the next Check News sends them again.
             service.fail(portfolioId, NewsAssessor.AI_FAILED);
         } catch (RuntimeException exception) {
             service.fail(portfolioId, "News could not be checked. Please try again later.");
         }
+    }
+
+    private static String missedReason(List<String> failed, int attempted) {
+        int shown = Math.min(5, failed.size());
+        String names = String.join(", ", failed.subList(0, shown));
+        if (failed.size() > shown) {
+            names += " and " + (failed.size() - shown) + " more";
+        }
+        String prefix = "News for %d of %d companies could not be fetched: ".formatted(failed.size(), attempted);
+        String suffix = ". Check News again to retry " + (failed.size() == 1 ? "it." : "them.");
+        int available = 500 - prefix.length() - suffix.length();
+        if (names.length() > available) {
+            names = names.substring(0, available - 1) + "…";
+        }
+        return prefix + names + suffix;
     }
 
     private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now) {
