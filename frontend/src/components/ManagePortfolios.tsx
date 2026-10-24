@@ -14,6 +14,14 @@ function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
 }
 
+function asPortfolio(value: unknown): Portfolio | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const candidate = value as Partial<Portfolio>;
+  return typeof candidate.id === 'number' && typeof candidate.name === 'string'
+    ? candidate as Portfolio
+    : undefined;
+}
+
 /**
  * The same kind of page for another portfolio: on /portfolios/7/supply-chain, portfolio 9 gives
  * /portfolios/9/supply-chain. Anywhere else, it gives the portfolio's own page.
@@ -112,7 +120,7 @@ export function ManagePortfolios({ openId, onClose }: Props) {
     setActionError(null);
     try {
       const value = await action();
-      portfolioChanges.announce();
+      portfolioChanges.announce(asPortfolio(value));
       return { ok: true, value };
     } catch (e) {
       setActionError(messageOf(e));

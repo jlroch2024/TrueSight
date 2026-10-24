@@ -73,6 +73,23 @@ describe('Check News button', () => {
     expect(seeNews).toHaveBeenCalled();
   });
 
+  it('shows a partial failure reason under the News Checked line without the error style', () => {
+    const checkedAt = '2026-10-14T02:42:00Z';
+    const reason = 'News for 1 of 2 companies could not be fetched: Fabrinet. Check News again to retry it.';
+    render(
+      <CheckNewsButton
+        portfolio={{ ...base, newsCheckedAt: checkedAt, newsStatusReason: reason }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const checked = screen.getByText(`News Checked ${formatDateTime(checkedAt)}`);
+    const explanation = screen.getByText(reason);
+    expect(checked.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(explanation).toHaveClass('muted', 'small');
+    expect(explanation).not.toHaveClass('error');
+  });
+
   it('offers no See News before the first check', () => {
     render(<CheckNewsButton portfolio={base} onChange={vi.fn()} articleCount={null} onSeeNews={vi.fn()} />);
 

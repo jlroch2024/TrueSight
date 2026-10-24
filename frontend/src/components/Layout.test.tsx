@@ -132,6 +132,30 @@ describe('Layout', () => {
       expect(screen.queryByRole('button', { name: 'Analyst Review' })).not.toBeInTheDocument();
     });
 
+    it('offers Retry when the account cannot load, then shows the Analyst account and navigation', async () => {
+      tokenStore.set('a-token');
+      let accountAvailable = false;
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        if (url === '/api/portfolios') return new Response('[]');
+        if (!accountAvailable) {
+          return new Response(JSON.stringify({ message: 'The server is restarting.' }), { status: 503 });
+        }
+        return new Response(JSON.stringify({ email: 'analyst@firm.com', role: 'ANALYST' }));
+      }));
+
+      renderAt('/');
+
+      expect(await screen.findByText('Account Could Not Load')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Analyst Review' })).not.toBeInTheDocument();
+
+      accountAvailable = true;
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+      expect(await screen.findByText('analyst@firm.com')).toBeInTheDocument();
+      expect(screen.getByText('Analyst')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Analyst Review' })).toBeInTheDocument();
+    });
+
     it('asks who is logged in only once', async () => {
       logInAs('ANALYST', 'analyst@firm.com');
 

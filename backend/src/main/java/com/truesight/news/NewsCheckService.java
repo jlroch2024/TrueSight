@@ -102,10 +102,10 @@ public class NewsCheckService {
     }
 
     @Transactional
-    public void finish(Long portfolioId, Instant checkedAt) {
+    public void finish(Long portfolioId, Instant checkedAt, String reason) {
         portfolios.findById(portfolioId).ifPresent(portfolio -> {
             portfolio.setNewsStatus(NewsStatus.IDLE);
-            portfolio.setNewsStatusReason(null);
+            portfolio.setNewsStatusReason(reason);
             portfolio.setNewsCheckedAt(checkedAt);
         });
     }
