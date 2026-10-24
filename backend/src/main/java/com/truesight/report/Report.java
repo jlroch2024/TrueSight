@@ -92,6 +92,11 @@ public class Report {
         return text;
     }
 
+    /** Replaces text extracted from this report's saved filing. */
+    public void setText(String text) {
+        this.text = text;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

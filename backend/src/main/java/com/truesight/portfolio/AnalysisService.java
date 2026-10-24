@@ -1,11 +1,15 @@
 package com.truesight.portfolio;
 
 import com.truesight.common.ApiException;
+import com.truesight.ai.AiCallRepository;
+import com.truesight.ai.AiOutcome;
+import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.RelationshipFinder;
+import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.ReportTextExtractor;
@@ -25,18 +29,23 @@ public class AnalysisService {
     private final CompanyDirectory companies;
     private final CompanyRepository companyRepository;
     private final ReportRepository reports;
+    private final RelationshipRepository relationships;
+    private final AiCallRepository aiCalls;
     private final SecClient sec;
     private final RelationshipFinder relationshipFinder;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyDirectory companies, CompanyRepository companyRepository,
-                          ReportRepository reports, SecClient sec, RelationshipFinder relationshipFinder) {
+                          ReportRepository reports, RelationshipRepository relationships, AiCallRepository aiCalls,
+                          SecClient sec, RelationshipFinder relationshipFinder) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
         this.companies = companies;
         this.companyRepository = companyRepository;
         this.reports = reports;
+        this.relationships = relationships;
+        this.aiCalls = aiCalls;
         this.sec = sec;
         this.relationshipFinder = relationshipFinder;
     }
@@ -45,7 +54,9 @@ public class AnalysisService {
      * Starts analysing the portfolio's holdings that are Waiting, and tries again those that Failed: a failure is
      * usually the SEC or the AI being briefly unreachable, so pressing Analyse again should retry it rather than
      * leave the portfolio stuck. Holdings already Done or with No Report Found are left alone. Refused only while an
-     * analysis is already running for this portfolio.
+     * analysis is already running for this portfolio. A completed holding with no saved relationships is retried only
+     * when its latest report has no completed relationship-finding answer, or its text matches the legacy extraction
+     * format and can be refreshed from the saved SEC filing first.
      */
     @Transactional
     public List<Long> start(Long portfolioId) {
@@ -54,13 +65,24 @@ public class AnalysisService {
         if (rows.stream().anyMatch(h -> h.getStatus() == HoldingStatus.ANALYSING)) {
             throw ApiException.conflict("Analysis is already running for this portfolio.");
         }
-        List<Holding> toAnalyse = rows.stream()
-                .filter(h -> h.getStatus() == HoldingStatus.WAITING || h.getStatus() == HoldingStatus.FAILED)
-                .toList();
+        List<Holding> toAnalyse = rows.stream().filter(h -> switch (h.getStatus()) {
+            case WAITING, FAILED -> true;
+            case DONE -> needsRelationshipAnalysis(h);
+            default -> false;
+        }).toList();
         // setStatus also clears a failed holding's old reason.
         toAnalyse.forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
         holdings.saveAll(toAnalyse);
         return toAnalyse.stream().map(Holding::getId).toList();
+    }
+
+    private boolean needsRelationshipAnalysis(Holding holding) {
+        if (holding.getCompanyId() == null) return false;
+        Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).orElse(null);
+        if (report == null || relationships.existsByReportId(report.getId())) return false;
+        if (ReportTextExtractor.hasLegacyWrappedParagraphs(report.getText())) return true;
+        return !aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED);
     }
 
     @Transactional(readOnly = true)
@@ -99,8 +121,17 @@ public class AnalysisService {
                 String text = ReportTextExtractor.extract(sec.download(filing.url()));
                 report = reports.save(new Report(company.getId(), filing.form(), filing.accessionNumber(), filing.filingDate(), filing.url(), text));
             }
-            // Does nothing if this report's relationships were found before, for any portfolio.
-            relationshipFinder.findIn(report, company);
+            boolean refreshed = false;
+            if (ReportTextExtractor.hasLegacyWrappedParagraphs(report.getText())) {
+                String currentText = ReportTextExtractor.extract(sec.download(report.getUrl()));
+                if (!currentText.isBlank() && !currentText.equals(report.getText())) {
+                    report.setText(currentText);
+                    reports.save(report);
+                    refreshed = true;
+                }
+            }
+            // A changed report gets one new assessment; unchanged answered reports remain idempotent.
+            relationshipFinder.findIn(report, company, refreshed);
             holding.setStatus(HoldingStatus.DONE);
         } catch (SecClient.SecAccessException | GeminiClient.GeminiException exception) {
             holding.fail(exception.getMessage());

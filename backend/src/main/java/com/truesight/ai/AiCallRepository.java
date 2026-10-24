@@ -9,10 +9,14 @@ public interface AiCallRepository extends JpaRepository<AiCall, Long> {
     /** Newest first, as the audit trail shows them. */
     List<AiCall> findTop100ByOrderByStartedAtDesc();
 
-    /** An answered criticality pass is complete once its kept/dropped counts have been saved, including zeroes. */
+    /**
+     * A call is complete once an answer has been read and its kept and dropped counts have been saved, including
+     * zeroes. Relationship finding and the criticality pass both use this to avoid asking again.
+     */
     boolean existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
             Long reportId, AiPurpose purpose, AiOutcome outcome);
 
+    /** True when an answered call for this report used a prompt that contains the given text. */
     boolean existsByReportIdAndPurposeAndOutcomeAndPromptContaining(
             Long reportId, AiPurpose purpose, AiOutcome outcome, String promptText);
 }
