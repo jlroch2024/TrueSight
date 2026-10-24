@@ -1,6 +1,6 @@
 // Tests for api(). fetch is replaced with a fake, so no backend is needed.
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, api, setLoggedOutHandler, tokenStore } from './client';
+import { ApiError, api, apiDownload, setLoggedOutHandler, tokenStore } from './client';
 
 function fakeFetch(status: number, body: unknown) {
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -62,5 +62,35 @@ describe('api', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
     await expect(api('/health')).rejects.toThrow('Cannot reach the server. Is the backend running?');
+  });
+
+  it('downloads a file under the given name with the sign-in token', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('one,two', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    tokenStore.set('download-token');
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:csv');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    await apiDownload('/ai-calls/export?purpose=COMMON_NAMES', 'ai-calls.csv');
+
+    const headers = fetch.mock.calls[0][1].headers as Headers;
+    expect(fetch.mock.calls[0][0]).toBe('/api/ai-calls/export?purpose=COMMON_NAMES');
+    expect(headers.get('Authorization')).toBe('Bearer download-token');
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv');
+  });
+
+  it('turns a refused download into the same ApiError', async () => {
+    fakeFetch(403, { message: 'Only analysts can do this.' });
+
+    await expect(apiDownload('/ai-calls/export', 'ai-calls.csv')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+      message: 'Only analysts can do this.',
+    });
   });
 });

@@ -39,6 +39,23 @@ export function setLoggedOutHandler(handler: () => void): void {
 }
 
 export async function api<T = void>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await send(path, options);
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+/** Downloads a backend response as a file, with the same login token and errors as api(). */
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const response = await send(path);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function send(path: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers);
   const token = tokenStore.get();
   if (token) {
@@ -64,8 +81,7 @@ export async function api<T = void>(path: string, options: RequestInit = {}): Pr
     }
     throw error;
   }
-  const text = await response.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return response;
 }
 
 /** The backend always sends {"message": "..."} on failure. Anything else gets a general message. */
