@@ -124,8 +124,16 @@ describe('disruptions and zoom', () => {
       publishedAt: '2026-10-20T00:00:00Z',
       url: 'https://example.com',
     },
-    assessment: { eventType: 'SUPPLY_SHORTAGE', severity, confidence: 'HIGH' as const, summary: null, reason: '' },
-    holdings: [{ holdingId: 1, ticker: 'NVDA', weight: null, link: null, reviewStatus: null, relationshipId }],
+    assessment: { eventType: 'SUPPLY_SHORTAGE' as const, severity, confidence: 'HIGH' as const, summary: null, reason: '' },
+    holdings: [{
+      holdingId: 1,
+      ticker: 'NVDA',
+      weight: null,
+      supplierName: relationshipId === null ? null : 'TSMC',
+      customerName: relationshipId === null ? null : 'NVIDIA',
+      reviewStatus: null,
+      relationshipId,
+    }],
   });
 
   it('marks each link an open alert runs through with its most serious disruption', () => {

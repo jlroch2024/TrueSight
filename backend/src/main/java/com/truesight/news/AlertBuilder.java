@@ -126,12 +126,16 @@ public class AlertBuilder implements NewsCheckStep {
 
     /** The total weight of the holdings reached, or how many there are when no holding in the portfolio has one. */
     static BigDecimal exposure(Set<Holding> reached, List<Holding> held) {
-        boolean anyWeighted = held.stream().anyMatch(holding -> holding.getWeight() != null);
-        if (!anyWeighted) return BigDecimal.valueOf(reached.size());
+        if (!weighted(held)) return BigDecimal.valueOf(reached.size());
         return reached.stream()
                 .map(Holding::getWeight)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** True when at least one holding in the portfolio has a weight, so exposure is a total weight, not a count. */
+    static boolean weighted(List<Holding> held) {
+        return held.stream().anyMatch(holding -> holding.getWeight() != null);
     }
 
     /** Saves the alert and its holdings together, so an alert never exists without the holdings it reaches. */

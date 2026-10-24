@@ -2,16 +2,30 @@ import { api } from './client';
 import type { Severity } from './news';
 import type { ReviewStatus } from './relationships';
 
-export type AlertStatus = 'NEW' | 'ACKNOWLEDGED' | 'DISMISSED';
+// An alert is open (NEW) until it is dismissed.
+export type AlertStatus = 'NEW' | 'DISMISSED';
+
+export type EventType =
+  | 'PRODUCTION_STOP'
+  | 'SUPPLY_SHORTAGE'
+  | 'LABOUR_ACTION'
+  | 'NATURAL_DISASTER'
+  | 'TRADE_RESTRICTION'
+  | 'FINANCIAL_DISTRESS'
+  | 'LEGAL_OR_REGULATORY'
+  | 'CYBER_ATTACK'
+  | 'OTHER_DISRUPTION';
 
 export type ReachedHolding = {
   holdingId: number;
   ticker: string;
   weight: number | null;
-  link: string | null;
+  // The stored company names; both null when the event is about the holding itself.
+  supplierName: string | null;
+  customerName: string | null;
   reviewStatus: ReviewStatus | null;
   // The relationship the event reaches the holding through; null when the event is about the holding itself.
-  relationshipId?: number | null;
+  relationshipId: number | null;
 };
 
 export type Alert = {
@@ -26,7 +40,7 @@ export type Alert = {
     url: string;
   };
   assessment: {
-    eventType: string;
+    eventType: EventType;
     severity: Severity;
     confidence: Severity;
     summary: string | null;
@@ -35,9 +49,11 @@ export type Alert = {
   holdings: ReachedHolding[];
 };
 
+// weighted reflects the portfolio's current weights; alert exposure was stored when the alert was created.
+// When weighted, exposure is a total weight in %. Otherwise it is how many of holdingCount holdings it reaches.
 export type AlertsResponse = {
-  articlesChecked: number;
-  noiseCount: number;
+  weighted: boolean;
+  holdingCount: number;
   alerts: Alert[];
 };
 

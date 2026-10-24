@@ -141,7 +141,6 @@ describe('buildGraphElements', () => {
     expect(nodes).toEqual([]);
   });
 });
-
 function relationship(
   id: number,
   company: Relationship['company'],
@@ -995,4 +994,3 @@ describe('saved layouts', () => {
     expect(readSavedLayout('truesight.graph.7')).toBeNull();
   });
 });
-

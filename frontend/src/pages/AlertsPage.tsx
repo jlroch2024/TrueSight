@@ -1,39 +1,55 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { type Alert, type AlertStatus, alertApi } from '../api/alerts';
+import { type Alert, type AlertStatus, type AlertsResponse, type EventType, alertApi } from '../api/alerts';
 import { ApiError } from '../api/client';
-import { type NewsArticle, newsApi } from '../api/news';
 import { type Portfolio, portfolioApi } from '../api/portfolios';
 import { CheckNewsButton } from '../components/CheckNewsButton';
-import { Checkbox } from '../components/Checkbox';
+import { RadioGroup } from '../components/RadioGroup';
 import { formatDate, openInNewTab } from '../format';
+import { displayName } from './supplyChain';
 
 const SEVERITY_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
+const CONFIDENCE_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
+const STATUS_LABELS: Record<AlertStatus, string> = { NEW: 'Open', DISMISSED: 'Dismissed' };
+const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  PRODUCTION_STOP: 'Production Stop',
+  SUPPLY_SHORTAGE: 'Supply Shortage',
+  LABOUR_ACTION: 'Labour Action',
+  NATURAL_DISASTER: 'Natural Disaster',
+  TRADE_RESTRICTION: 'Trade Restriction',
+  FINANCIAL_DISTRESS: 'Financial Distress',
+  LEGAL_OR_REGULATORY: 'Legal or Regulatory',
+  CYBER_ATTACK: 'Cyber Attack',
+  OTHER_DISRUPTION: 'Other Disruption',
+};
+
+// How long "Alert Dismissed. Undo" stays after a Dismiss.
+const UNDO_MS = 8_000;
+
+type Filter = 'OPEN' | 'DISMISSED' | 'ALL';
+type UndoAlert = { portfolioId: string; alertId: number };
 
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
 
-function words(value: string): string {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
 function AlertCard({
   alert,
+  weighted,
+  holdingCount,
   busy,
   onStatus,
 }: {
   alert: Alert;
+  weighted: boolean;
+  holdingCount: number;
   busy: boolean;
   onStatus: (status: AlertStatus) => void;
 }) {
   const severity = alert.assessment.severity;
+  const dismissed = alert.status === 'DISMISSED';
   return (
-    <li className="card alert-card">
+    <li className={`card alert-card${dismissed ? ' dismissed' : ''}`}>
       <div className="alert-card-heading">
         <div>
           <p className="news-meta">
@@ -41,28 +57,38 @@ function AlertCard({
           </p>
           <h2>{alert.article.title}</h2>
         </div>
-        <span className={`news-tag severity-${severity.toLowerCase()}`}>{SEVERITY_LABELS[severity]}</span>
+        <span className="alert-tags">
+          {dismissed && <span className="news-tag not-event">Dismissed</span>}
+          <span className={`news-tag severity-${severity.toLowerCase()}`}>{SEVERITY_LABELS[severity]}</span>
+        </span>
       </div>
 
       <div className="alert-facts">
-        <p><span className="eyebrow">Event Type</span>{words(alert.assessment.eventType)}</p>
-        <p><span className="eyebrow">Exposure</span>{alert.exposure}%</p>
-        <p><span className="eyebrow">Confidence</span>{words(alert.assessment.confidence)}</p>
-        <p><span className="eyebrow">Status</span>{words(alert.status)}</p>
+        <p><span className="eyebrow">Event Type</span>{EVENT_TYPE_LABELS[alert.assessment.eventType]}</p>
+        <p>
+          <span className="eyebrow">Exposure</span>
+          {weighted ? `${alert.exposure}%` : `${alert.exposure} of ${holdingCount} Holdings`}
+        </p>
+        <p><span className="eyebrow">Confidence</span>{CONFIDENCE_LABELS[alert.assessment.confidence]}</p>
+        <p><span className="eyebrow">Status</span>{STATUS_LABELS[alert.status]}</p>
       </div>
 
       {alert.assessment.summary && <p className="alert-summary">{alert.assessment.summary}</p>}
       <p>{alert.assessment.reason}</p>
-      <p className="muted small">Based on the headline only</p>
+      <p className="muted small">Based on the Headline Only</p>
 
       <div className="alert-holdings">
         <h3>Holdings Reached</h3>
-        <ul>
+        <ul className={weighted ? undefined : 'unweighted'}>
           {alert.holdings.map((holding) => (
             <li key={holding.holdingId}>
               <strong>{holding.ticker}</strong>
-              <span>{holding.weight === null ? 'Weight not provided' : `${holding.weight}%`}</span>
-              <span>{holding.link ?? 'The event is about this company'}</span>
+              {weighted && <span>{holding.weight === null ? 'Weight Not Provided' : `${holding.weight}%`}</span>}
+              <span>
+                {holding.supplierName && holding.customerName
+                  ? `${displayName(holding.supplierName)} supplies ${displayName(holding.customerName)}`
+                  : 'Named in the Article'}
+              </span>
               {holding.reviewStatus === 'UNREVIEWED' && (
                 <span className="muted small">Not Yet Reviewed by an Analyst</span>
               )}
@@ -73,57 +99,33 @@ function AlertCard({
 
       <div className="actions">
         <button type="button" onClick={() => openInNewTab(alert.article.url)}>Open Article</button>
-        {alert.status === 'DISMISSED' ? (
+        {dismissed ? (
           <button type="button" className="secondary" disabled={busy} onClick={() => onStatus('NEW')}>
             Restore
           </button>
         ) : (
-          <>
-            {alert.status !== 'ACKNOWLEDGED' && (
-              <button type="button" className="secondary" disabled={busy} onClick={() => onStatus('ACKNOWLEDGED')}>
-                Acknowledge
-              </button>
-            )}
-            <button type="button" className="danger" disabled={busy} onClick={() => onStatus('DISMISSED')}>
-              Dismiss
-            </button>
-          </>
+          <button type="button" className="danger" disabled={busy} onClick={() => onStatus('DISMISSED')}>
+            Dismiss
+          </button>
         )}
       </div>
     </li>
   );
 }
 
-function FilteredNews({ articles }: { articles: NewsArticle[] }) {
-  return (
-    <ul className="filtered-news-list">
-      {articles.map((article) => (
-        <li key={article.id} className="card">
-          <p className="news-meta">
-            {article.source ? `${article.source} · ` : ''}{formatDate(article.publishedAt)}
-            <span>{article.company.name}</span>
-          </p>
-          <h3>{article.title}</h3>
-          <p>{article.assessment?.reason}</p>
-          <button type="button" className="text-button" onClick={() => openInNewTab(article.url)}>
-            Open Article
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function AlertsPage() {
   const { portfolioId = '' } = useParams();
   const [portfolio, setPortfolio] = useState<Portfolio | null | undefined>(undefined);
-  const [response, setResponse] = useState<Awaited<ReturnType<typeof alertApi.list>> | undefined>(undefined);
+  const [response, setResponse] = useState<AlertsResponse | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  const [includeDismissed, setIncludeDismissed] = useState(false);
+  const [filter, setFilter] = useState<Filter>('OPEN');
   const [busyAlert, setBusyAlert] = useState<number | null>(null);
-  const [showNoise, setShowNoise] = useState(false);
-  const [noise, setNoise] = useState<NewsArticle[] | undefined>(undefined);
-  const [noiseError, setNoiseError] = useState<string | null>(null);
+  // The alert just dismissed, while its Undo is offered.
+  const [undoAlert, setUndoAlert] = useState<UndoAlert | null>(null);
+
+  useEffect(() => {
+    setUndoAlert(null);
+  }, [portfolioId]);
 
   useEffect(() => {
     let active = true;
@@ -138,14 +140,15 @@ export function AlertsPage() {
     return () => { active = false; };
   }, [portfolioId]);
 
+  // Every alert, dismissed ones too, loaded once; the filter only chooses which to show.
   const loadAlerts = useCallback(async () => {
     setError(null);
     try {
-      setResponse(await alertApi.list(portfolioId, includeDismissed));
+      setResponse(await alertApi.list(portfolioId, true));
     } catch (cause) {
       setError(messageOf(cause));
     }
-  }, [portfolioId, includeDismissed]);
+  }, [portfolioId]);
 
   const newsCheckedAt = portfolio?.newsCheckedAt ?? null;
   const checking = portfolio?.newsStatus === 'CHECKING';
@@ -155,17 +158,24 @@ export function AlertsPage() {
     void loadAlerts();
   }, [checking, newsCheckedAt, loadAlerts]);
 
-  async function changeStatus(alert: Alert, status: AlertStatus) {
-    setBusyAlert(alert.id);
+  useEffect(() => {
+    if (undoAlert === null) return;
+    const timer = setTimeout(() => setUndoAlert(null), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [undoAlert]);
+
+  async function changeStatus(alertId: number, status: AlertStatus, targetPortfolioId = portfolioId) {
+    setBusyAlert(alertId);
     setError(null);
     try {
-      const updated = await alertApi.setStatus(portfolioId, alert.id, status);
-      setResponse((current) => current && ({
-        ...current,
-        alerts: current.alerts
-          .map((item) => item.id === updated.id ? updated : item)
-          .filter((item) => includeDismissed || item.status !== 'DISMISSED'),
-      }));
+      const updated = await alertApi.setStatus(targetPortfolioId, alertId, status);
+      if (targetPortfolioId === portfolioId) {
+        setResponse((current) => current && ({
+          ...current,
+          alerts: current.alerts.map((item) => item.id === updated.id ? updated : item),
+        }));
+        setUndoAlert(status === 'DISMISSED' ? { portfolioId: targetPortfolioId, alertId } : null);
+      }
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -173,24 +183,14 @@ export function AlertsPage() {
     }
   }
 
-  async function toggleNoise() {
-    if (showNoise) {
-      setShowNoise(false);
-      return;
-    }
-    setShowNoise(true);
-    if (noise !== undefined) return;
-    setNoiseError(null);
-    try {
-      setNoise(await newsApi.list(portfolioId, true));
-    } catch (cause) {
-      setNoiseError(messageOf(cause));
-    }
-  }
-
   if (error && response === undefined) return <p className="error">{error}</p>;
   if (portfolio === undefined || response === undefined) return <p className="muted">Loading…</p>;
   if (portfolio === null) return <p className="error">Portfolio not found.</p>;
+
+  const openCount = response.alerts.filter((alert) => alert.status !== 'DISMISSED').length;
+  const dismissedCount = response.alerts.length - openCount;
+  const shown = response.alerts.filter((alert) =>
+    filter === 'ALL' || (filter === 'DISMISSED') === (alert.status === 'DISMISSED'));
 
   return (
     <section>
@@ -203,48 +203,54 @@ export function AlertsPage() {
       </div>
 
       <div className="alerts-toolbar">
-        <Checkbox
-          id="show-dismissed"
-          label="Show Dismissed"
-          checked={includeDismissed}
-          onChange={setIncludeDismissed}
+        <RadioGroup
+          name="alert-filter"
+          label="Show"
+          value={filter}
+          options={[
+            { value: 'OPEN', label: `Open (${openCount})` },
+            { value: 'DISMISSED', label: `Dismissed (${dismissedCount})` },
+            { value: 'ALL', label: `All (${response.alerts.length})` },
+          ]}
+          onChange={(next) => setFilter(next as Filter)}
         />
       </div>
 
+      {undoAlert?.portfolioId === portfolioId && (
+        <p role="status" className="alert-undo">
+          Alert Dismissed.{' '}
+          <button type="button" className="text-button" disabled={busyAlert === undoAlert.alertId} onClick={() => {
+            void changeStatus(undoAlert.alertId, 'NEW', undoAlert.portfolioId);
+          }}>
+            Undo
+          </button>
+        </p>
+      )}
       {error && <p role="alert" className="error">{error}</p>}
-      {response.alerts.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="muted">
-          {portfolio.newsCheckedAt
-            ? 'No events found in the last 7 days.'
-            : 'News has not been checked yet.'}
+          {filter === 'DISMISSED'
+            ? 'No alerts have been dismissed.'
+            : filter === 'OPEN' && dismissedCount > 0
+              ? 'No open alerts. Dismissed alerts are under Dismissed.'
+              : portfolio.newsCheckedAt
+                ? 'No events found in the last 7 days.'
+                : 'News has not been checked yet.'}
         </p>
       ) : (
         <ul className="alert-list">
-          {response.alerts.map((alert) => (
+          {shown.map((alert) => (
             <AlertCard
               key={alert.id}
               alert={alert}
+              weighted={response.weighted}
+              holdingCount={response.holdingCount}
               busy={busyAlert === alert.id}
-              onStatus={(status) => { void changeStatus(alert, status); }}
+              onStatus={(status) => { void changeStatus(alert.id, status); }}
             />
           ))}
         </ul>
       )}
-
-      <section className="filtered-news">
-        <p>
-          Checked {response.articlesChecked} {response.articlesChecked === 1 ? 'article' : 'articles'}.{' '}
-          {response.noiseCount} were not supply-chain events.
-        </p>
-        <button type="button" className="secondary" onClick={() => { void toggleNoise(); }}>
-          {showNoise ? 'Hide Filtered News' : 'Show Filtered News'}
-        </button>
-        {showNoise && (
-          noiseError ? <p role="alert" className="error">{noiseError}</p>
-            : noise === undefined ? <p className="muted">Loading…</p>
-              : <FilteredNews articles={noise} />
-        )}
-      </section>
     </section>
   );
 }
