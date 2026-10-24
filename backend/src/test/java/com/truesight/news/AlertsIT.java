@@ -144,9 +144,9 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].holdingId").value(holding.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].ticker").value("NVDA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].weight").value(40.0))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName")
-                        .value("Taiwan Semiconductor Manufacturing Company Limited"))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()))
+                // Display names, as every page shows them (Spell Each Company as Its Own Report Does).
+                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value("Taiwan Semiconductor Manufacturing"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
     }

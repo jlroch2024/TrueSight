@@ -35,10 +35,12 @@ public record NewsArticleResponse(
         }
     }
 
-    static NewsArticleResponse from(NewsArticle article, Company company, boolean isHolding, NewsAssessment assessment) {
+    static NewsArticleResponse from(NewsArticle article, Company company, String companyDisplayName, boolean isHolding,
+                                    NewsAssessment assessment) {
         return new NewsArticleResponse(article.getId(), article.getTitle(), article.getSource(),
                 article.getPublishedAt(), article.getUrl(),
-                new CompanySummary(company.getId(), company.getName(), company.getTicker()), isHolding,
+                new CompanySummary(company.getId(), company.getName(), companyDisplayName, company.getTicker()),
+                isHolding,
                 assessment == null ? null : Assessment.from(assessment));
     }
 }

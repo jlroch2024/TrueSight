@@ -2,6 +2,7 @@ package com.truesight.news;
 
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
+import com.truesight.company.CompanyDisplayNames;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
@@ -34,17 +35,19 @@ public class NewsListService {
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
     private final CompanyRepository companies;
+    private final CompanyDisplayNames displayNames;
     private final NewsArticleRepository articles;
     private final NewsAssessmentRepository assessments;
     private final NewsCheckService newsCheck;
     private final CurrentUser currentUser;
 
     public NewsListService(PortfolioRepository portfolios, HoldingRepository holdings, CompanyRepository companies,
-                           NewsArticleRepository articles, NewsAssessmentRepository assessments,
+                           CompanyDisplayNames displayNames, NewsArticleRepository articles, NewsAssessmentRepository assessments,
                            NewsCheckService newsCheck, CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.companies = companies;
+        this.displayNames = displayNames;
         this.articles = articles;
         this.assessments = assessments;
         this.newsCheck = newsCheck;
@@ -63,6 +66,7 @@ public class NewsListService {
                 .filter(article -> !noiseOnly || isNoise(selection.assessmentByArticle().get(article.getId())))
                 .map(article -> NewsArticleResponse.from(article,
                         selection.companyById().get(article.getCompanyId()),
+                        displayNames.of(selection.companyById().get(article.getCompanyId())),
                         selection.heldCompanyIds().contains(article.getCompanyId()),
                         selection.assessmentByArticle().get(article.getId())))
                 .toList();

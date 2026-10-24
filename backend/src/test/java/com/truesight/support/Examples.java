@@ -20,6 +20,11 @@ public final class Examples {
         return read("nvidia-10k.txt");
     }
 
+    /** 17 relationships in the shape {@code GET /api/portfolios/{id}/relationships} returns. */
+    public static String relationships() {
+        return read("relationships.json");
+    }
+
     /** Gemini's real, unchanged answer for that 10-K: 7 suppliers, each with a quote. */
     public static String geminiNvidia() {
         return read("gemini-nvidia.json");
