@@ -11,7 +11,6 @@ import {
   dashOffsetAt,
   connectionsOf,
   forgetLayout,
-  displayName,
   easeTowards,
   FLOAT_REACH,
   floatOffset,
@@ -41,23 +40,25 @@ const sampleRelationships = sampleRelationshipsJson as Relationship[];
 // The 9 holdings docs/examples/relationships.json's companies belong to, plus Sony: its report names TSMC only as a
 // planned partner, so (on purpose, per docs/examples/README.md) it has no relationships at all.
 function sampleHoldings(): Holding[] {
-  const holdingOf: [string, string][] = [
-    ['NVDA', 'NVIDIA Corporation'],
-    ['AMD', 'Advanced Micro Devices, Inc.'],
-    ['QCOM', 'QUALCOMM Incorporated'],
-    ['TSLA', 'Tesla, Inc.'],
-    ['AVGO', 'Broadcom Inc.'],
-    ['LRCX', 'Lam Research Corporation'],
-    ['CRUS', 'Cirrus Logic, Inc.'],
-    ['ASML', 'ASML Holding N.V.'],
-    ['STM', 'STMicroelectronics N.V.'],
-    ['SONY', 'Sony Group Corporation'],
+  // Ticker, stored name, and the display name the API sends for it.
+  const holdingOf: [string, string, string][] = [
+    ['NVDA', 'NVIDIA Corporation', 'NVIDIA'],
+    ['AMD', 'Advanced Micro Devices, Inc.', 'Advanced Micro Devices'],
+    ['QCOM', 'QUALCOMM Incorporated', 'QUALCOMM'],
+    ['TSLA', 'Tesla, Inc.', 'Tesla'],
+    ['AVGO', 'Broadcom Inc.', 'Broadcom'],
+    ['LRCX', 'Lam Research Corporation', 'Lam Research'],
+    ['CRUS', 'Cirrus Logic, Inc.', 'Cirrus Logic'],
+    ['ASML', 'ASML Holding N.V.', 'ASML Holding'],
+    ['STM', 'STMicroelectronics N.V.', 'STMicroelectronics'],
+    ['SONY', 'Sony Group Corporation', 'Sony Group'],
   ];
-  return holdingOf.map(([ticker, companyName], i) => ({
+  return holdingOf.map(([ticker, companyName, companyDisplayName], i) => ({
     id: i + 1,
     ticker,
     weight: null,
     companyName,
+    companyDisplayName,
     status: 'DONE',
     statusReason: null,
     reportType: '10-K',
@@ -117,7 +118,11 @@ describe('buildGraphElements', () => {
 
   it('keeps Apple and Applied Materials apart', () => {
     const relationships: Relationship[] = [
-      relationship(1, { id: 1, name: 'Apple Inc.', ticker: 'AAPL' }, { id: 2, name: 'Applied Materials, Inc.', ticker: 'AMAT' }),
+      relationship(
+        1,
+        { id: 1, name: 'Apple Inc.', displayName: 'Apple', ticker: 'AAPL' },
+        { id: 2, name: 'Applied Materials, Inc.', displayName: 'Applied Materials', ticker: 'AMAT' },
+      ),
     ];
     const { nodes } = buildGraphElements(relationships, []);
 
@@ -139,6 +144,26 @@ describe('buildGraphElements', () => {
     const { nodes } = buildGraphElements([], holdings);
 
     expect(nodes).toEqual([]);
+  });
+
+  // The SEC's "NVIDIA CORP" is "NVIDIA" in its own report: the graph shows what the API sends, never its own guess.
+  it('gives each node the display name the API sends, and keeps the stored name to tell companies apart', () => {
+    const nvidia = { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' };
+    const tsmc = {
+      id: 2,
+      name: 'Taiwan Semiconductor Manufacturing Company Limited',
+      displayName: 'Taiwan Semiconductor Manufacturing',
+      ticker: 'TSM',
+    };
+    const amazon = { ...holding(3, 'AMZN', 'AMAZON COM INC'), companyDisplayName: 'Amazon.com' };
+
+    const { nodes } = buildGraphElements([relationship(1, nvidia, tsmc)], [amazon]);
+
+    expect(nodes.map((n) => [n.name, n.displayName])).toEqual([
+      ['NVIDIA CORP', 'NVIDIA'],
+      ['Taiwan Semiconductor Manufacturing Company Limited', 'Taiwan Semiconductor Manufacturing'],
+      ['AMAZON COM INC', 'Amazon.com'],
+    ]);
   });
 });
 function relationship(
@@ -169,6 +194,7 @@ function holding(id: number, ticker: string, companyName: string | null): Holdin
     ticker,
     weight: null,
     companyName,
+    companyDisplayName: companyName,
     status: companyName ? 'DONE' : 'WAITING',
     statusReason: null,
     reportType: null,
@@ -264,12 +290,12 @@ describe('chainColours', () => {
 
   it('hands the colours to the largest holdings first, equal weights by ticker, and leaves out a holding without arrows', () => {
     const nodes = [
-      { id: 'b', name: 'Bee', ticker: 'BEE', isHolding: true, weight: 20 },
-      { id: 'a', name: 'Ay', ticker: 'AY', isHolding: true, weight: 20 },
-      { id: 'c', name: 'Cee', ticker: 'CEE', isHolding: true, weight: 35 },
-      { id: 'd', name: 'Dee', ticker: 'DEE', isHolding: true, weight: null },
-      { id: 'alone', name: 'Alone', ticker: 'AAA', isHolding: true, weight: 90 },
-      { id: 's', name: 'Supplier', ticker: null, isHolding: false, weight: null },
+      { id: 'b', name: 'Bee', displayName: 'Bee', ticker: 'BEE', isHolding: true, weight: 20 },
+      { id: 'a', name: 'Ay', displayName: 'Ay', ticker: 'AY', isHolding: true, weight: 20 },
+      { id: 'c', name: 'Cee', displayName: 'Cee', ticker: 'CEE', isHolding: true, weight: 35 },
+      { id: 'd', name: 'Dee', displayName: 'Dee', ticker: 'DEE', isHolding: true, weight: null },
+      { id: 'alone', name: 'Alone', displayName: 'Alone', ticker: 'AAA', isHolding: true, weight: 90 },
+      { id: 's', name: 'Supplier', displayName: 'Supplier', ticker: null, isHolding: false, weight: null },
     ];
     const edges = ['a', 'b', 'c', 'd'].map((id) => ({ id: `to-${id}`, source: 's', target: id }));
 
@@ -281,12 +307,21 @@ describe('chainColours', () => {
     ]);
   });
 
+  it("labels a holding with no ticker in the graph's key by its display name", () => {
+    const nodes = [
+      { id: 'h', displayName: 'Eli Lilly', ticker: null, isHolding: true, weight: null },
+      { id: 's', displayName: 'Supplier', ticker: null, isHolding: false, weight: null },
+    ];
+
+    expect(chainColours(nodes, [{ id: 'to-h', source: 's', target: 'h' }]).key[0]!.label).toBe('Eli Lilly');
+  });
+
   it("gives a supplier's supplier the colour of the holding its goods go on to, and a holding's supply to another holding the customer's colour", () => {
     const nodes = [
-      { id: 'far', name: 'Far', ticker: null, isHolding: false, weight: null },
-      { id: 'near', name: 'Near', ticker: null, isHolding: false, weight: null },
-      { id: 'maker', name: 'Maker', ticker: 'MKR', isHolding: true, weight: null },
-      { id: 'buyer', name: 'Buyer', ticker: 'BUY', isHolding: true, weight: null },
+      { id: 'far', name: 'Far', displayName: 'Far', ticker: null, isHolding: false, weight: null },
+      { id: 'near', name: 'Near', displayName: 'Near', ticker: null, isHolding: false, weight: null },
+      { id: 'maker', name: 'Maker', displayName: 'Maker', ticker: 'MKR', isHolding: true, weight: null },
+      { id: 'buyer', name: 'Buyer', displayName: 'Buyer', ticker: 'BUY', isHolding: true, weight: null },
     ];
     const edges = [
       { id: 'far-near', source: 'far', target: 'near' },
@@ -307,9 +342,10 @@ describe('chainColours', () => {
   it('never uses a colour twice: holdings smaller than the seven largest keep grey arrows', () => {
     // Holding h0 is the smallest, h8 the largest.
     const holdings = Array.from({ length: CHAIN_COLOURS.length + 2 }, (_, index) => ({
-      id: `h${index}`, name: `Holding ${index}`, ticker: `H${index}`, isHolding: true, weight: index + 1,
+      id: `h${index}`, name: `Holding ${index}`, displayName: `Holding ${index}`, ticker: `H${index}`, isHolding: true,
+      weight: index + 1,
     }));
-    const nodes = [...holdings, { id: 's', name: 'Supplier', ticker: null, isHolding: false, weight: null }];
+    const nodes = [...holdings, { id: 's', name: 'Supplier', displayName: 'Supplier', ticker: null, isHolding: false, weight: null }];
     const edges = holdings.map((holding) => ({ id: `to-${holding.id}`, source: 's', target: holding.id }));
     const { edges: colours, key } = chainColours(nodes, edges);
 
@@ -332,7 +368,11 @@ describe('dashOffsetAt', () => {
 
 describe('review status on graph edges', () => {
   it('carries approved and unreviewed statuses onto their edges', () => {
-    const approved = relationship(31, { id: 1, name: 'Example Corp', ticker: 'EX' }, { id: 2, name: 'Supplier Ltd', ticker: null });
+    const approved = relationship(
+      31,
+      { id: 1, name: 'Example Corp', displayName: 'Example', ticker: 'EX' },
+      { id: 2, name: 'Supplier Ltd', displayName: 'Supplier', ticker: null },
+    );
     const unreviewed = { ...approved, id: 32, reviewStatus: 'UNREVIEWED' as const };
     const { edges } = buildGraphElements([
       { ...approved, reviewStatus: 'APPROVED', reviewedAt: '2026-10-14T12:00:00Z', reviewNote: 'Checked.' },
@@ -418,13 +458,13 @@ describe('plainName', () => {
 });
 
 describe('shortName', () => {
-  it('is the plain name when that fits', () => {
-    expect(shortName('Broadcom Inc.')).toBe('Broadcom');
-    expect(shortName('SK hynix Inc.')).toBe('SK hynix');
+  it('is the display name when that fits', () => {
+    expect(shortName('Broadcom')).toBe('Broadcom');
+    expect(shortName('SK hynix')).toBe('SK hynix');
   });
 
-  it('cuts a long name with an ellipsis', () => {
-    const short = shortName('Contemporary Amperex Technology Co. Limited');
+  it('cuts a long display name with an ellipsis', () => {
+    const short = shortName('Contemporary Amperex Technology');
     expect(short).toBe('Contemporary\u2026');
     expect(short.length).toBeLessThanOrEqual(14);
   });
@@ -446,6 +486,7 @@ describe('nodeLabel', () => {
   const node = (overrides: Partial<GraphNode>): GraphNode => ({
     id: 'n',
     name: 'NVIDIA Corporation',
+    displayName: 'NVIDIA',
     ticker: 'NVDA',
     isHolding: true,
     weight: 18,
@@ -462,14 +503,27 @@ describe('nodeLabel', () => {
 
   it('gives another company with a ticker its ticker', () => {
     expect(
-      nodeLabel(node({ name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM', isHolding: false, weight: null })),
+      nodeLabel(
+        node({
+          name: 'Taiwan Semiconductor Manufacturing Company Limited',
+          displayName: 'Taiwan Semiconductor Manufacturing',
+          ticker: 'TSM',
+          isHolding: false,
+          weight: null,
+        }),
+      ),
     ).toBe('TSM');
   });
 
-  it('gives a company with no ticker a short name', () => {
-    expect(nodeLabel(node({ name: 'Samsung Electronics Co., Ltd.', ticker: null, isHolding: false, weight: null }))).toBe(
-      'Samsung Elect\u2026',
-    );
+  it('gives a company with no ticker its display name, shortened', () => {
+    const samsung = node({
+      name: 'Samsung Electronics Co., Ltd.',
+      displayName: 'Samsung Electronics',
+      ticker: null,
+      isHolding: false,
+      weight: null,
+    });
+    expect(nodeLabel(samsung)).toBe('Samsung Elect\u2026');
   });
 });
 
@@ -585,7 +639,7 @@ describe('sharedCompanies', () => {
   });
 
   it('gives a company shared on both sides both labels, and counts each side on its own', () => {
-    const counterparty = { id: 900, name: 'Both Ways Ltd', ticker: null };
+    const counterparty = { id: 900, name: 'Both Ways Ltd', displayName: 'Both Ways', ticker: null };
     const holdingCompany = (i: number) => sampleRelationships[i]!.company;
     const both: Relationship[] = [
       { ...sampleRelationships[0]!, id: 201, counterparty, type: 'SUPPLIER', company: holdingCompany(0) },
@@ -607,6 +661,12 @@ describe('sharedCompanies', () => {
     // TSMC also buys from Lam Research, but that is a single holding.
     expect(tsmc.buysFromHoldings).toBe(1);
     expect(sharedSummary(tsmc)).not.toContain('Buys From');
+  });
+
+  it('carries the display name the API sends for each shared company', () => {
+    expect(find('Taiwan Semiconductor Manufacturing Company Limited')!.displayName).toBe(
+      'Taiwan Semiconductor Manufacturing',
+    );
   });
 
   it('lists nothing when no company is shared', () => {
@@ -672,7 +732,7 @@ describe('holdingNodeIds', () => {
   it("finds each analysed holding's node, and leaves out one not on the graph", () => {
     const holdings = [
       ...sampleHoldings(),
-      { ...sampleHoldings()[0]!, id: 50, ticker: 'NEW', companyName: null, status: 'WAITING' as const },
+      { ...sampleHoldings()[0]!, id: 50, ticker: 'NEW', companyName: null, companyDisplayName: null, status: 'WAITING' as const },
     ];
     const { nodes } = buildGraphElements(sampleRelationships, holdings);
 
@@ -694,28 +754,17 @@ describe('relationshipSummary', () => {
   it('turns a customer relationship round, and leaves out what is supplied when the report does not say', () => {
     expect(relationshipSummary(sampleRelationships[14]!)).toBe('Cirrus Logic supplies Apple');
   });
-});
 
-describe('displayName', () => {
-  // The SEC's own names for the holdings in the live Semiconductors portfolio, and names the reports give.
-  it("turns the SEC's all-capital names into Title Case, without the legal ending", () => {
-    expect(displayName('NVIDIA CORP')).toBe('Nvidia');
-    expect(displayName('MICROSOFT CORP')).toBe('Microsoft');
-  });
+  it('uses the display names the API sends, not the stored names', () => {
+    const summary = relationshipSummary(
+      relationship(
+        1,
+        { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' },
+        { id: 2, name: 'SK hynix Inc.', displayName: 'SK hynix', ticker: null },
+      ),
+    );
 
-  it('keeps short words in capitals, as they are usually acronyms', () => {
-    expect(displayName('ASML HOLDING NV')).toBe('ASML Holding');
-    expect(displayName('ADVANCED MICRO DEVICES INC')).toBe('Advanced Micro Devices');
-  });
-
-  it('writes a trailing COM as the web address it is', () => {
-    expect(displayName('AMAZON COM INC')).toBe('Amazon.com');
-  });
-
-  it('keeps a name already written in mixed case as it is, only without the legal ending', () => {
-    expect(displayName('Apple Inc.')).toBe('Apple');
-    expect(displayName('NVIDIA Corporation')).toBe('NVIDIA');
-    expect(displayName('Taiwan Semiconductor Manufacturing Company Limited')).toBe('Taiwan Semiconductor Manufacturing');
+    expect(summary).toBe('SK hynix supplies NVIDIA');
   });
 });
 

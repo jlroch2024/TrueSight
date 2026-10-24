@@ -16,8 +16,9 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
   return {
     relationship: {
       id,
-      company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-      counterparty: { id: 10 + id, name: `Supplier ${id}`, ticker: null },
+      // The SEC's name for NVIDIA, and the display name the API sends for it: NVIDIA's own report writes "NVIDIA".
+      company: { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' },
+      counterparty: { id: 10 + id, name: `Supplier ${id}`, displayName: `Supplier ${id}`, ticker: null },
       type,
       provides: 'semiconductor wafers',
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
@@ -141,6 +142,16 @@ describe('Review page', () => {
 
     expect(await screen.findByText(/Filed Feb 25, 2026/)).toBeInTheDocument();
     expect(screen.queryByText(/2026-02-25/)).not.toBeInTheDocument();
+  });
+
+  // The SEC calls it "NVIDIA CORP", which the website once showed as "Nvidia"; NVIDIA's own report writes "NVIDIA".
+  it('names each company by the display name the API sends, never by reformatting the stored name', async () => {
+    fakeBackend(() => [item(1)]);
+
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.queryByText(/Nvidia|NVIDIA CORP/)).not.toBeInTheDocument();
   });
 
   it('says "1 portfolio", not "1 portfolios"', async () => {

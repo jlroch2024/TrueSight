@@ -258,8 +258,8 @@ describe('the scene', () => {
   it('lets the more important of two crowded labels show, and the other wait for room', () => {
     const graph = buildLiveGraph(
       [
-        { id: 'holding', name: 'Big Holding', ticker: 'BIG', isHolding: true, weight: 30 },
-        { id: 'supplier', name: 'Small Supplier', ticker: null, isHolding: false, weight: null },
+        { id: 'holding', name: 'Big Holding', displayName: 'Big Holding', ticker: 'BIG', isHolding: true, weight: 30 },
+        { id: 'supplier', name: 'Small Supplier', displayName: 'Small Supplier', ticker: null, isHolding: false, weight: null },
       ],
       [],
     );
@@ -294,8 +294,8 @@ describe('the opening', () => {
   it('sweeps light across the graph only while it opens', () => {
     const graph = buildLiveGraph(
       [
-        { id: 'a', name: 'Supplier', ticker: null, isHolding: false, weight: null },
-        { id: 'b', name: 'Holding', ticker: 'HLD', isHolding: true, weight: 10 },
+        { id: 'a', name: 'Supplier', displayName: 'Supplier', ticker: null, isHolding: false, weight: null },
+        { id: 'b', name: 'Holding', displayName: 'Holding', ticker: 'HLD', isHolding: true, weight: 10 },
       ],
       [
         {
@@ -328,8 +328,8 @@ describe('the opening', () => {
   it('moves the dashes at one steady pace through the graph, whether or not an arrow is pointed at', () => {
     const graph = buildLiveGraph(
       [
-        { id: 'a', name: 'Supplier', ticker: null, isHolding: false, weight: null },
-        { id: 'b', name: 'Holding', ticker: 'HLD', isHolding: true, weight: 10 },
+        { id: 'a', name: 'Supplier', displayName: 'Supplier', ticker: null, isHolding: false, weight: null },
+        { id: 'b', name: 'Holding', displayName: 'Holding', ticker: 'HLD', isHolding: true, weight: 10 },
       ],
       [
         {

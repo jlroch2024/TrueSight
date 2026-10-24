@@ -2,7 +2,7 @@
 // draws. Everything here is plain data and pure functions, so it can be tested without a browser.
 import type { AlertEvent } from '../api/alerts';
 import type { Severity } from '../api/news';
-import { type GraphEdge, type GraphNode, chainColours, displayName, flowLayout } from '../pages/supplyChain';
+import { type GraphEdge, type GraphNode, chainColours, flowLayout } from '../pages/supplyChain';
 
 /** A company on the living graph. x, y, vx, vy, fx and fy belong to the physics (d3-force writes them). */
 export type LiveNode = {
@@ -135,7 +135,7 @@ export function buildLiveGraph(
   const firstColumn = ranks.length ? Math.min(...ranks) : 0;
 
   const liveNodes = nodes.map((node): LiveNode => {
-    const name = displayName(node.name);
+    const name = node.displayName;
     const title = clip(name);
     const weight = node.isHolding && node.weight !== null ? `${Number(node.weight.toFixed(1))}%` : null;
     const subtitle = node.isHolding

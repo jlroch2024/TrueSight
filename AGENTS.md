@@ -178,7 +178,8 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   - **Title Case for everything that is not a full sentence:** labels, buttons, headings, tags, counts, times and
     status lines ("7 of 7 Holdings Analysed", "3 Hours Ago", "0 Suppliers · 1 Customer"). Full sentences (subtitles,
     explanations, empty states, error messages) are in sentence case.
-  - **Company names** are shown with `displayName()` from `pages/supplyChain.ts`, so every company reads the same way.
+  - **Company names** are shown with the display name the API sends (`CompanyDisplayNames` in the backend); the website
+    never reformats a name.
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
   `<select>`, checkbox or radio button.

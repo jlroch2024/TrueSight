@@ -27,6 +27,7 @@ function asHoldings(tickers: string[]) {
     ticker,
     weight: 10,
     companyName: null,
+    companyDisplayName: null,
     status: 'WAITING',
     statusReason: null,
     reportType: null,
