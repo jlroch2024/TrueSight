@@ -6,6 +6,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
+import type { AlertEvent } from '../api/alerts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { NewsArticle } from '../api/news';
@@ -26,6 +27,7 @@ vi.mock('../graph/LivingGraph', () => ({
     selectedRelationshipId,
     logoToken,
     logoDomains,
+    risks,
   }: {
     nodes: GraphNode[];
     edges: GraphEdge[];
@@ -35,6 +37,7 @@ vi.mock('../graph/LivingGraph', () => ({
     selectedRelationshipId?: number | null;
     logoToken?: string;
     logoDomains?: Record<string, string>;
+    risks?: Map<number, { severity: string; eventType: string; title: string }>;
   }) => (
     <div data-testid="fake-graph">
       <span data-testid="logo-domains">{JSON.stringify(logoDomains ?? {})}</span>
@@ -43,6 +46,7 @@ vi.mock('../graph/LivingGraph', () => ({
       <span data-testid="edge-count">{edges.length}</span>
       <span data-testid="selected-node">{selectedNodeId ?? ''}</span>
       <span data-testid="selected-relationship">{selectedRelationshipId ?? ''}</span>
+      <span data-testid="risk-relationships">{[...(risks?.keys() ?? [])].sort().join(',')}</span>
       {edges.map((edge) => (
         <button key={edge.id} onClick={() => onEdgeSelect(edge.relationshipId)}>
           {`Select edge ${edge.relationshipId}`}
@@ -115,6 +119,7 @@ function fakeFetch(
   settings: { logoToken: string } | number = { logoToken: '' },
   news: NewsArticle[] = [],
   portfolio: Portfolio = PORTFOLIO,
+  alerts: AlertEvent[] = [],
 ) {
   return vi.fn(async (url: string) => {
     if (url.endsWith('/settings')) {
@@ -123,6 +128,9 @@ function fakeFetch(
         : new Response(JSON.stringify(settings));
     }
     if (url === '/api/portfolios') return new Response(JSON.stringify([portfolio]));
+    if (url.includes('/alerts')) {
+      return new Response(JSON.stringify({ weighted: false, holdingCount: holdings.length, alerts }));
+    }
     if (url.endsWith('/news')) return new Response(JSON.stringify(news));
     if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({}));
     return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
@@ -144,6 +152,49 @@ beforeEach(() => {
 });
 
 describe('Supply Chain page', () => {
+  it('marks every relationship an open event runs through', async () => {
+    const first = relationship();
+    const second = relationship({
+      id: 2,
+      counterparty: { id: 12, name: 'Samsung Electronics', ticker: '005930' },
+    });
+    const event: AlertEvent = {
+      alertIds: [11],
+      status: 'NEW',
+      exposure: 40,
+      headline: {
+        article: {
+          title: 'Temporary supply disruption',
+          source: 'Local test fixture',
+          publishedAt: '2026-10-20T00:00:00Z',
+          url: 'https://example.com/event',
+        },
+        assessment: {
+          eventType: 'SUPPLY_SHORTAGE',
+          severity: 'HIGH',
+          confidence: 'HIGH',
+          summary: null,
+          reason: 'Test event reaches both supplier links.',
+        },
+      },
+      sources: [{
+        title: 'Temporary supply disruption',
+        source: 'Local test fixture',
+        publishedAt: '2026-10-20T00:00:00Z',
+        url: 'https://example.com/event',
+      }],
+      holdings: [
+        { holdingId: 1, ticker: 'NVDA', weight: 40, supplierName: 'TSMC', customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, supplierName: 'Samsung Electronics', customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
+      ],
+    };
+    vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [], PORTFOLIO, [event]));
+
+    renderAt('/portfolios/7/supply-chain');
+
+    expect(await screen.findByTestId('risk-relationships')).toHaveTextContent('1,2');
+  });
+
   it('shows a loading message before the data arrives', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
 

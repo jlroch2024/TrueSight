@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { type Alert, type AlertStatus, type AlertsResponse, type EventType, alertApi } from '../api/alerts';
+import { type AlertEvent, type AlertStatus, type AlertsResponse, type EventType, alertApi } from '../api/alerts';
 import { ApiError } from '../api/client';
-import { type Portfolio, portfolioApi } from '../api/portfolios';
+import type { Portfolio } from '../api/portfolios';
+import { portfolioApi } from '../api/portfolios';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { RadioGroup } from '../components/RadioGroup';
 import { formatDate, openInNewTab } from '../format';
@@ -23,65 +24,82 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
   OTHER_DISRUPTION: 'Other Disruption',
 };
 
-// How long "Alert Dismissed. Undo" stays after a Dismiss.
 const UNDO_MS = 8_000;
-
 type Filter = 'OPEN' | 'DISMISSED' | 'ALL';
-type UndoAlert = { portfolioId: string; alertId: number };
+type UndoEvent = { portfolioId: string; alertIds: number[] };
 
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
 
 function AlertCard({
-  alert,
+  event,
   weighted,
   holdingCount,
   busy,
   onStatus,
 }: {
-  alert: Alert;
+  event: AlertEvent;
   weighted: boolean;
   holdingCount: number;
   busy: boolean;
   onStatus: (status: AlertStatus) => void;
 }) {
-  const severity = alert.assessment.severity;
-  const dismissed = alert.status === 'DISMISSED';
+  const { article, assessment } = event.headline;
+  const dismissed = event.status === 'DISMISSED';
   return (
     <li className={`card alert-card${dismissed ? ' dismissed' : ''}`}>
       <div className="alert-card-heading">
         <div>
           <p className="news-meta">
-            <span>{alert.article.source ? `${alert.article.source} · ` : ''}{formatDate(alert.article.publishedAt)}</span>
+            <span>{article.source ? `${article.source} · ` : ''}{formatDate(article.publishedAt)}</span>
           </p>
-          <h2>{alert.article.title}</h2>
+          <h2>{article.title}</h2>
         </div>
         <span className="alert-tags">
           {dismissed && <span className="news-tag not-event">Dismissed</span>}
-          <span className={`news-tag severity-${severity.toLowerCase()}`}>{SEVERITY_LABELS[severity]}</span>
+          <span className={`news-tag severity-${assessment.severity.toLowerCase()}`}>
+            {SEVERITY_LABELS[assessment.severity]}
+          </span>
         </span>
       </div>
 
       <div className="alert-facts">
-        <p><span className="eyebrow">Event Type</span>{EVENT_TYPE_LABELS[alert.assessment.eventType]}</p>
+        <p><span className="eyebrow">Event Type</span>{EVENT_TYPE_LABELS[assessment.eventType]}</p>
         <p>
           <span className="eyebrow">Exposure</span>
-          {weighted ? `${alert.exposure}%` : `${alert.exposure} of ${holdingCount} Holdings`}
+          {weighted ? `${event.exposure}%` : `${event.exposure} of ${holdingCount} Holdings`}
         </p>
-        <p><span className="eyebrow">Confidence</span>{CONFIDENCE_LABELS[alert.assessment.confidence]}</p>
-        <p><span className="eyebrow">Status</span>{STATUS_LABELS[alert.status]}</p>
+        <p><span className="eyebrow">Confidence</span>{CONFIDENCE_LABELS[assessment.confidence]}</p>
+        <p><span className="eyebrow">Status</span>{STATUS_LABELS[event.status]}</p>
       </div>
 
-      {alert.assessment.summary && <p className="alert-summary">{alert.assessment.summary}</p>}
-      <p>{alert.assessment.reason}</p>
+      {assessment.summary && <p className="alert-summary">{assessment.summary}</p>}
+      <p>{assessment.reason}</p>
       <p className="muted small">Based on the Headline Only</p>
+
+      {event.sources.length > 1 && (
+        <div className="alert-sources">
+          <h3>Also Reported By</h3>
+          <ul>
+            {event.sources.map((source, index) => (
+              <li key={`${source.url}-${index}`}>
+                <span>{source.source ?? 'Unknown Publisher'} · {formatDate(source.publishedAt)}</span>
+                <span>{source.title}</span>
+                <button type="button" className="text-button" onClick={() => openInNewTab(source.url)}>
+                  Open Article
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="alert-holdings">
         <h3>Holdings Reached</h3>
         <ul className={weighted ? undefined : 'unweighted'}>
-          {alert.holdings.map((holding) => (
-            <li key={holding.holdingId}>
+          {event.holdings.map((holding) => (
+            <li key={`${holding.holdingId}-${holding.relationshipId ?? 'article'}`}>
               <strong>{holding.ticker}</strong>
               {weighted && <span>{holding.weight === null ? 'Weight Not Provided' : `${holding.weight}%`}</span>}
               <span>
@@ -98,7 +116,7 @@ function AlertCard({
       </div>
 
       <div className="actions">
-        <button type="button" onClick={() => openInNewTab(alert.article.url)}>Open Article</button>
+        <button type="button" onClick={() => openInNewTab(article.url)}>Open Article</button>
         {dismissed ? (
           <button type="button" className="secondary" disabled={busy} onClick={() => onStatus('NEW')}>
             Restore
@@ -119,13 +137,10 @@ export function AlertsPage() {
   const [response, setResponse] = useState<AlertsResponse | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('OPEN');
-  const [busyAlert, setBusyAlert] = useState<number | null>(null);
-  // The alert just dismissed, while its Undo is offered.
-  const [undoAlert, setUndoAlert] = useState<UndoAlert | null>(null);
+  const [busyAlertIds, setBusyAlertIds] = useState<number[]>([]);
+  const [undoEvent, setUndoEvent] = useState<UndoEvent | null>(null);
 
-  useEffect(() => {
-    setUndoAlert(null);
-  }, [portfolioId]);
+  useEffect(() => setUndoEvent(null), [portfolioId]);
 
   useEffect(() => {
     let active = true;
@@ -140,7 +155,6 @@ export function AlertsPage() {
     return () => { active = false; };
   }, [portfolioId]);
 
-  // Every alert, dismissed ones too, loaded once; the filter only chooses which to show.
   const loadAlerts = useCallback(async () => {
     setError(null);
     try {
@@ -159,27 +173,26 @@ export function AlertsPage() {
   }, [checking, newsCheckedAt, loadAlerts]);
 
   useEffect(() => {
-    if (undoAlert === null) return;
-    const timer = setTimeout(() => setUndoAlert(null), UNDO_MS);
+    if (undoEvent === null) return;
+    const timer = setTimeout(() => setUndoEvent(null), UNDO_MS);
     return () => clearTimeout(timer);
-  }, [undoAlert]);
+  }, [undoEvent]);
 
-  async function changeStatus(alertId: number, status: AlertStatus, targetPortfolioId = portfolioId) {
-    setBusyAlert(alertId);
+  async function changeStatus(event: AlertEvent, status: AlertStatus) {
+    setBusyAlertIds(event.alertIds);
     setError(null);
     try {
-      const updated = await alertApi.setStatus(targetPortfolioId, alertId, status);
-      if (targetPortfolioId === portfolioId) {
-        setResponse((current) => current && ({
-          ...current,
-          alerts: current.alerts.map((item) => item.id === updated.id ? updated : item),
-        }));
-        setUndoAlert(status === 'DISMISSED' ? { portfolioId: targetPortfolioId, alertId } : null);
-      }
+      const updated = await alertApi.setEventStatus(portfolioId, event.alertIds, status);
+      setResponse((current) => current && ({
+        ...current,
+        alerts: current.alerts
+          .map((item) => item.alertIds.some((id) => updated.alertIds.includes(id)) ? updated : item),
+      }));
+      setUndoEvent(status === 'DISMISSED' ? { portfolioId, alertIds: event.alertIds } : null);
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
-      setBusyAlert(null);
+      setBusyAlertIds([]);
     }
   }
 
@@ -187,10 +200,11 @@ export function AlertsPage() {
   if (portfolio === undefined || response === undefined) return <p className="muted">Loading…</p>;
   if (portfolio === null) return <p className="error">Portfolio not found.</p>;
 
-  const openCount = response.alerts.filter((alert) => alert.status !== 'DISMISSED').length;
+  const openCount = response.alerts.filter((event) => event.status !== 'DISMISSED').length;
   const dismissedCount = response.alerts.length - openCount;
-  const shown = response.alerts.filter((alert) =>
-    filter === 'ALL' || (filter === 'DISMISSED') === (alert.status === 'DISMISSED'));
+  const shown = response.alerts.filter((event) =>
+    filter === 'ALL' || (filter === 'DISMISSED') === (event.status === 'DISMISSED'));
+  const undoBusy = undoEvent !== null && undoEvent.alertIds.some((id) => busyAlertIds.includes(id));
 
   return (
     <section>
@@ -216,11 +230,13 @@ export function AlertsPage() {
         />
       </div>
 
-      {undoAlert?.portfolioId === portfolioId && (
+      {undoEvent?.portfolioId === portfolioId && (
         <p role="status" className="alert-undo">
           Alert Dismissed.{' '}
-          <button type="button" className="text-button" disabled={busyAlert === undoAlert.alertId} onClick={() => {
-            void changeStatus(undoAlert.alertId, 'NEW', undoAlert.portfolioId);
+          <button type="button" className="text-button" disabled={undoBusy} onClick={() => {
+            const event = response.alerts.find((item) =>
+              item.alertIds.some((id) => undoEvent.alertIds.includes(id)));
+            if (event) void changeStatus(event, 'NEW');
           }}>
             Undo
           </button>
@@ -239,14 +255,14 @@ export function AlertsPage() {
         </p>
       ) : (
         <ul className="alert-list">
-          {shown.map((alert) => (
+          {shown.map((event) => (
             <AlertCard
-              key={alert.id}
-              alert={alert}
+              key={event.alertIds.join('-')}
+              event={event}
               weighted={response.weighted}
               holdingCount={response.holdingCount}
-              busy={busyAlert === alert.id}
-              onStatus={(status) => { void changeStatus(alert.id, status); }}
+              busy={event.alertIds.some((id) => busyAlertIds.includes(id))}
+              onStatus={(status) => { void changeStatus(event, status); }}
             />
           ))}
         </ul>

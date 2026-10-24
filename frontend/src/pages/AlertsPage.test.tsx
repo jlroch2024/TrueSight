@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Alert, AlertStatus, AlertsResponse, EventType } from '../api/alerts';
+import type { AlertEvent, AlertStatus, AlertsResponse, EventType } from '../api/alerts';
 import { tokenStore } from '../api/client';
 import type { Portfolio } from '../api/portfolios';
 import { sampleNews } from '../test/sampleNews';
@@ -19,29 +19,32 @@ const portfolio: Portfolio = {
 
 const [firstArticle, secondArticle] = sampleNews(2);
 
-function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): Alert {
+function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): AlertEvent {
+  const source = {
+    title: article.title,
+    source: article.source,
+    publishedAt: article.publishedAt,
+    url: article.url,
+  };
   return {
-    id,
+    alertIds: [id],
     status: 'NEW',
     exposure: severity === 'HIGH' ? 40 : 90,
-    createdAt: '2026-10-14T02:42:00Z',
-    article: {
-      title: article.title,
-      source: article.source,
-      publishedAt: article.publishedAt,
-      url: article.url,
+    headline: {
+      article: source,
+      assessment: {
+        eventType: severity === 'HIGH' ? 'PRODUCTION_STOP' : 'SUPPLY_SHORTAGE',
+        severity,
+        confidence: 'MEDIUM',
+        summary: severity === 'HIGH'
+          ? 'A fire stopped production at one TSMC plant.'
+          : 'A shortage affected production.',
+        reason: severity === 'HIGH'
+          ? 'The headline reports a production stoppage.'
+          : 'The headline reports a shortage.',
+      },
     },
-    assessment: {
-      eventType: severity === 'HIGH' ? 'PRODUCTION_STOP' : 'SUPPLY_SHORTAGE',
-      severity,
-      confidence: 'MEDIUM',
-      summary: severity === 'HIGH'
-        ? 'A fire stopped production at one TSMC plant.'
-        : 'A shortage affected production.',
-      reason: severity === 'HIGH'
-        ? 'The headline reports a production stoppage.'
-        : 'The headline reports a shortage.',
-    },
+    sources: [source],
     holdings: [{
       holdingId: 3,
       ticker: 'NVDA',
@@ -54,8 +57,8 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
   };
 }
 
-let savedAlerts: Alert[];
-let otherPortfolioAlerts: Alert[];
+let savedAlerts: AlertEvent[];
+let otherPortfolioAlerts: AlertEvent[];
 let weighted: boolean;
 let checkedPortfolio: Portfolio;
 const otherPortfolio: Portfolio = { ...portfolio, id: 8, name: 'Other Portfolio' };
@@ -67,15 +70,16 @@ function json(body: unknown, status = 200) {
 function fakeBackend(url: string, init: RequestInit = {}): Response {
   if (url === '/api/portfolios') return json([checkedPortfolio, otherPortfolio]);
   if (url === '/api/portfolios/7/news-check') return new Response(null, { status: 202 });
-  const statusPath = url.match(/^\/api\/portfolios\/(7|8)\/alerts\/(\d+)$/);
+  const statusPath = url.match(/^\/api\/portfolios\/(7|8)\/alerts\/status$/);
   if (statusPath && init.method === 'PUT') {
     const currentAlerts = statusPath[1] === '7' ? savedAlerts : otherPortfolioAlerts;
-    const id = Number(statusPath[2]);
-    const status = JSON.parse(String(init.body)).status as AlertStatus;
-    const updated = currentAlerts.map((item) => item.id === id ? { ...item, status } : item);
+    const body = JSON.parse(String(init.body)) as { alertIds: number[]; status: AlertStatus };
+    const { alertIds, status } = body;
+    const updated = currentAlerts.map((item) =>
+      item.alertIds.some((id) => alertIds.includes(id)) ? { ...item, status } : item);
     if (statusPath[1] === '7') savedAlerts = updated;
     else otherPortfolioAlerts = updated;
-    return json(updated.find((item) => item.id === id));
+    return json(updated.find((item) => item.alertIds.some((id) => alertIds.includes(id))));
   }
   const alertsPath = url.match(/^\/api\/portfolios\/(7|8)\/alerts/);
   if (alertsPath) {
@@ -115,7 +119,7 @@ beforeEach(() => {
   checkedPortfolio = { ...portfolio };
   weighted = true;
   savedAlerts = [alert(7, 'HIGH'), alert(8, 'LOW', secondArticle!)];
-  otherPortfolioAlerts = [alert(7, 'HIGH')];
+  otherPortfolioAlerts = [alert(8, 'HIGH')];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => fakeBackend(url, init)));
 });
 
@@ -210,7 +214,10 @@ describe('Alerts page', () => {
     ['OTHER_DISRUPTION', 'Other Disruption'],
   ])('reads the event type %s as "%s"', async (eventType, label) => {
     const base = alert(7, 'HIGH');
-    savedAlerts = [{ ...base, assessment: { ...base.assessment, eventType } }];
+    savedAlerts = [{
+      ...base,
+      headline: { ...base.headline, assessment: { ...base.headline.assessment, eventType } },
+    }];
     renderPage();
 
     expect(await firstCard()).toHaveTextContent(label);
@@ -222,6 +229,74 @@ describe('Alerts page', () => {
 
     expect(within(card).queryByRole('button', { name: 'Acknowledge' })).not.toBeInTheDocument();
     expect(within(card).getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+  });
+
+  it('lists every source with its publisher, date, and article action', async () => {
+    const lead = alert(7, 'HIGH');
+    const other = alert(8, 'LOW', secondArticle!);
+    savedAlerts = [{ ...lead, alertIds: [7, 8], sources: [...lead.sources, ...other.sources] }];
+    renderPage();
+
+    const card = await firstCard();
+    expect(within(card).getByRole('heading', { name: 'Also Reported By' })).toBeInTheDocument();
+    expect(card).toHaveTextContent(firstArticle!.source!);
+    expect(card).toHaveTextContent(secondArticle!.source!);
+    expect(card).toHaveTextContent(firstArticle!.title);
+    expect(card).toHaveTextContent(secondArticle!.title);
+    expect(within(card).getAllByRole('button', { name: 'Open Article' })).toHaveLength(3);
+  });
+
+  it('shows the supplied lead severity and confidence for a grouped event', async () => {
+    const lead = alert(7, 'HIGH');
+    const other = alert(8, 'LOW', secondArticle!);
+    savedAlerts = [{
+      ...lead,
+      alertIds: [7, 8],
+      sources: [...lead.sources, ...other.sources],
+      headline: {
+        ...lead.headline,
+        assessment: { ...lead.headline.assessment, severity: 'HIGH', confidence: 'HIGH' },
+      },
+    }];
+    renderPage();
+
+    const card = await firstCard();
+    expect(card).toHaveTextContent('High');
+    expect(card).toHaveTextContent(/Confidence\s*High/);
+  });
+
+  it('hides Also Reported By for a single-source event', async () => {
+    savedAlerts = [alert(7, 'HIGH')];
+    renderPage();
+
+    expect(within(await firstCard()).queryByRole('heading', { name: 'Also Reported By' })).not.toBeInTheDocument();
+  });
+
+  it('dismisses and restores every alert in the event and keeps it as one dismissed card', async () => {
+    const lead = alert(7, 'HIGH');
+    const other = alert(8, 'LOW', secondArticle!);
+    savedAlerts = [{ ...lead, alertIds: [7, 8], sources: [...lead.sources, ...other.sources] }];
+    renderPage();
+    const card = await firstCard();
+
+    await userEvent.click(within(card).getByRole('button', { name: 'Dismiss' }));
+    await waitFor(() => expect(savedAlerts[0]!.status).toBe('DISMISSED'));
+    const put = vi.mocked(fetch).mock.calls.find(([url, init]) =>
+      String(url).endsWith('/alerts/status') && init?.method === 'PUT');
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ alertIds: [7, 8], status: 'DISMISSED' });
+
+    await userEvent.click(screen.getByLabelText('Dismissed (1)'));
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
+    expect(await screen.findByText('Also Reported By')).toBeInTheDocument();
+    const dismissed = (await firstCard());
+    await userEvent.click(within(dismissed).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(savedAlerts[0]!.status).toBe('NEW'));
+    const statusRequests = vi.mocked(fetch).mock.calls.filter(([url, init]) =>
+      String(url).endsWith('/alerts/status') && init?.method === 'PUT');
+    expect(statusRequests.map(([, init]) => JSON.parse(String(init?.body)))).toEqual([
+      { alertIds: [7, 8], status: 'DISMISSED' },
+      { alertIds: [7, 8], status: 'NEW' },
+    ]);
   });
 
   it('filters Open, Dismissed and All with their counts', async () => {

@@ -115,16 +115,24 @@ describe('the living graph model', () => {
 });
 
 describe('disruptions and zoom', () => {
-  // An alert as the Alerts page receives it, reaching one holding through a relationship (or none).
-  const alert = (status: 'NEW' | 'DISMISSED', severity: 'LOW' | 'MEDIUM' | 'HIGH', relationshipId: number | null) => ({
+  // An event as the Alerts page receives it, reaching one holding through a relationship (or none).
+  const event = (status: 'NEW' | 'DISMISSED', severity: 'LOW' | 'MEDIUM' | 'HIGH', relationshipId: number | null) => ({
     status,
-    article: {
-      title: `Headline ${severity}`,
-      source: null,
-      publishedAt: '2026-10-20T00:00:00Z',
-      url: 'https://example.com',
+    headline: {
+      article: {
+        title: `Headline ${severity}`,
+        source: null,
+        publishedAt: '2026-10-20T00:00:00Z',
+        url: 'https://example.com',
+      },
+      assessment: {
+        eventType: 'SUPPLY_SHORTAGE' as const,
+        severity,
+        confidence: 'HIGH' as const,
+        summary: null,
+        reason: '',
+      },
     },
-    assessment: { eventType: 'SUPPLY_SHORTAGE' as const, severity, confidence: 'HIGH' as const, summary: null, reason: '' },
     holdings: [{
       holdingId: 1,
       ticker: 'NVDA',
@@ -137,13 +145,22 @@ describe('disruptions and zoom', () => {
   });
 
   it('marks each link an open alert runs through with its most serious disruption', () => {
-    const risks = risksFrom([alert('NEW', 'LOW', 7), alert('NEW', 'HIGH', 7), alert('NEW', 'MEDIUM', 7)]);
+    const risks = risksFrom([event('NEW', 'LOW', 7), event('NEW', 'HIGH', 7), event('NEW', 'MEDIUM', 7)]);
 
     expect(risks.get(7)).toEqual({ severity: 'HIGH', eventType: 'SUPPLY_SHORTAGE', title: 'Headline HIGH' });
   });
 
   it('marks nothing for a dismissed alert, or one about a holding itself', () => {
-    expect(risksFrom([alert('DISMISSED', 'HIGH', 7), alert('NEW', 'HIGH', null)]).size).toBe(0);
+    expect(risksFrom([event('DISMISSED', 'HIGH', 7), event('NEW', 'HIGH', null)]).size).toBe(0);
+  });
+
+  it('marks every relationship an event reaches', () => {
+    const first = event('NEW', 'HIGH', 7);
+    const secondHolding = { ...first.holdings[0]!, holdingId: 2, ticker: 'TSM', relationshipId: 8 };
+    const risks = risksFrom([{ ...first, holdings: [first.holdings[0]!, secondHolding] }]);
+
+    expect([...risks.keys()].sort()).toEqual([7, 8]);
+    expect(risks.get(8)).toEqual({ severity: 'HIGH', eventType: 'SUPPLY_SHORTAGE', title: 'Headline HIGH' });
   });
 
   it('reads an event type as words', () => {

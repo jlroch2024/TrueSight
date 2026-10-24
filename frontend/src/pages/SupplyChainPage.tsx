@@ -10,7 +10,7 @@
 // address opens the News tab, as the Portfolio page's See News does.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { type Alert, alertApi } from '../api/alerts';
+import { type AlertEvent, alertApi } from '../api/alerts';
 import { ApiError } from '../api/client';
 import { type NewsArticle, newsApi } from '../api/news';
 import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
@@ -115,7 +115,7 @@ export function SupplyChainPage() {
   }, [portfolioId, newsCheckedAt, newsChecking]);
 
   // The portfolio's open alerts, loaded with the news: the graph marks the links they run through.
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<AlertEvent[]>([]);
   useEffect(() => {
     if (newsChecking) return;
     let active = true;
