@@ -26,6 +26,9 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
 
+    boolean existsByCompanyIdAndCounterpartyIdAndTypeAndEvidence(
+            Long companyId, Long counterpartyId, RelationshipType type, String evidence);
+
     /**
      * For every relationship, how many distinct portfolios hold either of its two companies: rows of
      * {@code [relationshipId, portfolios]}. One query for the whole list. A relationship nobody holds has no row.

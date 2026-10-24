@@ -215,11 +215,13 @@ function RelationshipDetails({
         </p>
       </header>
       <p className="muted small review-status">
-        {relationship.reviewStatus === 'APPROVED'
-          ? `Approved by an Analyst${relationship.reviewedAt ? ` on ${formatDate(relationship.reviewedAt)}` : ''}`
-          : relationship.reviewStatus === 'UNREVIEWED'
-            ? 'Not Yet Reviewed by an Analyst'
-            : 'Rejected by an Analyst'}
+        {relationship.source === 'ANALYST'
+          ? 'Added by an Analyst'
+          : relationship.reviewStatus === 'APPROVED'
+            ? `Approved by an Analyst${relationship.reviewedAt ? ` on ${formatDate(relationship.reviewedAt)}` : ''}`
+            : relationship.reviewStatus === 'UNREVIEWED'
+              ? 'Not Yet Reviewed by an Analyst'
+              : 'Rejected by an Analyst'}
       </p>
       {relationship.reviewStatus === 'APPROVED' && relationship.reviewNote && (
         <p className="muted small review-note">{relationship.reviewNote}</p>

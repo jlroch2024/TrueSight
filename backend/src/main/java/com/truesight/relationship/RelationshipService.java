@@ -85,6 +85,7 @@ public class RelationshipService {
                     r.getType(),
                     r.getProvides(),
                     r.getEvidence(),
+                    r.getSource(),
                     r.getCriticality(),
                     r.getCriticalityEvidence(),
                     new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()),
