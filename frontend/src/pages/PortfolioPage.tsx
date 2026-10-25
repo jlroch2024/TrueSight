@@ -57,14 +57,10 @@ export function PortfolioPage() {
   }, [portfolioId]);
 
   // After a rename in the Manage Portfolios window, show the new name without reloading the holdings.
-  useEffect(() => portfolioChanges.listen(() => {
-    portfolioApi
-      .list()
-      .then((all) => {
-        const renamed = all.find((p) => String(p.id) === portfolioId);
-        if (renamed) setPortfolio((current) => (current ? { ...current, name: renamed.name } : current));
-      })
-      .catch(() => {});
+  useEffect(() => portfolioChanges.listen((changed) => {
+    if (changed && String(changed.id) === portfolioId) {
+      setPortfolio((current) => (current ? { ...current, ...changed } : current));
+    }
   }), [portfolioId]);
 
   const running = holdings.some((holding) => holding.status === 'ANALYSING');

@@ -1,12 +1,14 @@
 // Upload a Portfolio CSV, as the user sees it: the holdings table, Upload CSV, and TrueSight's own confirmation before
 // replacing.
 // The backend is a small fake that keeps each portfolio's holdings in memory.
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { tokenStore } from '../api/client';
+import { portfolioChanges } from '../api/portfolios';
+import { PortfolioPage } from './PortfolioPage';
 
 const portfolios = [
   { id: 1, name: 'Tech', createdAt: '' },
@@ -137,5 +139,32 @@ describe('Portfolio page', () => {
 
     expect(await screen.findByRole('cell', { name: 'XOM' })).toBeInTheDocument();
     expect(screen.queryByRole('cell', { name: 'NVDA' })).not.toBeInTheDocument();
+  });
+
+  it('uses the renamed portfolio from the announcement without listing portfolios again', async () => {
+    render(
+      <MemoryRouter initialEntries={['/portfolios/1']}>
+        <Routes>
+          <Route path="/portfolios/:portfolioId" element={<PortfolioPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Tech' })).toBeInTheDocument();
+    const listCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/portfolios');
+    const before = listCalls().length;
+
+    act(() => {
+      portfolioChanges.announce({
+        id: 1,
+        name: 'Technology',
+        createdAt: '',
+        newsStatus: 'IDLE',
+        newsStatusReason: null,
+        newsCheckedAt: null,
+      });
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Technology' })).toBeInTheDocument();
+    expect(listCalls()).toHaveLength(before);
   });
 });

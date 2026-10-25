@@ -81,6 +81,7 @@ function relationship(overrides: Partial<Relationship> = {}): Relationship {
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence: tsmcSentence,
+    source: 'AI',
     criticality: null,
     criticalityEvidence: null,
     report: {
@@ -194,8 +195,8 @@ describe('Supply Chain page', () => {
         url: 'https://example.com/event',
       }],
       holdings: [
-        { holdingId: 1, ticker: 'NVDA', weight: 40, supplierName: 'TSMC', customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
-        { holdingId: 1, ticker: 'NVDA', weight: 40, supplierName: 'Samsung Electronics', customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
       ],
     };
     vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [], PORTFOLIO, [event]));
@@ -555,6 +556,21 @@ describe('Supply Chain workspace', () => {
 
     expect(within(inspector()).getByText('Approved by an Analyst on Oct 14, 2026')).toBeInTheDocument();
     expect(within(inspector()).getByText('Confirmed against the annual report.')).toBeInTheDocument();
+  });
+
+  it('says when a relationship was added by an analyst', async () => {
+    const added = {
+      ...relationships[0]!,
+      source: 'ANALYST' as const,
+      reviewStatus: 'APPROVED' as const,
+    };
+    vi.stubGlobal('fetch', fakeFetch([added], holdings));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+
+    expect(within(inspector()).getByText('Added by an Analyst')).toBeInTheDocument();
   });
 
   it('shows an approval without a note and says when a relationship is unreviewed', async () => {

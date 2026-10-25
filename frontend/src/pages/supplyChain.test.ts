@@ -179,6 +179,7 @@ function relationship(
     type,
     provides: null,
     evidence: 'Evidence sentence.',
+    source: 'AI',
     criticality: null,
     criticalityEvidence: null,
     report: { form: '10-K', filingDate: '2026-01-01', url: 'https://www.sec.gov/example' },

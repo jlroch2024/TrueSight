@@ -21,6 +21,7 @@ public record RelationshipResponse(
         RelationshipType type,
         String provides,
         String evidence,
+        RelationshipSource source,
         Criticality criticality,
         String criticalityEvidence,
         ReportSummary report,

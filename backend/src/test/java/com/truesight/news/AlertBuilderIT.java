@@ -252,6 +252,133 @@ class AlertBuilderIT {
         assertThat(exposure(portfolio, event)).isEqualByComparingTo("2");
     }
 
+    @Test
+    void anEventAtASuppliersSupplierReachesTheHoldingThroughBothLinks() {
+        Company asml = company("ASML");
+        Company zeiss = company("Carl Zeiss SMT");
+        Relationship zeissSuppliesAsml = supplier(asml, zeiss);
+        Relationship asmlSuppliesTsmc = supplier(tsmc, asml);
+        Portfolio portfolio = portfolio();
+        Holding tsmcHolding = hold(portfolio, tsmc, "35");
+        NewsArticle event = event(zeiss);
+
+        alertBuilder.run(portfolio.getId());
+
+        Alert alert = alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId()).orElseThrow();
+        assertThat(alertHoldings.findByAlertId(alert.getId()))
+                .extracting(AlertHolding::getHoldingId, AlertHolding::getRelationshipId,
+                        AlertHolding::getSecondRelationshipId)
+                .containsExactly(tuple(tsmcHolding.getId(), zeissSuppliesAsml.getId(), asmlSuppliesTsmc.getId()));
+    }
+
+    @Test
+    void aHoldingReachedDirectlyIsSavedOnceAndNeverAlsoIndirectly() {
+        Company asml = company("ASML");
+        Company zeiss = company("Carl Zeiss SMT");
+        supplier(asml, zeiss);
+        supplier(tsmc, asml);
+        Relationship zeissSuppliesTsmc = supplier(tsmc, zeiss);
+        Portfolio portfolio = portfolio();
+        Holding tsmcHolding = hold(portfolio, tsmc, "35");
+        NewsArticle event = event(zeiss);
+
+        alertBuilder.run(portfolio.getId());
+
+        Alert alert = alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId()).orElseThrow();
+        assertThat(alertHoldings.findByAlertId(alert.getId()))
+                .extracting(AlertHolding::getHoldingId, AlertHolding::getRelationshipId,
+                        AlertHolding::getSecondRelationshipId)
+                .containsExactly(tuple(tsmcHolding.getId(), zeissSuppliesTsmc.getId(), null));
+    }
+
+    @Test
+    void aRejectedLinkOnEitherStepStopsTheIndirectPath() {
+        Company asml = company("ASML");
+        Company zeiss = company("Carl Zeiss SMT");
+        Relationship first = supplier(asml, zeiss);
+        Relationship second = supplier(tsmc, asml);
+        first.setReviewStatus(ReviewStatus.REJECTED);
+        relationships.save(first);
+        Portfolio firstRejected = portfolio();
+        hold(firstRejected, tsmc, "35");
+        NewsArticle firstEvent = event(zeiss);
+
+        alertBuilder.run(firstRejected.getId());
+        assertThat(alerts.findByPortfolioIdAndArticleId(firstRejected.getId(), firstEvent.getId())).isEmpty();
+
+        first.setReviewStatus(ReviewStatus.APPROVED);
+        second.setReviewStatus(ReviewStatus.REJECTED);
+        relationships.saveAll(List.of(first, second));
+        Portfolio secondRejected = portfolio();
+        hold(secondRejected, tsmc, "35");
+        NewsArticle secondEvent = event(zeiss);
+
+        alertBuilder.run(secondRejected.getId());
+        assertThat(alerts.findByPortfolioIdAndArticleId(secondRejected.getId(), secondEvent.getId())).isEmpty();
+    }
+
+    @Test
+    void anEventAtACustomersCustomerNeverReachesTheHolding() {
+        Company asml = company("ASML");
+        Company zeiss = company("Carl Zeiss SMT");
+        supplier(asml, tsmc);
+        supplier(zeiss, asml);
+        Portfolio portfolio = portfolio();
+        hold(portfolio, tsmc, "35");
+        event(zeiss);
+
+        alertBuilder.run(portfolio.getId());
+
+        assertThat(alerts.findByPortfolioId(portfolio.getId())).isEmpty();
+    }
+
+    @Test
+    void directAndIndirectHoldingsBothCountInExposure() {
+        Company asml = company("ASML");
+        Company zeiss = company("Carl Zeiss SMT");
+        supplier(asml, zeiss);
+        supplier(tsmc, asml);
+        Portfolio portfolio = portfolio();
+        Holding direct = hold(portfolio, asml, "10");
+        Holding indirect = hold(portfolio, tsmc, "20");
+        NewsArticle event = event(zeiss);
+
+        alertBuilder.run(portfolio.getId());
+
+        Alert alert = alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId()).orElseThrow();
+        assertThat(alert.getExposure()).isEqualByComparingTo("30");
+        List<AlertHolding> reached = alertHoldings.findByAlertId(alert.getId());
+        assertThat(reached).hasSize(2);
+        assertThat(reached.stream().filter(found -> found.getHoldingId().equals(direct.getId())).findFirst()
+                .orElseThrow().getSecondRelationshipId()).isNull();
+        assertThat(reached.stream().filter(found -> found.getHoldingId().equals(indirect.getId())).findFirst()
+                .orElseThrow().getSecondRelationshipId()).isNotNull();
+    }
+
+    @Test
+    void approvedLinksArePreferredWhenSeveralIndirectPathsExist() {
+        Company asml = company("ASML");
+        Company zeiss = company("Carl Zeiss SMT");
+        supplier(asml, zeiss);
+        Relationship approvedFirst = supplier(asml, zeiss);
+        approvedFirst.setReviewStatus(ReviewStatus.APPROVED);
+        supplier(tsmc, asml);
+        Relationship approvedSecond = supplier(tsmc, asml);
+        approvedSecond.setReviewStatus(ReviewStatus.APPROVED);
+        relationships.saveAll(List.of(approvedFirst, approvedSecond));
+        Portfolio portfolio = portfolio();
+        Holding holding = hold(portfolio, tsmc, "35");
+        NewsArticle event = event(zeiss);
+
+        alertBuilder.run(portfolio.getId());
+
+        Alert alert = alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId()).orElseThrow();
+        assertThat(alertHoldings.findByAlertId(alert.getId()))
+                .extracting(AlertHolding::getHoldingId, AlertHolding::getRelationshipId,
+                        AlertHolding::getSecondRelationshipId)
+                .containsExactly(tuple(holding.getId(), approvedFirst.getId(), approvedSecond.getId()));
+    }
+
     // ---- building the test data ----
 
     private Company company(String name) {

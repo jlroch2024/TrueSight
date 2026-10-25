@@ -28,8 +28,9 @@ public record AlertEventResponse(
     public record Source(String title, String source, Instant publishedAt, String url) {
     }
 
-    /** Display names and the relationship reached; null names and relationship for a direct holding event. */
-    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, String supplierName,
-                                 String customerName, ReviewStatus reviewStatus, Long relationshipId) {
+    /** Stored company names and the path reached; null names and relationship for an event at the holding itself. */
+    public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, boolean indirect,
+                                 String supplierName, String middleName, String customerName,
+                                 ReviewStatus reviewStatus, Long relationshipId) {
     }
 }

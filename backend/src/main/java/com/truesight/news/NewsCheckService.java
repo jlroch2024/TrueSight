@@ -11,6 +11,7 @@ import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Owns the database state for starting, saving and finishing a portfolio news check. */
 @Service
@@ -67,18 +69,41 @@ public class NewsCheckService {
 
     @Transactional(readOnly = true)
     public List<NewsCompany> companiesFor(Long portfolioId) {
-        Set<Long> companyIds = new LinkedHashSet<>();
+        Set<Long> heldCompanies = new LinkedHashSet<>();
         holdings.findByPortfolioIdAndStatusOrderByTickerAsc(portfolioId, HoldingStatus.DONE).stream()
                 .map(Holding::getCompanyId)
                 .filter(id -> id != null)
-                .forEach(companyIds::add);
-        relationships.findByCompanyIdIn(companyIds).stream()
+                .forEach(heldCompanies::add);
+        Set<Long> companyIds = new LinkedHashSet<>(heldCompanies);
+        relationships.findByCompanyIdIn(heldCompanies).stream()
                 .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
                 .map(Relationship::getCounterpartyId)
+                .forEach(companyIds::add);
+        Set<Long> directSuppliers = relationships
+                .findByCompanyIdInOrCounterpartyIdIn(heldCompanies, heldCompanies).stream()
+                .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
+                .filter(relationship -> heldCompanies.contains(customerId(relationship)))
+                .map(NewsCheckService::supplierId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        companyIds.addAll(directSuppliers);
+        relationships.findByCompanyIdInOrCounterpartyIdIn(directSuppliers, directSuppliers).stream()
+                .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
+                .filter(relationship -> directSuppliers.contains(customerId(relationship)))
+                .map(NewsCheckService::supplierId)
                 .forEach(companyIds::add);
         return companies.findAllById(companyIds).stream()
                 .map(company -> new NewsCompany(company.getId(), company.getName()))
                 .toList();
+    }
+
+    private static Long supplierId(Relationship relationship) {
+        return relationship.getType() == RelationshipType.SUPPLIER
+                ? relationship.getCounterpartyId() : relationship.getCompanyId();
+    }
+
+    private static Long customerId(Relationship relationship) {
+        return relationship.getType() == RelationshipType.SUPPLIER
+                ? relationship.getCompanyId() : relationship.getCounterpartyId();
     }
 
     @Transactional(readOnly = true)
@@ -102,10 +127,10 @@ public class NewsCheckService {
     }
 
     @Transactional
-    public void finish(Long portfolioId, Instant checkedAt) {
+    public void finish(Long portfolioId, Instant checkedAt, String reason) {
         portfolios.findById(portfolioId).ifPresent(portfolio -> {
             portfolio.setNewsStatus(NewsStatus.IDLE);
-            portfolio.setNewsStatusReason(null);
+            portfolio.setNewsStatusReason(reason);
             portfolio.setNewsCheckedAt(checkedAt);
         });
     }

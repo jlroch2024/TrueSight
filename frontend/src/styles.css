@@ -858,19 +858,23 @@ select {
   overflow-x: auto;
 }
 
-table.holdings {
+table.holdings,
+table.ai-calls {
   width: 100%;
   border-collapse: collapse;
 }
 
 table.holdings th,
-table.holdings td {
+table.holdings td,
+table.ai-calls th,
+table.ai-calls td {
   padding: 9px 10px;
   border-top: 1px solid var(--border);
   text-align: left;
 }
 
-table.holdings th {
+table.holdings th,
+table.ai-calls th {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
@@ -1782,4 +1786,88 @@ button.panel-row.chosen {
   border-top: 2px solid var(--accent);
   background: var(--bg);
   color: var(--text);
+}
+
+/* The AI Audit Trail: a compact filter row, wide results table and a long-text detail window. */
+.ai-call-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.ai-call-filters > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-call-filters input {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  color-scheme: dark;
+}
+
+table.ai-calls {
+  min-width: 880px;
+}
+
+table.ai-calls td:nth-child(1),
+table.ai-calls td:nth-child(5),
+table.ai-calls td:nth-child(6),
+table.ai-calls td:nth-child(7) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ai-call-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-call-window {
+  width: min(900px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.ai-call-window h2,
+.ai-call-window h3 {
+  margin-top: 0;
+}
+
+.ai-call-window section {
+  margin-top: 22px;
+}
+
+.ai-call-window pre {
+  max-height: 320px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-call-facts {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }

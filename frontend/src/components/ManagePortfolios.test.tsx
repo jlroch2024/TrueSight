@@ -156,6 +156,21 @@ describe('Manage Portfolios window', () => {
     expect(within(window).queryByText('Energy Book')).not.toBeInTheDocument();
   });
 
+  it('passes the renamed open portfolio to the page when reloading the list fails', async () => {
+    renderAt('/portfolios/1');
+    const window = await openWindow();
+
+    await userEvent.click(within(window).getByRole('button', { name: 'Rename Tech Book' }));
+    const input = within(window).getByLabelText('New Name');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Technology Book');
+    backendDown = true;
+    await userEvent.click(within(window).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('heading', { name: 'Technology Book' })).toBeInTheDocument();
+    expect(await within(window).findByText('The server is restarting.')).toBeInTheDocument();
+  });
+
   it('refuses renaming to a name the user already uses', async () => {
     renderAt('/portfolios/1');
     const window = await openWindow();
@@ -295,7 +310,7 @@ describe('/portfolios', () => {
 
     expect(await screen.findByText('The server is restarting.')).toBeInTheDocument();
     backendDown = false;
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await userEvent.click(within(screen.getByRole('main')).getByRole('button', { name: 'Retry' }));
 
     await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
   });

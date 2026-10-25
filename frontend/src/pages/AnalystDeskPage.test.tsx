@@ -26,6 +26,7 @@ const waiting: ReviewItem = {
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence,
+    source: 'AI',
     report: { form: '10-K', filingDate: '2026-02-25', url: 'https://www.sec.gov/report-1' },
     reviewStatus: 'UNREVIEWED',
     criticality: null,
@@ -66,6 +67,7 @@ beforeEach(() => {
     vi.fn(async (url: string) => {
       if (url === '/api/auth/me') return json({ email: 'analyst@example.com', role: 'ANALYST' });
       if (url.startsWith('/api/reviews')) return json([waiting]);
+      if (url.startsWith('/api/ai-calls')) return json({ calls: [], page: 0, totalPages: 0, total: 0 });
       return json([]);
     }),
   );
@@ -103,6 +105,14 @@ describe('Analyst Desk', () => {
     renderAt('/review?tab=no-such-tab');
 
     expect(screen.getByRole('tab', { name: 'Relationships' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('opens the AI Calls tab named in the address', async () => {
+    renderAt('/review?tab=ai-calls');
+
+    expect(screen.getByRole('tab', { name: 'AI Calls' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('No AI calls match these filters.')).toBeInTheDocument();
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/ai-calls?page=0', expect.anything());
   });
 
   it('puts the chosen tab in the address', async () => {

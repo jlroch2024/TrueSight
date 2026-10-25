@@ -72,7 +72,7 @@ public class ReviewService {
         return toItems(List.of(relationship)).get(0);
     }
 
-    private List<ReviewItemResponse> toItems(List<Relationship> found) {
+    List<ReviewItemResponse> toItems(List<Relationship> found) {
         if (found.isEmpty()) {
             return List.of();
         }

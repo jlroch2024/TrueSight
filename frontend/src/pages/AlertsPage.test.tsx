@@ -49,9 +49,11 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
       holdingId: 3,
       ticker: 'NVDA',
       weight: 40,
-      // Display names, as the API sends them.
-      supplierName: 'Taiwan Semiconductor Manufacturing',
-      customerName: 'NVIDIA',
+      indirect: false,
+      // Display names, as the API sends them
+      supplierName: 'Taiwan Semiconductor Manufacturing Company Limited',
+      middleName: null,
+      customerName: 'NVIDIA Corporation',
       reviewStatus: 'UNREVIEWED',
       relationshipId: 9,
     }],
@@ -157,7 +159,7 @@ describe('Alerts page', () => {
       ...alert(7, 'HIGH'),
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]! },
-        { holdingId: 4, ticker: 'TSM', weight: null, supplierName: null, customerName: null, reviewStatus: null, relationshipId: null },
+        { holdingId: 4, ticker: 'TSM', weight: null, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
     renderPage();
@@ -176,7 +178,7 @@ describe('Alerts page', () => {
       exposure: 2,
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]!, weight: null },
-        { holdingId: 4, ticker: 'TSM', weight: null, supplierName: null, customerName: null, reviewStatus: null, relationshipId: null },
+        { holdingId: 4, ticker: 'TSM', weight: null, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
     renderPage();
@@ -192,7 +194,7 @@ describe('Alerts page', () => {
       ...alert(7, 'HIGH'),
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]!, supplierName: 'ASML Holding', customerName: 'NVIDIA' },
-        { holdingId: 4, ticker: 'TSM', weight: 10, supplierName: null, customerName: null, reviewStatus: null, relationshipId: null },
+        { holdingId: 4, ticker: 'TSM', weight: 10, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
     renderPage();
@@ -201,6 +203,44 @@ describe('Alerts page', () => {
     const rows = within(card).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('ASML Holding supplies NVIDIA');
     expect(rows[1]).toHaveTextContent('Named in the Article');
+  });
+
+  it('shows the two-step path, marks indirect holdings and counts direct and indirect holdings', async () => {
+    savedAlerts = [{
+      ...alert(7, 'HIGH'),
+      exposure: 70,
+      holdings: [
+        { ...alert(7, 'HIGH').holdings[0]!, holdingId: 1, ticker: 'NVDA', indirect: false },
+        {
+          ...alert(7, 'HIGH').holdings[0]!,
+          holdingId: 2,
+          ticker: 'TSM',
+          indirect: true,
+          supplierName: 'Carl Zeiss SMT',
+          middleName: 'ASML HOLDING NV',
+          customerName: 'Taiwan Semiconductor Manufacturing Company Limited',
+        },
+        {
+          ...alert(7, 'HIGH').holdings[0]!,
+          holdingId: 3,
+          ticker: 'AMD',
+          indirect: true,
+          supplierName: 'Supplier Two',
+          middleName: 'Middle Two',
+          customerName: 'Advanced Micro Devices, Inc.',
+        },
+      ],
+    }];
+    renderPage();
+    const card = await firstCard();
+
+    expect(within(card).getByRole('heading', {
+      name: 'Holdings Reached (1 Direct, 2 Indirect)',
+    })).toBeInTheDocument();
+    expect(card).toHaveTextContent(
+      'Carl Zeiss SMT supplies ASML Holding, which supplies Taiwan Semiconductor Manufacturing',
+    );
+    expect(within(card).getAllByText('Indirect')).toHaveLength(2);
   });
 
   it.each<[EventType, string]>([

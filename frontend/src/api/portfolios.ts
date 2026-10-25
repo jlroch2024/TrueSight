@@ -26,11 +26,14 @@ export const portfolioApi = {
 const PORTFOLIOS_CHANGED = 'truesight:portfolios-changed';
 
 export const portfolioChanges = {
-  announce: () => window.dispatchEvent(new Event(PORTFOLIOS_CHANGED)),
+  announce: (changed?: Portfolio) =>
+    window.dispatchEvent(new CustomEvent(PORTFOLIOS_CHANGED, { detail: changed ?? null })),
   /** Calls listener after every change; returns the function that stops listening. */
-  listen: (listener: () => void) => {
-    window.addEventListener(PORTFOLIOS_CHANGED, listener);
-    return () => window.removeEventListener(PORTFOLIOS_CHANGED, listener);
+  listen: (listener: (changed?: Portfolio) => void) => {
+    const handle = (event: Event) =>
+      listener((event as CustomEvent<Portfolio | null>).detail ?? undefined);
+    window.addEventListener(PORTFOLIOS_CHANGED, handle);
+    return () => window.removeEventListener(PORTFOLIOS_CHANGED, handle);
   },
 };
 
