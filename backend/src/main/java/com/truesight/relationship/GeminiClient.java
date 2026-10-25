@@ -70,6 +70,18 @@ public class GeminiClient {
                     "required", List.of("company", "criticality", "criticalityQuote"),
                     "propertyOrdering", List.of("company", "criticality", "criticalityQuote")));
 
+    /** One verdict per numbered claim of the second check, matched to its claim by index. */
+    private static final Map<String, Object> SECOND_CHECK_SCHEMA = Map.of(
+            "type", "ARRAY",
+            "items", Map.of(
+                    "type", "OBJECT",
+                    "properties", Map.of(
+                            "index", Map.of("type", "INTEGER"),
+                            "verdict", Map.of("type", "STRING", "enum", List.of("AGREES", "DOUBTS")),
+                            "reason", Map.of("type", "STRING")),
+                    "required", List.of("index", "verdict", "reason"),
+                    "propertyOrdering", List.of("index", "verdict", "reason")));
+
     private final RestClient client;
     private final String apiKey;
     private final String model;
@@ -102,6 +114,11 @@ public class GeminiClient {
     /** Asks for criticality-only answers, matched to previously found counterparties. */
     public AiAnswer generateCriticality(AiRequest request) {
         return generate(request, CRITICALITY_SCHEMA);
+    }
+
+    /** Asks for a verdict, Agrees or Doubts with a reason, on each numbered claim of the second check. */
+    public AiAnswer generateSecondCheck(AiRequest request) {
+        return generate(request, SECOND_CHECK_SCHEMA);
     }
 
     /** As {@link #generate(AiRequest)}, with the caller's JSON response schema. */

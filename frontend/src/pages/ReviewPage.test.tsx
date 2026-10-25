@@ -35,6 +35,8 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
     reviewedBy: null,
     reviewedAt: null,
     usedByPortfolios: 1,
+    secondCheck: null,
+    secondCheckReason: null,
     ...overrides,
   };
 }
@@ -501,5 +503,53 @@ describe('Review page', () => {
 
     expect(await screen.findByText(/Approved by analyst@firm.com/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
+  });
+
+  it('tags a relationship the second check doubts, with its reason', async () => {
+    fakeBackend(() => [
+      item(1, { secondCheck: 'DOUBTS', secondCheckReason: 'The sentence only describes a plan to work together.' }),
+    ]);
+
+    renderPage();
+
+    const card = (await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).closest('li')!;
+    expect(within(card).getByText('Second Check Doubts')).toBeInTheDocument();
+    expect(within(card).getByText('The sentence only describes a plan to work together.')).toBeInTheDocument();
+  });
+
+  it('shows no tag on a relationship the second check agrees with, or has not checked', async () => {
+    fakeBackend(() => [
+      item(1, { secondCheck: 'AGREES', secondCheckReason: 'The sentence says they supply it today.' }),
+      item(2),
+    ]);
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' });
+    expect(screen.getByRole('heading', { name: 'Supplier 2 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.queryByText('Second Check Doubts')).not.toBeInTheDocument();
+    expect(screen.queryByText('The sentence says they supply it today.')).not.toBeInTheDocument();
+  });
+
+  it('lists a doubted relationship first, in the order the backend gives them, and keeps the tag after a decision', async () => {
+    const doubted = item(2, { secondCheck: 'DOUBTS', secondCheckReason: 'A competitor, not a supplier.', usedByPortfolios: 1 });
+    fakeBackend(
+      () => [doubted, item(1, { usedByPortfolios: 3 })],
+      (id) => approvedBy(id === 2 ? doubted : item(id)),
+    );
+    renderPage();
+
+    await screen.findByText('Second Check Doubts');
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Supplier 2 → NVIDIA',
+      'Supplier 1 → NVIDIA',
+    ]);
+
+    const card = screen.getByRole('heading', { name: 'Supplier 2 → NVIDIA' }).closest('li')!;
+    await userEvent.click(within(card).getByRole('button', { name: 'Approve' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved (1)' }));
+
+    expect(screen.getByText('Second Check Doubts')).toBeInTheDocument();
+    expect(screen.getByText('A competitor, not a supplier.')).toBeInTheDocument();
   });
 });

@@ -35,6 +35,14 @@ public final class Examples {
         return read("gemini-nvidia-criticality.json");
     }
 
+    /**
+     * Gemini's real answer when the second check was run by hand on the 7 relationships in {@link #geminiNvidia()}:
+     * one verdict, Agrees or Doubts with a reason, for each numbered claim.
+     */
+    public static String geminiNvidiaSecondCheck() {
+        return read("gemini-nvidia-second-check.json");
+    }
+
     /** A real Google News RSS response for the TSMC search used by Sprint 2. */
     public static String googleNewsTsmc() {
         return read("google-news-tsmc.xml");

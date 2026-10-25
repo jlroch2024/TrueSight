@@ -1,5 +1,5 @@
 // The Review page (Analysts only): the suppliers and customers the AI found, to approve or reject. Unreviewed ones come
-// first, the ones most portfolios rely on at the top. A rejection needs a note saying why. Relationships are shared, so
+// first, the ones a second AI doubts at the top (tagged, with its reason), then the ones most portfolios rely on. A rejection needs a note saying why. Relationships are shared, so
 // every decision applies to every portfolio manager.
 //
 // Every relationship is loaded once; the filter, and the count beside each of its options, are worked out in the page.
@@ -96,6 +96,12 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
       <h2>
         {supplier.displayName} {'\u2192'} {customer.displayName}
       </h2>
+      {item.secondCheck === 'DOUBTS' && (
+        <p className="second-check">
+          <span className="news-tag second-check-tag">Second Check Doubts</span>
+          {item.secondCheckReason && <span className="small"> {item.secondCheckReason}</span>}
+        </p>
+      )}
       {editing ? (
         <form className="inline-form" onSubmit={saveEdit}>
           <label htmlFor={`provides-${relationship.id}`}>What Is Provided?</label>
