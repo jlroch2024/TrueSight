@@ -21,6 +21,7 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
       type,
       provides: 'semiconductor wafers',
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
+      source: 'AI',
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
       reviewStatus: 'UNREVIEWED',
       criticality: null,
@@ -199,6 +200,103 @@ describe('Review page', () => {
     expect(put.body).toMatchObject({ decision: 'APPROVED' });
   });
 
+  it('edits what a relationship provides and shows the saved value', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'PUT' && url === '/api/relationships/1') {
+          const body = JSON.parse(String(init.body));
+          return new Response(JSON.stringify({
+            ...item(1),
+            relationship: { ...item(1).relationship, provides: body.provides },
+          }));
+        }
+        return new Response(JSON.stringify([item(1)]));
+      }),
+    );
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    const input = screen.getByLabelText('What Is Provided?');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'graphics memory');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Supplier 1 supplies NVIDIA: graphics memory.')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/relationships/1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ provides: 'graphics memory' }),
+    }));
+  });
+
+  it('adds a relationship from a company report with the custom controls', async () => {
+    const added = {
+      ...approvedBy(item(9)),
+      relationship: { ...item(9).relationship, source: 'ANALYST' as const, provides: 'memory' },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/companies?withReport=true') {
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA Corporation' }]));
+        }
+        if (url === '/api/relationships' && init?.method === 'POST') {
+          return new Response(JSON.stringify(added), { status: 201 });
+        }
+        return new Response(JSON.stringify([item(1)]));
+      }),
+    );
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add Relationship' }));
+    expect(await screen.findByRole('button', { name: /Company Whose Report Names It NVIDIA/ })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('Other Company'), 'SK Hynix Inc.');
+    await userEvent.type(screen.getByLabelText('What Is Provided?'), 'memory');
+    await userEvent.type(screen.getByLabelText('Sentence From the Annual Report'), sentence);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Relationship' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Approved (1)' }));
+
+    expect(screen.getByRole('heading', { name: 'Supplier 9 → NVIDIA' })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/relationships', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({
+        companyId: 1,
+        counterpartyName: 'SK Hynix Inc.',
+        type: 'SUPPLIER',
+        provides: 'memory',
+        sentence,
+      }),
+    }));
+  });
+
+  it('shows the report sentence refusal and does not add the relationship', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/companies?withReport=true') {
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA Corporation' }]));
+        }
+        if (url === '/api/relationships' && init?.method === 'POST') {
+          return new Response(
+            JSON.stringify({ message: "That sentence is not in NVIDIA Corporation's annual report." }),
+            { status: 400 },
+          );
+        }
+        return new Response(JSON.stringify([item(1)]));
+      }),
+    );
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add Relationship' }));
+    await screen.findByRole('button', { name: /Company Whose Report Names It NVIDIA/ });
+    await userEvent.type(screen.getByLabelText('Other Company'), 'SK Hynix Inc.');
+    await userEvent.type(screen.getByLabelText('Sentence From the Annual Report'), 'Not in the report.');
+    await userEvent.click(screen.getByRole('button', { name: 'Add Relationship' }));
+
+    expect(await screen.findByText("That sentence is not in NVIDIA Corporation's annual report.")).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'All (1)' })).toBeInTheDocument();
+  });
+
   it('says there is nothing left to review once the last one is decided', async () => {
     fakeBackend(() => [item(1)], (id) => approvedBy(item(id)));
     renderPage();
@@ -370,9 +468,9 @@ describe('Review page', () => {
         .getAllByRole('button')
         .map((button) => button.textContent);
 
-    expect(buttonsOn('Supplier 1 → NVIDIA')).toEqual(['Show in Report', 'Approve', 'Reject']);
-    expect(buttonsOn('Supplier 2 → NVIDIA')).toEqual(['Show in Report', 'Reject']);
-    expect(buttonsOn('Supplier 3 → NVIDIA')).toEqual(['Show in Report', 'Approve']);
+    expect(buttonsOn('Supplier 1 → NVIDIA')).toEqual(['Show in Report', 'Edit', 'Approve', 'Reject']);
+    expect(buttonsOn('Supplier 2 → NVIDIA')).toEqual(['Show in Report', 'Edit', 'Reject']);
+    expect(buttonsOn('Supplier 3 → NVIDIA')).toEqual(['Show in Report', 'Edit', 'Approve']);
   });
 
   it('shows who decided, when, and why on a decided relationship, and keeps it in the All list when changed', async () => {

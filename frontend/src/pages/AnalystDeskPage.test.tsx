@@ -22,6 +22,7 @@ const waiting: ReviewItem = {
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence,
+    source: 'AI',
     report: { form: '10-K', filingDate: '2026-02-25', url: 'https://www.sec.gov/report-1' },
     reviewStatus: 'UNREVIEWED',
     criticality: null,

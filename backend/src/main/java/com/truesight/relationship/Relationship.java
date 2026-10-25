@@ -143,6 +143,10 @@ public class Relationship {
         return provides;
     }
 
+    public void setProvides(String provides) {
+        this.provides = provides;
+    }
+
     public String getEvidence() {
         return evidence;
     }
