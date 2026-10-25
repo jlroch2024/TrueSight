@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { tokenStore } from '../api/client';
 import type { ReviewItem } from '../api/reviews';
-import { displayName } from './supplyChain';
 
 /** NVIDIA's own words about TSMC, from its 10-K in docs/examples. */
 const evidence =
@@ -17,13 +16,21 @@ const evidence =
 const waiting: ReviewItem = {
   relationship: {
     id: 1,
-    company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-    counterparty: { id: 2, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' },
+    company: { id: 1, name: 'NVIDIA Corporation', displayName: 'NVIDIA', ticker: 'NVDA' },
+    counterparty: {
+      id: 2,
+      name: 'Taiwan Semiconductor Manufacturing Company Limited',
+      displayName: 'Taiwan Semiconductor Manufacturing',
+      ticker: 'TSM',
+    },
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence,
+    source: 'AI',
     report: { form: '10-K', filingDate: '2026-02-25', url: 'https://www.sec.gov/report-1' },
     reviewStatus: 'UNREVIEWED',
+    criticality: null,
+    criticalityEvidence: null,
     reviewedAt: null,
     reviewNote: null,
   },
@@ -60,6 +67,7 @@ beforeEach(() => {
     vi.fn(async (url: string) => {
       if (url === '/api/auth/me') return json({ email: 'analyst@example.com', role: 'ANALYST' });
       if (url.startsWith('/api/reviews')) return json([waiting]);
+      if (url.startsWith('/api/ai-calls')) return json({ calls: [], page: 0, totalPages: 0, total: 0 });
       return json([]);
     }),
   );
@@ -81,10 +89,10 @@ describe('Analyst Desk', () => {
     expect(within(panel).getByRole('heading', { name: 'Review' })).toBeInTheDocument();
     expect(
       await within(panel).findByRole('heading', {
-        name: `${displayName('Taiwan Semiconductor Manufacturing Company Limited')} → ${displayName('NVIDIA Corporation')}`,
+        name: 'Taiwan Semiconductor Manufacturing → NVIDIA',
       }),
     ).toBeInTheDocument();
-    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/reviews?status=UNREVIEWED', expect.anything());
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/reviews', expect.anything());
   });
 
   it('opens the tab named in the address, so it survives a reload', () => {
@@ -97,6 +105,14 @@ describe('Analyst Desk', () => {
     renderAt('/review?tab=no-such-tab');
 
     expect(screen.getByRole('tab', { name: 'Relationships' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('opens the AI Calls tab named in the address', async () => {
+    renderAt('/review?tab=ai-calls');
+
+    expect(screen.getByRole('tab', { name: 'AI Calls' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('No AI calls match these filters.')).toBeInTheDocument();
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/ai-calls?page=0', expect.anything());
   });
 
   it('puts the chosen tab in the address', async () => {

@@ -17,6 +17,8 @@ import { PortfolioPicker } from './PortfolioPicker';
 
 export function Layout() {
   const [me, setMe] = useState<Me | null>(null);
+  const [accountError, setAccountError] = useState(false);
+  const [accountAttempt, setAccountAttempt] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
@@ -24,8 +26,22 @@ export function Layout() {
 
   useEffect(() => {
     if (!tokenStore.get()) return;
-    authApi.me().then(setMe).catch(() => setMe(null));
-  }, []);
+    let active = true;
+    setAccountError(false);
+    authApi.me()
+      .then((loaded) => {
+        if (active) setMe(loaded);
+      })
+      .catch(() => {
+        if (active) {
+          setMe(null);
+          setAccountError(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [accountAttempt]);
 
   // Logging out only forgets the token: the backend keeps nothing to undo.
   function logOut() {
@@ -42,10 +58,25 @@ export function Layout() {
         </div>
         <PortfolioPicker portfolioId={portfolioId} />
         <div className="header-account">
-          {me && (
+          {(me || accountError) && (
             <div className="account-identity">
-              <span className="account-email">{me.email}</span>
-              {me.role === 'ANALYST' && <span className="account-role">Analyst</span>}
+              {me ? (
+                <>
+                  <span className="account-email">{me.email}</span>
+                  {me.role === 'ANALYST' && <span className="account-role">Analyst</span>}
+                </>
+              ) : (
+                <>
+                  <span className="muted small">Account Could Not Load</span>
+                  <button
+                    type="button"
+                    className="secondary small-button"
+                    onClick={() => setAccountAttempt((attempt) => attempt + 1)}
+                  >
+                    Retry
+                  </button>
+                </>
+              )}
             </div>
           )}
           <button type="button" className="log-out" onClick={logOut}>Log Out</button>

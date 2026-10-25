@@ -20,9 +20,19 @@ public final class Examples {
         return read("nvidia-10k.txt");
     }
 
+    /** 17 relationships in the shape {@code GET /api/portfolios/{id}/relationships} returns. */
+    public static String relationships() {
+        return read("relationships.json");
+    }
+
     /** Gemini's real, unchanged answer for that 10-K: 7 suppliers, each with a quote. */
     public static String geminiNvidia() {
         return read("gemini-nvidia.json");
+    }
+
+    /** Gemini's real answer to the criticality-enabled relationship prompt for NVIDIA's saved 10-K. */
+    public static String geminiNvidiaCriticality() {
+        return read("gemini-nvidia-criticality.json");
     }
 
     /** A real Google News RSS response for the TSMC search used by Sprint 2. */

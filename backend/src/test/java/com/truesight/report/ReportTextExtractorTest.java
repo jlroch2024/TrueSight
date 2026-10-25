@@ -1,5 +1,7 @@
 package com.truesight.report;
 
+import com.truesight.support.Examples;
+import org.jsoup.Jsoup;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +31,31 @@ class ReportTextExtractorTest {
                         + " of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators,"
                         + " collectors and other critical optical components (which we refer to as optics)."));
         assertThat(text.lines()).noneMatch(line -> line.endsWith("our key suppliers, Carl Zeiss SMT, our"));
+    }
+
+    @Test
+    void detectsAndRefreshesAsmlTextSavedWithTheOldLineBreaks() throws Exception {
+        String html;
+        try (var in = getClass().getResourceAsStream("/reports/asml-20f-zeiss-lines.html")) {
+            html = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        String previouslySaved = String.join("\n", Jsoup.parse(html).select("div").eachText());
+
+        assertThat(ReportTextExtractor.hasLegacyWrappedParagraphs(previouslySaved)).isTrue();
+        String refreshed = ReportTextExtractor.extract(html);
+        assertThat(ReportTextExtractor.hasLegacyWrappedParagraphs(refreshed)).isFalse();
+        assertThat(new com.truesight.relationship.QuoteChecker(refreshed).evidenceFor(
+                "The number of lithography systems we are able to produce is limited by the production capacity of one "
+                        + "of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators, "
+                        + "collectors and other critical optical components (which we refer to as optics)."))
+                .contains("The number of lithography systems we are able to produce is limited by the production capacity of one"
+                        + " of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators,"
+                        + " collectors and other critical optical components (which we refer to as optics).");
+    }
+
+    @Test
+    void currentNvidiaReportTextIsNotMistakenForTheLegacyLineWrapping() {
+        assertThat(ReportTextExtractor.hasLegacyWrappedParagraphs(Examples.nvidia10K())).isFalse();
     }
 
     @Test

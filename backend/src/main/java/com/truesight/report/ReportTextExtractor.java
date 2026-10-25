@@ -40,6 +40,24 @@ public final class ReportTextExtractor {
         return String.join("\n", paragraphs);
     }
 
+    /**
+     * Old releases treated every printed line in some filings as a paragraph. A large majority of the resulting
+     * lines end mid-sentence; the current extractor joins those lines back into complete passages.
+     */
+    public static boolean hasLegacyWrappedParagraphs(String text) {
+        String[] lines = text.split("\\R+");
+        int substantial = 0;
+        int unfinished = 0;
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            if (trimmed.length() < 40) continue;
+            substantial++;
+            if (!endsSentence(trimmed)) unfinished++;
+        }
+        return substantial >= 10 && (double) unfinished / substantial >= 0.65;
+    }
+
     private static boolean endsSentence(String line) {
         return line.matches("(?s).*[.!?][\\\"'’”)]*$") || line.endsWith(":");
     }

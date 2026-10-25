@@ -115,6 +115,20 @@ class FindSuppliersAndCustomersIT {
     }
 
     @Test
+    void theRealCriticalityEnabledNvidiaAnswerSavesRelationshipsWithoutCriticality() throws Exception {
+        when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidiaCriticality()));
+        String email = "ai-criticality-nvidia@example.com";
+        Portfolio portfolio = analyse(email, HoldingStatus.DONE);
+
+        mockMvc.perform(get("/api/portfolios/{id}/relationships", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(7)))
+                .andExpect(jsonPath("$[*].criticality", everyItem(emptyOrNullString())))
+                .andExpect(jsonPath("$[*].criticalityEvidence", everyItem(emptyOrNullString())));
+    }
+
+    @Test
     void everyRelationshipShowsTheOtherCompanyWhichWayRoundWhatItProvidesAndTheEvidence() throws Exception {
         when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         String email = "ai-every-part@example.com";

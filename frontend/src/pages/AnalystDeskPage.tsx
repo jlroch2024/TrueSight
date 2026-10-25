@@ -6,6 +6,7 @@
 // move between them, Home and End jump to the first and last.
 import { type KeyboardEvent, type ReactNode, useRef } from 'react';
 import { useSearchParams } from 'react-router';
+import { AiCallsPage } from './AiCallsPage';
 import { ReviewPage } from './ReviewPage';
 
 type Tab = { id: string; label: string; content: () => ReactNode };
@@ -13,6 +14,7 @@ type Tab = { id: string; label: string; content: () => ReactNode };
 const TABS: Tab[] = [
   // Today's Review page, unchanged: the Easier Review story edits ReviewPage.tsx itself.
   { id: 'relationships', label: 'Relationships', content: () => <ReviewPage /> },
+  { id: 'ai-calls', label: 'AI Calls', content: () => <AiCallsPage /> },
 ];
 
 export function AnalystDeskPage() {

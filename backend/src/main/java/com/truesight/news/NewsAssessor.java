@@ -41,12 +41,19 @@ public class NewsAssessor implements NewsCheckStep {
 
     static final String PROMPT = """
             You are screening news headlines for supply-chain risk. For each numbered headline, decide whether it reports an event
-            that could disrupt the named company's ability to make, buy, ship or sell goods.
+            that could stop or delay the named company making, buying, shipping or selling goods. If it could not do that, it is
+            noise, however serious or newsworthy it is.
+
+            These are noise unless the headline itself says production, supply or sales are affected:
+            - a leadership or board change
+            - a lawsuit, settlement, patent fight or other dispute about money or intellectual property
+            - one consumer's accident, or an investigation into a single product incident
+            - a regulator's comment, opinion or routine review
+            - earnings, share prices, analyst opinions, product launches, marketing, or general commentary
 
             Answer for every headline:
             - index: the headline's number
-            - isEvent: true only for a real disruption; false for earnings, share prices, analyst opinions, product launches,
-              marketing, or general commentary
+            - isEvent: true only for a real disruption; false for noise
             - eventType: one of PRODUCTION_STOP, SUPPLY_SHORTAGE, LABOUR_ACTION, NATURAL_DISASTER, TRADE_RESTRICTION,
               FINANCIAL_DISTRESS, LEGAL_OR_REGULATORY, CYBER_ATTACK, OTHER_DISRUPTION; empty when isEvent is false
             - severity: LOW, MEDIUM or HIGH; empty when isEvent is false

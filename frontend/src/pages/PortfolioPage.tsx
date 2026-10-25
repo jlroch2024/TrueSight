@@ -9,7 +9,6 @@ import { CheckNewsButton } from '../components/CheckNewsButton';
 import { useConfirm } from '../components/ConfirmDialog';
 import { newsApi } from '../api/news';
 import { portfolioSubtitle } from './portfolioSubtitle';
-import { displayName } from './supplyChain';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -58,14 +57,10 @@ export function PortfolioPage() {
   }, [portfolioId]);
 
   // After a rename in the Manage Portfolios window, show the new name without reloading the holdings.
-  useEffect(() => portfolioChanges.listen(() => {
-    portfolioApi
-      .list()
-      .then((all) => {
-        const renamed = all.find((p) => String(p.id) === portfolioId);
-        if (renamed) setPortfolio((current) => (current ? { ...current, name: renamed.name } : current));
-      })
-      .catch(() => {});
+  useEffect(() => portfolioChanges.listen((changed) => {
+    if (changed && String(changed.id) === portfolioId) {
+      setPortfolio((current) => (current ? { ...current, ...changed } : current));
+    }
   }), [portfolioId]);
 
   const running = holdings.some((holding) => holding.status === 'ANALYSING');
@@ -199,7 +194,7 @@ export function PortfolioPage() {
               <tbody>
                 {holdings.map((h) => (
                   <tr key={h.id}>
-                    <td title={h.companyName ?? undefined}>{h.companyName ? displayName(h.companyName) : '—'}</td>
+                    <td title={h.companyName ?? undefined}>{h.companyDisplayName ?? '—'}</td>
                     <td>{h.ticker}</td>
                     <td>{h.weight === null ? '—' : `${h.weight}%`}</td>
                     <td>

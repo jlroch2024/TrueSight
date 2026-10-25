@@ -11,7 +11,10 @@ words, and shows the result as a graph. Each relationship links to the exact sen
 
 ## How You Will Be Given Work
 
-The person you work with pastes a Jira story. It has four parts:
+The person you work with names a Jira story, or pastes it. Every story is also in `docs/stories/`, one file per Jira
+issue named after its key (`TS-28-Upload-a-Portfolio-CSV.md`), with `README.md` listing them by sprint. Read the
+story's file before you start, and the files of any story it names (its "Needs First" story, stories it builds on).
+A story has four parts:
 
 - **User Story**: who wants what, and why.
 - **What We Agreed**: decisions already made. Follow them exactly.
@@ -20,6 +23,12 @@ The person you work with pastes a Jira story. It has four parts:
 
 Work on the branch named after the story's Jira key (e.g. `TS-28-Upload-a-Portfolio-CSV`). If the story is unclear,
 or needs something that does not exist yet, **stop and ask**. Do not guess, and do not build a different story's work.
+
+Jira is the source; the files are a copy. If a pasted story and its file disagree, the pasted one is newer: follow it,
+and say so. Never edit a story file by hand: they are rebuilt from a Jira export (see `docs/stories/README.md`).
+
+**Reviewing a pull request:** read the story file named by the pull request's key, then check the change against its
+What We Agreed, every Acceptance Criterion, and its Technical Notes, as well as against this file.
 
 ## How to Run It
 
@@ -50,6 +59,7 @@ the repository root: copy `.env.example`.
 | `frontend/src/api/client.ts` | `api()`, the only way the website calls the backend |
 | `frontend/src/paths.ts`, `frontend/src/navigation.ts` | Every page's address, and the sidebar's links |
 | `docs/examples/` | Real sample data to build and test against. Its README explains every file |
+| `docs/stories/` | Every Jira story, one file per issue, copied from a Jira export. Its README lists them by sprint |
 
 ## Backend Rules
 
@@ -168,7 +178,8 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   - **Title Case for everything that is not a full sentence:** labels, buttons, headings, tags, counts, times and
     status lines ("7 of 7 Holdings Analysed", "3 Hours Ago", "0 Suppliers · 1 Customer"). Full sentences (subtitles,
     explanations, empty states, error messages) are in sentence case.
-  - **Company names** are shown with `displayName()` from `pages/supplyChain.ts`, so every company reads the same way.
+  - **Company names** are shown with the display name the API sends (`CompanyDisplayNames` in the backend); the website
+    never reformats a name.
 - **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
   `<select>`, checkbox or radio button.

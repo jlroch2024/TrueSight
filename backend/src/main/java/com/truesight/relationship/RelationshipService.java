@@ -2,6 +2,7 @@ package com.truesight.relationship;
 
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
+import com.truesight.company.CompanyDisplayNames;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
@@ -33,16 +34,19 @@ public class RelationshipService {
     private final RelationshipRepository relationships;
     private final CompanyRepository companies;
     private final ReportRepository reports;
+    private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
 
     public RelationshipService(PortfolioRepository portfolios, HoldingRepository holdings,
                                RelationshipRepository relationships, CompanyRepository companies,
-                               ReportRepository reports, CurrentUser currentUser) {
+                               ReportRepository reports, CompanyDisplayNames displayNames,
+                               CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
         this.reports = reports;
+        this.displayNames = displayNames;
         this.currentUser = currentUser;
     }
 
@@ -85,6 +89,9 @@ public class RelationshipService {
                     r.getType(),
                     r.getProvides(),
                     r.getEvidence(),
+                    r.getSource(),
+                    r.getCriticality(),
+                    r.getCriticalityEvidence(),
                     new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()),
                     r.getReviewStatus(),
                     r.getReviewedAt(),
@@ -92,7 +99,8 @@ public class RelationshipService {
         }).toList();
     }
 
-    private static RelationshipResponse.CompanySummary summary(Company company) {
-        return new RelationshipResponse.CompanySummary(company.getId(), company.getName(), company.getTicker());
+    private RelationshipResponse.CompanySummary summary(Company company) {
+        return new RelationshipResponse.CompanySummary(company.getId(), company.getName(), displayNames.of(company),
+                company.getTicker());
     }
 }

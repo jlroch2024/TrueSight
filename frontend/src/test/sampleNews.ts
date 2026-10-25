@@ -4,7 +4,12 @@ import googleNewsTsmc from '../../../docs/examples/google-news-tsmc.xml?raw';
 import geminiNewsAssessment from '../../../docs/examples/gemini-news-assessment.json?raw';
 import type { NewsArticle } from '../api/news';
 
-export const TSMC = { id: 11, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' };
+export const TSMC = {
+  id: 11,
+  name: 'Taiwan Semiconductor Manufacturing Company Limited',
+  displayName: 'Taiwan Semiconductor Manufacturing',
+  ticker: 'TSM',
+};
 
 /** The first {@code count} headlines in the sample, about TSMC, not yet judged by the AI. */
 export function sampleNews(count: number): NewsArticle[] {

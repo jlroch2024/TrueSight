@@ -26,11 +26,14 @@ export const portfolioApi = {
 const PORTFOLIOS_CHANGED = 'truesight:portfolios-changed';
 
 export const portfolioChanges = {
-  announce: () => window.dispatchEvent(new Event(PORTFOLIOS_CHANGED)),
+  announce: (changed?: Portfolio) =>
+    window.dispatchEvent(new CustomEvent(PORTFOLIOS_CHANGED, { detail: changed ?? null })),
   /** Calls listener after every change; returns the function that stops listening. */
-  listen: (listener: () => void) => {
-    window.addEventListener(PORTFOLIOS_CHANGED, listener);
-    return () => window.removeEventListener(PORTFOLIOS_CHANGED, listener);
+  listen: (listener: (changed?: Portfolio) => void) => {
+    const handle = (event: Event) =>
+      listener((event as CustomEvent<Portfolio | null>).detail ?? undefined);
+    window.addEventListener(PORTFOLIOS_CHANGED, handle);
+    return () => window.removeEventListener(PORTFOLIOS_CHANGED, handle);
   },
 };
 
@@ -42,6 +45,8 @@ export type Holding = {
   ticker: string;
   weight: number | null;
   companyName: string | null;
+  // How every page shows the company; null until the holding is matched to one, like companyName.
+  companyDisplayName: string | null;
   status: HoldingStatus;
   statusReason: string | null;
   reportType: string | null;

@@ -4,7 +4,7 @@ import { portfolioSubtitle } from './portfolioSubtitle';
 
 function holdings(...statuses: HoldingStatus[]): Holding[] {
   return statuses.map((status, i) => ({
-    id: i + 1, ticker: `T${i}`, weight: null, companyName: null, status, statusReason: null,
+    id: i + 1, ticker: `T${i}`, weight: null, companyName: null, companyDisplayName: null, status, statusReason: null,
     reportType: null, reportDate: null, reportLink: null, lastAnalysed: null,
   }));
 }

@@ -1,0 +1,732 @@
+/* The living graph. Everything here is prefixed lg- and scoped to the graph, so it changes nothing else in the app. */
+
+.lg-root {
+  --lg-text: #e8edf5;
+  --lg-muted: #8b97ab;
+  --lg-faint: #5d6b80;
+  --lg-line: rgba(255, 255, 255, 0.08);
+  --lg-glass: rgba(12, 17, 29, 0.6);
+  --lg-amber: #f5b73b;
+  --lg-live: #2dd4bf;
+  --lg-focus: rgba(165, 180, 252, 0.7);
+  --lg-edge: rgba(255, 255, 255, 0.16);
+
+  position: relative;
+  height: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #05070d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: var(--lg-text);
+  font-family: 'Geist Variable', 'Geist', 'Inter', system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  isolation: isolate;
+}
+
+.lg-root.lg-cut {
+  --cut: 22px;
+}
+
+.lg-root.lg-cut::after {
+  z-index: 3;
+}
+
+/* Full screen: the graph lifts over the page, which dims behind it. */
+.lg-full {
+  position: fixed;
+  z-index: 1000;
+  inset: 14px;
+  height: auto;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Behind the graph in full screen: the page, dimmed and softly blurred. */
+.lg-backdrop {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  background: rgba(2, 4, 9, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.lg-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  outline: none;
+  touch-action: none;
+}
+
+.lg-canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--lg-focus);
+}
+
+/* A chamfer: the top-right corner cut at 45°, as on the app's primary buttons, with a hairline along the cut so it reads
+   as an edge rather than a crop. Set --cut for its size. */
+.lg-cut,
+.lg-root .lg-cut {
+  --cut: 10px;
+
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+}
+
+.lg-cut::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--cut);
+  height: var(--cut);
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.7px),
+    var(--lg-edge) calc(50% - 0.7px),
+    var(--lg-edge) calc(50% + 0.7px),
+    transparent calc(50% + 0.7px)
+  );
+  content: '';
+  pointer-events: none;
+}
+
+/* Registration marks: small corner ticks, as on a drawing sheet or in a viewfinder, at the corners a chamfer leaves
+   square (all four on a panel without one). --tick and --tick-length set their colour and size. */
+.lg-mark {
+  --tick: rgba(203, 213, 225, 0.5);
+  --tick-length: 6px;
+}
+
+.lg-mark::before {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--tick), var(--tick)) top left / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) top left / 1px var(--tick-length) no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom left / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom left / 1px var(--tick-length) no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom right / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom right / 1px var(--tick-length) no-repeat;
+  content: '';
+  pointer-events: none;
+}
+
+.lg-mark:not(.lg-cut)::before {
+  background:
+    linear-gradient(var(--tick), var(--tick)) top left / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) top left / 1px var(--tick-length) no-repeat,
+    linear-gradient(var(--tick), var(--tick)) top right / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) top right / 1px var(--tick-length) no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom left / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom left / 1px var(--tick-length) no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom right / var(--tick-length) 1px no-repeat,
+    linear-gradient(var(--tick), var(--tick)) bottom right / 1px var(--tick-length) no-repeat;
+}
+
+/* The graph's own frame: larger, brighter marks, over the canvas. */
+.lg-root.lg-mark {
+  --tick: rgba(94, 234, 212, 0.55);
+  --tick-length: 14px;
+}
+
+.lg-root.lg-mark::before {
+  z-index: 3;
+}
+
+/* Glass: every control floats over the graph on a blurred, tinted pane. */
+.lg-glass {
+  border: 1px solid var(--lg-line);
+  background: var(--lg-glass);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--lg-text);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+
+/* The app's own buttons are teal, chamfered and lime under the pointer (styles.css); the graph's controls are not, in
+   any state. The graph's own rules below are written as .lg-root .lg-... so they win over these. */
+.lg-root button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  clip-path: none;
+  cursor: pointer;
+}
+
+.lg-root button:hover:not(:disabled) {
+  border-color: transparent;
+  background: none;
+}
+
+.lg-root button:focus-visible,
+.lg-root input:focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: 2px;
+}
+
+/* Top: the title with how much is on the graph, search, and the arrangement and full screen. */
+.lg-top {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  left: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.lg-top > *,
+.lg-bottom > * {
+  pointer-events: auto;
+}
+
+.lg-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  padding: 0 13px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.lg-title-name {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lg-title-count {
+  color: var(--lg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A small light that says the graph is live. */
+.lg-pulse {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  background: var(--lg-live);
+  box-shadow: 0 0 10px var(--lg-live);
+}
+
+.lg-pulse::after {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--lg-live);
+  content: '';
+  animation: lg-pulse 2.4s ease-out infinite;
+}
+
+@keyframes lg-pulse {
+  from {
+    opacity: 0.8;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+.lg-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 210px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  color: var(--lg-muted);
+  transition: width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.lg-search[data-open='true'] {
+  width: 300px;
+}
+
+.lg-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lg-text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.lg-search input::placeholder {
+  color: var(--lg-muted);
+}
+
+.lg-root .lg-search input:focus-visible {
+  outline: none;
+}
+
+.lg-search:focus-within {
+  border-color: rgba(165, 180, 252, 0.35);
+}
+
+.lg-kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--lg-line);
+  color: var(--lg-muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+.lg-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  transform-origin: top center;
+}
+
+.lg-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  color: var(--lg-text);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.lg-result[aria-selected='true'] {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.lg-result-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+}
+
+.lg-result-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lg-result-ticker {
+  color: var(--lg-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-result-empty {
+  padding: 8px 10px;
+  color: var(--lg-muted);
+  font-size: 12.5px;
+}
+
+.lg-top-right {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.lg-root .lg-icon-button {
+  display: grid;
+  border: 1px solid var(--lg-line);
+  background: var(--lg-glass);
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.lg-root .lg-icon-button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(30, 38, 56, 0.75);
+}
+
+/* Bottom: the key (each holding's chain, and what the lines mean), and the view's controls. */
+.lg-bottom {
+  position: absolute;
+  z-index: 2;
+  right: 14px;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+}
+
+/* The key: one compact row, each holding's colour, then what the amber badge means. */
+.lg-key {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  max-width: min(560px, 60%);
+  padding: 6px 8px;
+}
+
+.lg-chains,
+.lg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lg-legend {
+  padding-left: 10px;
+  border-left: 1px solid var(--lg-line);
+  color: var(--lg-muted);
+  font-size: 11px;
+}
+
+.lg-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.lg-root .lg-chain {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 7px 2px 6px;
+  border: 1px solid var(--lg-line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--lg-text);
+  cursor: pointer;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.lg-root .lg-chain:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.lg-root .lg-chain[aria-pressed='true'],
+.lg-root .lg-chain[aria-pressed='true']:hover:not(:disabled) {
+  border-color: var(--chain);
+  background: color-mix(in srgb, var(--chain) 18%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--chain) 35%, transparent);
+}
+
+.lg-chain-swatch {
+  width: 10px;
+  height: 3px;
+  background: var(--chain);
+  box-shadow: 0 0 8px var(--chain);
+}
+
+.lg-legend-badge {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  background: var(--lg-amber);
+  color: #1a1205;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.lg-zoom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+.lg-root .lg-zoom-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lg-text);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+/* The control in a chamfered panel's corner takes the chamfer too, so its highlight follows the panel's edge. */
+.lg-zoom .lg-zoom-button:last-child {
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+}
+
+.lg-root .lg-zoom-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lg-zoom-value {
+  min-width: 46px;
+  color: var(--lg-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.lg-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--lg-line);
+}
+
+.lg-hint {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 84px;
+  left: 0;
+  width: max-content;
+  max-width: calc(100% - 28px);
+  margin: 0 auto;
+  padding: 6px 12px;
+  border: 1px solid var(--lg-line);
+  background: rgba(12, 17, 29, 0.5);
+  color: var(--lg-muted);
+  font-size: 12px;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+/* What the pointer is on: follows it, above and to the right, so it covers neither the company nor its label; near
+   the top, below instead. */
+.lg-tip {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  max-width: 300px;
+  padding: 10px 12px;
+  pointer-events: none;
+  translate: 16px calc(-100% - 14px);
+}
+
+.lg-tip.lg-tip-below {
+  translate: 16px 18px;
+}
+
+.lg-tip-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.lg-tip-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0 0;
+  color: var(--lg-muted);
+  font-size: 12px;
+}
+
+/* A company the user placed: the same teal pin as on its tile. */
+.lg-tip-placed {
+  color: #c4f36a;
+}
+
+/* A disruption: a small diamond in its severity's colour. */
+.lg-legend-risk {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  background: #ff4d5e;
+  transform: rotate(45deg);
+}
+
+.lg-legend-critical {
+  width: 22px;
+  height: 3px;
+  flex: none;
+  background: #5d6b80;
+}
+
+.lg-legend-risk[data-severity='MEDIUM'] {
+  background: #ff8a3d;
+}
+
+.lg-legend-risk[data-severity='LOW'] {
+  background: #ffd166;
+}
+
+.lg-tip-risk {
+  align-items: flex-start;
+  color: var(--lg-text);
+  line-height: 1.35;
+}
+
+.lg-tip-risk .lg-legend-risk {
+  margin-top: 4px;
+}
+
+.lg-pin {
+  width: 8px;
+  height: 8px;
+  background: #c4f36a;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.lg-status {
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.lg-status-approved {
+  border-color: rgba(134, 239, 172, 0.35);
+  background: rgba(134, 239, 172, 0.08);
+  color: #86efac;
+}
+
+/* The minimap and the view's controls, stacked on the right. */
+.lg-bottom-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.lg-minimap {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.lg-minimap canvas {
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* In full screen the Inspector is hidden, so what is chosen gets a card of its own. */
+.lg-chosen {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  bottom: 84px;
+  left: 0;
+  display: flex;
+  width: min(580px, calc(100% - 28px));
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto;
+  padding: 12px 12px 12px 14px;
+}
+
+.lg-chosen p {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.lg-chosen strong {
+  display: block;
+  font-weight: 600;
+}
+
+.lg-chosen-line {
+  display: block;
+  margin-top: 2px;
+  color: var(--lg-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-chosen-swatch {
+  flex: none;
+  width: 4px;
+  height: 30px;
+}
+
+.lg-root .lg-chosen-button {
+  --cut: 7px;
+
+  position: relative;
+  flex: none;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--lg-text);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.lg-root .lg-chosen-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--lg-muted);
+}
+
+@media (max-width: 760px) {
+  .lg-title-count,
+  .lg-hint {
+    display: none;
+  }
+
+  .lg-search {
+    width: 150px;
+  }
+
+  .lg-search[data-open='true'] {
+    width: 200px;
+  }
+
+  .lg-bottom {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lg-key {
+    max-width: none;
+  }
+
+  .lg-bottom-right {
+    align-self: flex-end;
+  }
+
+  .lg-minimap {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-pulse::after {
+    animation: none;
+  }
+}

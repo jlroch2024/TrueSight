@@ -8,7 +8,8 @@ import java.time.LocalDate;
  *
  * <p>{@code company} is the company whose report it came from; {@code counterparty} is the other company.
  * {@code type} SUPPLIER means the counterparty supplies the company; CUSTOMER means it buys from it. {@code evidence}
- * is the report's own words. {@code provides} and a company's {@code ticker} may be null.
+ * is the report's own words. {@code provides} and a company's {@code ticker} may be null. A company's {@code name} is
+ * as stored; {@code displayName} is how every page shows it (see {@link com.truesight.company.CompanyDisplayNames}).
  *
  * <p>{@code reviewStatus} is where an Analyst's review has got; {@code reviewedAt} and {@code reviewNote} are null
  * until a decision is made (and the note may stay empty for an approval).
@@ -20,12 +21,15 @@ public record RelationshipResponse(
         RelationshipType type,
         String provides,
         String evidence,
+        RelationshipSource source,
+        Criticality criticality,
+        String criticalityEvidence,
         ReportSummary report,
         ReviewStatus reviewStatus,
         Instant reviewedAt,
         String reviewNote) {
 
-    public record CompanySummary(Long id, String name, String ticker) {
+    public record CompanySummary(Long id, String name, String displayName, String ticker) {
     }
 
     /** The report the evidence is in. {@code url} opens it on the SEC website. */

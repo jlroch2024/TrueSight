@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -42,8 +43,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @IntegrationTest
 class NewsListIT {
 
-    private static final String NVIDIA_CIK = "0001045810";
-    private static final String TSMC_CIK = "0001046179";
     private static final String EVIDENCE = "We utilize foundries, such as Taiwan Semiconductor Manufacturing "
             + "Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor "
             + "wafers.";
@@ -67,12 +66,14 @@ class NewsListIT {
     @BeforeEach
     void nvidiaHeldWithTsmcAsItsSupplier() {
         sample = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
-        nvidia = cleanCompany("NVIDIA Corporation", NVIDIA_CIK, "NVDA");
-        tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        nvidia = cleanCompany("NVIDIA Corporation News List " + suffix, null, "NVDA");
+        tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited News List " + suffix, null, "TSM");
         // A company with news saved, but outside this portfolio's supply chain.
-        outsider = cleanCompany("Panasonic", null, null);
+        outsider = cleanCompany("Panasonic News List " + suffix, null, null);
         reports.deleteByCompanyId(nvidia.getId());
-        Report report = reports.saveAndFlush(new Report(nvidia.getId(), "10-K", "0001045810-26-000021",
+        Report report = reports.saveAndFlush(new Report(nvidia.getId(), "10-K",
+                "NL-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20),
                 LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
                 Examples.nvidia10K()));

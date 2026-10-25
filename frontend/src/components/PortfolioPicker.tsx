@@ -14,6 +14,7 @@ const NONE = '';
 
 export function PortfolioPicker({ portfolioId }: { portfolioId?: string }) {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [managing, setManaging] = useState(false);
   const manageButton = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
@@ -22,8 +23,11 @@ export function PortfolioPicker({ portfolioId }: { portfolioId?: string }) {
   const load = useCallback(() => {
     portfolioApi
       .list()
-      .then(setPortfolios)
-      .catch(() => setPortfolios([]));
+      .then((loaded) => {
+        setPortfolios(loaded);
+        setLoadError(false);
+      })
+      .catch(() => setLoadError(true));
   }, []);
 
   // Reloaded when the open portfolio changes, and after any change in the Manage Portfolios window.
@@ -41,7 +45,12 @@ export function PortfolioPicker({ portfolioId }: { portfolioId?: string }) {
 
   return (
     <div className="portfolio-picker">
-      {portfolios.length > 0 && (
+      {loadError ? (
+        <>
+          <span className="muted small">Portfolios Could Not Load</span>
+          <button type="button" className="secondary" onClick={load}>Retry</button>
+        </>
+      ) : portfolios.length > 0 && (
         <Select
           id="portfolio-picker"
           label="Portfolio"

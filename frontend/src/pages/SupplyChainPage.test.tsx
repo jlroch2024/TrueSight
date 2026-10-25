@@ -1,24 +1,25 @@
 // The Supply Chain page: loading, error, empty and loaded states, and clicking an edge.
 //
-// SupplyChainGraph draws with Cytoscape, which needs a real <canvas> that jsdom does not provide (see
-// SupplyChainGraph.tsx). It is replaced here with a fake that renders one button per edge, so a click can be
-// simulated without a browser. What the real graph draws (nodes, shapes, colours) is Cytoscape's own job; what goes
-// into it is buildGraphElements, already tested on its own in supplyChain.test.ts.
+// The graph (LivingGraph) draws on a <canvas>, which jsdom cannot draw on. It is replaced here with a fake that renders
+// one button per edge, so a click can be simulated without a browser. What the real graph does is tested on its own in
+// src/graph/; what goes into it is buildGraphElements, tested in supplyChain.test.ts.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
+import type { AlertEvent } from '../api/alerts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { NewsArticle } from '../api/news';
 import type { Holding, Portfolio } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { tokenStore } from '../api/client';
+import { showInReportUrl } from '../format';
 import { TSMC, sampleNews } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 import { SupplyChainPage } from './SupplyChainPage';
 
-vi.mock('../components/SupplyChainGraph', () => ({
-  SupplyChainGraph: ({
+vi.mock('../graph/LivingGraph', () => ({
+  LivingGraph: ({
     nodes,
     edges,
     onEdgeSelect,
@@ -27,6 +28,7 @@ vi.mock('../components/SupplyChainGraph', () => ({
     selectedRelationshipId,
     logoToken,
     logoDomains,
+    risks,
   }: {
     nodes: GraphNode[];
     edges: GraphEdge[];
@@ -36,6 +38,7 @@ vi.mock('../components/SupplyChainGraph', () => ({
     selectedRelationshipId?: number | null;
     logoToken?: string;
     logoDomains?: Record<string, string>;
+    risks?: Map<number, { severity: string; eventType: string; title: string }>;
   }) => (
     <div data-testid="fake-graph">
       <span data-testid="logo-domains">{JSON.stringify(logoDomains ?? {})}</span>
@@ -44,6 +47,7 @@ vi.mock('../components/SupplyChainGraph', () => ({
       <span data-testid="edge-count">{edges.length}</span>
       <span data-testid="selected-node">{selectedNodeId ?? ''}</span>
       <span data-testid="selected-relationship">{selectedRelationshipId ?? ''}</span>
+      <span data-testid="risk-relationships">{[...(risks?.keys() ?? [])].sort().join(',')}</span>
       {edges.map((edge) => (
         <button key={edge.id} onClick={() => onEdgeSelect(edge.relationshipId)}>
           {`Select edge ${edge.relationshipId}`}
@@ -66,11 +70,20 @@ const tsmcSentence =
 function relationship(overrides: Partial<Relationship> = {}): Relationship {
   return {
     id: 1,
-    company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-    counterparty: { id: 11, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' },
+    // The SEC's name for NVIDIA, and the display name the API sends for it: NVIDIA's own report writes "NVIDIA".
+    company: { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' },
+    counterparty: {
+      id: 11,
+      name: 'Taiwan Semiconductor Manufacturing Company Limited',
+      displayName: 'Taiwan Semiconductor Manufacturing',
+      ticker: 'TSM',
+    },
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence: tsmcSentence,
+    source: 'AI',
+    criticality: null,
+    criticalityEvidence: null,
     report: {
       form: '10-K',
       filingDate: '2026-02-25',
@@ -88,7 +101,8 @@ function holding(overrides: Partial<Holding> = {}): Holding {
     id: 1,
     ticker: 'NVDA',
     weight: null,
-    companyName: 'NVIDIA Corporation',
+    companyName: 'NVIDIA CORP',
+    companyDisplayName: 'NVIDIA',
     status: 'DONE',
     statusReason: null,
     reportType: '10-K',
@@ -116,6 +130,7 @@ function fakeFetch(
   settings: { logoToken: string } | number = { logoToken: '' },
   news: NewsArticle[] = [],
   portfolio: Portfolio = PORTFOLIO,
+  alerts: AlertEvent[] = [],
 ) {
   return vi.fn(async (url: string) => {
     if (url.endsWith('/settings')) {
@@ -124,6 +139,9 @@ function fakeFetch(
         : new Response(JSON.stringify(settings));
     }
     if (url === '/api/portfolios') return new Response(JSON.stringify([portfolio]));
+    if (url.includes('/alerts')) {
+      return new Response(JSON.stringify({ weighted: false, holdingCount: holdings.length, alerts }));
+    }
     if (url.endsWith('/news')) return new Response(JSON.stringify(news));
     if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({}));
     return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
@@ -145,6 +163,49 @@ beforeEach(() => {
 });
 
 describe('Supply Chain page', () => {
+  it('marks every relationship an open event runs through', async () => {
+    const first = relationship();
+    const second = relationship({
+      id: 2,
+      counterparty: { id: 12, name: 'Samsung Electronics', displayName: 'Samsung Electronics', ticker: '005930' },
+    });
+    const event: AlertEvent = {
+      alertIds: [11],
+      status: 'NEW',
+      exposure: 40,
+      headline: {
+        article: {
+          title: 'Temporary supply disruption',
+          source: 'Local test fixture',
+          publishedAt: '2026-10-20T00:00:00Z',
+          url: 'https://example.com/event',
+        },
+        assessment: {
+          eventType: 'SUPPLY_SHORTAGE',
+          severity: 'HIGH',
+          confidence: 'HIGH',
+          summary: null,
+          reason: 'Test event reaches both supplier links.',
+        },
+      },
+      sources: [{
+        title: 'Temporary supply disruption',
+        source: 'Local test fixture',
+        publishedAt: '2026-10-20T00:00:00Z',
+        url: 'https://example.com/event',
+      }],
+      holdings: [
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
+      ],
+    };
+    vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [], PORTFOLIO, [event]));
+
+    renderAt('/portfolios/7/supply-chain');
+
+    expect(await screen.findByTestId('risk-relationships')).toHaveTextContent('1,2');
+  });
+
   it('shows a loading message before the data arrives', () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
 
@@ -165,12 +226,32 @@ describe('Supply Chain page', () => {
   });
 
   it('says how to run an analysis when the portfolio has holdings but no relationships yet', async () => {
-    vi.stubGlobal('fetch', fakeFetch([], [holding({ companyName: null, status: 'WAITING' })]));
+    vi.stubGlobal('fetch', fakeFetch([], [holding({ companyName: null, companyDisplayName: null, status: 'WAITING' })]));
 
     renderAt('/portfolios/7/supply-chain');
 
     expect(await screen.findByText(/Run Analyse on the/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Portfolio Page' })).toBeInTheDocument();
+  });
+
+  // The SEC calls it "NVIDIA CORP"; the website once guessed "Nvidia" from that. NVIDIA's report writes "NVIDIA".
+  it('shows NVIDIA by the display name the API sends in the Holdings panel and the Inspector', async () => {
+    vi.stubGlobal('fetch', fakeFetch([relationship()], [holding({ weight: 18 })]));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+    const panel = screen.getByRole('complementary', { name: 'Holdings and News' });
+
+    expect(within(panel).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      'NVDANVIDIA18%1 Supplier · 0 Customers',
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    expect(within(inspector).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+    expect(
+      within(inspector).getByRole('heading', { name: 'Taiwan Semiconductor Manufacturing supplies NVIDIA: semiconductor wafers' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nvidia/)).not.toBeInTheDocument();
   });
 
   it('says to upload holdings first when the portfolio has none at all', async () => {
@@ -214,7 +295,7 @@ describe('Supply Chain page', () => {
     const first = relationship({ id: 1 });
     const second = relationship({
       id: 2,
-      counterparty: { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null },
+      counterparty: { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null },
       evidence: 'Samsung also supplies us with memory.',
     });
     vi.stubGlobal('fetch', fakeFetch([first, second], [holding()]));
@@ -251,17 +332,15 @@ describe('Supply Chain page', () => {
   });
 
   describe('shared suppliers and customers', () => {
-    const tsmc = { id: 11, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' };
-    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null };
-    const micron = { id: 13, name: 'Micron Technology, Inc.', ticker: 'MU' };
-    const nvidia = { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' };
-    const amd = { id: 3, name: 'Advanced Micro Devices, Inc.', ticker: 'AMD' };
-    const qualcomm = { id: 5, name: 'QUALCOMM Incorporated', ticker: 'QCOM' };
-    const holdings = [
-      holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name }),
-      holding({ id: 2, ticker: 'AMD', companyName: amd.name }),
-      holding({ id: 3, ticker: 'QCOM', companyName: qualcomm.name }),
-    ];
+    const tsmc = TSMC;
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null };
+    const micron = { id: 13, name: 'Micron Technology, Inc.', displayName: 'Micron Technology', ticker: 'MU' };
+    const nvidia = { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' };
+    const amd = { id: 3, name: 'ADVANCED MICRO DEVICES INC', displayName: 'AMD', ticker: 'AMD' };
+    const qualcomm = { id: 5, name: 'QUALCOMM INC/DE', displayName: 'Qualcomm', ticker: 'QCOM' };
+    const holdings = [nvidia, amd, qualcomm].map((company, i) =>
+      holding({ id: i + 1, ticker: company.ticker, companyName: company.name, companyDisplayName: company.displayName }),
+    );
 
     it('lists the companies several holdings depend on in the left panel, most shared first', async () => {
       const relationships = [
@@ -319,9 +398,18 @@ const sampleRelationships = sampleRelationshipsJson as Relationship[];
 describe('Supply Chain workspace', () => {
   const relationships = [sampleRelationships[0]!, sampleRelationships[14]!];
   const holdings = [
-    holding({ id: 1, ticker: 'NVDA', companyName: 'NVIDIA Corporation', weight: 18 }),
-    holding({ id: 2, ticker: 'CRUS', companyName: 'Cirrus Logic, Inc.', weight: null }),
-    holding({ id: 3, ticker: 'NEW', companyName: null, weight: 30, status: 'WAITING', reportType: null, reportLink: null }),
+    holding({ id: 1, ticker: 'NVDA', companyName: 'NVIDIA Corporation', companyDisplayName: 'NVIDIA', weight: 18 }),
+    holding({ id: 2, ticker: 'CRUS', companyName: 'Cirrus Logic, Inc.', companyDisplayName: 'Cirrus Logic', weight: null }),
+    holding({
+      id: 3,
+      ticker: 'NEW',
+      companyName: null,
+      companyDisplayName: null,
+      weight: 30,
+      status: 'WAITING',
+      reportType: null,
+      reportLink: null,
+    }),
   ];
 
   async function openWorkspace() {
@@ -333,13 +421,38 @@ describe('Supply Chain workspace', () => {
   const inspector = () => screen.getByRole('complementary', { name: 'Inspector' });
   const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings and News' });
 
-  it('shows the holdings, the graph and the Inspector side by side, with nothing chosen yet', async () => {
+  it('shows the holdings and the graph, with the Inspector closed until something is chosen', async () => {
     await openWorkspace();
 
     expect(holdingsPanel()).toBeInTheDocument();
     expect(screen.getByTestId('fake-graph')).toBeInTheDocument();
-    expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Inspector' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Who supplies your holdings/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+    expect(inspector()).toBeInTheDocument();
+  });
+
+  it('closes the Inspector with its close button, letting go of the choice', async () => {
+    await openWorkspace();
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Close Inspector' }));
+
+    expect(screen.queryByRole('complementary', { name: 'Inspector' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
+  });
+
+  it('folds the Holdings and News drawer to a strip, and opens it again', async () => {
+    await openWorkspace();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide Holdings and News' }));
+    expect(screen.queryByRole('tab', { name: 'Holdings' })).not.toBeInTheDocument();
+    expect(document.querySelector('.workspace')).toHaveClass('left-closed');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show Holdings and News' }));
+    expect(screen.getByRole('tab', { name: 'Holdings' })).toBeInTheDocument();
+    expect(document.querySelector('.workspace')).not.toHaveClass('left-closed');
   });
 
   it('lists holdings largest first, each with its weight and how many suppliers and customers it has', async () => {
@@ -401,6 +514,33 @@ describe('Supply Chain workspace', () => {
     expect(screen.getByTestId('selected-node')).toHaveTextContent('18');
   });
 
+  it('shows criticality evidence and opens the report at that sentence', async () => {
+    const source = sampleRelationships[15]!;
+    const critical = {
+      ...source,
+      criticality: 'SOLE_SOURCE' as const,
+      criticalityEvidence: source.evidence,
+    };
+    const asml = holding({
+      id: 16,
+      ticker: 'ASML',
+      companyName: source.company.name,
+      companyDisplayName: source.company.displayName,
+    });
+    vi.stubGlobal('fetch', fakeFetch([critical], [asml]));
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: `Select edge ${source.id}` }));
+
+    const criticality = inspector().querySelector<HTMLElement>('.criticality-evidence')!;
+    expect(within(inspector()).getByText('Sole Source')).toBeInTheDocument();
+    expect(within(criticality).getByText(source.evidence)).toBeInTheDocument();
+    await userEvent.click(within(criticality).getByRole('button', { name: 'Show Criticality in Report' }));
+    expect(open).toHaveBeenCalledWith(showInReportUrl(source.report.url, source.evidence), '_blank', 'noopener,noreferrer');
+  });
+
   it('shows when an analyst approved a relationship and the note', async () => {
     const approved = {
       ...relationships[0]!,
@@ -416,6 +556,21 @@ describe('Supply Chain workspace', () => {
 
     expect(within(inspector()).getByText('Approved by an Analyst on Oct 14, 2026')).toBeInTheDocument();
     expect(within(inspector()).getByText('Confirmed against the annual report.')).toBeInTheDocument();
+  });
+
+  it('says when a relationship was added by an analyst', async () => {
+    const added = {
+      ...relationships[0]!,
+      source: 'ANALYST' as const,
+      reviewStatus: 'APPROVED' as const,
+    };
+    vi.stubGlobal('fetch', fakeFetch([added], holdings));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+
+    expect(within(inspector()).getByText('Added by an Analyst')).toBeInTheDocument();
   });
 
   it('shows an approval without a note and says when a relationship is unreviewed', async () => {
@@ -444,14 +599,16 @@ describe('Supply Chain workspace', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Click the background' }));
 
     expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
-    expect(within(inspector()).getByText('Click a company or an arrow to see its details.')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Inspector' })).not.toBeInTheDocument();
   });
 });
 
 describe('Supply Chain news', () => {
-  const nvidia = { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' };
+  const nvidia = { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' };
   const relationships = [relationship({ id: 1, company: nvidia, counterparty: TSMC })];
-  const holdings = [holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name, weight: 18 })];
+  const holdings = [
+    holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name, companyDisplayName: nvidia.displayName, weight: 18 }),
+  ];
   const checked = { ...PORTFOLIO, newsCheckedAt: '2026-10-13T00:00:00Z' };
 
   it('opens on the News tab from ?panel=news, listing the collected headlines', async () => {
@@ -522,7 +679,7 @@ describe('Supply Chain news', () => {
 describe('Supply Chain logos', () => {
   it('asks for the website domains of companies without a ticker, and gives them to the graph', async () => {
     // Samsung has no ticker in this relationship; NVIDIA and TSMC have theirs. The domain is made up for the test.
-    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null };
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null };
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith('/settings')) return new Response(JSON.stringify({ logoToken: 'pk_test' }));
       if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({ [samsung.name]: 'samsung.example' }));

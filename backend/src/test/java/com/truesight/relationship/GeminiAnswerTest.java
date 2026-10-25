@@ -22,7 +22,7 @@ class GeminiAnswerTest {
                 "Taiwan Semiconductor Manufacturing Company Limited", "TSMC", RelationshipType.SUPPLIER,
                 "semiconductor wafers",
                 "We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and "
-                        + "Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers."));
+                        + "Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers.", null, ""));
         assertThat(found).extracting(GeminiAnswer.Found::company).contains("SK Hynix Inc.", "Fabrinet");
     }
 
@@ -52,5 +52,16 @@ class GeminiAnswerTest {
         assertThat(answers.read(changed)).hasSize(6)
                 .extracting(GeminiAnswer.Found::company)
                 .doesNotContain("Taiwan Semiconductor Manufacturing Company Limited");
+    }
+
+    @Test
+    void readsTheRealNvidiaAnswerAndLeavesEveryRelationshipUnclassified() {
+        assertThat(answers.readCriticalities(Examples.geminiNvidiaCriticality())).isEmpty();
+        assertThat(answers.read(Examples.geminiNvidiaCriticality()))
+                .extracting(GeminiAnswer.Found::criticality)
+                .containsOnlyNulls();
+        assertThat(answers.read(Examples.geminiNvidiaCriticality()))
+                .extracting(GeminiAnswer.Found::criticalityQuote)
+                .containsOnly("");
     }
 }

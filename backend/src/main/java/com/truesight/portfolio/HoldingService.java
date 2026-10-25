@@ -2,6 +2,7 @@ package com.truesight.portfolio;
 
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
+import com.truesight.company.CompanyDisplayNames;
 import com.truesight.company.CompanyRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
@@ -26,15 +27,17 @@ public class HoldingService {
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
     private final CompanyRepository companies;
+    private final CompanyDisplayNames displayNames;
     private final ReportRepository reports;
     private final HoldingCsvReader csvReader;
     private final CurrentUser currentUser;
 
     public HoldingService(PortfolioRepository portfolios, HoldingRepository holdings, CompanyRepository companies,
-                          ReportRepository reports, HoldingCsvReader csvReader, CurrentUser currentUser) {
+                          CompanyDisplayNames displayNames, ReportRepository reports, HoldingCsvReader csvReader, CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.companies = companies;
+        this.displayNames = displayNames;
         this.reports = reports;
         this.csvReader = csvReader;
         this.currentUser = currentUser;
@@ -89,6 +92,7 @@ public class HoldingService {
                 holding.getTicker(),
                 holding.getWeight(),
                 company == null ? null : company.getName(),
+                company == null ? null : displayNames.of(company),
                 holding.getStatus(),
                 holding.getStatusReason(),
                 report == null ? null : report.getForm(),

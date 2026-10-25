@@ -1,7 +1,9 @@
 package com.truesight.relationship;
 
 import com.truesight.ai.AiAnswer;
+import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
@@ -29,8 +31,8 @@ import java.util.Set;
  *       {@code alsoKnownAs} as another name.</li>
  * </ol>
  *
- * <p>Reports are public, so a report that already has relationships is never sent to the AI again, whichever
- * portfolio asks.
+ * <p>Reports are public, so a report that already has relationships or a completed relationship-finding answer is
+ * never sent to the AI again, whichever portfolio asks.
  *
  * <p>Each call is recorded in the AI Audit Trail with the report's text replaced by a marker, and with how many quotes
  * were kept and how many dropped because they were not in the report.
@@ -52,6 +54,13 @@ public class RelationshipFinder {
             - relationship: SUPPLIER if it supplies %1$s, CUSTOMER if it buys from %1$s
             - provides: what is supplied, in a few words
             - quote: one sentence copied exactly from the text that shows the relationship
+            - criticality: SOLE_SOURCE if the report says this is the only possible supplier, SINGLE_SOURCE if it says
+              this is the one supplier used though others exist, or an empty string when it says neither
+            - criticalityQuote: one sentence copied exactly from the text that supports criticality, or an empty string
+              when criticality is empty
+
+            Never infer sole or single source from words such as "primary", "key" or "significant" alone. Only report
+            criticality when the report explicitly says so.
 
             Only include companies the text names explicitly. Answer with JSON only.
 
@@ -62,14 +71,16 @@ public class RelationshipFinder {
     private final GeminiAnswer answers;
     private final CompanyDirectory companies;
     private final RelationshipRepository relationships;
+    private final AiCallRepository aiCalls;
     private final AiCallLog calls;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
-                              RelationshipRepository relationships, AiCallLog calls) {
+                              RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
         this.relationships = relationships;
+        this.aiCalls = aiCalls;
         this.calls = calls;
     }
 
@@ -82,7 +93,15 @@ public class RelationshipFinder {
     // An AI failure must not undo the caller's work: it still saves the report and marks the holding Failed.
     @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
     public void findIn(Report report, Company company) {
-        if (relationships.existsByReportId(report.getId())) {
+        findIn(report, company, false);
+    }
+
+    /** Reassesses once when the saved report text was refreshed from its SEC filing. */
+    @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
+    public void findIn(Report report, Company company, boolean textWasRefreshed) {
+        if (relationships.existsByReportId(report.getId()) || (!textWasRefreshed
+                && aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED))) {
             return;
         }
         String section = ReportSection.forAi(report.getForm(), report.getText());
@@ -107,8 +126,16 @@ public class RelationshipFinder {
                     || !saved.add(counterparty.getId() + " " + item.relationship() + " " + evidence.get())) {
                 continue; // the company itself, or the same relationship twice
             }
-            proven.add(new Relationship(report.getId(), company.getId(), counterparty.getId(), item.relationship(),
-                    item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES), evidence.get()));
+            Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
+                    item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
+                    evidence.get());
+            if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
+                checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
+                    relationship.setCriticality(item.criticality());
+                    relationship.setCriticalityEvidence(criticalityEvidence);
+                });
+            }
+            proven.add(relationship);
         }
         relationships.saveAll(proven);
         calls.finish(asked.callId(), proven.size(), dropped);

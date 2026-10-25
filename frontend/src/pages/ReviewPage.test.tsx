@@ -1,5 +1,5 @@
-// The Review page: its four states, the cards, Approve, Reject with a required note, and the filter. The backend is
-// replaced by a fake fetch that remembers what was asked of it.
+// The Review page: its four states, the cards, Approve, Reject with a required note, and the filter with its counts. The
+// backend is replaced by a fake fetch that remembers what was asked of it.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -16,13 +16,17 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
   return {
     relationship: {
       id,
-      company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-      counterparty: { id: 10 + id, name: `Supplier ${id}`, ticker: null },
+      // The SEC's name for NVIDIA, and the display name the API sends for it: NVIDIA's own report writes "NVIDIA".
+      company: { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' },
+      counterparty: { id: 10 + id, name: `Supplier ${id}`, displayName: `Supplier ${id}`, ticker: null },
       type,
       provides: 'semiconductor wafers',
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
+      source: 'AI',
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
       reviewStatus: 'UNREVIEWED',
+      criticality: null,
+      criticalityEvidence: null,
       reviewedAt: null,
       reviewNote: null,
     },
@@ -128,8 +132,27 @@ describe('Review page', () => {
     expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
     expect(screen.getByText('Supplier 1 supplies NVIDIA: semiconductor wafers.')).toBeInTheDocument();
     expect(screen.getByText(sentence)).toBeInTheDocument();
-    expect(screen.getByText('10-K, Filed 2026-02-25')).toBeInTheDocument();
+    expect(screen.getByText('10-K, Filed Feb 25, 2026')).toBeInTheDocument();
     expect(screen.getByText('Used by 3 Portfolios')).toBeInTheDocument();
+  });
+
+  it('reads the filing date like "Feb 25, 2026", never as the raw "2026-02-25"', async () => {
+    fakeBackend(() => [item(1)]);
+
+    renderPage();
+
+    expect(await screen.findByText(/Filed Feb 25, 2026/)).toBeInTheDocument();
+    expect(screen.queryByText(/2026-02-25/)).not.toBeInTheDocument();
+  });
+
+  // The SEC calls it "NVIDIA CORP", which the website once showed as "Nvidia"; NVIDIA's own report writes "NVIDIA".
+  it('names each company by the display name the API sends, never by reformatting the stored name', async () => {
+    fakeBackend(() => [item(1)]);
+
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.queryByText(/Nvidia|NVIDIA CORP/)).not.toBeInTheDocument();
   });
 
   it('says "1 portfolio", not "1 portfolios"', async () => {
@@ -186,6 +209,103 @@ describe('Review page', () => {
     const put = calls.find((call) => call.method === 'PUT')!;
     expect(put.url).toBe('/api/relationships/1/review');
     expect(put.body).toMatchObject({ decision: 'APPROVED' });
+  });
+
+  it('edits what a relationship provides and shows the saved value', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'PUT' && url === '/api/relationships/1') {
+          const body = JSON.parse(String(init.body));
+          return new Response(JSON.stringify({
+            ...item(1),
+            relationship: { ...item(1).relationship, provides: body.provides },
+          }));
+        }
+        return new Response(JSON.stringify([item(1)]));
+      }),
+    );
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    const input = screen.getByLabelText('What Is Provided?');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'graphics memory');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Supplier 1 supplies NVIDIA: graphics memory.')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/relationships/1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ provides: 'graphics memory' }),
+    }));
+  });
+
+  it('adds a relationship from a company report with the custom controls', async () => {
+    const added = {
+      ...approvedBy(item(9)),
+      relationship: { ...item(9).relationship, source: 'ANALYST' as const, provides: 'memory' },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/companies?withReport=true') {
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA' }]));
+        }
+        if (url === '/api/relationships' && init?.method === 'POST') {
+          return new Response(JSON.stringify(added), { status: 201 });
+        }
+        return new Response(JSON.stringify([item(1)]));
+      }),
+    );
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add Relationship' }));
+    expect(await screen.findByRole('button', { name: /Company Whose Report Names It NVIDIA/ })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('Other Company'), 'SK Hynix Inc.');
+    await userEvent.type(screen.getByLabelText('What Is Provided?'), 'memory');
+    await userEvent.type(screen.getByLabelText('Sentence From the Annual Report'), sentence);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Relationship' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'Approved (1)' }));
+
+    expect(screen.getByRole('heading', { name: 'Supplier 9 → NVIDIA' })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/relationships', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({
+        companyId: 1,
+        counterpartyName: 'SK Hynix Inc.',
+        type: 'SUPPLIER',
+        provides: 'memory',
+        sentence,
+      }),
+    }));
+  });
+
+  it('shows the report sentence refusal and does not add the relationship', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === '/api/companies?withReport=true') {
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA' }]));
+        }
+        if (url === '/api/relationships' && init?.method === 'POST') {
+          return new Response(
+            JSON.stringify({ message: "That sentence is not in NVIDIA's annual report." }),
+            { status: 400 },
+          );
+        }
+        return new Response(JSON.stringify([item(1)]));
+      }),
+    );
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add Relationship' }));
+    await screen.findByRole('button', { name: /Company Whose Report Names It NVIDIA/ });
+    await userEvent.type(screen.getByLabelText('Other Company'), 'SK Hynix Inc.');
+    await userEvent.type(screen.getByLabelText('Sentence From the Annual Report'), 'Not in the report.');
+    await userEvent.click(screen.getByRole('button', { name: 'Add Relationship' }));
+
+    expect(await screen.findByText("That sentence is not in NVIDIA's annual report.")).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'All (1)' })).toBeInTheDocument();
   });
 
   it('says there is nothing left to review once the last one is decided', async () => {
@@ -267,21 +387,101 @@ describe('Review page', () => {
     expect(screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
   });
 
-  it('shows the Unreviewed ones first, and asks the backend for each filter when it is changed', async () => {
+  it('shows the Unreviewed ones first, loads every relationship once, and filters them in the page', async () => {
+    fakeBackend(() => [item(1), approvedBy(item(2))]);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' });
+    expect(screen.getByRole('group', { name: 'Show' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Unreviewed (1)' })).toBeChecked();
+    expect(screen.queryByRole('heading', { name: 'Supplier 2 → NVIDIA' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved (1)' }));
+    expect(screen.getByRole('heading', { name: 'Supplier 2 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Supplier 1 → NVIDIA' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'All (2)' }));
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+
+    expect(calls.map((call) => call.url)).toEqual(['/api/reviews']);
+  });
+
+  it('shows how many relationships each filter holds, and changes the counts after each decision', async () => {
+    fakeBackend(
+      () => [item(1), item(2), approvedBy(item(3))],
+      (id, body) =>
+        body.decision === 'APPROVED'
+          ? approvedBy(item(id))
+          : { ...item(id), reviewStatus: 'REJECTED', reviewNote: body.note, reviewedBy: 'analyst@firm.com' },
+    );
+    renderPage();
+    const counts = () => screen.getAllByRole('radio').map((radio) => radio.closest('label')!.textContent);
+
+    await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' });
+    expect(counts()).toEqual(['Unreviewed (2)', 'Approved (1)', 'Rejected (0)', 'All (3)']);
+
+    const first = screen.getByRole('heading', { name: 'Supplier 1 → NVIDIA' }).closest('li')!;
+    await userEvent.click(within(first).getByRole('button', { name: 'Approve' }));
+    expect(counts()).toEqual(['Unreviewed (1)', 'Approved (2)', 'Rejected (0)', 'All (3)']);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    await userEvent.type(screen.getByLabelText('Why is this rejected?'), 'Planned partner, not a supplier.');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm Reject' }));
+    expect(counts()).toEqual(['Unreviewed (0)', 'Approved (2)', 'Rejected (1)', 'All (3)']);
+  });
+
+  it('says what to do next on each empty filter', async () => {
     fakeBackend(() => []);
     renderPage();
-    await screen.findByText(/Nothing to review/);
-    expect(calls.at(-1)!.url).toBe('/api/reviews?status=UNREVIEWED');
-    expect(screen.getByRole('group', { name: 'Show' })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Approved' }));
-    expect(calls.at(-1)!.url).toBe('/api/reviews?status=APPROVED');
+    expect(
+      await screen.findByText('Nothing to review. Analyse a portfolio to find more relationships.'),
+    ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Rejected' }));
-    expect(calls.at(-1)!.url).toBe('/api/reviews?status=REJECTED');
+    await userEvent.click(screen.getByRole('radio', { name: 'Approved (0)' }));
+    expect(screen.getByText('None approved yet. Approve one from Unreviewed.')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'All' }));
-    expect(calls.at(-1)!.url).toBe('/api/reviews');
+    await userEvent.click(screen.getByRole('radio', { name: 'Rejected (0)' }));
+    expect(screen.getByText('None rejected yet.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'All (0)' }));
+    expect(screen.getByText('Nothing to review. Analyse a portfolio to find more relationships.')).toBeInTheDocument();
+  });
+
+  it('puts the cursor in the note box when Reject is pressed, and keeps Show in Report beside it', async () => {
+    fakeBackend(() => [item(1)]);
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Reject' }));
+
+    expect(screen.getByLabelText('Why is this rejected?')).toHaveFocus();
+    const actions = screen.getByRole('button', { name: 'Confirm Reject' }).parentElement!;
+    expect(within(actions).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Show in Report',
+      'Confirm Reject',
+      'Cancel',
+    ]);
+    await userEvent.click(within(actions).getByRole('button', { name: 'Show in Report' }));
+    expect(open).toHaveBeenCalledWith(
+      'https://www.sec.gov/report-1#:~:text=We%20utilize%20foundries%2C%20such%20as,to%20produce%20our%20semiconductor%20wafers.',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  });
+
+  it('offers only the decisions that would change something', async () => {
+    const rejected = { ...item(3), reviewStatus: 'REJECTED' as const, reviewNote: 'Not a supplier.' };
+    fakeBackend(() => [item(1), approvedBy(item(2)), rejected]);
+    renderPage();
+    await userEvent.click(await screen.findByRole('radio', { name: 'All (3)' }));
+    const buttonsOn = (name: string) =>
+      within(screen.getByRole('heading', { name }).closest('li')!)
+        .getAllByRole('button')
+        .map((button) => button.textContent);
+
+    expect(buttonsOn('Supplier 1 → NVIDIA')).toEqual(['Show in Report', 'Edit', 'Approve', 'Reject']);
+    expect(buttonsOn('Supplier 2 → NVIDIA')).toEqual(['Show in Report', 'Edit', 'Reject']);
+    expect(buttonsOn('Supplier 3 → NVIDIA')).toEqual(['Show in Report', 'Edit', 'Approve']);
   });
 
   it('shows who decided, when, and why on a decided relationship, and keeps it in the All list when changed', async () => {
@@ -293,7 +493,7 @@ describe('Review page', () => {
     });
     fakeBackend(() => [rejected], (id) => approvedBy(item(id)));
     renderPage();
-    await userEvent.click(await screen.findByRole('radio', { name: 'All' }));
+    await userEvent.click(await screen.findByRole('radio', { name: 'All (1)' }));
 
     expect(await screen.findByText(/Rejected by analyst@firm.com.*Planned partner, not a supplier\./)).toBeInTheDocument();
 

@@ -123,6 +123,31 @@ class NewsCheckIT {
     }
 
     @Test
+    void oneFailedCompanyFinishesTheCheckAndNamesTheCompanyThatCanBeRetried() throws Exception {
+        String email = "news-partly-failed@example.com";
+        Company nvidia = cleanCompany("NVIDIA Corporation", NVIDIA_CIK, "NVDA");
+        Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
+        Portfolio portfolio = analysedPortfolio(email, nvidia);
+        Holding second = new Holding(portfolio.getId(), "TSM", new BigDecimal("50"));
+        second.setCompanyId(tsmc.getId());
+        second.setStatus(HoldingStatus.DONE);
+        holdings.save(second);
+        when(news.search("Taiwan Semiconductor Manufacturing"))
+                .thenThrow(new NewsClient.NewsAccessException(NewsClient.UNREACHABLE));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        Portfolio finished = portfolios.findById(portfolio.getId()).orElseThrow();
+        assertThat(finished.getNewsCheckedAt()).isNotNull();
+        assertThat(finished.getNewsStatusReason()).isEqualTo(
+                "News for 1 of 2 companies could not be fetched: Taiwan Semiconductor Manufacturing. "
+                        + "Check News again to retry it.");
+        assertThat(companies.findById(tsmc.getId()).orElseThrow().getNewsCheckedAt()).isNull();
+        verify(steps).run(portfolio.getId());
+    }
+
+    @Test
     void checkingAgainWithinAnHourDoesNotAskGoogleNewsAgain() throws Exception {
         String email = "news-one-hour@example.com";
         Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
