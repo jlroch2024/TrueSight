@@ -21,7 +21,9 @@ export type ReachedHolding = {
   holdingId: number;
   ticker: string;
   weight: number | null;
+  indirect: boolean;
   supplierName: string | null;
+  middleName: string | null;
   customerName: string | null;
   reviewStatus: ReviewStatus | null;
   relationshipId: number | null;

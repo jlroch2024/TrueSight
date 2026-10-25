@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -148,11 +149,42 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].holdingId").value(holding.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].ticker").value("NVDA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].weight").value(40.0))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].indirect").value(false))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName")
                         .value("Taiwan Semiconductor Manufacturing Company Limited"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value(nullValue()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
+    }
+
+    @Test
+    void anIndirectHoldingCarriesTheMiddleCompanyAndTheTwoStepFlag() throws Exception {
+        String email = "alerts-indirect-fields@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        Company zeiss = companyDirectory.findOrCreate(
+                "Carl Zeiss SMT Alerts IT " + UUID.randomUUID(), null, null, List.of());
+        Report report = reports.save(new Report(tsmc.getId(), "20-F",
+                "A-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20),
+                LocalDate.parse("2026-04-10"), "https://www.sec.gov/", Examples.nvidia10K()));
+        Relationship zeissSuppliesTsmc = relationships.save(new Relationship(
+                report.getId(), tsmc.getId(), zeiss.getId(), RelationshipType.SUPPLIER,
+                "lithography systems", EVIDENCE));
+        NewsArticle article = article(zeiss, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.HIGH, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
+        AlertHolding reached = new AlertHolding(alert.getId(), holding.getId(), zeissSuppliesTsmc.getId());
+        reached.setSecondRelationshipId(tsmcSuppliesNvidia.getId());
+        alertHoldings.save(reached);
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].holdings[0].indirect").value(true))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value(zeiss.getName()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value(tsmc.getName()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()));
     }
 
     @Test
