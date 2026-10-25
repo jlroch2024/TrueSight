@@ -15,7 +15,6 @@ import {
   type GraphNode,
   type Selection,
   connectionsOf,
-  displayName,
   formatWeight,
   relationshipSummary,
 } from '../pages/supplyChain';
@@ -99,7 +98,7 @@ function CompanyDetails({
     <div className="inspector">
       <header className={`inspector-head${node.isHolding ? ' holding' : ''}`}>
         <p className="inspector-kind">Company</p>
-        <h2 title={node.name}>{displayName(node.name)}</h2>
+        <h2 title={node.name}>{node.displayName}</h2>
         <p className="chips">
           {node.ticker && <span className="chip chip-ticker">{node.ticker}</span>}
           <span className={`chip ${node.isHolding ? 'chip-holding' : 'chip-muted'}`}>
@@ -178,7 +177,7 @@ function ConnectionList({
               <button type="button" className="panel-row" onClick={() => onSelect(relationship.id)}>
                 <span className="panel-row-main">
                   {company.ticker && <span className="ticker">{company.ticker}</span>}
-                  <span className="panel-name">{displayName(company.name)}</span>
+                  <span className="panel-name">{company.displayName}</span>
                 </span>
                 {relationship.provides && <span className="panel-row-detail">{titleCase(relationship.provides)}</span>}
               </button>
@@ -207,11 +206,11 @@ function RelationshipDetails({
         <p className="inspector-kind">Relationship</p>
         <h2>{relationshipSummary(relationship)}</h2>
         <p className="chips flow">
-          <span className="chip chip-supplier">{supplier.ticker ?? displayName(supplier.name)}</span>
+          <span className="chip chip-supplier">{supplier.ticker ?? supplier.displayName}</span>
           <span className="flow-arrow" aria-hidden="true">
             {'\u2192'}
           </span>
-          <span className="chip chip-customer">{customer.ticker ?? displayName(customer.name)}</span>
+          <span className="chip chip-customer">{customer.ticker ?? customer.displayName}</span>
         </p>
       </header>
       <p className="muted small review-status">
@@ -270,7 +269,7 @@ function RelationshipDetails({
               <button type="button" className="panel-row" onClick={() => onSelectNode(String(company.id))}>
                 <span className="panel-row-main">
                   {company.ticker && <span className="ticker">{company.ticker}</span>}
-                  <span className="panel-name">{displayName(company.name)}</span>
+                  <span className="panel-name">{company.displayName}</span>
                 </span>
                 <span className="panel-row-detail">{role}</span>
               </button>

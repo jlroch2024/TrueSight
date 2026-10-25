@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { tokenStore } from '../api/client';
 import type { ReviewItem } from '../api/reviews';
-import { displayName } from './supplyChain';
 
 /** NVIDIA's own words about TSMC, from its 10-K in docs/examples. */
 const evidence =
@@ -17,8 +16,13 @@ const evidence =
 const waiting: ReviewItem = {
   relationship: {
     id: 1,
-    company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-    counterparty: { id: 2, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' },
+    company: { id: 1, name: 'NVIDIA Corporation', displayName: 'NVIDIA', ticker: 'NVDA' },
+    counterparty: {
+      id: 2,
+      name: 'Taiwan Semiconductor Manufacturing Company Limited',
+      displayName: 'Taiwan Semiconductor Manufacturing',
+      ticker: 'TSM',
+    },
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence,
@@ -85,7 +89,7 @@ describe('Analyst Desk', () => {
     expect(within(panel).getByRole('heading', { name: 'Review' })).toBeInTheDocument();
     expect(
       await within(panel).findByRole('heading', {
-        name: `${displayName('Taiwan Semiconductor Manufacturing Company Limited')} → ${displayName('NVIDIA Corporation')}`,
+        name: 'Taiwan Semiconductor Manufacturing → NVIDIA',
       }),
     ).toBeInTheDocument();
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/reviews', expect.anything());

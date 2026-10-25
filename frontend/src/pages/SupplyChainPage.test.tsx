@@ -70,8 +70,14 @@ const tsmcSentence =
 function relationship(overrides: Partial<Relationship> = {}): Relationship {
   return {
     id: 1,
-    company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-    counterparty: { id: 11, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' },
+    // The SEC's name for NVIDIA, and the display name the API sends for it: NVIDIA's own report writes "NVIDIA".
+    company: { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' },
+    counterparty: {
+      id: 11,
+      name: 'Taiwan Semiconductor Manufacturing Company Limited',
+      displayName: 'Taiwan Semiconductor Manufacturing',
+      ticker: 'TSM',
+    },
     type: 'SUPPLIER',
     provides: 'semiconductor wafers',
     evidence: tsmcSentence,
@@ -95,7 +101,8 @@ function holding(overrides: Partial<Holding> = {}): Holding {
     id: 1,
     ticker: 'NVDA',
     weight: null,
-    companyName: 'NVIDIA Corporation',
+    companyName: 'NVIDIA CORP',
+    companyDisplayName: 'NVIDIA',
     status: 'DONE',
     statusReason: null,
     reportType: '10-K',
@@ -160,7 +167,7 @@ describe('Supply Chain page', () => {
     const first = relationship();
     const second = relationship({
       id: 2,
-      counterparty: { id: 12, name: 'Samsung Electronics', ticker: '005930' },
+      counterparty: { id: 12, name: 'Samsung Electronics', displayName: 'Samsung Electronics', ticker: '005930' },
     });
     const event: AlertEvent = {
       alertIds: [11],
@@ -219,12 +226,32 @@ describe('Supply Chain page', () => {
   });
 
   it('says how to run an analysis when the portfolio has holdings but no relationships yet', async () => {
-    vi.stubGlobal('fetch', fakeFetch([], [holding({ companyName: null, status: 'WAITING' })]));
+    vi.stubGlobal('fetch', fakeFetch([], [holding({ companyName: null, companyDisplayName: null, status: 'WAITING' })]));
 
     renderAt('/portfolios/7/supply-chain');
 
     expect(await screen.findByText(/Run Analyse on the/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Portfolio Page' })).toBeInTheDocument();
+  });
+
+  // The SEC calls it "NVIDIA CORP"; the website once guessed "Nvidia" from that. NVIDIA's report writes "NVIDIA".
+  it('shows NVIDIA by the display name the API sends in the Holdings panel and the Inspector', async () => {
+    vi.stubGlobal('fetch', fakeFetch([relationship()], [holding({ weight: 18 })]));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+    const panel = screen.getByRole('complementary', { name: 'Holdings and News' });
+
+    expect(within(panel).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      'NVDANVIDIA18%1 Supplier · 0 Customers',
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' }));
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    expect(within(inspector).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+    expect(
+      within(inspector).getByRole('heading', { name: 'Taiwan Semiconductor Manufacturing supplies NVIDIA: semiconductor wafers' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nvidia/)).not.toBeInTheDocument();
   });
 
   it('says to upload holdings first when the portfolio has none at all', async () => {
@@ -268,7 +295,7 @@ describe('Supply Chain page', () => {
     const first = relationship({ id: 1 });
     const second = relationship({
       id: 2,
-      counterparty: { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null },
+      counterparty: { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null },
       evidence: 'Samsung also supplies us with memory.',
     });
     vi.stubGlobal('fetch', fakeFetch([first, second], [holding()]));
@@ -305,17 +332,15 @@ describe('Supply Chain page', () => {
   });
 
   describe('shared suppliers and customers', () => {
-    const tsmc = { id: 11, name: 'Taiwan Semiconductor Manufacturing Company Limited', ticker: 'TSM' };
-    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null };
-    const micron = { id: 13, name: 'Micron Technology, Inc.', ticker: 'MU' };
-    const nvidia = { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' };
-    const amd = { id: 3, name: 'Advanced Micro Devices, Inc.', ticker: 'AMD' };
-    const qualcomm = { id: 5, name: 'QUALCOMM Incorporated', ticker: 'QCOM' };
-    const holdings = [
-      holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name }),
-      holding({ id: 2, ticker: 'AMD', companyName: amd.name }),
-      holding({ id: 3, ticker: 'QCOM', companyName: qualcomm.name }),
-    ];
+    const tsmc = TSMC;
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null };
+    const micron = { id: 13, name: 'Micron Technology, Inc.', displayName: 'Micron Technology', ticker: 'MU' };
+    const nvidia = { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' };
+    const amd = { id: 3, name: 'ADVANCED MICRO DEVICES INC', displayName: 'AMD', ticker: 'AMD' };
+    const qualcomm = { id: 5, name: 'QUALCOMM INC/DE', displayName: 'Qualcomm', ticker: 'QCOM' };
+    const holdings = [nvidia, amd, qualcomm].map((company, i) =>
+      holding({ id: i + 1, ticker: company.ticker, companyName: company.name, companyDisplayName: company.displayName }),
+    );
 
     it('lists the companies several holdings depend on in the left panel, most shared first', async () => {
       const relationships = [
@@ -373,9 +398,18 @@ const sampleRelationships = sampleRelationshipsJson as Relationship[];
 describe('Supply Chain workspace', () => {
   const relationships = [sampleRelationships[0]!, sampleRelationships[14]!];
   const holdings = [
-    holding({ id: 1, ticker: 'NVDA', companyName: 'NVIDIA Corporation', weight: 18 }),
-    holding({ id: 2, ticker: 'CRUS', companyName: 'Cirrus Logic, Inc.', weight: null }),
-    holding({ id: 3, ticker: 'NEW', companyName: null, weight: 30, status: 'WAITING', reportType: null, reportLink: null }),
+    holding({ id: 1, ticker: 'NVDA', companyName: 'NVIDIA Corporation', companyDisplayName: 'NVIDIA', weight: 18 }),
+    holding({ id: 2, ticker: 'CRUS', companyName: 'Cirrus Logic, Inc.', companyDisplayName: 'Cirrus Logic', weight: null }),
+    holding({
+      id: 3,
+      ticker: 'NEW',
+      companyName: null,
+      companyDisplayName: null,
+      weight: 30,
+      status: 'WAITING',
+      reportType: null,
+      reportLink: null,
+    }),
   ];
 
   async function openWorkspace() {
@@ -487,7 +521,13 @@ describe('Supply Chain workspace', () => {
       criticality: 'SOLE_SOURCE' as const,
       criticalityEvidence: source.evidence,
     };
-    vi.stubGlobal('fetch', fakeFetch([critical], [holding({ id: 16, ticker: 'ASML', companyName: source.company.name })]));
+    const asml = holding({
+      id: 16,
+      ticker: 'ASML',
+      companyName: source.company.name,
+      companyDisplayName: source.company.displayName,
+    });
+    vi.stubGlobal('fetch', fakeFetch([critical], [asml]));
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderAt('/portfolios/7/supply-chain');
     await screen.findByTestId('fake-graph');
@@ -564,9 +604,11 @@ describe('Supply Chain workspace', () => {
 });
 
 describe('Supply Chain news', () => {
-  const nvidia = { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' };
+  const nvidia = { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' };
   const relationships = [relationship({ id: 1, company: nvidia, counterparty: TSMC })];
-  const holdings = [holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name, weight: 18 })];
+  const holdings = [
+    holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name, companyDisplayName: nvidia.displayName, weight: 18 }),
+  ];
   const checked = { ...PORTFOLIO, newsCheckedAt: '2026-10-13T00:00:00Z' };
 
   it('opens on the News tab from ?panel=news, listing the collected headlines', async () => {
@@ -637,7 +679,7 @@ describe('Supply Chain news', () => {
 describe('Supply Chain logos', () => {
   it('asks for the website domains of companies without a ticker, and gives them to the graph', async () => {
     // Samsung has no ticker in this relationship; NVIDIA and TSMC have theirs. The domain is made up for the test.
-    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', ticker: null };
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null };
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith('/settings')) return new Response(JSON.stringify({ logoToken: 'pk_test' }));
       if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({ [samsung.name]: 'samsung.example' }));

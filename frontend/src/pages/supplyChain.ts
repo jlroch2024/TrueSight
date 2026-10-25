@@ -1,15 +1,18 @@
 // Turns a portfolio's holdings and relationships into graph elements. Kept apart from the graph that draws them
 // (src/graph/) so this logic can be tested on its own, in milliseconds.
 import type { Holding } from '../api/portfolios';
-import type { Criticality, Relationship, ReviewStatus } from '../api/relationships';
+import type { CompanySummary, Criticality, Relationship, ReviewStatus } from '../api/relationships';
 
 // weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
 // had no weight.
 // sharedSummary is set (e.g. "Supplies 4 Holdings") only on a company that several holdings depend on; see
 // sharedCompanies.
+// name is the company's name as stored, which identifies it; displayName is how every page shows it, as the API sends
+// it. The website never reformats a name.
 export type GraphNode = {
   id: string;
   name: string;
+  displayName: string;
   ticker: string | null;
   isHolding: boolean;
   weight: number | null;
@@ -39,21 +42,28 @@ export function buildGraphElements(
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const nodes = new Map<string, GraphNode>();
 
-  function upsert(id: string, name: string, ticker: string | null, isHolding: boolean): void {
+  function upsert(id: string, company: CompanySummary, isHolding: boolean): void {
     const existing = nodes.get(id);
     if (existing) {
       if (isHolding) existing.isHolding = true;
-      if (existing.ticker === null && ticker) existing.ticker = ticker;
+      if (existing.ticker === null && company.ticker) existing.ticker = company.ticker;
       return;
     }
-    nodes.set(id, { id, name, ticker, isHolding, weight: null });
+    nodes.set(id, {
+      id,
+      name: company.name,
+      displayName: company.displayName,
+      ticker: company.ticker,
+      isHolding,
+      weight: null,
+    });
   }
 
   const edges: GraphEdge[] = relationships.map((relationship) => {
     const companyId = String(relationship.company.id);
     const counterpartyId = String(relationship.counterparty.id);
-    upsert(companyId, relationship.company.name, relationship.company.ticker, true);
-    upsert(counterpartyId, relationship.counterparty.name, relationship.counterparty.ticker, false);
+    upsert(companyId, relationship.company, true);
+    upsert(counterpartyId, relationship.counterparty, false);
 
     // SUPPLIER: the counterparty supplies the company, so the arrow runs counterparty -> company.
     // CUSTOMER: the counterparty buys from the company, so the arrow runs company -> counterparty.
@@ -74,7 +84,8 @@ export function buildGraphElements(
   for (const node of nodes.values()) nodeIdByName.set(node.name, node.id);
 
   for (const holding of holdings) {
-    if (!holding.companyName) continue; // not analysed yet, analysing, failed, or no report was found
+    // Not analysed yet, analysing, failed, or no report was found.
+    if (!holding.companyName || !holding.companyDisplayName) continue;
     const existingId = nodeIdByName.get(holding.companyName);
     if (existingId) {
       const existing = nodes.get(existingId)!;
@@ -83,7 +94,14 @@ export function buildGraphElements(
       continue;
     }
     const id = `holding-${holding.id}`;
-    nodes.set(id, { id, name: holding.companyName, ticker: holding.ticker, isHolding: true, weight: holding.weight });
+    nodes.set(id, {
+      id,
+      name: holding.companyName,
+      displayName: holding.companyDisplayName,
+      ticker: holding.ticker,
+      isHolding: true,
+      weight: holding.weight,
+    });
     nodeIdByName.set(holding.companyName, id);
   }
 
@@ -114,35 +132,10 @@ export function plainName(name: string): string {
 // The longest name that fits under a company's tile on the graph.
 export const SHORT_NAME_LENGTH = 14;
 
-/** A name short enough for the graph: its display name, cut with an ellipsis if it is still too long. */
-/**
- * A company's name as the website shows it, the same way for every company: its plain name (no legal ending), in Title
- * Case. The SEC writes most names in capitals ("NVIDIA CORP", "AMAZON COM INC"); those words become Title Case
- * ("NVIDIA CORP" becomes "Nvidia"), except short ones of four letters or fewer, which are usually acronyms and stay as they are ("ASML
- * Holding", "AMD"). A trailing "COM" is the company's web address, so "AMAZON COM" becomes "Amazon.com". A name already
- * in mixed case ("Apple Inc.") keeps its own capitals. The stored name is never changed.
- */
-export function displayName(name: string): string {
-  const plain = plainName(name);
-  // Judged on the whole stored name: "NVIDIA Corporation" is written in mixed case, so its "NVIDIA" stays as it is.
-  if (/[a-z]/.test(name)) return plain;
-  const words = plain.split(' ');
-  if (words.length > 1 && words[words.length - 1] === 'COM') {
-    words.pop();
-    words[words.length - 1] += '.com';
-  }
-  return words.map((word) => (/[A-Z]{5,}/.test(word) ? titleWord(word) : word)).join(' ');
-}
-
-// "MANUFACTURING" becomes "Manufacturing"; each part of "SK-HYNIX" or "AMAZON.com" is done on its own.
-function titleWord(word: string): string {
-  return word.replace(/[A-Z]+/g, (part) => part[0] + part.slice(1).toLowerCase());
-}
-
-export function shortName(name: string): string {
-  const plain = displayName(name);
-  if (plain.length <= SHORT_NAME_LENGTH) return plain;
-  return `${plain.slice(0, SHORT_NAME_LENGTH - 1).trimEnd()}\u2026`;
+/** A display name short enough for the graph: cut with an ellipsis if it is too long. */
+export function shortName(displayName: string): string {
+  if (displayName.length <= SHORT_NAME_LENGTH) return displayName;
+  return `${displayName.slice(0, SHORT_NAME_LENGTH - 1).trimEnd()}\u2026`;
 }
 
 /** A holding's weight as a percentage: 18 becomes "18%", 12.5 "12.5%", 3.333 "3.33%". Null when there is none. */
@@ -171,7 +164,7 @@ export function holdingSize(weight: number | null): number {
  * name when it has no ticker.
  */
 export function nodeLabel(node: GraphNode): string {
-  if (!node.ticker) return shortName(node.name);
+  if (!node.ticker) return shortName(node.displayName);
   const weight = node.isHolding ? formatWeight(node.weight) : null;
   return weight ? `${node.ticker} ${weight}` : node.ticker;
 }
@@ -234,11 +227,11 @@ export type ChainKey = { id: string; label: string; colour: string };
  * arrows of any smaller holding keep no colour (the graph draws them grey), as do arrows that lead to no holding at all.
  */
 export function chainColours(
-  nodes: Pick<GraphNode, 'id' | 'name' | 'ticker' | 'isHolding' | 'weight'>[],
+  nodes: Pick<GraphNode, 'id' | 'displayName' | 'ticker' | 'isHolding' | 'weight'>[],
   edges: Pick<GraphEdge, 'id' | 'source' | 'target'>[],
 ): { edges: Map<string, string>; key: ChainKey[] } {
   const linked = new Set(edges.flatMap((edge) => [edge.source, edge.target]));
-  const labelOf = (node: Pick<GraphNode, 'name' | 'ticker'>) => node.ticker ?? displayName(node.name);
+  const labelOf = (node: Pick<GraphNode, 'displayName' | 'ticker'>) => node.ticker ?? node.displayName;
   const holdings = nodes
     .filter((node) => node.isHolding && linked.has(node.id))
     .sort((a, b) => (b.weight ?? -1) - (a.weight ?? -1) || labelOf(a).localeCompare(labelOf(b)));
@@ -309,6 +302,7 @@ export function dashOffsetAt(elapsedMs: number): number {
 export type SharedCompany = {
   id: string;
   name: string;
+  displayName: string;
   ticker: string | null;
   suppliesHoldings: number;
   buysFromHoldings: number;
@@ -333,12 +327,12 @@ export function sharedCompanies(relationships: Relationship[], nodes: GraphNode[
   const holdingIds = new Set(nodes.filter((node) => node.isHolding).map((node) => node.id));
   const supplies = new Map<string, Set<number>>();
   const buysFrom = new Map<string, Set<number>>();
-  const companies = new Map<string, { name: string; ticker: string | null }>();
+  const companies = new Map<string, CompanySummary>();
 
   for (const relationship of relationships) {
     const id = String(relationship.counterparty.id);
     if (holdingIds.has(id)) continue;
-    companies.set(id, { name: relationship.counterparty.name, ticker: relationship.counterparty.ticker });
+    companies.set(id, relationship.counterparty);
     // SUPPLIER: the counterparty supplies the holding. CUSTOMER: the counterparty buys from the holding.
     const side = relationship.type === 'SUPPLIER' ? supplies : buysFrom;
     const held = side.get(id) ?? new Set<number>();
@@ -347,11 +341,11 @@ export function sharedCompanies(relationships: Relationship[], nodes: GraphNode[
   }
 
   const shared: SharedCompany[] = [];
-  for (const [id, { name, ticker }] of companies) {
+  for (const [id, { name, displayName, ticker }] of companies) {
     const suppliesHoldings = supplies.get(id)?.size ?? 0;
     const buysFromHoldings = buysFrom.get(id)?.size ?? 0;
     if (suppliesHoldings < SHARED_FROM && buysFromHoldings < SHARED_FROM) continue;
-    shared.push({ id, name, ticker, suppliesHoldings, buysFromHoldings });
+    shared.push({ id, name, displayName, ticker, suppliesHoldings, buysFromHoldings });
   }
 
   // Only a side that is itself shared counts towards the rank: a company that supplies four holdings and buys from
@@ -359,7 +353,7 @@ export function sharedCompanies(relationships: Relationship[], nodes: GraphNode[
   const rank = (company: SharedCompany) =>
     (company.suppliesHoldings >= SHARED_FROM ? company.suppliesHoldings : 0) +
     (company.buysFromHoldings >= SHARED_FROM ? company.buysFromHoldings : 0);
-  return shared.sort((a, b) => rank(b) - rank(a) || a.name.localeCompare(b.name));
+  return shared.sort((a, b) => rank(b) - rank(a) || a.displayName.localeCompare(b.displayName));
 }
 
 /**
@@ -427,7 +421,7 @@ export function relationshipSummary(relationship: Relationship): string {
     relationship.type === 'SUPPLIER'
       ? [relationship.counterparty, relationship.company]
       : [relationship.company, relationship.counterparty];
-  const sentence = `${displayName(supplier.name)} supplies ${displayName(customer.name)}`;
+  const sentence = `${supplier.displayName} supplies ${customer.displayName}`;
   return relationship.provides ? `${sentence}: ${relationship.provides}` : sentence;
 }
 

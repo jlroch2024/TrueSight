@@ -3,6 +3,7 @@ package com.truesight.relationship;
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
+import com.truesight.company.CompanyDisplayNames;
 import com.truesight.company.CompanyRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
@@ -21,16 +22,18 @@ public class RelationshipEditService {
     private final RelationshipRepository relationships;
     private final CompanyRepository companies;
     private final CompanyDirectory companyDirectory;
+    private final CompanyDisplayNames displayNames;
     private final ReportRepository reports;
     private final ReviewService reviews;
     private final CurrentUser currentUser;
 
     public RelationshipEditService(RelationshipRepository relationships, CompanyRepository companies,
-                                   CompanyDirectory companyDirectory, ReportRepository reports,
-                                   ReviewService reviews, CurrentUser currentUser) {
+                                   CompanyDirectory companyDirectory, CompanyDisplayNames displayNames,
+                                   ReportRepository reports, ReviewService reviews, CurrentUser currentUser) {
         this.relationships = relationships;
         this.companies = companies;
         this.companyDirectory = companyDirectory;
+        this.displayNames = displayNames;
         this.reports = reports;
         this.reviews = reviews;
         this.currentUser = currentUser;
@@ -84,8 +87,8 @@ public class RelationshipEditService {
     @Transactional(readOnly = true)
     public List<CompanyOption> companiesWithReport() {
         return companies.findAllById(reports.findCompanyIdsWithAReport()).stream()
-                .map(company -> new CompanyOption(company.getId(), company.getName()))
-                .sorted(Comparator.comparing(CompanyOption::name, String.CASE_INSENSITIVE_ORDER))
+                .map(company -> new CompanyOption(company.getId(), company.getName(), displayNames.of(company)))
+                .sorted(Comparator.comparing(CompanyOption::displayName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
@@ -93,7 +96,7 @@ public class RelationshipEditService {
         return text == null || text.isBlank() ? null : text.strip();
     }
 
-    private static ApiException sentenceNotFound(Company company) {
-        return ApiException.badRequest("That sentence is not in " + company.getName() + "'s annual report.");
+    private ApiException sentenceNotFound(Company company) {
+        return ApiException.badRequest("That sentence is not in " + displayNames.of(company) + "'s annual report.");
     }
 }

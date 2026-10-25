@@ -67,6 +67,15 @@ describe('NewsPanel', () => {
     expect(props.onSelectCompany).toHaveBeenCalledWith('Taiwan Semiconductor Manufacturing Company Limited');
   });
 
+  it('tags an article about a company with no ticker by the display name the API sends', () => {
+    const [first] = sampleNews(1);
+    const company = { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null };
+    renderPanel([{ ...first!, company }]);
+
+    const tag = screen.getByRole('button', { name: 'Samsung Electronics' });
+    expect(tag).toHaveAttribute('title', 'Samsung Electronics Co., Ltd.');
+  });
+
   it("shows the AI's judgement as a tag once there is one, and none before", () => {
     const [unjudged, noise, event] = sampleNews(3);
     renderPanel([
@@ -83,8 +92,9 @@ describe('NewsPanel', () => {
 
   it('narrows the list to one company, and Clear brings back the rest', async () => {
     const [tsmc, other] = sampleNews(2);
-    const nvidia = { ...other!, company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' } };
-    const props = renderPanel([tsmc!, nvidia], { companyFilter: 'NVIDIA Corporation' });
+    // The SEC's name for NVIDIA, and the display name the API sends for it.
+    const nvidia = { ...other!, company: { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' } };
+    const props = renderPanel([tsmc!, nvidia], { companyFilter: 'NVIDIA CORP' });
 
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
     expect(screen.getByText('Only NVIDIA')).toBeInTheDocument();

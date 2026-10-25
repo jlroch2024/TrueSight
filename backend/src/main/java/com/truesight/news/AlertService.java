@@ -2,6 +2,7 @@ package com.truesight.news;
 
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
+import com.truesight.company.CompanyDisplayNames;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
@@ -44,18 +45,20 @@ public class AlertService {
     private final HoldingRepository holdings;
     private final RelationshipRepository relationships;
     private final CompanyRepository companies;
+    private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
 
     public AlertService(PortfolioRepository portfolios, AlertRepository alerts,
                         AlertHoldingRepository alertHoldings, HoldingRepository holdings,
                         RelationshipRepository relationships, CompanyRepository companies,
-                        CurrentUser currentUser) {
+                        CompanyDisplayNames displayNames, CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.alerts = alerts;
         this.alertHoldings = alertHoldings;
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
+        this.displayNames = displayNames;
         this.currentUser = currentUser;
     }
 
@@ -288,8 +291,9 @@ public class AlertService {
                 assessment.getConfidence(), assessment.getSummary(), assessment.getReason());
     }
 
-    private static String nameOf(Company company) {
-        return company == null ? null : company.getName();
+    /** The company's name as every page shows it. */
+    private String nameOf(Company company) {
+        return company == null ? null : displayNames.of(company);
     }
 
     private static AlertRow lead(List<AlertRow> rows) {

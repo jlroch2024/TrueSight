@@ -8,7 +8,8 @@ export type Criticality = 'SOLE_SOURCE' | 'SINGLE_SOURCE';
 // Where an Analyst's review of a relationship has got. Rejected relationships never reach a graph.
 export type ReviewStatus = 'UNREVIEWED' | 'APPROVED' | 'REJECTED';
 
-export type CompanySummary = { id: number; name: string; ticker: string | null };
+// name is as stored; displayName is how every page shows the company. The website never reformats a name.
+export type CompanySummary = { id: number; name: string; displayName: string; ticker: string | null };
 
 // form is e.g. "10-K"; filingDate is ISO text; url opens the report on the SEC website.
 export type ReportSummary = { form: string; filingDate: string; url: string };
@@ -32,7 +33,7 @@ export type Relationship = {
   reviewNote: string | null;
 };
 
-export type CompanyOption = { id: number; name: string };
+export type CompanyOption = { id: number; name: string; displayName: string };
 
 export type AddRelationship = {
   companyId: number;

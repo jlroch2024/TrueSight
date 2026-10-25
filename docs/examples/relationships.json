@@ -4,11 +4,13 @@
     "company": {
       "id": 1,
       "name": "NVIDIA Corporation",
+      "displayName": "NVIDIA",
       "ticker": "NVDA"
     },
     "counterparty": {
       "id": 11,
       "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "displayName": "Taiwan Semiconductor Manufacturing",
       "ticker": "TSM"
     },
     "type": "SUPPLIER",
@@ -31,11 +33,13 @@
     "company": {
       "id": 1,
       "name": "NVIDIA Corporation",
+      "displayName": "NVIDIA",
       "ticker": "NVDA"
     },
     "counterparty": {
       "id": 12,
       "name": "Samsung Electronics Co., Ltd.",
+      "displayName": "Samsung Electronics",
       "ticker": null
     },
     "type": "SUPPLIER",
@@ -58,11 +62,13 @@
     "company": {
       "id": 2,
       "name": "Advanced Micro Devices, Inc.",
+      "displayName": "Advanced Micro Devices",
       "ticker": "AMD"
     },
     "counterparty": {
       "id": 11,
       "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "displayName": "Taiwan Semiconductor Manufacturing",
       "ticker": "TSM"
     },
     "type": "SUPPLIER",
@@ -85,11 +91,13 @@
     "company": {
       "id": 2,
       "name": "Advanced Micro Devices, Inc.",
+      "displayName": "Advanced Micro Devices",
       "ticker": "AMD"
     },
     "counterparty": {
       "id": 13,
       "name": "GLOBALFOUNDRIES Inc.",
+      "displayName": "GLOBALFOUNDRIES",
       "ticker": "GFS"
     },
     "type": "SUPPLIER",
@@ -112,11 +120,13 @@
     "company": {
       "id": 3,
       "name": "QUALCOMM Incorporated",
+      "displayName": "QUALCOMM",
       "ticker": "QCOM"
     },
     "counterparty": {
       "id": 11,
       "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "displayName": "Taiwan Semiconductor Manufacturing",
       "ticker": "TSM"
     },
     "type": "SUPPLIER",
@@ -139,11 +149,13 @@
     "company": {
       "id": 3,
       "name": "QUALCOMM Incorporated",
+      "displayName": "QUALCOMM",
       "ticker": "QCOM"
     },
     "counterparty": {
       "id": 12,
       "name": "Samsung Electronics Co., Ltd.",
+      "displayName": "Samsung Electronics",
       "ticker": null
     },
     "type": "SUPPLIER",
@@ -166,11 +178,13 @@
     "company": {
       "id": 3,
       "name": "QUALCOMM Incorporated",
+      "displayName": "QUALCOMM",
       "ticker": "QCOM"
     },
     "counterparty": {
       "id": 13,
       "name": "GLOBALFOUNDRIES Inc.",
+      "displayName": "GLOBALFOUNDRIES",
       "ticker": "GFS"
     },
     "type": "SUPPLIER",
@@ -193,11 +207,13 @@
     "company": {
       "id": 4,
       "name": "Tesla, Inc.",
+      "displayName": "Tesla",
       "ticker": "TSLA"
     },
     "counterparty": {
       "id": 14,
       "name": "Panasonic",
+      "displayName": "Panasonic",
       "ticker": null
     },
     "type": "SUPPLIER",
@@ -220,11 +236,13 @@
     "company": {
       "id": 4,
       "name": "Tesla, Inc.",
+      "displayName": "Tesla",
       "ticker": "TSLA"
     },
     "counterparty": {
       "id": 15,
       "name": "Contemporary Amperex Technology Co. Limited",
+      "displayName": "Contemporary Amperex Technology",
       "ticker": null
     },
     "type": "SUPPLIER",
@@ -247,11 +265,13 @@
     "company": {
       "id": 5,
       "name": "Broadcom Inc.",
+      "displayName": "Broadcom",
       "ticker": "AVGO"
     },
     "counterparty": {
       "id": 11,
       "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "displayName": "Taiwan Semiconductor Manufacturing",
       "ticker": "TSM"
     },
     "type": "SUPPLIER",
@@ -274,11 +294,13 @@
     "company": {
       "id": 6,
       "name": "Lam Research Corporation",
+      "displayName": "Lam Research",
       "ticker": "LRCX"
     },
     "counterparty": {
       "id": 16,
       "name": "Micron Technology, Inc.",
+      "displayName": "Micron Technology",
       "ticker": "MU"
     },
     "type": "CUSTOMER",
@@ -301,11 +323,13 @@
     "company": {
       "id": 6,
       "name": "Lam Research Corporation",
+      "displayName": "Lam Research",
       "ticker": "LRCX"
     },
     "counterparty": {
       "id": 12,
       "name": "Samsung Electronics Co., Ltd.",
+      "displayName": "Samsung Electronics",
       "ticker": null
     },
     "type": "CUSTOMER",
@@ -328,11 +352,13 @@
     "company": {
       "id": 6,
       "name": "Lam Research Corporation",
+      "displayName": "Lam Research",
       "ticker": "LRCX"
     },
     "counterparty": {
       "id": 17,
       "name": "SK hynix Inc.",
+      "displayName": "SK hynix",
       "ticker": null
     },
     "type": "CUSTOMER",
@@ -355,11 +381,13 @@
     "company": {
       "id": 6,
       "name": "Lam Research Corporation",
+      "displayName": "Lam Research",
       "ticker": "LRCX"
     },
     "counterparty": {
       "id": 11,
       "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "displayName": "Taiwan Semiconductor Manufacturing",
       "ticker": "TSM"
     },
     "type": "CUSTOMER",
@@ -382,11 +410,13 @@
     "company": {
       "id": 7,
       "name": "Cirrus Logic, Inc.",
+      "displayName": "Cirrus Logic",
       "ticker": "CRUS"
     },
     "counterparty": {
       "id": 18,
       "name": "Apple Inc.",
+      "displayName": "Apple",
       "ticker": "AAPL"
     },
     "type": "CUSTOMER",
@@ -409,11 +439,13 @@
     "company": {
       "id": 8,
       "name": "ASML Holding N.V.",
+      "displayName": "ASML Holding",
       "ticker": "ASML"
     },
     "counterparty": {
       "id": 19,
       "name": "Carl Zeiss SMT",
+      "displayName": "Carl Zeiss SMT",
       "ticker": null
     },
     "type": "SUPPLIER",
@@ -436,11 +468,13 @@
     "company": {
       "id": 9,
       "name": "STMicroelectronics N.V.",
+      "displayName": "STMicroelectronics",
       "ticker": "STM"
     },
     "counterparty": {
       "id": 18,
       "name": "Apple Inc.",
+      "displayName": "Apple",
       "ticker": "AAPL"
     },
     "type": "CUSTOMER",

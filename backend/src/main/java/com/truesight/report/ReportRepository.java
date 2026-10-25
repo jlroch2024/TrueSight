@@ -15,6 +15,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     /** The company's newest saved report, if any. */
     Optional<Report> findFirstByCompanyIdOrderByFilingDateDesc(Long companyId);
 
+    /** The id of the company's newest saved report, if any, without loading the report's text. */
+    @Query("select r.id from Report r where r.companyId = :companyId order by r.filingDate desc limit 1")
+    Optional<Long> findLatestIdByCompanyId(Long companyId);
+
     @Query("select distinct r.companyId from Report r")
     List<Long> findCompanyIdsWithAReport();
 

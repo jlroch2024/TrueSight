@@ -150,10 +150,10 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].ticker").value("NVDA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].weight").value(40.0))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].indirect").value(false))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName")
-                        .value("Taiwan Semiconductor Manufacturing Company Limited"))
+                // Display names, as every page shows them (Spell Each Company as Its Own Report Does).
+                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value("Taiwan Semiconductor Manufacturing"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value(nullValue()))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
     }
@@ -182,9 +182,10 @@ class AlertsIT {
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alerts[0].holdings[0].indirect").value(true))
+                // Display names, as every page shows them. Zeiss's test name has no legal ending, so it reads as stored.
                 .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value(zeiss.getName()))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value(tsmc.getName()))
-                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value(nvidia.getName()));
+                .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value("Taiwan Semiconductor Manufacturing"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"));
     }
 
     @Test

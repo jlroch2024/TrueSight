@@ -4,7 +4,7 @@
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { STATUS_LABELS } from '../format';
-import { type SharedCompany, connectionsOf, displayName, formatWeight, sharedSummary } from '../pages/supplyChain';
+import { type SharedCompany, connectionsOf, formatWeight, sharedSummary } from '../pages/supplyChain';
 
 type Props = {
   holdings: Holding[];
@@ -32,7 +32,7 @@ export function HoldingsPanel({ holdings, nodeIdByHolding, relationships, shared
         {[...holdings].sort(byWeight).map((holding) => {
           const nodeId = nodeIdByHolding.get(holding.id);
           const weight = formatWeight(holding.weight);
-          const name = holding.companyName ? displayName(holding.companyName) : null;
+          const name = holding.companyDisplayName;
           if (!nodeId) {
             return (
               <li key={holding.id} className="panel-row unavailable">
@@ -82,7 +82,7 @@ export function HoldingsPanel({ holdings, nodeIdByHolding, relationships, shared
                 >
                   <span className="panel-row-main">
                     {company.ticker && <span className="ticker">{company.ticker}</span>}
-                    <span className="panel-name">{displayName(company.name)}</span>
+                    <span className="panel-name">{company.displayName}</span>
                   </span>
                   <span className="panel-row-detail">{sharedSummary(company)}</span>
                 </button>

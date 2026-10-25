@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
+import com.truesight.company.CompanyDisplayNames;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
@@ -43,6 +44,7 @@ class RelationshipEditIT {
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
     @Autowired CompanyDirectory companyDirectory;
+    @Autowired CompanyDisplayNames displayNames;
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
     @Autowired PortfolioRepository portfolios;
@@ -94,7 +96,9 @@ class RelationshipEditIT {
         mockMvc.perform(get("/api/companies?withReport=true").header("Authorization", analyst))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == %s)].name".formatted(fixture.company().getId()))
-                        .value(contains(fixture.company().getName())));
+                        .value(contains(fixture.company().getName())))
+                .andExpect(jsonPath("$[?(@.id == %s)].displayName".formatted(fixture.company().getId()))
+                        .value(contains(displayNames.of(fixture.company()))));
         String body = add(analyst, fixture.company(), "SK Hynix Inc.", MEMORY_SENTENCE)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.relationship.evidence").value(MEMORY_SENTENCE))
@@ -119,7 +123,7 @@ class RelationshipEditIT {
         add(analyst(), fixture.company(), "SK Hynix Inc.", "ABSENT_SENTENCE_MARKER")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(
-                        "That sentence is not in " + fixture.company().getName() + "'s annual report."));
+                        "That sentence is not in " + displayNames.of(fixture.company()) + "'s annual report."));
 
         assertThat(relationships.findByCompanyIdIn(List.of(fixture.company().getId()))).hasSize(before);
     }

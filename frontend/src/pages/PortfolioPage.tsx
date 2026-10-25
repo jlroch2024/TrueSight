@@ -9,7 +9,6 @@ import { CheckNewsButton } from '../components/CheckNewsButton';
 import { useConfirm } from '../components/ConfirmDialog';
 import { newsApi } from '../api/news';
 import { portfolioSubtitle } from './portfolioSubtitle';
-import { displayName } from './supplyChain';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -195,7 +194,7 @@ export function PortfolioPage() {
               <tbody>
                 {holdings.map((h) => (
                   <tr key={h.id}>
-                    <td title={h.companyName ?? undefined}>{h.companyName ? displayName(h.companyName) : '—'}</td>
+                    <td title={h.companyName ?? undefined}>{h.companyDisplayName ?? '—'}</td>
                     <td>{h.ticker}</td>
                     <td>{h.weight === null ? '—' : `${h.weight}%`}</td>
                     <td>

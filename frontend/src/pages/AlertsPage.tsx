@@ -7,7 +7,6 @@ import { portfolioApi } from '../api/portfolios';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { RadioGroup } from '../components/RadioGroup';
 import { formatDate, openInNewTab } from '../format';
-import { displayName } from './supplyChain';
 
 const SEVERITY_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
 const CONFIDENCE_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
@@ -111,9 +110,9 @@ function AlertCard({
               <span>
                 {holding.indirect && <span className="news-tag">Indirect</span>}
                 {holding.supplierName && holding.middleName && holding.customerName
-                  ? ` ${displayName(holding.supplierName)} supplies ${displayName(holding.middleName)}, which supplies ${displayName(holding.customerName)}`
+                  ? ` ${holding.supplierName} supplies ${holding.middleName}, which supplies ${holding.customerName}`
                   : holding.supplierName && holding.customerName
-                  ? `${displayName(holding.supplierName)} supplies ${displayName(holding.customerName)}`
+                  ? `${holding.supplierName} supplies ${holding.customerName}`
                   : 'Named in the Article'}
               </span>
               {holding.reviewStatus === 'UNREVIEWED' && (

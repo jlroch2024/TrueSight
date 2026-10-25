@@ -16,8 +16,9 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
   return {
     relationship: {
       id,
-      company: { id: 1, name: 'NVIDIA Corporation', ticker: 'NVDA' },
-      counterparty: { id: 10 + id, name: `Supplier ${id}`, ticker: null },
+      // The SEC's name for NVIDIA, and the display name the API sends for it: NVIDIA's own report writes "NVIDIA".
+      company: { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' },
+      counterparty: { id: 10 + id, name: `Supplier ${id}`, displayName: `Supplier ${id}`, ticker: null },
       type,
       provides: 'semiconductor wafers',
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
@@ -144,6 +145,16 @@ describe('Review page', () => {
     expect(screen.queryByText(/2026-02-25/)).not.toBeInTheDocument();
   });
 
+  // The SEC calls it "NVIDIA CORP", which the website once showed as "Nvidia"; NVIDIA's own report writes "NVIDIA".
+  it('names each company by the display name the API sends, never by reformatting the stored name', async () => {
+    fakeBackend(() => [item(1)]);
+
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Supplier 1 → NVIDIA' })).toBeInTheDocument();
+    expect(screen.queryByText(/Nvidia|NVIDIA CORP/)).not.toBeInTheDocument();
+  });
+
   it('says "1 portfolio", not "1 portfolios"', async () => {
     fakeBackend(() => [item(1, { usedByPortfolios: 1 })]);
 
@@ -238,7 +249,7 @@ describe('Review page', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url === '/api/companies?withReport=true') {
-          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA Corporation' }]));
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA' }]));
         }
         if (url === '/api/relationships' && init?.method === 'POST') {
           return new Response(JSON.stringify(added), { status: 201 });
@@ -274,11 +285,11 @@ describe('Review page', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url === '/api/companies?withReport=true') {
-          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA Corporation' }]));
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA' }]));
         }
         if (url === '/api/relationships' && init?.method === 'POST') {
           return new Response(
-            JSON.stringify({ message: "That sentence is not in NVIDIA Corporation's annual report." }),
+            JSON.stringify({ message: "That sentence is not in NVIDIA's annual report." }),
             { status: 400 },
           );
         }
@@ -293,7 +304,7 @@ describe('Review page', () => {
     await userEvent.type(screen.getByLabelText('Sentence From the Annual Report'), 'Not in the report.');
     await userEvent.click(screen.getByRole('button', { name: 'Add Relationship' }));
 
-    expect(await screen.findByText("That sentence is not in NVIDIA Corporation's annual report.")).toBeInTheDocument();
+    expect(await screen.findByText("That sentence is not in NVIDIA's annual report.")).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'All (1)' })).toBeInTheDocument();
   });
 

@@ -50,9 +50,10 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
       ticker: 'NVDA',
       weight: 40,
       indirect: false,
-      supplierName: 'Taiwan Semiconductor Manufacturing Company Limited',
+      // Display names, as the API sends them.
+      supplierName: 'Taiwan Semiconductor Manufacturing',
       middleName: null,
-      customerName: 'NVIDIA Corporation',
+      customerName: 'NVIDIA',
       reviewStatus: 'UNREVIEWED',
       relationshipId: 9,
     }],
@@ -188,11 +189,11 @@ describe('Alerts page', () => {
     expect(card).not.toHaveTextContent(/Weight/i);
   });
 
-  it('names a linked holding through both companies\' display names, and one in the article as such', async () => {
+  it('names a linked holding by the display names the API sends, as they are, and one in the article as such', async () => {
     savedAlerts = [{
       ...alert(7, 'HIGH'),
       holdings: [
-        { ...alert(7, 'HIGH').holdings[0]!, supplierName: 'ASML HOLDING NV', customerName: 'Taiwan Semiconductor Manufacturing Company Limited' },
+        { ...alert(7, 'HIGH').holdings[0]!, supplierName: 'ASML Holding', customerName: 'NVIDIA' },
         { holdingId: 4, ticker: 'TSM', weight: 10, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
       ],
     }];
@@ -200,7 +201,7 @@ describe('Alerts page', () => {
     const card = await firstCard();
 
     const rows = within(card).getAllByRole('listitem');
-    expect(rows[0]).toHaveTextContent('ASML Holding supplies Taiwan Semiconductor Manufacturing');
+    expect(rows[0]).toHaveTextContent('ASML Holding supplies NVIDIA');
     expect(rows[1]).toHaveTextContent('Named in the Article');
   });
 
@@ -215,9 +216,10 @@ describe('Alerts page', () => {
           holdingId: 2,
           ticker: 'TSM',
           indirect: true,
+          // Display names, as the API sends them.
           supplierName: 'Carl Zeiss SMT',
-          middleName: 'ASML HOLDING NV',
-          customerName: 'Taiwan Semiconductor Manufacturing Company Limited',
+          middleName: 'ASML Holding',
+          customerName: 'Taiwan Semiconductor Manufacturing',
         },
         {
           ...alert(7, 'HIGH').holdings[0]!,
@@ -226,7 +228,7 @@ describe('Alerts page', () => {
           indirect: true,
           supplierName: 'Supplier Two',
           middleName: 'Middle Two',
-          customerName: 'Advanced Micro Devices, Inc.',
+          customerName: 'Advanced Micro Devices',
         },
       ],
     }];
