@@ -5,12 +5,16 @@ import com.truesight.ai.AiCallLog;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
 import com.truesight.relationship.GeminiClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -82,32 +86,43 @@ public class NewsAssessor implements NewsCheckStep {
     private final NewsAssessmentRepository assessments;
     private final GeminiClient gemini;
     private final AiCallLog calls;
+    private final Executor batchExecutor;
     private final NewsAssessmentReader reader = new NewsAssessmentReader();
 
     // Two portfolios sharing a company could otherwise judge the same article at the same moment.
     private final Object lock = new Object();
 
     public NewsAssessor(NewsCheckService newsCheck, NewsArticleRepository articles,
-                        NewsAssessmentRepository assessments, GeminiClient gemini, AiCallLog calls) {
+                        NewsAssessmentRepository assessments, GeminiClient gemini, AiCallLog calls,
+                        @Qualifier("newsBatchExecutor") Executor batchExecutor) {
         this.newsCheck = newsCheck;
         this.articles = articles;
         this.assessments = assessments;
         this.gemini = gemini;
         this.calls = calls;
+        this.batchExecutor = batchExecutor;
     }
 
     @Override
     public void run(Long portfolioId) {
-        Map<Long, String> names = newsCheck.companiesFor(portfolioId).stream()
-                .collect(Collectors.toMap(NewsCheckService.NewsCompany::id, NewsCheckService.NewsCompany::name,
-                        (first, second) -> first));
-        if (names.isEmpty()) return;
-
         synchronized (lock) {
+            Map<Long, String> names = newsCheck.companiesFor(portfolioId).stream()
+                    .collect(Collectors.toMap(NewsCheckService.NewsCompany::id, NewsCheckService.NewsCompany::name,
+                            (first, second) -> first));
+            if (names.isEmpty()) return;
+
             List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(names.keySet());
+            List<CompletableFuture<Void>> tasks = new ArrayList<>();
             for (int start = 0; start < waiting.size(); start += BATCH_SIZE) {
-                List<NewsArticle> batch = waiting.subList(start, Math.min(start + BATCH_SIZE, waiting.size()));
-                save(batch, ask(prompt(batch, names), batch.size()));
+                List<NewsArticle> batch = List.copyOf(waiting.subList(start, Math.min(start + BATCH_SIZE, waiting.size())));
+                tasks.add(CompletableFuture.runAsync(
+                        () -> save(batch, ask(prompt(batch, names), batch.size())), batchExecutor));
+            }
+            try {
+                CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
+            } catch (CompletionException exception) {
+                if (exception.getCause() instanceof RuntimeException cause) throw cause;
+                throw exception;
             }
         }
     }

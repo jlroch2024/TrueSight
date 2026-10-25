@@ -28,6 +28,12 @@ import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -152,9 +158,52 @@ class NewsAssessorIT {
 
         ArgumentCaptor<AiRequest> prompts = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini, times(2)).generate(prompts.capture(), any());
-        assertThat(prompts.getAllValues().get(0).prompt()).contains("\n20. [").doesNotContain("\n21. [");
-        assertThat(prompts.getAllValues().get(1).prompt()).contains("\n5. [").doesNotContain("\n6. [");
+        List<String> batchPrompts = prompts.getAllValues().stream().map(AiRequest::prompt).toList();
+        assertThat(batchPrompts).anySatisfy(prompt -> assertThat(prompt).contains("\n20. [").doesNotContain("\n21. ["));
+        assertThat(batchPrompts).anySatisfy(prompt -> assertThat(prompt).contains("\n5. [").doesNotContain("\n6. ["));
         assertThat(assessmentsOf(saved)).hasSize(25);
+    }
+
+    @Test
+    void judgesSixtyHeadlinesInThreeConcurrentBatchesAndSavesEveryJudgement() throws Exception {
+        List<NewsArticle> saved = saveSampleArticles(60);
+        Portfolio portfolio = analysedPortfolio("assess-parallel-batches@example.com");
+        CountDownLatch threeBatchesStarted = new CountDownLatch(3);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger running = new AtomicInteger();
+        AtomicInteger maximum = new AtomicInteger();
+        when(gemini.generate(any(AiRequest.class), any())).thenAnswer(call -> {
+            maximum.accumulateAndGet(running.incrementAndGet(), Math::max);
+            threeBatchesStarted.countDown();
+            try {
+                if (!release.await(5, TimeUnit.SECONDS)) throw new AssertionError("Timed out waiting for release");
+                return answer(Examples.geminiNewsAssessment());
+            } finally {
+                running.decrementAndGet();
+            }
+        });
+
+        ExecutorService requestThread = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> check = requestThread.submit(() -> {
+                try {
+                    checkNews(portfolio, "assess-parallel-batches@example.com", NewsStatus.IDLE);
+                } catch (Exception exception) {
+                    throw new RuntimeException(exception);
+                }
+            });
+            assertThat(threeBatchesStarted.await(3, TimeUnit.SECONDS)).isTrue();
+            release.countDown();
+            check.get(12, TimeUnit.SECONDS);
+
+            assertThat(maximum.get()).isEqualTo(3);
+            assertThat(assessmentsOf(saved)).hasSize(60)
+                    .extracting(NewsAssessment::getArticleId).doesNotHaveDuplicates();
+            verify(gemini, times(3)).generate(any(AiRequest.class), any());
+        } finally {
+            release.countDown();
+            requestThread.shutdownNow();
+        }
     }
 
     @Test
