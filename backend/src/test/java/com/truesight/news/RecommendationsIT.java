@@ -38,9 +38,10 @@ class RecommendationsIT {
         mockMvc.perform(get("/api/recommendations?status=PENDING")
                         .header("Authorization", logins.analystBearer(analyst)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(recommendation.getId()))
-                .andExpect(jsonPath("$[0].text").value("Check the delivery status."))
-                .andExpect(jsonPath("$[0].event.title").value(HEADLINE));
+                .andExpect(jsonPath("$[?(@.id == " + recommendation.getId() + ")].text")
+                        .value(List.of("Check the delivery status.")))
+                .andExpect(jsonPath("$[?(@.id == " + recommendation.getId() + ")].event.title")
+                        .value(List.of(HEADLINE)));
 
         mockMvc.perform(put("/api/recommendations/{id}", recommendation.getId())
                         .header("Authorization", logins.analystBearer(analyst))
