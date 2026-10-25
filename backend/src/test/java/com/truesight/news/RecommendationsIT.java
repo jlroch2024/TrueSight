@@ -39,7 +39,7 @@ class RecommendationsIT {
         mockMvc.perform(get("/api/recommendations?status=PENDING")
                         .header("Authorization", logins.analystBearer(analyst)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].id").value(hasItem(recommendation.getId())))
+                .andExpect(jsonPath("$[*].id").value(hasItem(recommendation.getId().intValue())))
                 .andExpect(jsonPath("$[*].text").value(hasItem("Check the delivery status.")))
                 .andExpect(jsonPath("$[*].event.title").value(hasItem(HEADLINE)));
 
