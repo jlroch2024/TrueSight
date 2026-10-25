@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.hasItem;
 
 /** Analyst recommendation decisions and role checks through the real HTTP API. */
 @IntegrationTest
@@ -38,10 +39,9 @@ class RecommendationsIT {
         mockMvc.perform(get("/api/recommendations?status=PENDING")
                         .header("Authorization", logins.analystBearer(analyst)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == " + recommendation.getId() + ")].text")
-                        .value(List.of("Check the delivery status.")))
-                .andExpect(jsonPath("$[?(@.id == " + recommendation.getId() + ")].event.title")
-                        .value(List.of(HEADLINE)));
+                .andExpect(jsonPath("$[*].id").value(hasItem(recommendation.getId())))
+                .andExpect(jsonPath("$[*].text").value(hasItem("Check the delivery status.")))
+                .andExpect(jsonPath("$[*].event.title").value(hasItem(HEADLINE)));
 
         mockMvc.perform(put("/api/recommendations/{id}", recommendation.getId())
                         .header("Authorization", logins.analystBearer(analyst))
