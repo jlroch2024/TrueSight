@@ -1,7 +1,7 @@
 package com.truesight.news;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.truesight.ai.AiAnswer;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
