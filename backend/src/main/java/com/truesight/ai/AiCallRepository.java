@@ -1,10 +1,11 @@
 package com.truesight.ai;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 
-public interface AiCallRepository extends JpaRepository<AiCall, Long> {
+public interface AiCallRepository extends JpaRepository<AiCall, Long>, JpaSpecificationExecutor<AiCall> {
 
     /** Newest first, as the audit trail shows them. */
     List<AiCall> findTop100ByOrderByStartedAtDesc();
