@@ -114,14 +114,23 @@ public class RecommendationWriter implements NewsCheckStep {
         return FORBIDDEN.matcher(text).find();
     }
 
-    private String read(String json) {
+    String read(String json) {
         try {
-            JsonNode root = mapper.readTree(json);
-            String text = root.path("nextStep").asText("").strip();
+            String text = mapper.readTree(answerText(json)).path("nextStep").asString("").strip();
             if (text.isBlank() || text.length() > 1000) throw new IllegalArgumentException("Invalid nextStep");
             return text;
         } catch (Exception exception) {
             throw new IllegalArgumentException("The AI's recommendation could not be read.", exception);
         }
+    }
+
+    private String answerText(String response) {
+        JsonNode parts = mapper.readTree(response).path("candidates").path(0).path("content").path("parts");
+        StringBuilder text = new StringBuilder();
+        for (JsonNode part : parts) {
+            if (!part.path("thought").asBoolean(false)) text.append(part.path("text").asString(""));
+        }
+        if (text.isEmpty()) throw new IllegalArgumentException("The AI's recommendation could not be read.");
+        return text.toString();
     }
 }

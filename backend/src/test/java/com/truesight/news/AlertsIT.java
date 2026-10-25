@@ -184,6 +184,13 @@ class AlertsIT {
                         .header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
+
+        recommendation.setStatus(RecommendationStatus.WITHHELD);
+        recommendations.save(recommendation);
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
     }
 
     @Test
