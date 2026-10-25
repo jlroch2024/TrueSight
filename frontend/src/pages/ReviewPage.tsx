@@ -265,7 +265,7 @@ function AddRelationshipForm({
             id="relationship-company"
             label="Company Whose Report Names It"
             value={companyId}
-            options={companies.map((company) => ({ value: String(company.id), label: displayName(company.name) }))}
+            options={companies.map((company) => ({ value: String(company.id), label: company.displayName }))}
             onChange={setCompanyId}
           />
           <label htmlFor="counterparty-name">Other Company</label>

@@ -249,7 +249,7 @@ describe('Review page', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url === '/api/companies?withReport=true') {
-          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA Corporation' }]));
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA' }]));
         }
         if (url === '/api/relationships' && init?.method === 'POST') {
           return new Response(JSON.stringify(added), { status: 201 });
@@ -285,11 +285,11 @@ describe('Review page', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url === '/api/companies?withReport=true') {
-          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA Corporation' }]));
+          return new Response(JSON.stringify([{ id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA' }]));
         }
         if (url === '/api/relationships' && init?.method === 'POST') {
           return new Response(
-            JSON.stringify({ message: "That sentence is not in NVIDIA Corporation's annual report." }),
+            JSON.stringify({ message: "That sentence is not in NVIDIA's annual report." }),
             { status: 400 },
           );
         }
@@ -304,7 +304,7 @@ describe('Review page', () => {
     await userEvent.type(screen.getByLabelText('Sentence From the Annual Report'), 'Not in the report.');
     await userEvent.click(screen.getByRole('button', { name: 'Add Relationship' }));
 
-    expect(await screen.findByText("That sentence is not in NVIDIA Corporation's annual report.")).toBeInTheDocument();
+    expect(await screen.findByText("That sentence is not in NVIDIA's annual report.")).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'All (1)' })).toBeInTheDocument();
   });
 

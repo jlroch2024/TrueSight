@@ -50,10 +50,10 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
       ticker: 'NVDA',
       weight: 40,
       indirect: false,
-      // Display names, as the API sends them
-      supplierName: 'Taiwan Semiconductor Manufacturing Company Limited',
+      // Display names, as the API sends them.
+      supplierName: 'Taiwan Semiconductor Manufacturing',
       middleName: null,
-      customerName: 'NVIDIA Corporation',
+      customerName: 'NVIDIA',
       reviewStatus: 'UNREVIEWED',
       relationshipId: 9,
     }],
@@ -216,9 +216,10 @@ describe('Alerts page', () => {
           holdingId: 2,
           ticker: 'TSM',
           indirect: true,
+          // Display names, as the API sends them.
           supplierName: 'Carl Zeiss SMT',
-          middleName: 'ASML HOLDING NV',
-          customerName: 'Taiwan Semiconductor Manufacturing Company Limited',
+          middleName: 'ASML Holding',
+          customerName: 'Taiwan Semiconductor Manufacturing',
         },
         {
           ...alert(7, 'HIGH').holdings[0]!,
@@ -227,7 +228,7 @@ describe('Alerts page', () => {
           indirect: true,
           supplierName: 'Supplier Two',
           middleName: 'Middle Two',
-          customerName: 'Advanced Micro Devices, Inc.',
+          customerName: 'Advanced Micro Devices',
         },
       ],
     }];

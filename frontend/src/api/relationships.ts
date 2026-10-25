@@ -33,7 +33,7 @@ export type Relationship = {
   reviewNote: string | null;
 };
 
-export type CompanyOption = { id: number; name: string };
+export type CompanyOption = { id: number; name: string; displayName: string };
 
 export type AddRelationship = {
   companyId: number;
