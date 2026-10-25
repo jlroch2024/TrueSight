@@ -79,6 +79,40 @@ afterEach(() => {
 });
 
 describe('Analyst Desk', () => {
+  it('lists pending recommendations and supports editing before approval', async () => {
+    const recommendation = {
+      id: 42,
+      status: 'PENDING',
+      text: 'Check supplier delivery updates.',
+      editedText: null,
+      note: null,
+      createdAt: '2026-10-20T00:00:00Z',
+      event: {
+        title: 'A real saved event headline', source: 'Reuters', publishedAt: '2026-10-20T00:00:00Z',
+        url: 'https://example.com/article', eventType: 'SUPPLY_SHORTAGE', severity: 'HIGH',
+        summary: 'Supply was disrupted.', reason: 'The headline describes a disruption.',
+      },
+    };
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/api/auth/me') return json({ email: 'analyst@example.com', role: 'ANALYST' });
+      if (url.startsWith('/api/recommendations?')) return json([recommendation]);
+      if (url === '/api/recommendations/42' && init?.method === 'PUT') return json({ ...recommendation, status: 'APPROVED' });
+      return json([]);
+    });
+    renderAt('/review?tab=recommendations');
+
+    expect(await screen.findByRole('heading', { name: 'A real saved event headline' })).toBeInTheDocument();
+    const text = screen.getByLabelText('Suggested next step');
+    await userEvent.clear(text);
+    await userEvent.type(text, 'Check the supplier delivery updates.');
+    await userEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(await screen.findByText('No pending recommendations.')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/api/recommendations/42', expect.objectContaining({
+      method: 'PUT', body: JSON.stringify({ decision: 'APPROVED', text: 'Check the supplier delivery updates.', note: '' }),
+    }));
+  });
+
   it('opens on the Relationships tab, which is the review list as before', async () => {
     renderAt('/review');
 

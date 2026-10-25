@@ -57,6 +57,7 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
       reviewStatus: 'UNREVIEWED',
       relationshipId: 9,
     }],
+    recommendation: null,
   };
 }
 
@@ -152,6 +153,15 @@ describe('Alerts page', () => {
     expect(high).toHaveTextContent('Taiwan Semiconductor Manufacturing supplies NVIDIA');
     expect(high).toHaveTextContent('Not Yet Reviewed by an Analyst');
     expect(within(high).getByRole('button', { name: 'Open Article' })).toBeInTheDocument();
+  });
+
+  it('shows an approved suggested next step and reviewer label only when present', async () => {
+    savedAlerts[0] = { ...savedAlerts[0]!, recommendation: 'Check whether TSMC has restored production.' };
+    renderPage();
+
+    const section = await screen.findByRole('region', { name: 'Suggested Next Step' });
+    expect(section).toHaveTextContent('Check whether TSMC has restored production.');
+    expect(section).toHaveTextContent('Reviewed by an Analyst');
   });
 
   it('shows the total weight and each holding\'s weight in a weighted portfolio', async () => {

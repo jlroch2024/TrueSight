@@ -80,6 +80,7 @@ class AlertsIT {
     @Autowired NewsAssessmentRepository assessments;
     @Autowired AlertRepository alerts;
     @Autowired AlertHoldingRepository alertHoldings;
+    @Autowired RecommendationRepository recommendations;
 
     private Map<HeadlineKey, NewsItem> sampleByHeadline;
     private Company nvidia;
@@ -156,6 +157,33 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
+    }
+
+    @Test
+    void managersSeeOnlyAnApprovedRecommendationAndItsEditedText() throws Exception {
+        String email = "alerts-recommendation@example.com";
+        Portfolio portfolio = portfolio(email);
+        hold(portfolio, nvidia, "40");
+        NewsArticle article = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.HIGH, Confidence.HIGH);
+        alert(portfolio, article, "40", AlertStatus.NEW);
+
+        Recommendation recommendation = new Recommendation(article.getId(), "Original suggestion.");
+        recommendation.setEditedText("Check the supplier delivery updates.");
+        recommendation.setStatus(RecommendationStatus.APPROVED);
+        recommendations.save(recommendation);
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].recommendation").value("Check the supplier delivery updates."));
+
+        recommendation.setStatus(RecommendationStatus.PENDING);
+        recommendations.save(recommendation);
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
     }
 
     @Test
