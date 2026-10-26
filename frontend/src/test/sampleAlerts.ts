@@ -50,6 +50,7 @@ export function sampleAlert({
     alertIds: [id],
     status,
     exposure: 40,
+    recommendation: null,
     headline: {
       article: { ...source, companyName },
       assessment: {
