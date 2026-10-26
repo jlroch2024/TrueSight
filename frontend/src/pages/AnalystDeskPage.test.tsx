@@ -39,6 +39,8 @@ const waiting: ReviewItem = {
   reviewedBy: null,
   reviewedAt: null,
   usedByPortfolios: 1,
+  secondCheck: null,
+  secondCheckReason: null,
 };
 
 function json(body: unknown) {

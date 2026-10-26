@@ -37,7 +37,8 @@ public class ReviewService {
 
     /**
      * The relationships with this review status, or all of them when {@code status} is null. Unreviewed ones come
-     * first; then the ones more portfolios rely on; then the newest report.
+     * first, and among them the ones the second AI doubts; then the ones more portfolios rely on; then the newest
+     * report.
      */
     @Transactional(readOnly = true)
     public List<ReviewItemResponse> list(ReviewStatus status) {
@@ -45,6 +46,8 @@ public class ReviewService {
         return toItems(found).stream()
                 .sorted(Comparator
                         .comparing((ReviewItemResponse item) -> item.reviewStatus() != ReviewStatus.UNREVIEWED)
+                        .thenComparing((ReviewItemResponse item) -> !(item.reviewStatus() == ReviewStatus.UNREVIEWED
+                                && item.secondCheck() == SecondCheckVerdict.DOUBTS))
                         .thenComparing(ReviewItemResponse::usedByPortfolios, Comparator.reverseOrder())
                         .thenComparing((ReviewItemResponse item) -> item.relationship().report().filingDate(),
                                 Comparator.reverseOrder())
@@ -94,7 +97,9 @@ public class ReviewService {
                     relationship.getReviewNote(),
                     reviewerEmail.get(relationship.getReviewedBy()),
                     relationship.getReviewedAt(),
-                    usedBy.getOrDefault(relationship.getId(), 0L));
+                    usedBy.getOrDefault(relationship.getId(), 0L),
+                    relationship.getSecondCheck(),
+                    relationship.getSecondCheckReason());
         }).toList();
     }
 }
