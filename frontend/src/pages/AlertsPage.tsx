@@ -1,27 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { type AlertEvent, type AlertStatus, type AlertsResponse, type EventType, alertApi } from '../api/alerts';
+import { type AlertEvent, type AlertStatus, type AlertsResponse, alertApi } from '../api/alerts';
 import { ApiError } from '../api/client';
 import type { Portfolio } from '../api/portfolios';
 import { portfolioApi } from '../api/portfolios';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { RadioGroup } from '../components/RadioGroup';
-import { formatDate, openInNewTab } from '../format';
+import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatDate, openInNewTab } from '../format';
 
-const SEVERITY_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
 const CONFIDENCE_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
 const STATUS_LABELS: Record<AlertStatus, string> = { NEW: 'Open', DISMISSED: 'Dismissed' };
-const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  PRODUCTION_STOP: 'Production Stop',
-  SUPPLY_SHORTAGE: 'Supply Shortage',
-  LABOUR_ACTION: 'Labour Action',
-  NATURAL_DISASTER: 'Natural Disaster',
-  TRADE_RESTRICTION: 'Trade Restriction',
-  FINANCIAL_DISTRESS: 'Financial Distress',
-  LEGAL_OR_REGULATORY: 'Legal or Regulatory',
-  CYBER_ATTACK: 'Cyber Attack',
-  OTHER_DISRUPTION: 'Other Disruption',
-};
 
 const UNDO_MS = 8_000;
 type Filter = 'OPEN' | 'DISMISSED' | 'ALL';
