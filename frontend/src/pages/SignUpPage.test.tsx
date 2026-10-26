@@ -23,7 +23,7 @@ async function signUp(email: string, password: string, confirm = password) {
   await user.type(screen.getByLabelText('Email'), email);
   await user.type(screen.getByLabelText('Password'), password);
   if (confirm) await user.type(screen.getByLabelText('Confirm Password'), confirm);
-  await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+  await user.click(screen.getByRole('button', { name: 'Create Account' }));
 }
 
 describe('SignUpPage', () => {
@@ -34,6 +34,7 @@ describe('SignUpPage', () => {
     expect(screen.getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(container.querySelector('form.auth-card')).toHaveClass('sign-up');
+    expect(screen.getByRole('button', { name: 'Create Account' })).toHaveAttribute('type', 'submit');
     expect(screen.getByText(/Already Have an Account\?/)).toContainElement(screen.getByRole('button', { name: 'Log In' }));
   });
 
@@ -140,7 +141,7 @@ describe('SignUpPage', () => {
 
     await user.type(screen.getByLabelText('Email'), 'gtfsdege');
     await user.type(screen.getByLabelText('Password'), 'short');
-    await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+    await user.click(screen.getByRole('button', { name: 'Create Account' }));
 
     expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
     expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();

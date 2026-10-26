@@ -1,7 +1,7 @@
 // The Sign Up page, at /signup. A new account is logged in straight away, and goes to "/", which asks for a first portfolio.
 // Client checks give early feedback; the backend remains authoritative.
 //
-// The same card as Log In, told apart by its accent: a lime edge and a lime Sign Up button (Log In is teal), and the
+// The same card as Log In, told apart by its accent: a lime edge and a lime Create Account button (Log In is teal), and the
 // heading "Create Your Account".
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -99,7 +99,7 @@ export function SignUpPage() {
         />
         {error && <FormError message={error} />}
         <button type="submit" disabled={sending}>
-          {sending ? 'Signing Up…' : 'Sign Up'}
+          {sending ? 'Creating Account…' : 'Create Account'}
         </button>
         <p className="auth-switch-line">
           Already Have an Account?{' '}
