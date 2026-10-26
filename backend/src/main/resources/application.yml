@@ -39,6 +39,9 @@ springdoc:
 # TrueSight's own settings, read by the stories that need them. The names match .env.example.
 truesight:
   jwt-secret: ${JWT_SECRET:}
+  analysis:
+    # Maximum holdings analysed at once; Gemini's default request budget supports four parallel reports.
+    parallel: ${ANALYSIS_PARALLEL:4}
   gemini:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-3.8-flash}
@@ -50,6 +53,8 @@ truesight:
   news:
     base-url: https://news.google.com/rss/search
     requests-per-second: 1
+    # Maximum Gemini headline batches judged at once; Google News fetching remains paced separately.
+    parallel-batches: ${NEWS_PARALLEL_BATCHES:4}
   # The supply chain graph's logos come from Logo.dev. Without a token, the graph shows letters instead.
   logo-dev:
     token: ${LOGO_DEV_TOKEN:}

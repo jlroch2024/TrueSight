@@ -1678,6 +1678,19 @@ button.panel-row.chosen {
   font-style: italic;
 }
 
+/* What a second AI doubts about a relationship: an amber tag, then its reason. */
+.second-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.second-check-tag {
+  color: var(--amber);
+}
+
 .review-approved {
   color: var(--lime);
 }

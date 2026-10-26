@@ -2,6 +2,7 @@ package com.truesight.report;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -30,18 +31,27 @@ public class SecClient {
     private final Map<String, SecCompany> tickerCache = new ConcurrentHashMap<>();
     private long nextRequestAt;
 
+    @Autowired
     public SecClient(ObjectMapper mapper,
                      @Value("${truesight.sec.user-agent}") String userAgent,
                      @Value("${truesight.sec.requests-per-second:10}") int requestsPerSecond) {
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
-        requestFactory.setReadTimeout(Duration.ofSeconds(30));
-        this.client = RestClient.builder().requestFactory(requestFactory)
-                .defaultHeader("User-Agent", userAgent)
-                .build();
+        this(createClient(userAgent), mapper, requestsPerSecond);
+    }
+
+    SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond) {
+        this.client = client;
         this.mapper = mapper;
         int allowedRate = Math.min(10, Math.max(1, requestsPerSecond));
         this.intervalMillis = 1100L / allowedRate;
+    }
+
+    private static RestClient createClient(String userAgent) {
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
+        requestFactory.setReadTimeout(Duration.ofSeconds(30));
+        return RestClient.builder().requestFactory(requestFactory)
+                .defaultHeader("User-Agent", userAgent)
+                .build();
     }
 
     public SecCompany companyForTicker(String ticker) {

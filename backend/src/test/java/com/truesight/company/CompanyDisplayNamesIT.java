@@ -53,7 +53,7 @@ class CompanyDisplayNamesIT {
     void relationshipsAndHoldingsCarryEachCompanysDisplayName() throws Exception {
         Company nvidia = companyDirectory.findOrCreate("NVIDIA Corporation", NVIDIA_CIK, "NVDA", List.of());
         nvidia.setName("NVIDIA Corporation");
-        companies.save(nvidia);              
+        companies.save(nvidia);
         Company tsmc = companyDirectory.findOrCreate("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK,
                 "TSM", List.of());
         reports.deleteByCompanyId(nvidia.getId()); // and, with it, any relationships found in it before

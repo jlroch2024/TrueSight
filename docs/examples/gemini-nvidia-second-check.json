@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "[\n  {\"index\": 1, \"verdict\": \"AGREES\", \"reason\": \"The sentence says TSMC produces their semiconductor wafers.\"},\n  {\"index\": 2, \"verdict\": \"AGREES\", \"reason\": \"The sentence says they purchase memory from SK Hynix, Micron, and Samsung.\"},\n  {\"index\": 3, \"verdict\": \"AGREES\", \"reason\": \"The sentence says they purchase memory from SK Hynix, Micron, and Samsung.\"},\n  {\"index\": 4, \"verdict\": \"AGREES\", \"reason\": \"The sentence says they purchase memory from SK Hynix, Micron, and Samsung.\"},\n  {\"index\": 5, \"verdict\": \"AGREES\", \"reason\": \"The sentence states that server manufacturers market their products.\"},\n  {\"index\": 6, \"verdict\": \"AGREES\", \"reason\": \"The sentence says system integrators and OEMs incorporate their products.\"},\n  {\"index\": 7, \"verdict\": \"AGREES\", \"reason\": \"The sentence says system integrators and OEMs incorporate their products.\"}\n]"
+          }
+        ]
+      }
+    }
+  ]
+}

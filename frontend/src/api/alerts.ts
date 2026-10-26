@@ -45,6 +45,7 @@ export type AlertEvent = {
   };
   sources: Array<{ title: string; source: string | null; publishedAt: string; url: string }>;
   holdings: ReachedHolding[];
+  recommendation: string | null;
 };
 
 // weighted describes current portfolio weights, while event exposure is stored when alerts are created.

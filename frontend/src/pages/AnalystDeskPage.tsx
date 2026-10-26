@@ -8,12 +8,14 @@ import { type KeyboardEvent, type ReactNode, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { AiCallsPage } from './AiCallsPage';
 import { ReviewPage } from './ReviewPage';
+import { RecommendationsPage } from './RecommendationsPage';
 
 type Tab = { id: string; label: string; content: () => ReactNode };
 
 const TABS: Tab[] = [
   // Today's Review page, unchanged: the Easier Review story edits ReviewPage.tsx itself.
   { id: 'relationships', label: 'Relationships', content: () => <ReviewPage /> },
+  { id: 'recommendations', label: 'Recommendations', content: () => <RecommendationsPage /> },
   { id: 'ai-calls', label: 'AI Calls', content: () => <AiCallsPage /> },
 ];
 

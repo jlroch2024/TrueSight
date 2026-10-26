@@ -198,6 +198,7 @@ describe('Supply Chain page', () => {
         { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
         { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
       ],
+      recommendation: null,
     };
     vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [], PORTFOLIO, [event]));
 
