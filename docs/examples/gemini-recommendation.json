@@ -1,0 +1,18 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"nextStep\":\"Monitor updates from Nvidia and its regional distribution partners regarding freight security protocols in Latin America to verify whether additional transit disruptions or shipment delays affect RTX 5090 retail availability.\"}"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "pcbdapzhJvCyjuMP_uzwwQY"
+}
