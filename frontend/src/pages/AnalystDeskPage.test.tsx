@@ -151,6 +151,14 @@ describe('Analyst Desk', () => {
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/ai-calls?page=0', expect.anything());
   });
 
+  it('opens the Events tab named in the address, with the undecided events', async () => {
+    renderAt('/review?tab=events');
+
+    expect(screen.getByRole('tab', { name: 'Events' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/news/assessments?filter=EVENTS', expect.anything());
+  });
+
   it('puts the chosen tab in the address', async () => {
     renderAt('/review');
 
