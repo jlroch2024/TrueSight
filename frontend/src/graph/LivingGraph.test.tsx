@@ -8,6 +8,7 @@ import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Relationship } from '../api/relationships';
 import { buildGraphElements, sharedCompanies, withSharedSummaries } from '../pages/supplyChain';
 import { LivingGraph } from './LivingGraph';
+import { ALERT_COLOUR } from './model';
 
 const relationships = sampleRelationshipsJson as Relationship[];
 const { nodes, edges } = buildGraphElements(relationships, []);
@@ -87,6 +88,24 @@ describe('LivingGraph', () => {
     drawGraph({ risks });
 
     expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Disruption');
+  });
+
+  it('adds a dot to the key, in each severity present, only when some company has open alerts', () => {
+    const { unmount } = drawGraph();
+    expect(screen.queryByText('Company With Open Alerts')).not.toBeInTheDocument();
+    unmount();
+
+    const alertDots = new Map([
+      [nodes[0]!.id, 'HIGH' as const],
+      [nodes[1]!.id, 'LOW' as const],
+    ]);
+    const { container } = drawGraph({ alertDots });
+
+    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Company With Open Alerts');
+    const dots = [...container.querySelectorAll<HTMLElement>('.lg-legend-dot')];
+    expect(dots.map((dot) => dot.dataset.severity)).toEqual(['HIGH', 'LOW']);
+    expect(dots[0]).toHaveStyle({ background: ALERT_COLOUR.HIGH });
+    expect(dots[1]).toHaveStyle({ background: ALERT_COLOUR.LOW });
   });
 
   it('adds sole or single source to the key only when a link is critical', () => {

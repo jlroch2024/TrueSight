@@ -7,7 +7,7 @@ import { paths } from '../paths';
 import { STATUS_LABELS, formatDate, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { useConfirm } from '../components/ConfirmDialog';
-import { newsApi } from '../api/news';
+import { alertApi } from '../api/alerts';
 import { portfolioSubtitle } from './portfolioSubtitle';
 
 function messageOf(e: unknown): string {
@@ -67,18 +67,24 @@ export function PortfolioPage() {
   const failed = holdings.some((holding) => holding.status === 'FAILED');
   const subtitle = portfolioSubtitle(holdings);
 
-  // How many articles the last news check found, once one has finished. Not essential: on failure it is left out.
-  const [articleCount, setArticleCount] = useState<number | null>(null);
+  // How many open alerts the portfolio has, once a news check has finished; the news reaches the user as alerts.
+  // Not essential: if they cannot be loaded, the News Checked line says so.
+  const [openAlerts, setOpenAlerts] = useState<number | null>(null);
+  const [alertsCouldNotBeCounted, setAlertsCouldNotBeCounted] = useState(false);
   const newsCheckedAt = portfolio?.newsCheckedAt ?? null;
   const newsChecking = portfolio?.newsStatus === 'CHECKING';
   useEffect(() => {
     let active = true;
-    setArticleCount(null);
+    setOpenAlerts(null);
+    setAlertsCouldNotBeCounted(false);
     if (!newsCheckedAt || newsChecking) return;
-    newsApi
+    alertApi
       .list(portfolioId)
-      .then((articles) => { if (active) setArticleCount(articles.length); })
-      .catch(() => {});
+      .then((found) => {
+        // The list holds the open alerts only, unless dismissed ones are asked for.
+        if (active) setOpenAlerts((found.alerts ?? []).filter((event) => event.status !== 'DISMISSED').length);
+      })
+      .catch(() => { if (active) setAlertsCouldNotBeCounted(true); });
     return () => { active = false; };
   }, [portfolioId, newsCheckedAt, newsChecking]);
 
@@ -165,8 +171,9 @@ export function PortfolioPage() {
                 {starting ? 'Starting…' : 'Analyse'}
               </button>
             }
-            articleCount={articleCount}
-            onSeeNews={() => navigate({ pathname: paths.supplyChain(portfolioId), search: '?panel=news' })}
+            openAlerts={openAlerts}
+            alertsCouldNotBeCounted={alertsCouldNotBeCounted}
+            onSeeNews={() => navigate(paths.alerts(portfolioId))}
           />
         </div>
       </div>

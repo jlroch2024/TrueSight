@@ -1,12 +1,13 @@
 // The Supply Chain page's right panel: the details of whatever is chosen. Each kind of information has its own look,
 // so it can be told apart at a glance: a header with chips (ticker, held or not, shared), labelled facts, suppliers in
 // lime and customers in teal (goods flow in from one and out to the other), the evidence in a tinted quote block, and
-// news as small cards.
+// alerts as small cards.
 //
 // A company: its name, ticker, whether it is held (and how much), its annual report if it is a holding, and its
-// suppliers and customers on the graph, each a button that chooses that relationship. A relationship: what it is, the
+// suppliers and customers on the graph, each a button that chooses that relationship, and its open alerts. A
+// relationship: what it is, the
 // report's own sentence, Show in Report, and a button for each of the two companies.
-import type { NewsArticle } from '../api/news';
+import type { AlertEvent } from '../api/alerts';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { formatDate, openInNewTab, showInReportUrl, titleCase } from '../format';
@@ -14,14 +15,14 @@ import {
   type Connection,
   type GraphNode,
   type Selection,
+  alertPaths,
+  alertsFor,
   connectionsOf,
   formatWeight,
   relationshipSummary,
 } from '../pages/supplyChain';
-import { NewsItem } from './NewsPanel';
 
-// How many of a company's headlines the Inspector shows; Show All News lists the rest.
-const NEWS_SHOWN = 3;
+const SEVERITY_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
 
 type Props = {
   selection: Selection;
@@ -31,10 +32,8 @@ type Props = {
   nodeIdByHolding: Map<number, string>;
   onSelectNode: (nodeId: string) => void;
   onSelectRelationship: (relationshipId: number) => void;
-  // The portfolio's recent news; undefined while it loads or when the page has none to give.
-  news?: NewsArticle[];
-  // Opens the News tab, narrowed to one company.
-  onShowAllNews?: (companyName: string) => void;
+  // The portfolio's open alerts; undefined while they load or when they could not be loaded.
+  alerts?: AlertEvent[];
 };
 
 export function Inspector({
@@ -45,8 +44,7 @@ export function Inspector({
   nodeIdByHolding,
   onSelectNode,
   onSelectRelationship,
-  news,
-  onShowAllNews,
+  alerts,
 }: Props) {
   if (selection?.kind === 'company') {
     const node = nodes.find((n) => n.id === selection.nodeId);
@@ -58,8 +56,7 @@ export function Inspector({
           holding={holding}
           relationships={relationships}
           onSelectRelationship={onSelectRelationship}
-          news={news}
-          onShowAllNews={onShowAllNews}
+          alerts={alerts}
         />
       );
     }
@@ -81,17 +78,15 @@ function CompanyDetails({
   holding,
   relationships,
   onSelectRelationship,
-  news,
-  onShowAllNews,
+  alerts,
 }: {
   node: GraphNode;
   holding: Holding | null;
   relationships: Relationship[];
   onSelectRelationship: (relationshipId: number) => void;
-  news?: NewsArticle[];
-  onShowAllNews?: (companyName: string) => void;
+  alerts?: AlertEvent[];
 }) {
-  const companyNews = news?.filter((article) => article.company.name === node.name);
+  const companyAlerts = alerts ? alertsFor(alerts, node.name, holding?.id ?? null) : undefined;
   const { suppliers, customers } = connectionsOf(node.id, relationships);
   const weight = formatWeight(node.weight);
   return (
@@ -124,30 +119,53 @@ function CompanyDetails({
       )}
       <ConnectionList kind="suppliers" title="Suppliers" connections={suppliers} onSelect={onSelectRelationship} />
       <ConnectionList kind="customers" title="Customers" connections={customers} onSelect={onSelectRelationship} />
-      {companyNews && (
-        <section className="inspector-section" aria-label="Recent News">
+      {companyAlerts && (
+        <section className="inspector-section" aria-label="Alerts">
           <h3>
-            Recent News <span className="muted">({companyNews.length})</span>
+            Alerts <span className="muted">({companyAlerts.length})</span>
           </h3>
-          {companyNews.length === 0 ? (
-            <p className="muted small">No news in the last 7 days.</p>
+          {companyAlerts.length === 0 ? (
+            <p className="muted small">No open alerts.</p>
           ) : (
-            <>
-              <ul className="news-list">
-                {companyNews.slice(0, NEWS_SHOWN).map((article) => (
-                  <NewsItem key={article.id} article={article} />
-                ))}
-              </ul>
-              {onShowAllNews && (
-                <button type="button" className="secondary" onClick={() => onShowAllNews(node.name)}>
-                  Show All News
-                </button>
-              )}
-            </>
+            <ul className="news-list">
+              {companyAlerts.map((event) => (
+                <AlertItem key={event.alertIds.join('-')} event={event} holdingId={holding?.id ?? null} />
+              ))}
+            </ul>
           )}
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * One open alert, as a small card: its severity, the publisher and date, the headline, how it reaches the portfolio
+ * ("TSMC supplies Nvidia"), and Open Article.
+ */
+function AlertItem({ event, holdingId }: { event: AlertEvent; holdingId: number | null }) {
+  const { article, assessment } = event.headline;
+  return (
+    <li className="news-item">
+      <p className="news-meta">
+        <span className={`news-tag severity-${assessment.severity.toLowerCase()}`}>
+          {SEVERITY_LABELS[assessment.severity]}
+        </span>
+        <span>
+          {article.source ? `${article.source} · ` : ''}
+          {formatDate(article.publishedAt)}
+        </span>
+      </p>
+      <p className="news-title">{article.title}</p>
+      {alertPaths(event, holdingId).map((path) => (
+        <p key={path} className="muted small alert-path">
+          {path}
+        </p>
+      ))}
+      <button type="button" className="text-button" onClick={() => openInNewTab(article.url)}>
+        Open Article
+      </button>
+    </li>
   );
 }
 

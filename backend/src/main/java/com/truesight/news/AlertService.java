@@ -127,8 +127,13 @@ public class AlertService {
                 .filter(Objects::nonNull).distinct().toList();
         Map<Long, Relationship> relationshipById = relationships.findAllById(relationshipIds)
                 .stream().collect(Collectors.toMap(Relationship::getId, Function.identity()));
-        Set<Long> companyIds = relationshipById.values().stream()
-                .flatMap(relationship -> Stream.of(relationship.getCompanyId(), relationship.getCounterpartyId()))
+        // The companies on the paths reached, and the ones the articles are about.
+        Set<Long> companyIds = Stream.concat(
+                        relationshipById.values().stream()
+                                .flatMap(relationship -> Stream.of(relationship.getCompanyId(),
+                                        relationship.getCounterpartyId())),
+                        rows.stream().map(row -> row.article().getCompanyId()))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<Long, Company> companyById = companies.findAllById(companyIds).stream()
                 .collect(Collectors.toMap(Company::getId, Function.identity()));
@@ -176,7 +181,8 @@ public class AlertService {
                 .map(row -> source(row.article()))
                 .toList();
         return new AlertEventResponse(alertIds, openOrDismissed(lead.alert().getStatus()), exposure,
-                new AlertEventResponse.Headline(article(lead.article()), assessment(lead.assessment())), sources, reached);
+                new AlertEventResponse.Headline(article(lead.article(), data), assessment(lead.assessment())), sources,
+                reached);
     }
 
     private AlertResponse alertResponse(AlertRow row, PageData data) {
@@ -191,7 +197,8 @@ public class AlertService {
         return new AlertResponse(row.alert().getId(), openOrDismissed(row.alert().getStatus()),
                 row.alert().getExposure(), row.alert().getCreatedAt(),
                 new AlertResponse.Article(row.article().getTitle(), row.article().getSource(),
-                        row.article().getPublishedAt(), row.article().getUrl()),
+                        row.article().getPublishedAt(), row.article().getUrl(),
+                        storedNameOf(row.article(), data)),
                 new AlertResponse.Assessment(row.assessment().getEventType(), row.assessment().getSeverity(),
                         row.assessment().getConfidence(), row.assessment().getSummary(), row.assessment().getReason()),
                 reached);
@@ -276,9 +283,18 @@ public class AlertService {
         return ReviewStatus.APPROVED;
     }
 
-    private static AlertEventResponse.Article article(NewsArticle article) {
+    private static AlertEventResponse.Article article(NewsArticle article, PageData data) {
         return new AlertEventResponse.Article(article.getTitle(), article.getSource(), article.getPublishedAt(),
-                article.getUrl());
+                article.getUrl(), storedNameOf(article, data));
+    }
+
+    /**
+     * The stored name of the company the article is about, not its display name: the graph's companies are keyed by
+     * their stored names, so this is how the website finds an alert's company on the graph.
+     */
+    private static String storedNameOf(NewsArticle article, PageData data) {
+        Company company = data.companyById().get(article.getCompanyId());
+        return company == null ? null : company.getName();
     }
 
     private static AlertEventResponse.Source source(NewsArticle article) {

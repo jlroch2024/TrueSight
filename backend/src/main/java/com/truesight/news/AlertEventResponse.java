@@ -18,7 +18,8 @@ public record AlertEventResponse(
     public record Headline(Article article, Assessment assessment) {
     }
 
-    public record Article(String title, String source, Instant publishedAt, String url) {
+    /** {@code companyName} is the stored name of the company the article is about, as the graph keys its companies. */
+    public record Article(String title, String source, Instant publishedAt, String url, String companyName) {
     }
 
     public record Assessment(EventType eventType, Severity severity, Confidence confidence, String summary,

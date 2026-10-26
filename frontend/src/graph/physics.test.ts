@@ -126,6 +126,7 @@ describe('disruptions and zoom', () => {
         source: null,
         publishedAt: '2026-10-20T00:00:00Z',
         url: 'https://example.com',
+        companyName: null,
       },
       assessment: {
         eventType: 'SUPPLY_SHORTAGE' as const,

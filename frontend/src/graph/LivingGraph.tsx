@@ -22,11 +22,21 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { Severity } from '../api/news';
 import { type GraphEdge, type GraphNode, forgetLayout, readSavedLayout, saveLayout } from '../pages/supplyChain';
 import { type Bounds, CameraRig, centredOn, fitCamera, toWorld } from './camera';
 import { edgeAt, nodeAt } from './geometry';
 import { LogoBook } from './logos';
-import { type LiveEdge, type LiveNode, type Risk, boxOf, buildLiveGraph, estimateWidth, eventLabel } from './model';
+import {
+  type LiveEdge,
+  type LiveNode,
+  type Risk,
+  ALERT_COLOUR,
+  boxOf,
+  buildLiveGraph,
+  estimateWidth,
+  eventLabel,
+} from './model';
 import { restoreSettled, settleForView } from './physics';
 import { FONT, type MapFrame, mapFrame, render, renderMinimap } from './render';
 import { Scene } from './scene';
@@ -50,6 +60,8 @@ type Props = {
   layoutKey?: string;
   // The disruptions running through the graph's links, by relationship id, from the portfolio's open alerts.
   risks?: Map<number, Risk>;
+  // The most severe open alert of each company, by node id: each is marked with a dot in that severity's colour.
+  alertDots?: Map<string, Severity>;
 };
 
 type Tip =
@@ -76,6 +88,7 @@ const ZOOM_STEP = 1.35;
 const FIT_ROOM = { top: 70, right: 40, bottom: 104, left: 40 };
 const EMPTY: Record<string, string> = {};
 const NO_RISKS = new Map<number, Risk>();
+const NO_DOTS = new Map<string, Severity>();
 
 /** A holding's share of the portfolio, as shown: "18%", "12.5%". */
 const share = (weight: number) => `${Number(weight.toFixed(1))}%`;
@@ -122,6 +135,7 @@ export function LivingGraph({
   logoDomains = EMPTY,
   layoutKey,
   risks = NO_RISKS,
+  alertDots = NO_DOTS,
 }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -345,6 +359,14 @@ export function LivingGraph({
     scene.risks = risks;
     redrawRef.current();
   }, [risks, graph]);
+
+  // The companies with open alerts: marked with a dot.
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.alertDots = alertDots;
+    redrawRef.current();
+  }, [alertDots, graph]);
 
   // What the page has chosen: lit, and flown to.
   useEffect(() => {
@@ -817,6 +839,7 @@ export function LivingGraph({
             )}
             {(graph.nodes.some((node) => node.sharedCount > 1) ||
               risks.size > 0 ||
+              alertDots.size > 0 ||
               graph.edges.some((edge) => edge.critical)) && (
               <ul className="lg-legend" aria-label="Graph key">
                 {graph.nodes.some((node) => node.sharedCount > 1) && (
@@ -831,6 +854,22 @@ export function LivingGraph({
                   <li>
                     <span className="lg-legend-risk" aria-hidden="true" />
                     Disruption
+                  </li>
+                )}
+                {alertDots.size > 0 && (
+                  <li>
+                    {(['HIGH', 'MEDIUM', 'LOW'] as Severity[])
+                      .filter((severity) => [...alertDots.values()].includes(severity))
+                      .map((severity) => (
+                        <span
+                          key={severity}
+                          className="lg-legend-dot"
+                          data-severity={severity}
+                          aria-hidden="true"
+                          style={{ background: ALERT_COLOUR[severity] }}
+                        />
+                      ))}
+                    Company With Open Alerts
                   </li>
                 )}
                 {graph.edges.some((edge) => edge.critical) && (
@@ -976,6 +1015,17 @@ export function LivingGraph({
                       : (tip.node.sharedSummary ??
                         (tip.node.ticker ? `Listed as ${tip.node.ticker}` : 'Supplier or Customer'))}
                   </p>
+                  {alertDots.get(tip.node.id) && (
+                    <p className="lg-tip-line lg-tip-alert">
+                      <span
+                        className="lg-legend-dot"
+                        aria-hidden="true"
+                        data-severity={alertDots.get(tip.node.id)}
+                        style={{ background: ALERT_COLOUR[alertDots.get(tip.node.id)!] }}
+                      />
+                      {`Most Severe Open Alert: ${eventLabel(alertDots.get(tip.node.id)!)}`}
+                    </p>
+                  )}
                   {tip.node.anchorX != null && (
                     <p className="lg-tip-line lg-tip-placed">
                       <span className="lg-pin" aria-hidden="true" />

@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tokenStore } from '../api/client';
 import { formatDateTime } from '../format';
-import { sampleNews } from '../test/sampleNews';
+import { sampleAlert } from '../test/sampleAlerts';
 import { PortfolioPage } from './PortfolioPage';
 
 const portfolio = { id: 7, name: 'Demo Portfolio', createdAt: '' };
@@ -131,28 +131,65 @@ describe('Portfolio annual report analysis', () => {
     expect(screen.getByText('Supply Chain of portfolio 7')).toBeInTheDocument();
   });
 
-  it('shows how many articles the last news check found, and See News opens them on the Supply Chain page', async () => {
-    const checked = { ...portfolio, newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: '2026-10-13T00:00:00Z' };
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-      if (url.endsWith('/news')) return new Response(JSON.stringify(sampleNews(2)));
-      return new Response(JSON.stringify(url.endsWith('/holdings') ? [row('DONE')] : [checked]));
-    }));
+  const checked = { ...portfolio, newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: '2026-10-13T00:00:00Z' };
+
+  function renderWithAlerts(answer: (url: string) => Response) {
+    const fetch = vi.fn(async (url: string) => answer(url));
+    vi.stubGlobal('fetch', fetch);
     render(
       <MemoryRouter initialEntries={['/portfolios/7']}>
         <Routes>
           <Route path="/portfolios/:portfolioId" element={<PortfolioPage />} />
-          <Route path="/portfolios/:portfolioId/supply-chain" element={<SearchShown />} />
+          <Route path="/portfolios/:portfolioId/alerts" element={<SearchShown label="Alerts" />} />
+          <Route path="/portfolios/:portfolioId/supply-chain" element={<SearchShown label="Supply Chain" />} />
         </Routes>
       </MemoryRouter>,
     );
+    return fetch;
+  }
 
-    expect(await screen.findByText(/· 2 Articles/)).toBeInTheDocument();
+  const answerWith = (alerts: unknown[]) => (url: string) => {
+    if (url.includes('/alerts')) return new Response(JSON.stringify({ weighted: true, holdingCount: 1, alerts }));
+    return new Response(JSON.stringify(url.endsWith('/holdings') ? [row('DONE')] : [checked]));
+  };
+
+  it('shows how many open alerts there are after the last news check, and See News opens them as alerts', async () => {
+    const fetch = renderWithAlerts(answerWith([sampleAlert({ id: 1 }), sampleAlert({ id: 2, headline: 1 }), sampleAlert({ id: 3, headline: 2 })]));
+
+    expect(await screen.findByText(/· 3 Open Alerts/)).toBeInTheDocument();
+    expect(screen.queryByText(/Articles/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'See News' }));
 
-    expect(screen.getByText('Supply Chain with ?panel=news')).toBeInTheDocument();
+    expect(screen.getByText('Alerts of portfolio 7')).toBeInTheDocument();
+    expect(fetch.mock.calls.map(([url]) => url).filter((url) => url.endsWith('/news'))).toEqual([]);
+  });
+
+  it('counts open alerts only, so a dismissed one is left out', async () => {
+    renderWithAlerts(answerWith([sampleAlert({ id: 1 }), sampleAlert({ id: 2, headline: 1, status: 'DISMISSED' })]));
+
+    expect(await screen.findByText(/· 1 Open Alert$/)).toBeInTheDocument();
+  });
+
+  it('ends the News Checked line with Alerts Could Not Be Counted when the alerts cannot be loaded', async () => {
+    renderWithAlerts((url) =>
+      url.includes('/alerts')
+        ? new Response(JSON.stringify({ message: 'Something went wrong.' }), { status: 500 })
+        : answerWith([])(url),
+    );
+
+    expect(await screen.findByText(/· Alerts Could Not Be Counted/)).toBeInTheDocument();
+    expect(screen.queryByText(/Open Alert/)).not.toBeInTheDocument();
+  });
+
+  it('asks for no alerts before a news check has finished', async () => {
+    const fetch = renderWithAlerts((url) => new Response(JSON.stringify(url.endsWith('/holdings') ? [row('DONE')] : [portfolio])));
+
+    await screen.findByText('NVIDIA');
+
+    expect(fetch.mock.calls.map(([url]) => url).filter((url) => url.includes('/alerts') || url.endsWith('/news'))).toEqual([]);
   });
 });
 
-function SearchShown() {
-  return <p>{`Supply Chain with ${useLocation().search}`}</p>;
+function SearchShown({ label }: { label: string }) {
+  return <p>{`${label} of portfolio ${useLocation().pathname.split('/')[2]}`}</p>;
 }

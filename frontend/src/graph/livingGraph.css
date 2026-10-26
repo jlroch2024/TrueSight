@@ -563,6 +563,20 @@
   transform: rotate(45deg);
 }
 
+/* A company with open alerts: a round dot, in the colour of its most severe alert. */
+.lg-legend-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: #ff7272;
+}
+
+.lg-tip-alert {
+  align-items: center;
+  gap: 6px;
+}
+
 .lg-legend-critical {
   width: 22px;
   height: 3px;
