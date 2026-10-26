@@ -81,9 +81,10 @@ public class ReviewService {
         for (Object[] row : relationships.countPortfoliosUsingEach()) {
             usedBy.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
         }
-        Map<Long, String> reviewerEmail = users.findAllById(found.stream()
+        // The Analyst's display name once they have set one, otherwise their email.
+        Map<Long, String> reviewerName = users.findAllById(found.stream()
                         .map(Relationship::getReviewedBy).filter(id -> id != null).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, User::getEmail, (a, b) -> a));
+                .stream().collect(Collectors.toMap(User::getId, User::nameShown, (a, b) -> a));
         Map<Long, Relationship> byId = found.stream().collect(Collectors.toMap(Relationship::getId, Function.identity()));
 
         return responses.stream().map(response -> {
@@ -92,7 +93,7 @@ public class ReviewService {
                     response,
                     relationship.getReviewStatus(),
                     relationship.getReviewNote(),
-                    reviewerEmail.get(relationship.getReviewedBy()),
+                    reviewerName.get(relationship.getReviewedBy()),
                     relationship.getReviewedAt(),
                     usedBy.getOrDefault(relationship.getId(), 0L));
         }).toList();

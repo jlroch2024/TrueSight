@@ -43,6 +43,7 @@ class CompanyDisplayNamesIT {
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
     @Autowired CompanyDirectory companyDirectory;
+    @Autowired CompanyRepository companies;
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
     @Autowired PortfolioRepository portfolios;
@@ -51,6 +52,8 @@ class CompanyDisplayNamesIT {
     @Test
     void relationshipsAndHoldingsCarryEachCompanysDisplayName() throws Exception {
         Company nvidia = companyDirectory.findOrCreate("NVIDIA Corporation", NVIDIA_CIK, "NVDA", List.of());
+        nvidia.setName("NVIDIA Corporation");
+        companies.save(nvidia);              
         Company tsmc = companyDirectory.findOrCreate("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK,
                 "TSM", List.of());
         reports.deleteByCompanyId(nvidia.getId()); // and, with it, any relationships found in it before

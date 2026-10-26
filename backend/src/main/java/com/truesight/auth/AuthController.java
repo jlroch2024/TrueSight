@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,10 +36,8 @@ public class AuthController {
         this.users = users;
     }
 
-    /** What a new account needs. BCrypt reads at most 72 characters of a password, hence the upper limit. */
-    public record SignUpRequest(
-            @NotBlank @Email String email,
-            @NotBlank @Size(min = 8, max = 72, message = "must be between 8 and 72 characters") String password) {
+    /** What a new account needs. The password rules are {@link NewPassword}, the same as Change Password uses. */
+    public record SignUpRequest(@NotBlank @Email String email, @NewPassword String password) {
     }
 
     public record LogInRequest(@NotBlank String email, @NotBlank String password) {
@@ -53,8 +50,11 @@ public class AuthController {
     public record AuthResponse(String token, String email, String role) {
     }
 
-    /** Who is logged in. {@code role} is {@code PORTFOLIO_MANAGER} or {@code ANALYST}. */
-    public record MeResponse(String email, String role) {
+    /**
+     * Who is logged in. {@code role} is {@code PORTFOLIO_MANAGER} or {@code ANALYST}. {@code displayName} is the name
+     * the user chose to be shown instead of their email, or null while they have not set one.
+     */
+    public record MeResponse(String email, String role, String displayName) {
     }
 
     @PostMapping("/signup")
@@ -76,7 +76,7 @@ public class AuthController {
     @Operation(summary = "Show who is logged in")
     public MeResponse me() {
         return users.findById(currentUser.id())
-                .map(user -> new MeResponse(user.getEmail(), currentUser.role().name()))
+                .map(user -> new MeResponse(user.getEmail(), user.getRole().name(), user.getDisplayName()))
                 .orElseThrow(() -> ApiException.unauthorized("Please log in."));
     }
 }

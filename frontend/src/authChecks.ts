@@ -20,3 +20,16 @@ export function checkSignUpPassword(password: string): string | null {
 export function checkPasswordsMatch(password: string, confirm: string): string | null {
   return password === confirm ? null : 'Passwords do not match.';
 }
+
+/** The longest display name the backend accepts. */
+export const MAX_DISPLAY_NAME = 100;
+
+export function checkDisplayName(name: string): string | null {
+  if (!name.trim()) return 'Enter a display name.';
+  if (name.trim().length > MAX_DISPLAY_NAME) return `Display name must be ${MAX_DISPLAY_NAME} characters or fewer.`;
+  return null;
+}
+
+export function checkCurrentPassword(password: string): string | null {
+  return password.trim() ? null : 'Enter your current password.';
+}
