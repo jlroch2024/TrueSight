@@ -1650,6 +1650,37 @@ button.panel-row.chosen {
   font: inherit;
 }
 
+/* The Analyst Desk's Events tab. */
+.judged-article h3 {
+  margin: 4px 0 10px;
+}
+
+.judged-article .chips {
+  margin-bottom: 10px;
+}
+
+.overrule-form {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.overrule-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.overrule-form textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
 @media (max-width: 760px) {
   .topbar {
     min-height: 68px;

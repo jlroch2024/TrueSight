@@ -1,6 +1,7 @@
 package com.truesight.news;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +19,11 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     List<Alert> findByPortfolioId(Long portfolioId);
 
     Optional<Alert> findByIdAndPortfolioId(Long id, Long portfolioId);
+
+    /** Removes this article's alerts from every portfolio; the table removes their holdings with them. */
+    @Modifying
+    @Query("delete from Alert a where a.articleId = :articleId")
+    int deleteByArticleId(@Param("articleId") Long articleId);
 
     /** Alerts ordered for the page; event grouping and dismissed filtering happen after this query. */
     @Query("""
