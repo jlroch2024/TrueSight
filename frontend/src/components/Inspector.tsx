@@ -18,6 +18,7 @@ import {
   formatWeight,
   relationshipSummary,
 } from '../pages/supplyChain';
+import { ConfidenceReasons, ConfidenceTag } from './Confidence';
 import { NewsItem } from './NewsPanel';
 
 // How many of a company's headlines the Inspector shows; Show All News lists the rest.
@@ -222,6 +223,10 @@ function RelationshipDetails({
               ? 'Not Yet Reviewed by an Analyst'
               : 'Rejected by an Analyst'}
       </p>
+      <section className="inspector-section confidence" aria-label="Confidence">
+        <ConfidenceTag confidence={relationship.confidence} />
+        <ConfidenceReasons confidence={relationship.confidence} />
+      </section>
       {relationship.reviewStatus === 'APPROVED' && relationship.reviewNote && (
         <p className="muted small review-note">{relationship.reviewNote}</p>
       )}

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { tokenStore } from '../api/client';
 import type { ReviewItem } from '../api/reviews';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 /** NVIDIA's own words about TSMC, from its 10-K in docs/examples. */
 const evidence =
@@ -27,6 +28,7 @@ const waiting: ReviewItem = {
     provides: 'semiconductor wafers',
     evidence,
     source: 'AI',
+    confidence: UNREVIEWED_CONFIDENCE,
     report: { form: '10-K', filingDate: '2026-02-25', url: 'https://www.sec.gov/report-1' },
     reviewStatus: 'UNREVIEWED',
     criticality: null,

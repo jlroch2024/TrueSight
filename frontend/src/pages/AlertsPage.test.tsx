@@ -7,6 +7,7 @@ import { tokenStore } from '../api/client';
 import type { Portfolio } from '../api/portfolios';
 import { sampleNews } from '../test/sampleNews';
 import { AlertsPage } from './AlertsPage';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 const portfolio: Portfolio = {
   id: 7,
@@ -56,6 +57,7 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
       customerName: 'NVIDIA',
       reviewStatus: 'UNREVIEWED',
       relationshipId: 9,
+      confidence: UNREVIEWED_CONFIDENCE,
     }],
   };
 }
@@ -159,7 +161,7 @@ describe('Alerts page', () => {
       ...alert(7, 'HIGH'),
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]! },
-        { holdingId: 4, ticker: 'TSM', weight: null, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
+        { holdingId: 4, ticker: 'TSM', weight: null, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null, confidence: null },
       ],
     }];
     renderPage();
@@ -178,7 +180,7 @@ describe('Alerts page', () => {
       exposure: 2,
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]!, weight: null },
-        { holdingId: 4, ticker: 'TSM', weight: null, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
+        { holdingId: 4, ticker: 'TSM', weight: null, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null, confidence: null },
       ],
     }];
     renderPage();
@@ -189,12 +191,43 @@ describe('Alerts page', () => {
     expect(card).not.toHaveTextContent(/Weight/i);
   });
 
+  it('shows the confidence tag on each linked holding, and none on a holding named in the article', async () => {
+    savedAlerts = [{
+      ...alert(7, 'HIGH'),
+      holdings: [
+        { ...alert(7, 'HIGH').holdings[0]! },
+        {
+          ...alert(7, 'HIGH').holdings[0]!,
+          holdingId: 5,
+          ticker: 'AMD',
+          relationshipId: 10,
+          confidence: {
+            level: 'HIGH',
+            reasons: [
+              { text: 'An Analyst Approved It', effect: 'RAISES' },
+              { text: 'Quote Match Not Recorded', effect: 'NONE' },
+              { text: 'Not Yet Second-Checked', effect: 'NONE' },
+            ],
+          },
+        },
+        { holdingId: 4, ticker: 'TSM', weight: 10, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null, confidence: null },
+      ],
+    }];
+    renderPage();
+    const card = await firstCard();
+
+    const rows = within(card).getAllByRole('listitem');
+    expect(within(rows[0]!).getByText('Medium Confidence')).toHaveClass('confidence-medium');
+    expect(within(rows[1]!).getByText('High Confidence')).toHaveClass('confidence-high');
+    expect(rows[2]).not.toHaveTextContent(/Confidence/);
+  });
+
   it('names a linked holding by the display names the API sends, as they are, and one in the article as such', async () => {
     savedAlerts = [{
       ...alert(7, 'HIGH'),
       holdings: [
         { ...alert(7, 'HIGH').holdings[0]!, supplierName: 'ASML Holding', customerName: 'NVIDIA' },
-        { holdingId: 4, ticker: 'TSM', weight: 10, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null },
+        { holdingId: 4, ticker: 'TSM', weight: 10, indirect: false, supplierName: null, middleName: null, customerName: null, reviewStatus: null, relationshipId: null, confidence: null },
       ],
     }];
     renderPage();

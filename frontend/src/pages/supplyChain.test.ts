@@ -34,6 +34,7 @@ import {
   sharedSummary,
   withSharedSummaries,
 } from './supplyChain';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 const sampleRelationships = sampleRelationshipsJson as Relationship[];
 
@@ -180,6 +181,7 @@ function relationship(
     provides: null,
     evidence: 'Evidence sentence.',
     source: 'AI',
+    confidence: UNREVIEWED_CONFIDENCE,
     criticality: null,
     criticalityEvidence: null,
     report: { form: '10-K', filingDate: '2026-01-01', url: 'https://www.sec.gov/example' },
