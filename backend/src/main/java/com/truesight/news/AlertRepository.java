@@ -42,4 +42,16 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     List<AlertRow> findOrdered(@Param("portfolioId") Long portfolioId);
 
     List<Alert> findByIdInAndPortfolioId(Collection<Long> ids, Long portfolioId);
+
+    /**
+     * Deletes this portfolio's alerts that reach no holding any more, for example after the last holding they reached
+     * was removed. The database has already removed the removed holding's places in alerts (ON DELETE CASCADE).
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            delete from Alert a
+            where a.portfolioId = :portfolioId
+              and not exists (select 1 from AlertHolding h where h.alertId = a.id)
+            """)
+    void deleteWithoutHoldings(@Param("portfolioId") Long portfolioId);
 }

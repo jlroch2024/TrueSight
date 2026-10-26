@@ -1911,3 +1911,22 @@ table.ai-calls td:nth-child(7) {
 .ai-call-facts {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
+
+/* Adding, re-weighting and removing one holding on the Portfolio page. */
+.add-holding {
+  margin: 0 0 14px;
+}
+
+.add-holding input {
+  flex: 0 1 140px;
+  min-width: 100px;
+}
+
+.weight-input {
+  width: 90px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
