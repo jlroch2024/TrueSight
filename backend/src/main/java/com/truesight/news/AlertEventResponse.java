@@ -13,7 +13,8 @@ public record AlertEventResponse(
         BigDecimal exposure,
         Headline headline,
         List<Source> sources,
-        List<ReachedHolding> holdings) {
+        List<ReachedHolding> holdings,
+        String recommendation) {
 
     public record Headline(Article article, Assessment assessment) {
     }

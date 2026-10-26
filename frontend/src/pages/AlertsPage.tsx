@@ -83,6 +83,14 @@ function AlertCard({
       <p>{assessment.reason}</p>
       <p className="muted small">Based on the Headline Only</p>
 
+      {event.recommendation && (
+        <section className="suggested-next-step" aria-label="Suggested Next Step">
+          <h3>Suggested Next Step</h3>
+          <p>{event.recommendation}</p>
+          <p className="muted small">Reviewed by an Analyst</p>
+        </section>
+      )}
+
       {event.sources.length > 1 && (
         <div className="alert-sources">
           <h3>Also Reported By</h3>

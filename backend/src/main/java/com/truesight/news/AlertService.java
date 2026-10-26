@@ -46,12 +46,14 @@ public class AlertService {
     private final RelationshipRepository relationships;
     private final CompanyRepository companies;
     private final CompanyDisplayNames displayNames;
+    private final RecommendationRepository recommendations;
     private final CurrentUser currentUser;
 
     public AlertService(PortfolioRepository portfolios, AlertRepository alerts,
                         AlertHoldingRepository alertHoldings, HoldingRepository holdings,
                         RelationshipRepository relationships, CompanyRepository companies,
-                        CompanyDisplayNames displayNames, CurrentUser currentUser) {
+                        CompanyDisplayNames displayNames, RecommendationRepository recommendations,
+                        CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.alerts = alerts;
         this.alertHoldings = alertHoldings;
@@ -59,6 +61,7 @@ public class AlertService {
         this.relationships = relationships;
         this.companies = companies;
         this.displayNames = displayNames;
+        this.recommendations = recommendations;
         this.currentUser = currentUser;
     }
 
@@ -139,7 +142,11 @@ public class AlertService {
                 .collect(Collectors.toMap(Company::getId, Function.identity()));
         Map<Long, List<AlertHolding>> reachedByAlert = reached.stream()
                 .collect(Collectors.groupingBy(AlertHolding::getAlertId));
-        return new PageData(portfolioHoldings, holdingById, relationshipById, companyById, reachedByAlert);
+        Map<Long, Recommendation> recommendationByArticle = recommendations.findByArticleIdIn(
+                        rows.stream().map(row -> row.article().getId()).distinct().toList())
+                .stream().collect(Collectors.toMap(Recommendation::getArticleId, Function.identity()));
+        return new PageData(portfolioHoldings, holdingById, relationshipById, companyById, reachedByAlert,
+                recommendationByArticle);
     }
 
     private AlertEventResponse eventResponse(List<AlertRow> rows, PageData data) {
@@ -180,9 +187,14 @@ public class AlertService {
         List<AlertEventResponse.Source> sources = ordered.stream()
                 .map(row -> source(row.article()))
                 .toList();
+        String recommendation = java.util.Optional.ofNullable(data.recommendationByArticle().get(lead.article().getId()))
+                .filter(found -> found.getStatus() == RecommendationStatus.APPROVED)
+                .map(found -> found.getEditedText() == null ? found.getText() : found.getEditedText())
+                .orElse(null);
         return new AlertEventResponse(alertIds, openOrDismissed(lead.alert().getStatus()), exposure,
+
                 new AlertEventResponse.Headline(article(lead.article(), data), assessment(lead.assessment())), sources,
-                reached);
+                reached, recommendation);
     }
 
     private AlertResponse alertResponse(AlertRow row, PageData data) {
@@ -361,9 +373,10 @@ public class AlertService {
 
     private record PageData(List<Holding> portfolioHoldings, Map<Long, Holding> holdingById,
                             Map<Long, Relationship> relationshipById, Map<Long, Company> companyById,
-                            Map<Long, List<AlertHolding>> reachedByAlert) {
+                            Map<Long, List<AlertHolding>> reachedByAlert,
+                            Map<Long, Recommendation> recommendationByArticle) {
         static PageData empty(List<Holding> portfolioHoldings) {
-            return new PageData(portfolioHoldings, Map.of(), Map.of(), Map.of(), Map.of());
+            return new PageData(portfolioHoldings, Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
         }
     }
 }

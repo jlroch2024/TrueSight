@@ -93,7 +93,7 @@ public class Relationship {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "second_check", length = 10)
-    private SecondCheck secondCheck;
+    private SecondCheckVerdict secondCheck;
 
     @Column(name = "second_check_reason", length = 500)
     private String secondCheckReason;
@@ -168,7 +168,7 @@ public class Relationship {
     public Criticality getCriticality() { return criticality; }
     public String getCriticalityEvidence() { return criticalityEvidence; }
     public BigDecimal getQuoteMatch() { return quoteMatch; }
-    public SecondCheck getSecondCheck() { return secondCheck; }
+    public SecondCheckVerdict getSecondCheck() { return secondCheck; }
     public String getSecondCheckReason() { return secondCheckReason; }
     public Instant getSecondCheckedAt() { return secondCheckedAt; }
 
@@ -179,7 +179,7 @@ public class Relationship {
     public void setCriticality(Criticality criticality) { this.criticality = criticality; }
     public void setCriticalityEvidence(String criticalityEvidence) { this.criticalityEvidence = criticalityEvidence; }
     public void setQuoteMatch(BigDecimal quoteMatch) { this.quoteMatch = quoteMatch; }
-    public void setSecondCheck(SecondCheck secondCheck) { this.secondCheck = secondCheck; }
+    public void setSecondCheck(SecondCheckVerdict secondCheck) { this.secondCheck = secondCheck; }
     public void setSecondCheckReason(String secondCheckReason) { this.secondCheckReason = secondCheckReason; }
     public void setSecondCheckedAt(Instant secondCheckedAt) { this.secondCheckedAt = secondCheckedAt; }
 
