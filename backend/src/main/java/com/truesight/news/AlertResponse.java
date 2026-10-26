@@ -1,5 +1,6 @@
 package com.truesight.news;
 
+import com.truesight.relationship.RelationshipConfidence;
 import com.truesight.relationship.ReviewStatus;
 
 import java.math.BigDecimal;
@@ -23,9 +24,12 @@ public record AlertResponse(
                              String reason) {
     }
 
-    /** Stored company names and the path reached; all names are null when the event is about the holding itself. */
+    /**
+     * Display names and the path reached, and how confident TrueSight is about it (for a two-step path, the weaker of
+     * its two relationships). All are null when the event is about the holding itself.
+     */
     public record ReachedHolding(Long holdingId, String ticker, BigDecimal weight, boolean indirect,
                                  String supplierName, String middleName, String customerName,
-                                 ReviewStatus reviewStatus, Long relationshipId) {
+                                 ReviewStatus reviewStatus, Long relationshipId, RelationshipConfidence confidence) {
     }
 }

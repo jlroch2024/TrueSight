@@ -13,6 +13,8 @@ import java.time.LocalDate;
  *
  * <p>{@code reviewStatus} is where an Analyst's review has got; {@code reviewedAt} and {@code reviewNote} are null
  * until a decision is made (and the note may stay empty for an approval).
+ *
+ * <p>{@code confidence} is how confident TrueSight is about it, with its reasons (see {@link RelationshipConfidence}).
  */
 public record RelationshipResponse(
         Long id,
@@ -27,7 +29,8 @@ public record RelationshipResponse(
         ReportSummary report,
         ReviewStatus reviewStatus,
         Instant reviewedAt,
-        String reviewNote) {
+        String reviewNote,
+        RelationshipConfidence confidence) {
 
     public record CompanySummary(Long id, String name, String displayName, String ticker) {
     }

@@ -59,6 +59,40 @@ class QuoteCheckerTest {
     }
 
     @Test
+    void aQuoteCopiedExactlyHasEveryWordFound() {
+        assertThat(NVIDIA.match(TSMC_SENTENCE)).hasValueSatisfying(match -> {
+            assertThat(match.evidence()).isEqualTo(TSMC_SENTENCE);
+            assertThat(match.share()).isEqualTo(1.0);
+        });
+    }
+
+    @Test
+    void theShareIsTheQuotesWordsFoundInOrder() {
+        // The real sentence's 24 words with "utilize" changed to "use": 23 of 24 found, a strong match.
+        String oneChanged = "We use foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and "
+                + "Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers.";
+        // And "produce" changed to "make" too: 22 of 24 found, a partial match.
+        String twoChanged = "We use foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and "
+                + "Samsung Electronics Co., Ltd., or Samsung, to make our semiconductor wafers.";
+
+        assertThat(NVIDIA.match(oneChanged)).hasValueSatisfying(match -> {
+            assertThat(match.evidence()).isEqualTo(TSMC_SENTENCE);
+            assertThat(match.share()).isEqualTo(23.0 / 24);
+        });
+        assertThat(NVIDIA.match(twoChanged)).hasValueSatisfying(match -> {
+            assertThat(match.evidence()).isEqualTo(TSMC_SENTENCE);
+            assertThat(match.share()).isEqualTo(22.0 / 24);
+        });
+    }
+
+    @Test
+    void aQuoteNotInTheReportHasNoMatchAtAll() {
+        // The real sentence with other companies named in it, as below.
+        assertThat(NVIDIA.match("We utilize foundries, such as Intel Corporation, or Intel, and GlobalFoundries Inc., "
+                + "or GF, to produce our semiconductor wafers.")).isEmpty();
+    }
+
+    @Test
     void aQuoteThatIsNotInTheReportIsRefused() {
         // The real sentence with other companies named in it: under 85% of its words are found.
         String quote = "We utilize foundries, such as Intel Corporation, or Intel, and GlobalFoundries Inc., or GF, "

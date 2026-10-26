@@ -33,6 +33,8 @@ import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
+import com.truesight.relationship.ReviewStatus;
+import com.truesight.relationship.SecondCheckVerdict;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.support.Examples;
@@ -154,6 +156,9 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value("Taiwan Semiconductor Manufacturing"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value(nullValue()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"))
+                // Unreviewed, with no recorded quote match and no second check: Medium (See How Confident TrueSight Is).
+                .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.level").value("MEDIUM"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.reasons[0].text").value("Not Yet Reviewed"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
     }
@@ -186,6 +191,49 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value(zeiss.getName()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].middleName").value("Taiwan Semiconductor Manufacturing"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"));
+    }
+
+    /** A chain is as strong as its weakest link, whichever of the two it is. */
+    @Test
+    void anIndirectHoldingCarriesTheWeakerConfidenceOfItsTwoRelationships() throws Exception {
+        String email = "alerts-indirect-confidence@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        Company zeiss = companyDirectory.findOrCreate(
+                "Carl Zeiss SMT Alerts IT " + UUID.randomUUID(), null, null, List.of());
+        Report report = reports.save(new Report(tsmc.getId(), "20-F",
+                "A-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20),
+                LocalDate.parse("2026-04-10"), "https://www.sec.gov/", Examples.nvidia10K()));
+        Relationship zeissSuppliesTsmc = new Relationship(report.getId(), tsmc.getId(), zeiss.getId(),
+                RelationshipType.SUPPLIER, "lithography systems", EVIDENCE);
+        zeissSuppliesTsmc.setQuoteMatch(new BigDecimal("1.000"));
+        zeissSuppliesTsmc.setSecondCheck(SecondCheckVerdict.AGREES);
+        relationships.save(zeissSuppliesTsmc); // High; TSMC supplies NVIDIA stays Medium
+        NewsArticle article = article(zeiss, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.HIGH, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
+        AlertHolding reached = new AlertHolding(alert.getId(), holding.getId(), zeissSuppliesTsmc.getId());
+        reached.setSecondRelationshipId(tsmcSuppliesNvidia.getId());
+        alertHoldings.save(reached);
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.level").value("MEDIUM"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.reasons[1].text")
+                        .value("Quote Match Not Recorded"));
+
+        // Now the first link is doubted, and the second approved: the chain is Low.
+        zeissSuppliesTsmc.setSecondCheck(SecondCheckVerdict.DOUBTS);
+        relationships.save(zeissSuppliesTsmc);
+        tsmcSuppliesNvidia.setReviewStatus(ReviewStatus.APPROVED);
+        relationships.save(tsmcSuppliesNvidia);
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.level").value("LOW"))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.reasons[2].text").value("Second Check Doubts"));
     }
 
     @Test

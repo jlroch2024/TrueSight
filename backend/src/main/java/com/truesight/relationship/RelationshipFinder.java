@@ -12,6 +12,8 @@ import com.truesight.report.Report;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -120,20 +122,22 @@ public class RelationshipFinder {
         List<Relationship> proven = new ArrayList<>();
         int dropped = 0;
         for (GeminiAnswer.Found item : asked.found()) {
-            Optional<String> evidence = checker.evidenceFor(item.quote());
-            if (evidence.isEmpty()) {
+            Optional<QuoteChecker.QuoteMatch> match = checker.match(item.quote());
+            if (match.isEmpty()) {
                 dropped++;
                 continue;
             }
             Company counterparty = companies.findOrCreate(cut(item.company(), MAX_NAME), null, null,
                     List.of(cut(item.alsoKnownAs(), MAX_NAME)));
             if (counterparty.getId().equals(company.getId())
-                    || !saved.add(counterparty.getId() + " " + item.relationship() + " " + evidence.get())) {
+                    || !saved.add(counterparty.getId() + " " + item.relationship() + " " + match.get().evidence())) {
                 continue; // the company itself, or the same relationship twice
             }
             Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
                     item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
-                    evidence.get());
+                    match.get().evidence());
+            // Rounded down, so a share just under 95% is never recorded as a strong match.
+            relationship.setQuoteMatch(BigDecimal.valueOf(match.get().share()).setScale(3, RoundingMode.DOWN));
             if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
                 checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
                     relationship.setCriticality(item.criticality());
