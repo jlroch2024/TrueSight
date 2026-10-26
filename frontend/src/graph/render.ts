@@ -6,8 +6,8 @@
 //    end that flashes as each wave arrives; the colour deepens from a dim shade of the holding's colour at the supplier
 //    to its full colour at the customer. An arrow not yet reviewed is fainter, without the bloom;
 // 3. the companies: a soft shadow, a holding's ring in its chain colour with a glow, the tile itself (its logo, or its
-//    initials on a gradient of its own), a glassy sheen, a badge on a company several holdings depend on, and a
-//    breathing ring on the chosen one;
+//    initials on a gradient of its own), a glassy sheen, a badge on a company several holdings depend on, a dot in its
+//    most severe alert's colour on a company with open alerts, and a breathing ring on the chosen one;
 // 4. the labels, drawn at the screen's own scale so they are sharp at every zoom; those without room fade out (see
 //    Scene.placeLabels);
 // 5. a vignette and a whisper of film grain over everything;
@@ -15,10 +15,11 @@
 // While the graph opens, a line of light sweeps across it from left to right, the way goods flow. Textures throughout:
 // every fifth grid dot is a cross, faded companies are hatched, holdings have a second hairline inside their edge, and
 // each arrow meets its tiles at small square ports, like pads on a circuit board.
+import type { Severity } from '../api/news';
 import type { Camera } from './camera';
 import { arrowEnds, leaveTile } from './geometry';
 import { type Logo, logoSource, type LogoBook } from './logos';
-import { type LiveNode, LABEL_GAP, TITLE_LINE } from './model';
+import { type LiveNode, ALERT_COLOUR, LABEL_GAP, TITLE_LINE } from './model';
 import type { Scene } from './scene';
 import { easeOutBack, easeOutCubic, labelScale } from './scene';
 import { labelZoom } from './model';
@@ -41,6 +42,9 @@ export const INK = {
   // A company the user placed.
   pin: '#c4f36a',
 };
+
+// The radius of a company's alert dot, in the graph's own units.
+const ALERT_DOT_RADIUS = 6;
 
 /** A disruption's colour, by how serious it is. */
 export const RISK_COLOUR = { HIGH: '#ff4d5e', MEDIUM: '#ff8a3d', LOW: '#ffd166' } as const;
@@ -478,6 +482,17 @@ function drawTile(context: CanvasRenderingContext2D, node: LiveNode, logo: Logo,
   }
 }
 
+/** A round dot in an alert's severity colour with a night-coloured rim, centred on a tile's corner. */
+export function drawAlertDot(context: CanvasRenderingContext2D, x: number, y: number, severity: Severity) {
+  context.beginPath();
+  context.arc(x, y, ALERT_DOT_RADIUS, 0, Math.PI * 2);
+  context.fillStyle = ALERT_COLOUR[severity];
+  context.fill();
+  context.strokeStyle = INK.night;
+  context.lineWidth = 2;
+  context.stroke();
+}
+
 function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr, now, still, logos, logoToken, logoDomains } = o;
   const k = camera.k;
@@ -561,6 +576,10 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
       context.textBaseline = 'middle';
       context.fillText(String(node.sharedCount), bx, by + 0.5);
     }
+
+    // A company with open alerts: a dot in its most severe alert's colour, on its bottom-right corner.
+    const alert = scene.alertDots.get(node.id);
+    if (alert) drawAlertDot(context, x + size / 2 - 1, y + size / 2 - 1, alert);
 
     // Outside the focus: veiled in the night's colour and hatched over, as a drawing marks what is set aside.
     if (strength < 0.99) {

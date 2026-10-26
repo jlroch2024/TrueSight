@@ -61,16 +61,49 @@ describe('Check News button', () => {
     expect(screen.getByRole('button', { name: 'Check News' })).toBeEnabled();
   });
 
-  it('adds how many articles the last check found, and See News, when the page asks for them', async () => {
+  it('adds how many open alerts there are, and See News, when the page asks for them', async () => {
     const seeNews = vi.fn();
     const checkedAt = '2026-10-14T02:42:00Z';
     render(
-      <CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} articleCount={37} onSeeNews={seeNews} />,
+      <CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} openAlerts={3} onSeeNews={seeNews} />,
     );
 
-    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)} · 37 Articles`)).toBeInTheDocument();
+    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)} · 3 Open Alerts`)).toBeInTheDocument();
+    expect(screen.queryByText(/Article/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'See News' }));
     expect(seeNews).toHaveBeenCalled();
+  });
+
+  it('says one open alert in the singular, and none as 0 Open Alerts', () => {
+    const checkedAt = '2026-10-14T02:42:00Z';
+    const { rerender } = render(
+      <CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} openAlerts={1} />,
+    );
+    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)} · 1 Open Alert`)).toBeInTheDocument();
+
+    rerender(<CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} openAlerts={0} />);
+    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)} · 0 Open Alerts`)).toBeInTheDocument();
+  });
+
+  it('ends the line with Alerts Could Not Be Counted when the alerts could not be loaded', () => {
+    const checkedAt = '2026-10-14T02:42:00Z';
+    render(
+      <CheckNewsButton
+        portfolio={{ ...base, newsCheckedAt: checkedAt }}
+        onChange={vi.fn()}
+        openAlerts={null}
+        alertsCouldNotBeCounted
+      />,
+    );
+
+    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)} · Alerts Could Not Be Counted`)).toBeInTheDocument();
+  });
+
+  it('shows only the time of the last check while the count has not arrived', () => {
+    const checkedAt = '2026-10-14T02:42:00Z';
+    render(<CheckNewsButton portfolio={{ ...base, newsCheckedAt: checkedAt }} onChange={vi.fn()} openAlerts={null} />);
+
+    expect(screen.getByText(`News Checked ${formatDateTime(checkedAt)}`)).toBeInTheDocument();
   });
 
   it('shows a partial failure reason under the News Checked line without the error style', () => {
@@ -91,7 +124,7 @@ describe('Check News button', () => {
   });
 
   it('offers no See News before the first check', () => {
-    render(<CheckNewsButton portfolio={base} onChange={vi.fn()} articleCount={null} onSeeNews={vi.fn()} />);
+    render(<CheckNewsButton portfolio={base} onChange={vi.fn()} openAlerts={null} onSeeNews={vi.fn()} />);
 
     expect(screen.queryByRole('button', { name: 'See News' })).not.toBeInTheDocument();
   });

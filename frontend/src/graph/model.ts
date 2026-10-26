@@ -241,6 +241,12 @@ export function chainOf(colour: string, edges: Pick<LiveEdge, 'id' | 'source' | 
   return { nodeIds, edgeIds };
 }
 
+/**
+ * The colour of a company's alert dot, by how severe its most severe open alert is: the colours of the severity tags
+ * on the Alerts page (--danger, --amber and --lime in styles.css).
+ */
+export const ALERT_COLOUR: Record<Severity, string> = { HIGH: '#ff7272', MEDIUM: '#f5b73b', LOW: '#c4f36a' };
+
 /** A disruption on a relationship: how serious, what kind, and the headline it came from. */
 export type Risk = { severity: Severity; eventType: string; title: string };
 

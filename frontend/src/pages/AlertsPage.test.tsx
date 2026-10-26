@@ -31,7 +31,7 @@ function alert(id: number, severity: 'HIGH' | 'LOW', article = firstArticle!): A
     status: 'NEW',
     exposure: severity === 'HIGH' ? 40 : 90,
     headline: {
-      article: source,
+      article: { ...source, companyName: 'Taiwan Semiconductor Manufacturing Company Limited' },
       assessment: {
         eventType: severity === 'HIGH' ? 'PRODUCTION_STOP' : 'SUPPLY_SHORTAGE',
         severity,
