@@ -248,7 +248,7 @@ public class AlertService {
         if (found.getRelationshipId() == null) {
             return new ReachedPath(new AlertEventResponse.ReachedHolding(
                     holding.getId(), holding.getTicker(), holding.getWeight(), false,
-                    null, null, null, null, null), null);
+                    null, null, null, null, null, null), null);
         }
         Relationship relationship = data.relationshipById().get(found.getRelationshipId());
         if (relationship == null) return null;
@@ -257,7 +257,7 @@ public class AlertService {
                     holding.getId(), holding.getTicker(), holding.getWeight(), false,
                     nameOf(data.companyById().get(supplierId(relationship))), null,
                     nameOf(data.companyById().get(customerId(relationship))),
-                    relationship.getReviewStatus(), relationship.getId()), null);
+                    relationship.getReviewStatus(), relationship.getId(), null), null);
         }
         Relationship second = data.relationshipById().get(found.getSecondRelationshipId());
         if (second == null) return null;
@@ -266,8 +266,8 @@ public class AlertService {
                 nameOf(data.companyById().get(supplierId(relationship))),
                 nameOf(data.companyById().get(customerId(relationship))),
                 nameOf(data.companyById().get(customerId(second))),
-                weaker(relationship.getReviewStatus(), second.getReviewStatus()), relationship.getId()),
-                second.getId());
+                weaker(relationship.getReviewStatus(), second.getReviewStatus()), relationship.getId(),
+                second.getId()), second.getId());
     }
 
     private AlertResponse.ReachedHolding singleReachedHolding(AlertHolding found, PageData data) {
