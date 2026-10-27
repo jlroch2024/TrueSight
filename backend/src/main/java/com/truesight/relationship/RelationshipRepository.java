@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -31,6 +32,17 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
     List<Relationship> findByReportIdAndSecondCheckIsNullOrderByIdAsc(Long reportId);
 
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
+
+    /**
+     * The relationships the AI found that an analyst reviewed in {@code [from, to)}, for the AI Quality Dashboard. Ones
+     * an analyst added are left out: they are approved as they are saved, so they say nothing about the AI.
+     */
+    @Query("""
+            select r from Relationship r
+            where r.source = com.truesight.relationship.RelationshipSource.AI
+              and r.reviewedAt >= :from and r.reviewedAt < :to
+            """)
+    List<Relationship> findAiReviewedBetween(@Param("from") Instant from, @Param("to") Instant to);
 
     boolean existsByCompanyIdAndCounterpartyIdAndTypeAndEvidence(
             Long companyId, Long counterpartyId, RelationshipType type, String evidence);
