@@ -2457,8 +2457,16 @@ svg.lucide {
 .path-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
+}
+
+/* On the path's own line, at its far end. */
+.path-unreviewed {
+  margin-left: auto;
+  color: var(--soft);
+  font-size: var(--t-12);
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .reach-kind {
@@ -4312,7 +4320,13 @@ button.source-row:hover {
 }
 
 /* How confident TrueSight is about a relationship (See How Confident TrueSight Is): teal when high, a quiet white when
-   medium, red when low. (Amber is only the shared badge's.) */
+   medium, red when low. (Amber is only the shared badge's.) As tall as the path's Direct tag, its capitals centred:
+   Plex sits them high in their line, so the top padding lowers them. */
+.confidence-tag {
+  height: 22px;
+  padding: 3px 9px 0;
+}
+
 .confidence-tag.confidence-high {
   border-color: rgba(45, 212, 191, 0.35);
   background: var(--teal-soft);

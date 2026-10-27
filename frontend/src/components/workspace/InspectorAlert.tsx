@@ -205,7 +205,7 @@ function PathRow({ item, view, onChoose }: { item: ReachedHolding; view: Workspa
         <span className={`reach-kind${item.indirect ? ' indirect' : ''}`}>{item.indirect ? 'Indirect' : 'Direct'}</span>
         {/* How confident TrueSight is about this path; none for an alert about the holding itself. */}
         {item.confidence && <ConfidenceTag confidence={item.confidence} />}
-        {item.reviewStatus === 'UNREVIEWED' && <span className="faint small">Not Yet Reviewed by an Analyst</span>}
+        {item.reviewStatus === 'UNREVIEWED' && <span className="path-unreviewed">Not Yet Reviewed</span>}
       </span>
       <span className="path-steps">
         {steps.map((shownStep, index) => (

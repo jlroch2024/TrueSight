@@ -767,6 +767,18 @@ describe('a chosen alert', () => {
     expect(within(path).getByText('Named in the Article').closest('button')).not.toHaveTextContent(/Confidence/);
   });
 
+  it('saysOnThePathsOwnLineWhenItsLinkIsNotYetReviewed', async () => {
+    const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [alert];
+    renderAt('/portfolios/7?tab=alerts');
+    await graph();
+
+    await userEvent.click(within(drawer()).getByRole('button', { name: alert.headline.article.title }));
+
+    const path = within(inspector()).getByRole('region', { name: 'How It Reaches You' });
+    expect(within(path).getByText('Not Yet Reviewed')).toHaveClass('path-unreviewed');
+  });
+
   it('putsTheMostSeriousOpenAlertFirstOnTheHoldingsTabAndThePillOpensTheAlertsTab', async () => {
     const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
     backend.alerts = [alert];
@@ -928,6 +940,34 @@ describe('the Inspector', () => {
 
     expect(within(inspector()).getByText('Low Confidence')).toHaveClass('confidence-low');
     expect(within(inspector()).getByText('Second Check Doubts').closest('li')).toHaveTextContent('Lowers Confidence');
+  });
+
+  it('namesASecondChecksDoubtWithoutTheExplanationTheAnalystReviews', async () => {
+    // The doubt as the backend wrote it for ASML's TSMC relationship on the demo portfolio (28 October 2026).
+    const doubt =
+      'Second Check Doubts: The sentence mentions receiving a supplier award from TSMC for energy-efficiency ' +
+      'innovations, but it does not state that ASML sells product energy-efficiency innovations to TSMC.';
+    backend.relationships = [
+      {
+        ...sample[0]!,
+        confidence: {
+          level: 'LOW',
+          reasons: [
+            { text: 'Not Yet Reviewed', effect: 'NONE' },
+            { text: 'Quote Match Not Recorded', effect: 'NONE' },
+            { text: doubt, effect: 'LOWERS' },
+          ],
+        },
+      },
+    ];
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Link 1' }));
+
+    const confidence = within(inspector()).getByRole('region', { name: 'Confidence' });
+    expect(within(confidence).getByText('Second Check Doubts')).toBeInTheDocument();
+    expect(confidence).not.toHaveTextContent(/supplier award/);
   });
 });
 
