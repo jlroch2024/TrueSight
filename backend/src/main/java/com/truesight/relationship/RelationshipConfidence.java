@@ -9,15 +9,19 @@ import java.util.List;
  * three facts (the See How Confident TrueSight Is story); the website shows it and never works it out itself.
  *
  * <ul>
- *   <li><b>The review:</b> an analyst approved it.</li>
+ *   <li><b>The review:</b> an analyst approved it, or rejected it.</li>
  *   <li><b>The quote match:</b> the share of the AI's quote found, in order, in the report. Strong at 95% or more,
  *       partial below (the quote checker's floor is 85%). Relationships found before the share was recorded have
  *       none.</li>
  *   <li><b>The second check:</b> a second AI agrees or doubts.</li>
  * </ul>
  *
- * <p>The rule: approved is High. Otherwise, a second-check doubt is Low; a strong match with the second check agreeing
- * is High; anything else is Medium. Every fact is listed as a reason, with the effect it had on the level.
+ * <p>The rule: approved is High, and rejected is Low: an analyst's decision outweighs the other two facts. Otherwise, a
+ * second-check doubt is Low; a strong match with the second check agreeing is High; anything else is Medium. Every fact
+ * is listed as a reason, with the effect it had on the level.
+ *
+ * <p>Rejected relationships never reach a graph, and new alerts leave them out, but an alert made before the rejection
+ * still lists its path, so a rejected link must never read as confident.
  */
 public record RelationshipConfidence(Level level, List<Reason> reasons) {
 
@@ -43,6 +47,7 @@ public record RelationshipConfidence(Level level, List<Reason> reasons) {
 
     public static RelationshipConfidence of(Relationship relationship) {
         boolean approved = relationship.getReviewStatus() == ReviewStatus.APPROVED;
+        boolean rejected = relationship.getReviewStatus() == ReviewStatus.REJECTED;
         BigDecimal match = relationship.getQuoteMatch();
         boolean strongMatch = match != null && match.compareTo(STRONG_MATCH) >= 0;
         SecondCheckVerdict secondCheck = relationship.getSecondCheck();
@@ -54,6 +59,9 @@ public record RelationshipConfidence(Level level, List<Reason> reasons) {
         if (approved) {
             level = Level.HIGH;
             reviewEffect = Effect.RAISES;
+        } else if (rejected) {
+            level = Level.LOW;
+            reviewEffect = Effect.LOWERS;
         } else if (secondCheck == SecondCheckVerdict.DOUBTS) {
             level = Level.LOW;
             secondCheckEffect = Effect.LOWERS;

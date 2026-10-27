@@ -140,14 +140,31 @@ class RelationshipConfidenceTest {
         assertThat(RelationshipConfidence.of(approved).level()).isEqualTo(Level.HIGH);
     }
 
+    /** An alert made before the rejection still lists the path, so a rejected link must never read as confident. */
     @Test
-    void aRejectedRelationshipSaysSoAndIsJudgedLikeAnyOtherNotApproved() {
+    void aRejectedRelationshipIsLowEvenWithAStrongMatchAndAnAgreeingSecondCheck() {
         Relationship rejected = relationship(ReviewStatus.REJECTED, "1.000", SecondCheckVerdict.AGREES, null);
 
         RelationshipConfidence confidence = RelationshipConfidence.of(rejected);
 
-        assertThat(confidence.level()).isEqualTo(Level.HIGH);
-        assertThat(confidence.reasons()).first().isEqualTo(new Reason("An Analyst Rejected It", Effect.NONE));
+        assertThat(confidence.level()).isEqualTo(Level.LOW);
+        assertThat(confidence.reasons()).containsExactly(
+                new Reason("An Analyst Rejected It", Effect.LOWERS),
+                new Reason("Strong Quote Match (100%)", Effect.NONE),
+                new Reason("Second Check Agrees", Effect.NONE));
+    }
+
+    @Test
+    void aRejectionIsTheReasonThatLowersItWhenTheSecondCheckDoubtsToo() {
+        Relationship rejected = relationship(ReviewStatus.REJECTED, null, SecondCheckVerdict.DOUBTS, DOUBT);
+
+        RelationshipConfidence confidence = RelationshipConfidence.of(rejected);
+
+        assertThat(confidence.level()).isEqualTo(Level.LOW);
+        assertThat(confidence.reasons()).containsExactly(
+                new Reason("An Analyst Rejected It", Effect.LOWERS),
+                new Reason("Quote Match Not Recorded", Effect.NONE),
+                new Reason("Second Check Doubts: " + DOUBT, Effect.NONE));
     }
 
     /** The sample the website's tests use is in the API's exact shape, so its confidences follow the same rule. */
