@@ -54,7 +54,7 @@ describe('LivingGraph', () => {
   it('says how many companies and links it shows, on a graph the keyboard can reach', () => {
     drawGraph();
 
-    expect(screen.getByText(`${nodes.length} Companies · ${edges.length} Links`)).toBeInTheDocument();
+    expect(screen.getByText(`${nodes.length} Companies // ${edges.length} Relationships`)).toBeInTheDocument();
     expect(screen.getByRole('application', { name: 'Supply chain graph' })).toHaveAttribute('tabindex', '0');
   });
 
@@ -72,7 +72,7 @@ describe('LivingGraph', () => {
 
   it('explains the amber badge only when some company is shared by several holdings, keeping the key short', () => {
     const { unmount } = drawGraph({ nodes: withSharedSummaries(nodes, sharedCompanies(relationships, nodes)) });
-    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Holdings Sharing It');
+    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Shared Holding');
     expect(screen.queryByText('Approved')).not.toBeInTheDocument();
     unmount();
 
@@ -90,9 +90,9 @@ describe('LivingGraph', () => {
     expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Disruption');
   });
 
-  it('adds a dot to the key, in each severity present, only when some company has open alerts', () => {
+  it('adds a beacon to the key, in the most severe colour present, only when some company has open alerts', () => {
     const { unmount } = drawGraph();
-    expect(screen.queryByText('Company With Open Alerts')).not.toBeInTheDocument();
+    expect(screen.queryByText('Open Alert')).not.toBeInTheDocument();
     unmount();
 
     const alertDots = new Map([
@@ -101,20 +101,18 @@ describe('LivingGraph', () => {
     ]);
     const { container } = drawGraph({ alertDots });
 
-    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Company With Open Alerts');
+    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Open Alert');
     const dots = [...container.querySelectorAll<HTMLElement>('.lg-legend-dot')];
-    expect(dots.map((dot) => dot.dataset.severity)).toEqual(['HIGH', 'LOW']);
-    expect(dots[0]).toHaveStyle({ background: ALERT_COLOUR.HIGH });
-    expect(dots[1]).toHaveStyle({ background: ALERT_COLOUR.LOW });
+    expect(dots.map((dot) => dot.dataset.severity)).toEqual(['HIGH']);
+    expect(dots[0]).toHaveStyle({ color: ALERT_COLOUR.HIGH });
   });
 
-  it('adds sole or single source to the key only when a link is critical', () => {
-    const { unmount } = drawGraph();
-    expect(screen.queryByText('Sole or Single Source')).not.toBeInTheDocument();
-    unmount();
-
+  // The product owner took this out of the key (28 October 2026): a sole or single source is drawn thicker, and the
+  // Inspector names it, but the key does not, as it read as a second kind of line.
+  it('names no sole or single source in the key, even when a link is one', () => {
     drawGraph({ edges: [{ ...edges[0]!, criticality: 'SOLE_SOURCE' }] });
-    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Sole or Single Source');
+
+    expect(screen.queryByText('Sole or Single Source')).not.toBeInTheDocument();
   });
 
   it('finds a company by name or ticker, and chooses it with Enter', async () => {
@@ -134,7 +132,7 @@ describe('LivingGraph', () => {
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Find a company' }), 'zzzz');
 
-    expect(screen.getByText('No company by that name is on the graph.')).toBeInTheDocument();
+    expect(screen.getByText('No Company by That Name')).toBeInTheDocument();
   });
 
   it('opens the search with the / key', async () => {

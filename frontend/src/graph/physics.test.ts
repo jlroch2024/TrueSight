@@ -146,6 +146,7 @@ describe('disruptions and zoom', () => {
       customerName: relationshipId === null ? null : 'NVIDIA',
       reviewStatus: null,
       relationshipId,
+      secondRelationshipId: null,
     }],
   });
 

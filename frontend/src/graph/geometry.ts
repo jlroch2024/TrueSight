@@ -22,10 +22,16 @@ export function leaveTile(centre: Point, towards: Point, size: number, gap = ARR
   return { x: centre.x + dx * t, y: centre.y + dy * t };
 }
 
-/** An arrow's two ends, between the edges of its two tiles; null when the tiles are so close there is no room. */
-export function arrowEnds(from: Point, to: Point, fromSize: number, toSize: number) {
-  const start = leaveTile(from, to, fromSize);
-  const end = leaveTile(to, from, toSize);
+// A holding's ring stands 6 outside its tile, so an arrow stops further out from a holding, clear of the ring.
+export const HOLDING_ARROW_GAP = 11;
+
+/**
+ * An arrow's two ends, between the edges of its two tiles (further out from a holding, past its ring); null when the
+ * tiles are so close there is no room.
+ */
+export function arrowEnds(from: Point, to: Point, fromSize: number, toSize: number, fromGap = ARROW_GAP, toGap = ARROW_GAP) {
+  const start = leaveTile(from, to, fromSize, fromGap);
+  const end = leaveTile(to, from, toSize, toGap);
   const along = (end.x - start.x) * (to.x - from.x) + (end.y - start.y) * (to.y - from.y);
   return along > 0 ? { start, end } : null;
 }
