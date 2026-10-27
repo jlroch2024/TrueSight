@@ -83,6 +83,37 @@ class GeminiClientTest {
     }
 
     @Test
+    void theRelationshipSchemaAsksForACommonNameAndATickerBesideTheNameAsWritten() {
+        server.expect(requestTo(URL))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.commonName.type").value("STRING"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.ticker.type").value("STRING"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.required[?(@ == 'commonName')]").exists())
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.required[?(@ == 'ticker')]").exists())
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.required[?(@ == 'company')]").exists())
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+        client("test-key").generate(AiRequest.of(AiPurpose.FIND_RELATIONSHIPS, "The prompt."));
+
+        server.verify();
+    }
+
+    @Test
+    void theCommonNamesPassAsksForTheNameACommonNameAndATickerOfEachCompany() {
+        server.expect(requestTo(URL))
+                .andExpect(jsonPath("$.generationConfig.temperature").value(0))
+                .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.type").value("ARRAY"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.name.type").value("STRING"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.commonName.type").value("STRING"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.ticker.type").value("STRING"))
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+        client("test-key").generateCommonNames(AiRequest.of(AiPurpose.COMMON_NAMES, "The names."));
+
+        server.verify();
+    }
+
+    @Test
     void acceptsACallerProvidedResponseSchema() {
         Map<String, Object> schema = Map.of("type", "ARRAY", "items", Map.of("type", "STRING"));
         server.expect(requestTo(URL))

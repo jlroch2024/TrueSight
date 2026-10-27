@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "[{\"name\":\"Taiwan Semiconductor Manufacturing Company Limited\",\"commonName\":\"TSMC\",\"ticker\":\"TSM\"},{\"name\":\"Samsung Electronics Co., Ltd.\",\"commonName\":\"Samsung Electronics\",\"ticker\":\"005930\"},{\"name\":\"SK Hynix Inc.\",\"commonName\":\"SK Hynix\",\"ticker\":\"000660\"},{\"name\":\"Micron Technology, Inc.\",\"commonName\":\"Micron\",\"ticker\":\"MU\"},{\"name\":\"Hon Hai Precision Industry Co., Ltd.\",\"commonName\":\"Foxconn\",\"ticker\":\"2317\"},{\"name\":\"Wistron Corporation\",\"commonName\":\"Wistron\",\"ticker\":\"3231\"},{\"name\":\"Fabrinet\",\"commonName\":\"Fabrinet\",\"ticker\":\"FN\"},{\"name\":\"GLOBALFOUNDRIES Inc.\",\"commonName\":\"GlobalFoundries\",\"ticker\":\"GFS\"},{\"name\":\"United Microelectronics Corporation\",\"commonName\":\"UMC\",\"ticker\":\"UMC\"},{\"name\":\"Siliconware Precision Industries Ltd.\",\"commonName\":\"SPIL\",\"ticker\":\"\"},{\"name\":\"King Yuan Electronics Company\",\"commonName\":\"KYEC\",\"ticker\":\"2449\"},{\"name\":\"Sanmina Corporation\",\"commonName\":\"Sanmina\",\"ticker\":\"SANM\"},{\"name\":\"OpenAI OpCo, LLC\",\"commonName\":\"OpenAI\",\"ticker\":\"\"}]",
+            "thoughtSignature": "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"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 252,
+    "candidatesTokenCount": 264,
+    "totalTokenCount": 1090,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 252
+      }
+    ],
+    "thoughtsTokenCount": 574,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "3RPgav6aJY7s694PiLGLyAk"
+}

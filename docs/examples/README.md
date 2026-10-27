@@ -9,6 +9,9 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
+| `amd-10k.txt` | The plain text of AMD's latest 10-K, one paragraph per line | Name Companies the Way People Know Them, in tests |
+| `gemini-amd.json` | One real, unchanged Gemini answer for that 10-K to the relationship prompt that also asks for each company's common name and ticker: 8 relationships, each with a quote | Name Companies the Way People Know Them, in tests, so tests never call Gemini |
+| `gemini-common-names.json` | One real, unchanged Gemini answer to the common-names pass's prompt, for the 13 company names found in `gemini-nvidia.json` and `gemini-amd.json` | Name Companies the Way People Know Them, in tests, so tests never call Gemini |
 | `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |
 | `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
 | `news-labels.csv` | The team's own event-or-noise label for each of those 20 headlines, made by hand before looking at Gemini's answer | Filter Out Noise, to measure how often Gemini is right |
@@ -151,6 +154,91 @@ the prompt, the saved answer still works for testing how answers are read and ch
 criticality-enabled relationship prompt and `gemini-3.8-flash`, at temperature 0. The report names no supplier as a
 sole or single source, so all seven criticality values and quotes are empty. It used 30,670 input tokens and 579 output
 tokens (35,887 total, including 4,638 thinking tokens).
+
+## The AMD 10-K
+
+`amd-10k.txt` is the plain text of AMD's latest 10-K, filed 2026-02-04 (accession 0000002488-26-000018,
+https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm), saved on 27 October 2026, one paragraph per line like `nvidia-10k.txt`. It names a customer "OpenAI OpCo, LLC".
+
+## The AMD Answer
+
+`gemini-amd.json` is Gemini's full response, saved exactly as it arrived, on 27 October 2026.
+
+- **Model:** `gemini-3.8-flash`, at temperature 0.
+- **Sent:** AMD's 10-K from "Item 1. Business" up to "Item 2. Properties" (195,087 characters), taken from
+  `amd-10k.txt`, with the relationship prompt below, which asks for each company's common name and ticker as well as
+  the name as written.
+- **Asked for:** JSON only, a list of `{ company, alsoKnownAs, commonName, ticker, relationship, provides, quote,
+  criticality, criticalityQuote }`. The answer's list is the text inside `candidates[0].content.parts[0].text`.
+- **Found:** 8 relationships. The common name and ticker come from Gemini's own knowledge, not the
+  report, so they cannot be quote-checked.
+- **Used:** 38,087 tokens in, 1,044 out.
+
+The prompt, word for word:
+
+```
+Below is part of ADVANCED MICRO DEVICES INC's annual report (10-K). List every company this text names as a supplier to ADVANCED MICRO DEVICES INC or as a customer of ADVANCED MICRO DEVICES INC.
+
+For each one give:
+- company: the company's name, as written in the text
+- alsoKnownAs: a short name the text gives for it, such as an abbreviation, or an empty string
+- commonName: the name this company is commonly known by, from your own knowledge; this company's own name, never its parent's, a sister company's or another company's in its group; the name as written if you are not sure
+- ticker: its main stock ticker if it is listed, from your own knowledge, or an empty string
+- relationship: SUPPLIER if it supplies ADVANCED MICRO DEVICES INC, CUSTOMER if it buys from ADVANCED MICRO DEVICES INC
+- provides: what is supplied, in a few words
+- quote: one sentence copied exactly from the text that shows the relationship
+- criticality: SOLE_SOURCE if the report says this is the only possible supplier, SINGLE_SOURCE if it says
+  this is the one supplier used though others exist, or an empty string when it says neither
+- criticalityQuote: one sentence copied exactly from the text that supports criticality, or an empty string
+  when criticality is empty
+
+Never infer sole or single source from words such as "primary", "key" or "significant" alone. Only report
+criticality when the report explicitly says so.
+
+Only include companies the text names explicitly. Answer with JSON only.
+
+TEXT:
+<the section of the report>
+```
+
+## The Common Names Answer
+
+`gemini-common-names.json` is Gemini's full response, saved exactly as it arrived, on 27 October 2026.
+
+- **Model:** `gemini-3.8-flash`, at temperature 0.
+- **Sent:** the 13 company names found in `gemini-nvidia.json` and `gemini-amd.json`, as written in the
+  reports, which is how the companies were stored before Name Companies the Way People Know Them. These are the names
+  the one-off pass sends, in batches of up to 50 (this is one batch).
+- **Asked for:** JSON only, a list of `{ name, commonName, ticker }`, one for each name, with `name` the name as listed.
+- **Used:** 252 tokens in, 264 out.
+
+The prompt, word for word:
+
+```
+Below is a numbered list of company names, each written as it appears in a company's annual report. For each name, say which company it is and how people know it.
+
+For each one give:
+- name: the name exactly as listed
+- commonName: the name this company is commonly known by, from your own knowledge; this company's own name, never its parent's, a sister company's or another company's in its group; the name as listed if you are not sure
+- ticker: its main stock ticker if it is listed, from your own knowledge, or an empty string
+
+Answer for every name. Answer with JSON only.
+
+NAMES:
+1. Taiwan Semiconductor Manufacturing Company Limited
+2. Samsung Electronics Co., Ltd.
+3. SK Hynix Inc.
+4. Micron Technology, Inc.
+5. Hon Hai Precision Industry Co., Ltd.
+6. Wistron Corporation
+7. Fabrinet
+8. GLOBALFOUNDRIES Inc.
+9. United Microelectronics Corporation
+10. Siliconware Precision Industries Ltd.
+11. King Yuan Electronics Company
+12. Sanmina Corporation
+13. OpenAI OpCo, LLC
+```
 
 ## The Shape of a Relationship
 

@@ -20,6 +20,27 @@ public final class Examples {
         return read("nvidia-10k.txt");
     }
 
+    /** AMD's latest 10-K as plain text, one paragraph per line. It names a customer, "OpenAI OpCo, LLC". */
+    public static String amd10K() {
+        return read("amd-10k.txt");
+    }
+
+    /**
+     * Gemini's real, unchanged answer to the relationship prompt that also asks for each company's common name and
+     * ticker, for {@link #amd10K()}.
+     */
+    public static String geminiAmd() {
+        return read("gemini-amd.json");
+    }
+
+    /**
+     * Gemini's real, unchanged answer to the common-names pass's prompt, for the names of the companies found in
+     * {@link #geminiNvidia()} and {@link #geminiAmd()} as the pass would have found them stored.
+     */
+    public static String geminiCommonNames() {
+        return read("gemini-common-names.json");
+    }
+
     /** 17 relationships in the shape {@code GET /api/portfolios/{id}/relationships} returns. */
     public static String relationships() {
         return read("relationships.json");

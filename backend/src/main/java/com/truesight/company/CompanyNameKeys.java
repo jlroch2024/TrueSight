@@ -27,6 +27,26 @@ public class CompanyNameKeys implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(CompanyNameKeys.class);
 
+    /**
+     * Whether two names could be the same company: after dropping legal endings (see {@link CompanyDirectory#nameKey}),
+     * one name begins with the other's first word, as "Sony" and "Sony Group" do. This is never enough to join two
+     * companies on its own: it only confirms a match on something else, such as the same stock ticker. It is the one
+     * place this rule lives, for both {@link CompanyDirectory#findOrCreate} and {@link CommonNameService}.
+     */
+    public static boolean namesAgree(String first, String second) {
+        String a = CompanyDirectory.nameKey(first == null ? "" : first);
+        String b = CompanyDirectory.nameKey(second == null ? "" : second);
+        if (a.isEmpty() || b.isEmpty()) {
+            return false;
+        }
+        return (b + " ").startsWith(firstWord(a) + " ") || (a + " ").startsWith(firstWord(b) + " ");
+    }
+
+    private static String firstWord(String key) {
+        int space = key.indexOf(' ');
+        return space < 0 ? key : key.substring(0, space);
+    }
+
     private final CompanyNameRepository names;
 
     public CompanyNameKeys(CompanyNameRepository names) {

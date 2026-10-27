@@ -11,8 +11,9 @@ import java.util.Locale;
 
 /**
  * Reads Gemini's answer: the text in {@code candidates[0].content.parts}, which should be a JSON list of
- * {@code { company, alsoKnownAs, relationship, provides, quote, criticality, criticalityQuote }}. See
- * {@code docs/examples/gemini-nvidia.json}.
+ * {@code { company, alsoKnownAs, commonName, ticker, relationship, provides, quote, criticality, criticalityQuote }}.
+ * See {@code docs/examples/gemini-nvidia.json} and {@code docs/examples/gemini-amd.json}. Answers saved before
+ * {@code commonName} and {@code ticker} were asked for have neither: both then read as empty.
  *
  * <p>An answer that is not a JSON list throws {@link UnreadableAnswerException}, so the caller can ask once more. An
  * item in the list with no company or quote, or a relationship other than SUPPLIER or CUSTOMER, is left out.
@@ -26,10 +27,18 @@ public class GeminiAnswer {
         this.mapper = mapper;
     }
 
-    /** One relationship as the AI gave it. Its quote is not checked yet. */
-    public record Found(String company, String alsoKnownAs, RelationshipType relationship, String provides,
-                        String quote, Criticality criticality, String criticalityQuote) {
+    /**
+     * One relationship as the AI gave it. Its quote is not checked yet. {@code company} is the name as written in the
+     * report; {@code commonName} and {@code ticker} come from the AI's own knowledge, not the report, so they cannot
+     * be quote-checked. Both are empty when the AI gave none.
+     */
+    public record Found(String company, String alsoKnownAs, String commonName, String ticker,
+                        RelationshipType relationship, String provides, String quote, Criticality criticality,
+                        String criticalityQuote) {
     }
+
+    /** One stored company name as the AI answered it in the common-names pass. Both fields may be empty. */
+    public record CommonNameFound(String name, String commonName, String ticker) { }
 
     /** A criticality answer matched to an already-known counterparty. */
     public record CriticalityFound(String company, Criticality criticality, String quote) { }
@@ -52,8 +61,9 @@ public class GeminiAnswer {
             if (company.isEmpty() || quote.isEmpty() || type == null) {
                 continue;
             }
-            found.add(new Found(company, text(item, "alsoKnownAs"), type, text(item, "provides"), quote,
-                    criticality(text(item, "criticality")), text(item, "criticalityQuote")));
+            found.add(new Found(company, text(item, "alsoKnownAs"), text(item, "commonName"), text(item, "ticker"),
+                    type, text(item, "provides"), quote, criticality(text(item, "criticality")),
+                    text(item, "criticalityQuote")));
         }
         return found;
     }
@@ -74,6 +84,32 @@ public class GeminiAnswer {
             String quote = text(item, "criticalityQuote");
             if (!company.isEmpty() && criticality != null) {
                 found.add(new CriticalityFound(company, criticality, quote));
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Reads the common-names pass's answer: a JSON list of {@code { name, commonName, ticker }}. An item with no name
+     * is left out; an item with neither a common name nor a ticker says nothing, and is left out too.
+     */
+    public List<CommonNameFound> readCommonNames(String response) {
+        JsonNode list;
+        try {
+            list = mapper.readTree(answerText(response));
+        } catch (JacksonException exception) {
+            throw new UnreadableAnswerException();
+        }
+        if (list == null || !list.isArray()) {
+            throw new UnreadableAnswerException();
+        }
+        List<CommonNameFound> found = new ArrayList<>();
+        for (JsonNode item : list) {
+            String name = text(item, "name");
+            String commonName = text(item, "commonName");
+            String ticker = text(item, "ticker");
+            if (!name.isEmpty() && !(commonName.isEmpty() && ticker.isEmpty())) {
+                found.add(new CommonNameFound(name, commonName, ticker));
             }
         }
         return found;

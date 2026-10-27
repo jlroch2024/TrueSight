@@ -27,8 +27,10 @@ import java.util.Set;
  *       not the JSON asked for, it is asked once more.</li>
  *   <li>Each quote is checked against the report ({@link QuoteChecker}). One that is not in the report is dropped;
  *       one that is, is saved with the report's own words as the evidence, never the AI's.</li>
- *   <li>Every supplier and customer goes through {@link CompanyDirectory#findOrCreate}, with the AI's
- *       {@code alsoKnownAs} as another name.</li>
+ *   <li>Every supplier and customer goes through {@link CompanyDirectory#findOrCreate}, saved under the AI's
+ *       {@code commonName} (the name as written if it gave none), with its ticker, and with the name as written and
+ *       the AI's {@code alsoKnownAs} as other names. The common name and ticker come from the AI's own knowledge, so
+ *       they cannot be quote-checked.</li>
  * </ol>
  *
  * <p>Reports are public, so a report that already has relationships or a completed relationship-finding answer is
@@ -51,6 +53,10 @@ public class RelationshipFinder {
             For each one give:
             - company: the company's name, as written in the text
             - alsoKnownAs: a short name the text gives for it, such as an abbreviation, or an empty string
+            - commonName: the name this company is commonly known by, from your own knowledge; this company's own \
+            name, never its parent's, a sister company's or another company's in its group; the name as written if \
+            you are not sure
+            - ticker: its main stock ticker if it is listed, from your own knowledge, or an empty string
             - relationship: SUPPLIER if it supplies %1$s, CUSTOMER if it buys from %1$s
             - provides: what is supplied, in a few words
             - quote: one sentence copied exactly from the text that shows the relationship
@@ -120,8 +126,12 @@ public class RelationshipFinder {
                 dropped++;
                 continue;
             }
-            Company counterparty = companies.findOrCreate(cut(item.company(), MAX_NAME), null, null,
-                    List.of(cut(item.alsoKnownAs(), MAX_NAME)));
+            // Saved under its common name, with the name as the report writes it, and the short name the report gives,
+            // kept as other names. The evidence stays the report's own sentence, so the written name is still there.
+            String written = cut(item.company(), MAX_NAME);
+            String common = item.commonName().isEmpty() ? written : cut(item.commonName(), MAX_NAME);
+            Company counterparty = companies.findOrCreate(common, null, CompanyDirectory.cleanTicker(item.ticker()),
+                    List.of(written, cut(item.alsoKnownAs(), MAX_NAME)));
             if (counterparty.getId().equals(company.getId())
                     || !saved.add(counterparty.getId() + " " + item.relationship() + " " + evidence.get())) {
                 continue; // the company itself, or the same relationship twice
