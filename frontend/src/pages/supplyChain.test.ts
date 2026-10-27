@@ -6,6 +6,7 @@ import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { sampleAlert, tsmcSuppliesNvidia } from '../test/sampleAlerts';
 import {
+  type AlertPath,
   alertPaths,
   alertSeverities,
   alertsFor,
@@ -1107,16 +1108,31 @@ describe('alerts on the graph', () => {
       holdings: [tsmcSuppliesNvidia(1, 1), { ...tsmcSuppliesNvidia(2, 3), ticker: 'AMD', customerName: 'Advanced Micro Devices' }],
     });
     const itself = sampleAlert({
-      holdings: [{ ...tsmcSuppliesNvidia(1, 1), supplierName: null, customerName: null, relationshipId: null }],
+      holdings: [
+        { ...tsmcSuppliesNvidia(1, 1), supplierName: null, customerName: null, relationshipId: null, confidence: null },
+      ],
     });
+    const texts = (paths: AlertPath[]) => paths.map((path) => path.text);
 
-    expect(alertPaths(both, 1)).toEqual(['Taiwan Semiconductor Manufacturing supplies NVIDIA']);
-    expect(alertPaths(both, null)).toEqual([
+    expect(texts(alertPaths(both, 1))).toEqual(['Taiwan Semiconductor Manufacturing supplies NVIDIA']);
+    expect(texts(alertPaths(both, null))).toEqual([
       'Taiwan Semiconductor Manufacturing supplies NVIDIA',
       'Taiwan Semiconductor Manufacturing supplies Advanced Micro Devices',
     ]);
-    expect(alertPaths(itself, 1)).toEqual(['Named in the Article']);
+    expect(texts(alertPaths(itself, 1))).toEqual(['Named in the Article']);
     expect(alertPaths(itself, null)).toEqual([]);
+  });
+
+  it("gives each path under an alert the confidence the API sends for it, and none when it is named in the article", () => {
+    const reaching = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    const itself = sampleAlert({
+      holdings: [
+        { ...tsmcSuppliesNvidia(1, 1), supplierName: null, customerName: null, relationshipId: null, confidence: null },
+      ],
+    });
+
+    expect(alertPaths(reaching, 1)[0]!.confidence).toEqual(UNREVIEWED_CONFIDENCE);
+    expect(alertPaths(itself, 1)[0]).toEqual({ text: 'Named in the Article', confidence: null });
   });
 
   it('takes the most severe of some alerts', () => {

@@ -3,7 +3,7 @@
 import type { AlertEvent, ReachedHolding } from '../api/alerts';
 import type { Severity } from '../api/news';
 import type { Holding } from '../api/portfolios';
-import type { CompanySummary, Criticality, Relationship, ReviewStatus } from '../api/relationships';
+import type { CompanySummary, Confidence, Criticality, Relationship, ReviewStatus } from '../api/relationships';
 
 // weight is the holding's share of the portfolio, in percent, as uploaded; null for other companies, or when the CSV
 // had no weight.
@@ -936,15 +936,23 @@ export function alertsFor(events: AlertEvent[], companyName: string, holdingId: 
   );
 }
 
+/** One way an alert reaches the portfolio, and how confident TrueSight is about it: null when named in the article. */
+export type AlertPath = { text: string; confidence: Confidence | null };
+
 /**
  * The paths to show under an alert: for a holding, how the alert reaches that holding ("Named in the Article" when
- * the alert is about the holding itself); for any other company, how it reaches the portfolio's holdings.
+ * the alert is about the holding itself); for any other company, how it reaches the portfolio's holdings. Each path
+ * is listed once, with the confidence the API sends for it.
  */
-export function alertPaths(event: AlertEvent, holdingId: number | null): string[] {
+export function alertPaths(event: AlertEvent, holdingId: number | null): AlertPath[] {
   const own = holdingId === null ? [] : event.holdings.filter((reached) => reached.holdingId === holdingId);
   const reached = own.length > 0 ? own : event.holdings;
-  const paths = reached.map((found) => reachPath(found) ?? (own.length > 0 ? 'Named in the Article' : null));
-  return [...new Set(paths.filter((path): path is string => path !== null))];
+  const paths = new Map<string, AlertPath>();
+  for (const found of reached) {
+    const text = reachPath(found) ?? (own.length > 0 ? 'Named in the Article' : null);
+    if (text !== null && !paths.has(text)) paths.set(text, { text, confidence: found.confidence });
+  }
+  return [...paths.values()];
 }
 
 const SEVERITY_ORDER: Severity[] = ['LOW', 'MEDIUM', 'HIGH'];

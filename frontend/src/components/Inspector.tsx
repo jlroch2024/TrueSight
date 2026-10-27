@@ -142,7 +142,7 @@ function CompanyDetails({
 
 /**
  * One open alert, as a small card: its severity, the publisher and date, the headline, how it reaches the portfolio
- * ("TSMC supplies Nvidia"), and Open Article.
+ * ("TSMC supplies NVIDIA") with how confident TrueSight is about that path, and Open Article.
  */
 function AlertItem({ event, holdingId }: { event: AlertEvent; holdingId: number | null }) {
   const { article, assessment } = event.headline;
@@ -159,8 +159,9 @@ function AlertItem({ event, holdingId }: { event: AlertEvent; holdingId: number 
       </p>
       <p className="news-title">{article.title}</p>
       {alertPaths(event, holdingId).map((path) => (
-        <p key={path} className="muted small alert-path">
-          {path}
+        <p key={path.text} className="muted small alert-path">
+          <span>{path.text}</span>
+          {path.confidence && <ConfidenceTag confidence={path.confidence} />}
         </p>
       ))}
       <button type="button" className="text-button" onClick={() => openInNewTab(article.url)}>
