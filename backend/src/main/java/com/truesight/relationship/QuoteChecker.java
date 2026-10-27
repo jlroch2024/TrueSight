@@ -1,5 +1,7 @@
 package com.truesight.relationship;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -198,6 +200,14 @@ public final class QuoteChecker {
 
     /** A quote found in the report: the report's own words for it, and the share of the quote's words found. */
     public record QuoteMatch(String evidence, double share) {
+
+        /**
+         * The share as {@code relationships.quote_match} records it, to three places and rounded down, so a share just
+         * under 95% is never recorded as a strong match.
+         */
+        public BigDecimal recordedShare() {
+            return BigDecimal.valueOf(share).setScale(3, RoundingMode.DOWN);
+        }
     }
 
     /** One word, lower-cased, and where it is in the original text. */

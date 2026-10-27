@@ -12,8 +12,6 @@ import com.truesight.report.Report;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -136,8 +134,7 @@ public class RelationshipFinder {
             Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
                     item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
                     match.get().evidence());
-            // Rounded down, so a share just under 95% is never recorded as a strong match.
-            relationship.setQuoteMatch(BigDecimal.valueOf(match.get().share()).setScale(3, RoundingMode.DOWN));
+            relationship.setQuoteMatch(match.get().recordedShare());
             if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
                 checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
                     relationship.setCriticality(item.criticality());
