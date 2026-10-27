@@ -3,6 +3,7 @@
 // and arrows draw themselves between them; every company floats gently around where it rests; and pointing, choosing
 // and lighting a chain all blend in and out rather than switching.
 import type { Simulation } from 'd3-force';
+import type { Severity } from '../api/news';
 import { floatOffset } from '../pages/supplyChain';
 import {
   type LiveEdge,
@@ -64,6 +65,8 @@ export class Scene {
   zoom = 1;
   // The disruptions on the graph's links, by relationship id (see risksFrom).
   risks = new Map<number, Risk>();
+  // The most severe open alert of each company, by node id: drawn as a dot at its tile's corner.
+  alertDots = new Map<string, Severity>();
   // How far the arrows' dashes have travelled, in the graph's own units: they move at one steady pace through the
   // graph, so zooming neither speeds them up nor makes them jump, and pointing at an arrow does not change their pace.
   flow = 0;

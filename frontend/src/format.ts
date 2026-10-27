@@ -1,3 +1,4 @@
+import type { EventType } from './api/alerts';
 import type { HoldingStatus } from './api/portfolios';
 
 // How each holding status reads on the page.
@@ -10,6 +11,22 @@ export const STATUS_LABELS: Record<HoldingStatus, string> = {
 };
 
 // One date style on every page and in every browser language: "Oct 18, 2026" and "Oct 18, 2026, 4:55 AM".
+// How severity and confidence read: each Low, Medium or High.
+export const SEVERITY_LABELS = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' } as const;
+
+// How each event type reads, in Title Case with "or" in lower case.
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  PRODUCTION_STOP: 'Production Stop',
+  SUPPLY_SHORTAGE: 'Supply Shortage',
+  LABOUR_ACTION: 'Labour Action',
+  NATURAL_DISASTER: 'Natural Disaster',
+  TRADE_RESTRICTION: 'Trade Restriction',
+  FINANCIAL_DISTRESS: 'Financial Distress',
+  LEGAL_OR_REGULATORY: 'Legal or Regulatory',
+  CYBER_ATTACK: 'Cyber Attack',
+  OTHER_DISRUPTION: 'Other Disruption',
+};
+
 export function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';

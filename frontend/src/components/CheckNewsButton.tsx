@@ -6,14 +6,16 @@ import { formatDateTime } from '../format';
 type Props = {
   portfolio: Portfolio;
   onChange: (portfolio: Portfolio) => void;
-  // How many articles the last check found, shown after its time; leave out to show only the time.
-  articleCount?: number | null;
-  // Shows a See News button after a check, which opens the collected news.
+  // How many open alerts the portfolio has, shown after the time of the last check ("· 3 Open Alerts"); leave out to
+  // show only the time.
+  openAlerts?: number | null;
+  // Set when the alerts could not be loaded: the line then ends "· Alerts Could Not Be Counted".
+  alertsCouldNotBeCounted?: boolean;
+  // Shows a See News button after a check, which opens the news as alerts.
   onSeeNews?: () => void;
   // Buttons placed first in the same row, such as the Portfolio page's Analyse, so they all line up.
   leading?: ReactNode;
-  // "main": a full-size main button (the Portfolio page). "compact": a small outlined button with the status beside it
-  // (the Supply Chain page's News tab).
+  // "main": a full-size main button. "compact": a small outlined button with the status beside it.
   variant?: 'main' | 'compact';
 };
 
@@ -21,7 +23,15 @@ function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
 
-export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews, leading, variant = 'main' }: Props) {
+export function CheckNewsButton({
+  portfolio,
+  onChange,
+  openAlerts,
+  alertsCouldNotBeCounted = false,
+  onSeeNews,
+  leading,
+  variant = 'main',
+}: Props) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,7 +86,9 @@ export function CheckNewsButton({ portfolio, onChange, articleCount, onSeeNews, 
       {!checking && portfolio.newsStatus !== 'FAILED' && portfolio.newsCheckedAt && (
         <span className="muted small">
           News Checked {formatDateTime(portfolio.newsCheckedAt)}
-          {typeof articleCount === 'number' && ` · ${articleCount} ${articleCount === 1 ? 'Article' : 'Articles'}`}
+          {alertsCouldNotBeCounted
+            ? ' · Alerts Could Not Be Counted'
+            : typeof openAlerts === 'number' && ` · ${openAlerts} Open ${openAlerts === 1 ? 'Alert' : 'Alerts'}`}
         </span>
       )}
       {!checking && portfolio.newsStatus !== 'FAILED' && portfolio.newsStatusReason && (

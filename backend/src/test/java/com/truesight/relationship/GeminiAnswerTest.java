@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -134,6 +135,42 @@ class GeminiAnswerTest {
     void aCommonNamesAnswerThatIsNotAJsonListIsUnreadable() {
         assertThatThrownBy(() -> answers.readCommonNames(null)).isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
         assertThatThrownBy(() -> answers.readCommonNames("<html>Bad gateway</html>"))
+                .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+    }
+
+    /** Wraps the text of an answer the way Gemini's response carries it. */
+    private static String responseWith(String text) throws Exception {
+        return JsonMapper.builder().build().writeValueAsString(Map.of("candidates", List.of(Map.of(
+                "content", Map.of("parts", List.of(Map.of("text", text)))))));
+    }
+
+    @Test
+    void readsEachVerdictOfTheSecondCheckWithItsReason() throws Exception {
+        String answer = responseWith("[{\"index\":1,\"verdict\":\"AGREES\",\"reason\":\"A current supplier.\"},"
+                + "{\"index\":2,\"verdict\":\"DOUBTS\",\"reason\":\"Only a plan.\"}]");
+
+        assertThat(answers.readSecondChecks(answer)).containsExactly(
+                new GeminiAnswer.SecondCheckFound(1, SecondCheckVerdict.AGREES, "A current supplier."),
+                new GeminiAnswer.SecondCheckFound(2, SecondCheckVerdict.DOUBTS, "Only a plan."));
+    }
+
+    @Test
+    void aSecondCheckItemWithNoIndexOrAnUnknownVerdictIsLeftOut() throws Exception {
+        String answer = responseWith("[{\"verdict\":\"AGREES\",\"reason\":\"No index.\"},"
+                + "{\"index\":2,\"verdict\":\"MAYBE\",\"reason\":\"Not asked for.\"},"
+                + "{\"index\":\"3\",\"verdict\":\"AGREES\",\"reason\":\"Index is text.\"},"
+                + "{\"index\":4,\"verdict\":\"doubts\",\"reason\":\"Lower case is fine.\"}]");
+
+        assertThat(answers.readSecondChecks(answer)).containsExactly(
+                new GeminiAnswer.SecondCheckFound(4, SecondCheckVerdict.DOUBTS, "Lower case is fine."));
+    }
+
+    @Test
+    void aSecondCheckAnswerThatIsNotAJsonListIsUnreadable() throws Exception {
+        assertThatThrownBy(() -> answers.readSecondChecks(null)).isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+        assertThatThrownBy(() -> answers.readSecondChecks(responseWith("[{\"index\":1,\"verdict\":\"AGREES\"")))
+                .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+        assertThatThrownBy(() -> answers.readSecondChecks(responseWith("{\"index\":1}")))
                 .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
     }
 }

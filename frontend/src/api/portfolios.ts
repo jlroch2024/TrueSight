@@ -63,4 +63,16 @@ export const holdingApi = {
     body.append('file', file);
     return api<Holding[]>(`/portfolios/${portfolioId}/holdings/upload`, { method: 'POST', body });
   },
+  // Adds one holding, saved as Waiting; its analysis starts at once. weight is null for none.
+  add: (portfolioId: string, ticker: string, weight: number | null) =>
+    api<Holding>(`/portfolios/${portfolioId}/holdings`, { method: 'POST', body: JSON.stringify({ ticker, weight }) }),
+  // Changes one holding's weight (0 to 100), or null for none.
+  updateWeight: (portfolioId: string, holdingId: number, weight: number | null) =>
+    api<Holding>(`/portfolios/${portfolioId}/holdings/${holdingId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ weight }),
+    }),
+  // Removes one holding, and its place in the portfolio's alerts.
+  remove: (portfolioId: string, holdingId: number) =>
+    api<void>(`/portfolios/${portfolioId}/holdings/${holdingId}`, { method: 'DELETE' }),
 };

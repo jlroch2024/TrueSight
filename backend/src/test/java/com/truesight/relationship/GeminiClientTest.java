@@ -114,6 +114,29 @@ class GeminiClientTest {
     }
 
     @Test
+    void theSecondCheckAsksForAnIndexAVerdictOfAgreesOrDoubtsAndAReasonForEachClaim() {
+        server.expect(requestTo(URL))
+                .andExpect(jsonPath("$.contents[0].parts[0].text").value("The claims."))
+                .andExpect(jsonPath("$.generationConfig.temperature").value(0))
+                .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.type").value("ARRAY"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.index.type")
+                        .value("INTEGER"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.verdict.enum[0]")
+                        .value("AGREES"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.verdict.enum[1]")
+                        .value("DOUBTS"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.reason.type")
+                        .value("STRING"))
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+        AiAnswer answer = client("test-key").generateSecondCheck(AiRequest.of(AiPurpose.SECOND_CHECK, "The claims."));
+
+        assertThat(answer.text()).isEqualTo("{\"ok\":true}");
+        server.verify();
+    }
+
+    @Test
     void acceptsACallerProvidedResponseSchema() {
         Map<String, Object> schema = Map.of("type", "ARRAY", "items", Map.of("type", "STRING"));
         server.expect(requestTo(URL))

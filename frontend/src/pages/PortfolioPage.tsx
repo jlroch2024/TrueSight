@@ -1,5 +1,5 @@
-// One portfolio's holdings, CSV upload, and annual report analysis.
-import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
+// One portfolio's holdings, CSV upload, annual report analysis, and adding, re-weighting or removing one holding.
+import { type ChangeEvent, type FormEvent, type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError, api } from '../api/client';
 import { type Holding, type Portfolio, holdingApi, portfolioApi, portfolioChanges } from '../api/portfolios';
@@ -7,11 +7,24 @@ import { paths } from '../paths';
 import { STATUS_LABELS, formatDate, formatDateTime, openInNewTab } from '../format';
 import { CheckNewsButton } from '../components/CheckNewsButton';
 import { useConfirm } from '../components/ConfirmDialog';
-import { newsApi } from '../api/news';
+import { alertApi } from '../api/alerts';
 import { portfolioSubtitle } from './portfolioSubtitle';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
+}
+
+const WEIGHT_MESSAGE = 'The weight must be a number between 0 and 100.';
+
+/**
+ * What a weight box holds: blank means no weight (null), "12.5" and "12.5%" are numbers, and anything else is
+ * undefined. The range, 0 to 100, is checked by the backend, which says so if it is broken.
+ */
+function parseWeight(text: string): number | null | undefined {
+  const cleaned = text.trim().replace(/%$/, '').trim();
+  if (cleaned === '') return null;
+  const value = Number(cleaned);
+  return Number.isFinite(value) ? value : undefined;
 }
 
 export function PortfolioPage() {
@@ -26,6 +39,16 @@ export function PortfolioPage() {
   const [starting, setStarting] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
   const { confirm, dialog } = useConfirm();
+  // Add Holding: its two boxes, and whether a request is running.
+  const [newTicker, setNewTicker] = useState('');
+  const [newWeight, setNewWeight] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  // The one row whose weight is being edited in place, its box, and what went wrong with an edit or a removal.
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editWeight, setEditWeight] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   const loadHoldings = useCallback(async () => {
     try {
@@ -42,6 +65,9 @@ export function PortfolioPage() {
     setHoldings([]);
     setError(null);
     setUploadError(null);
+    setAddError(null);
+    setRowError(null);
+    setEditingId(null);
     portfolioApi
       .list()
       .then(async (all) => {
@@ -67,18 +93,24 @@ export function PortfolioPage() {
   const failed = holdings.some((holding) => holding.status === 'FAILED');
   const subtitle = portfolioSubtitle(holdings);
 
-  // How many articles the last news check found, once one has finished. Not essential: on failure it is left out.
-  const [articleCount, setArticleCount] = useState<number | null>(null);
+  // How many open alerts the portfolio has, once a news check has finished; the news reaches the user as alerts.
+  // Not essential: if they cannot be loaded, the News Checked line says so.
+  const [openAlerts, setOpenAlerts] = useState<number | null>(null);
+  const [alertsCouldNotBeCounted, setAlertsCouldNotBeCounted] = useState(false);
   const newsCheckedAt = portfolio?.newsCheckedAt ?? null;
   const newsChecking = portfolio?.newsStatus === 'CHECKING';
   useEffect(() => {
     let active = true;
-    setArticleCount(null);
+    setOpenAlerts(null);
+    setAlertsCouldNotBeCounted(false);
     if (!newsCheckedAt || newsChecking) return;
-    newsApi
+    alertApi
       .list(portfolioId)
-      .then((articles) => { if (active) setArticleCount(articles.length); })
-      .catch(() => {});
+      .then((found) => {
+        // The list holds the open alerts only, unless dismissed ones are asked for.
+        if (active) setOpenAlerts((found.alerts ?? []).filter((event) => event.status !== 'DISMISSED').length);
+      })
+      .catch(() => { if (active) setAlertsCouldNotBeCounted(true); });
     return () => { active = false; };
   }, [portfolioId, newsCheckedAt, newsChecking]);
 
@@ -112,6 +144,83 @@ export function PortfolioPage() {
       setUploadError(messageOf(e));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function addHolding(event: FormEvent) {
+    event.preventDefault();
+    const weight = parseWeight(newWeight);
+    if (weight === undefined) {
+      setAddError(WEIGHT_MESSAGE);
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    try {
+      const added = await holdingApi.add(portfolioId, newTicker.trim(), weight);
+      setNewTicker('');
+      setNewWeight('');
+      // It shows as Waiting at once. The backend starts its analysis straight away, so look again: the table then
+      // shows it Analysing, and keeps refreshing (below) until it has a result.
+      setHoldings((current) => [...current, added].sort((a, b) => a.ticker.localeCompare(b.ticker)));
+      await loadHoldings();
+    } catch (e) {
+      setAddError(messageOf(e));
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  function startEditing(holding: Holding) {
+    setRowError(null);
+    setEditingId(holding.id);
+    setEditWeight(holding.weight === null ? '' : String(holding.weight));
+  }
+
+  async function saveWeight(holding: Holding) {
+    const weight = parseWeight(editWeight);
+    if (weight === undefined) {
+      setRowError(WEIGHT_MESSAGE);
+      return;
+    }
+    setSavingEdit(true);
+    setRowError(null);
+    try {
+      const updated = await holdingApi.updateWeight(portfolioId, holding.id, weight);
+      setHoldings((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+      setEditingId(null);
+    } catch (e) {
+      setRowError(messageOf(e));
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  function weightKeys(event: KeyboardEvent<HTMLInputElement>, holding: Holding) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void saveWeight(holding);
+    } else if (event.key === 'Escape') {
+      setEditingId(null);
+      setRowError(null);
+    }
+  }
+
+  async function removeHolding(holding: Holding) {
+    const confirmed = await confirm({
+      title: 'Remove Holding',
+      message: `This removes ${holding.ticker} from ${portfolio?.name ?? 'this portfolio'}, and from its alerts.`,
+      confirmLabel: 'Remove Holding',
+      danger: true,
+    });
+    if (!confirmed) return;
+    setRowError(null);
+    try {
+      await holdingApi.remove(portfolioId, holding.id);
+      setHoldings((current) => current.filter((row) => row.id !== holding.id));
+      if (editingId === holding.id) setEditingId(null);
+    } catch (e) {
+      setRowError(messageOf(e));
     }
   }
 
@@ -165,8 +274,9 @@ export function PortfolioPage() {
                 {starting ? 'Starting…' : 'Analyse'}
               </button>
             }
-            articleCount={articleCount}
-            onSeeNews={() => navigate({ pathname: paths.supplyChain(portfolioId), search: '?panel=news' })}
+            openAlerts={openAlerts}
+            alertsCouldNotBeCounted={alertsCouldNotBeCounted}
+            onSeeNews={() => navigate(paths.alerts(portfolioId))}
           />
         </div>
       </div>
@@ -179,7 +289,17 @@ export function PortfolioPage() {
         <span className="muted small">A CSV with a ticker or symbol column, and an optional weight column. Up to 5 MB.</span>
       </div>
 
+      <form className="inline-form add-holding" onSubmit={addHolding}>
+        <label htmlFor="new-ticker">Ticker</label>
+        <input id="new-ticker" value={newTicker} maxLength={20} autoComplete="off" onChange={(event) => setNewTicker(event.target.value)} />
+        <label htmlFor="new-weight">Weight (%)</label>
+        <input id="new-weight" value={newWeight} inputMode="decimal" autoComplete="off" onChange={(event) => setNewWeight(event.target.value)} />
+        <button type="submit" disabled={adding || newTicker.trim() === ''}>{adding ? 'Adding…' : 'Add Holding'}</button>
+      </form>
+      {addError && <p role="alert" className="error">{addError}</p>}
+
       {error && <p role="alert" className="error">{error}</p>}
+      {rowError && <p role="alert" className="error">{rowError}</p>}
       {uploadError && <p role="alert" className="error">{uploadError}</p>}
       {failed && <p className="muted">Some holdings failed. Press Analyse to try them again.</p>}
 
@@ -190,13 +310,27 @@ export function PortfolioPage() {
         ) : (
           <div className="table-scroll">
             <table className="holdings">
-              <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Last Analysed</th><th>Report Type</th><th>Filing Date</th><th></th></tr></thead>
+              <thead><tr><th>Company</th><th>Ticker</th><th>Weight</th><th>Status</th><th>Last Analysed</th><th>Report Type</th><th>Filing Date</th><th></th><th></th></tr></thead>
               <tbody>
                 {holdings.map((h) => (
                   <tr key={h.id}>
                     <td title={h.companyName ?? undefined}>{h.companyDisplayName ?? '—'}</td>
                     <td>{h.ticker}</td>
-                    <td>{h.weight === null ? '—' : `${h.weight}%`}</td>
+                    <td>
+                      {editingId === h.id ? (
+                        <input
+                          className="weight-input"
+                          aria-label={`Weight for ${h.ticker}`}
+                          value={editWeight}
+                          inputMode="decimal"
+                          autoFocus
+                          onChange={(event) => setEditWeight(event.target.value)}
+                          onKeyDown={(event) => weightKeys(event, h)}
+                        />
+                      ) : (
+                        h.weight === null ? '—' : `${h.weight}%`
+                      )}
+                    </td>
                     <td>
                       <span className={`status status-${h.status.toLowerCase()}`}>{STATUS_LABELS[h.status]}</span>
                       {h.statusReason && <span className="status-reason">{h.statusReason}</span>}
@@ -205,6 +339,19 @@ export function PortfolioPage() {
                     <td>{h.reportType ?? '—'}</td>
                     <td>{h.reportDate ? formatDate(h.reportDate) : '—'}</td>
                     <td>{h.status === 'DONE' && h.reportLink && <button type="button" onClick={() => openInNewTab(h.reportLink!)}>Show Report</button>}</td>
+                    <td>
+                      {editingId === h.id ? (
+                        <div className="row-actions">
+                          <button type="button" onClick={() => void saveWeight(h)} disabled={savingEdit}>Save</button>
+                          <button type="button" className="secondary" onClick={() => { setEditingId(null); setRowError(null); }} disabled={savingEdit}>Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="row-actions">
+                          <button type="button" className="secondary" onClick={() => startEditing(h)}>Edit</button>
+                          <button type="button" className="danger" onClick={() => void removeHolding(h)}>Remove</button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

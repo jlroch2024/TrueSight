@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GraphEdge, GraphNode } from '../pages/supplyChain';
-import { buildLiveGraph } from './model';
+import stylesheet from '../styles.css?raw';
+import { ALERT_COLOUR, buildLiveGraph } from './model';
 
 describe('buildLiveGraph', () => {
   it('marks an edge critical when its relationship is a sole or single source', () => {
@@ -35,5 +36,22 @@ describe('buildLiveGraph', () => {
     );
 
     expect(graph.nodes[0]).toMatchObject({ name: 'NVIDIA', title: 'NVIDIA', sourceName: 'NVIDIA CORP' });
+  });
+});
+
+describe('ALERT_COLOUR', () => {
+  // The dot on a company must be the colour of the same severity's tag on the Alerts page.
+  it('is the colour of the severity tags on the Alerts page', () => {
+    const colourOf = (variable: string) => new RegExp(`--${variable}:\\s*(#[0-9a-fA-F]{6})`).exec(stylesheet)?.[1];
+    const tag = (severity: string) =>
+      new RegExp(`\\.news-tag\\.severity-${severity}\\s*\\{\\s*color:\\s*var\\(--([a-z]+)\\)`).exec(stylesheet)?.[1];
+
+    expect(ALERT_COLOUR.HIGH.toLowerCase()).toBe(colourOf(tag('high')!)?.toLowerCase());
+    expect(ALERT_COLOUR.MEDIUM.toLowerCase()).toBe(colourOf(tag('medium')!)?.toLowerCase());
+    expect(ALERT_COLOUR.LOW.toLowerCase()).toBe(colourOf(tag('low')!)?.toLowerCase());
+  });
+
+  it('tells the three severities apart', () => {
+    expect(new Set(Object.values(ALERT_COLOUR)).size).toBe(3);
   });
 });

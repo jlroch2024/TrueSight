@@ -24,6 +24,12 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     List<Relationship> findByReportIdOrderByIdAsc(Long reportId);
 
+    /** The reports with at least one relationship the second AI has not checked yet, oldest first. */
+    @Query("select distinct r.reportId from Relationship r where r.secondCheck is null order by r.reportId")
+    List<Long> findReportIdsWithoutSecondCheck();
+
+    List<Relationship> findByReportIdAndSecondCheckIsNullOrderByIdAsc(Long reportId);
+
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
 
     boolean existsByCompanyIdAndCounterpartyIdAndTypeAndEvidence(

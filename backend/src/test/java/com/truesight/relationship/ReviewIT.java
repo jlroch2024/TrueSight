@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -60,6 +61,14 @@ class ReviewIT {
                 "https://www.sec.gov/Archives/" + UUID.randomUUID(), "text"));
         return relationships.save(new Relationship(report.getId(), holding.getId(), counterparty.getId(),
                 RelationshipType.SUPPLIER, "semiconductor wafers", "We buy wafers from them."));
+    }
+
+    /** What the second AI made of this relationship, saved as the second check saves it. */
+    private Relationship secondChecked(Relationship relationship, SecondCheckVerdict verdict, String reason) {
+        relationship.setSecondCheck(verdict);
+        relationship.setSecondCheckReason(reason);
+        relationship.setSecondCheckedAt(Instant.now());
+        return relationships.save(relationship);
     }
 
     /** A portfolio of this user that holds these companies, already analysed. */
@@ -154,7 +163,7 @@ class ReviewIT {
         assertThat(item.toString()).doesNotContain("rv-private@example.com").doesNotContainIgnoringCase("portfolioId");
         assertThat(item.fieldNames()).toIterable()
                 .containsExactlyInAnyOrder("relationship", "reviewStatus", "reviewNote", "reviewedBy", "reviewedAt",
-                        "usedByPortfolios");
+                        "usedByPortfolios", "secondCheck", "secondCheckReason");
     }
 
     // ---- criterion 2 ---------------------------------------------------------------------------------------------
@@ -198,6 +207,102 @@ class ReviewIT {
         JsonNode all = list(bearer, "");
 
         assertThat(positionOf(all, waiting.getId())).isLessThan(positionOf(all, decided.getId()));
+    }
+
+    // ---- Second AI Checks the First: the order, the tag and the reason -------------------------------------------
+
+    @Test
+    void anUnreviewedRelationshipTheSecondCheckDoubtsComesBeforeOneUsedByMorePortfolios() throws Exception {
+        Company popular = company("Doubt Popular Holding", "DPH");
+        Company lonely = company("Doubt Lonely Holding", "DLH");
+        // The popular one is relied on by three portfolios and has the newer report, so only the doubt can put the
+        // lonely one first.
+        Relationship agreed = secondChecked(relationship(popular, company("Doubt Popular Supplier", "DPS"), "2026-06-01"),
+                SecondCheckVerdict.AGREES, "The sentence says they supply it today.");
+        Relationship unchecked = relationship(popular, company("Doubt Unchecked Supplier", "DUS"), "2026-06-01");
+        Relationship doubted = secondChecked(relationship(lonely, company("Doubt Lonely Supplier", "DLS"), "2020-01-01"),
+                SecondCheckVerdict.DOUBTS, "The sentence only describes a plan to work together.");
+        portfolioHolding("rv-doubt-1@example.com", popular);
+        portfolioHolding("rv-doubt-2@example.com", popular);
+        portfolioHolding("rv-doubt-3@example.com", popular, lonely);
+
+        JsonNode all = list(analyst(), "?status=UNREVIEWED");
+
+        assertThat(itemFor(all, agreed.getId()).path("usedByPortfolios").asLong()).isEqualTo(3);
+        assertThat(itemFor(all, doubted.getId()).path("usedByPortfolios").asLong()).isEqualTo(1);
+        assertThat(positionOf(all, doubted.getId())).isLessThan(positionOf(all, agreed.getId()));
+        assertThat(positionOf(all, doubted.getId())).isLessThan(positionOf(all, unchecked.getId()));
+    }
+
+    @Test
+    void amongTheDoubtedOnesTheOnesMorePortfoliosRelyOnComeFirst() throws Exception {
+        Company popular = company("Doubts Popular Holding", "DSP");
+        Company lonely = company("Doubts Lonely Holding", "DSL");
+        Relationship doubtedByOne = secondChecked(relationship(lonely, company("Doubts Lonely Supplier", "DSX"), "2026-06-01"),
+                SecondCheckVerdict.DOUBTS, "A competitor, not a supplier.");
+        Relationship doubtedByThree = secondChecked(relationship(popular, company("Doubts Popular Supplier", "DSY"), "2020-01-01"),
+                SecondCheckVerdict.DOUBTS, "A past relationship.");
+        portfolioHolding("rv-doubts-1@example.com", popular);
+        portfolioHolding("rv-doubts-2@example.com", popular);
+        portfolioHolding("rv-doubts-3@example.com", popular, lonely);
+
+        JsonNode all = list(analyst(), "?status=UNREVIEWED");
+
+        assertThat(positionOf(all, doubtedByThree.getId())).isLessThan(positionOf(all, doubtedByOne.getId()));
+    }
+
+    @Test
+    void aDoubtedRelationshipAnAnalystHasAlreadyDecidedStaysBelowEveryUnreviewedOne() throws Exception {
+        Company holding = company("Decided Doubt Holding", "DDH");
+        Relationship decided = secondChecked(relationship(holding, company("Decided Doubt Supplier", "DDS"), "2026-06-01"),
+                SecondCheckVerdict.DOUBTS, "Only a possibility.");
+        Relationship waiting = relationship(holding, company("Waiting Supplier", "WTS"), "2020-01-01");
+        String bearer = analyst();
+        decide(bearer, decided.getId(), "{\"decision\":\"APPROVED\"}").andExpect(status().isOk());
+
+        JsonNode all = list(bearer, "");
+
+        assertThat(positionOf(all, waiting.getId())).isLessThan(positionOf(all, decided.getId()));
+        // The doubt is still there to read, beside the decision.
+        assertThat(itemFor(all, decided.getId()).path("secondCheck").asText()).isEqualTo("DOUBTS");
+    }
+
+    @Test
+    void eachItemCarriesWhatTheSecondCheckMadeOfItAndWhy() throws Exception {
+        Company holding = company("Second Check Fields Holding", "SCF");
+        Relationship doubted = secondChecked(relationship(holding, company("Fields Doubted Supplier", "FDS"), "2026-02-25"),
+                SecondCheckVerdict.DOUBTS, "The sentence only describes a plan to work together.");
+        Relationship agreed = secondChecked(relationship(holding, company("Fields Agreed Supplier", "FAS"), "2026-02-25"),
+                SecondCheckVerdict.AGREES, "The sentence says they supply it today.");
+        Relationship unchecked = relationship(holding, company("Fields Unchecked Supplier", "FUS"), "2026-02-25");
+
+        JsonNode all = list(analyst(), "?status=UNREVIEWED");
+
+        assertThat(itemFor(all, doubted.getId()).path("secondCheck").asText()).isEqualTo("DOUBTS");
+        assertThat(itemFor(all, doubted.getId()).path("secondCheckReason").asText())
+                .isEqualTo("The sentence only describes a plan to work together.");
+        assertThat(itemFor(all, agreed.getId()).path("secondCheck").asText()).isEqualTo("AGREES");
+        assertThat(itemFor(all, agreed.getId()).path("secondCheckReason").asText())
+                .isEqualTo("The sentence says they supply it today.");
+        assertThat(itemFor(all, unchecked.getId()).path("secondCheck").isNull()).isTrue();
+        assertThat(itemFor(all, unchecked.getId()).path("secondCheckReason").isNull()).isTrue();
+    }
+
+    @Test
+    void aDoubtDoesNotChangeTheGraphUntilAnAnalystDecides() throws Exception {
+        Company holding = company("Graph Doubt Holding", "GDH");
+        Relationship doubted = secondChecked(relationship(holding, company("Graph Doubt Supplier", "GDS"), "2026-02-25"),
+                SecondCheckVerdict.DOUBTS, "Only a plan.");
+        Portfolio portfolio = portfolioHolding("rv-graph-doubt@example.com", holding);
+
+        assertThat(itemFor(wrap(graphOf(portfolio, "rv-graph-doubt@example.com")), doubted.getId())).isNotNull();
+        assertThat(relationships.findById(doubted.getId()).orElseThrow().getReviewStatus())
+                .isEqualTo(ReviewStatus.UNREVIEWED);
+
+        decide(analyst(), doubted.getId(), "{\"decision\":\"REJECTED\",\"note\":\"Only a plan.\"}")
+                .andExpect(status().isOk());
+
+        assertThat(itemFor(wrap(graphOf(portfolio, "rv-graph-doubt@example.com")), doubted.getId())).isNull();
     }
 
     // ---- criterion 3 ---------------------------------------------------------------------------------------------

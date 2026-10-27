@@ -82,6 +82,11 @@ public class User {
         this.displayName = displayName;
     }
 
+    /** What to call this user: their display name once they set one, otherwise their email. */
+    public String nameShown() {
+        return displayName == null || displayName.isBlank() ? email : displayName;
+    }
+
     /** Takes a hash, never the password as typed. */
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;

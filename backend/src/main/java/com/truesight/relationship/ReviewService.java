@@ -37,7 +37,8 @@ public class ReviewService {
 
     /**
      * The relationships with this review status, or all of them when {@code status} is null. Unreviewed ones come
-     * first; then the ones more portfolios rely on; then the newest report.
+     * first, and among them the ones the second AI doubts; then the ones more portfolios rely on; then the newest
+     * report.
      */
     @Transactional(readOnly = true)
     public List<ReviewItemResponse> list(ReviewStatus status) {
@@ -45,6 +46,8 @@ public class ReviewService {
         return toItems(found).stream()
                 .sorted(Comparator
                         .comparing((ReviewItemResponse item) -> item.reviewStatus() != ReviewStatus.UNREVIEWED)
+                        .thenComparing((ReviewItemResponse item) -> !(item.reviewStatus() == ReviewStatus.UNREVIEWED
+                                && item.secondCheck() == SecondCheckVerdict.DOUBTS))
                         .thenComparing(ReviewItemResponse::usedByPortfolios, Comparator.reverseOrder())
                         .thenComparing((ReviewItemResponse item) -> item.relationship().report().filingDate(),
                                 Comparator.reverseOrder())
@@ -81,9 +84,10 @@ public class ReviewService {
         for (Object[] row : relationships.countPortfoliosUsingEach()) {
             usedBy.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
         }
-        Map<Long, String> reviewerEmail = users.findAllById(found.stream()
+        // The Analyst's display name once they have set one, otherwise their email.
+        Map<Long, String> reviewerName = users.findAllById(found.stream()
                         .map(Relationship::getReviewedBy).filter(id -> id != null).distinct().toList())
-                .stream().collect(Collectors.toMap(User::getId, User::getEmail, (a, b) -> a));
+                .stream().collect(Collectors.toMap(User::getId, User::nameShown, (a, b) -> a));
         Map<Long, Relationship> byId = found.stream().collect(Collectors.toMap(Relationship::getId, Function.identity()));
 
         return responses.stream().map(response -> {
@@ -92,9 +96,11 @@ public class ReviewService {
                     response,
                     relationship.getReviewStatus(),
                     relationship.getReviewNote(),
-                    reviewerEmail.get(relationship.getReviewedBy()),
+                    reviewerName.get(relationship.getReviewedBy()),
                     relationship.getReviewedAt(),
-                    usedBy.getOrDefault(relationship.getId(), 0L));
+                    usedBy.getOrDefault(relationship.getId(), 0L),
+                    relationship.getSecondCheck(),
+                    relationship.getSecondCheckReason());
         }).toList();
     }
 }

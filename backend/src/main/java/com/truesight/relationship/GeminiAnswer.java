@@ -43,6 +43,9 @@ public class GeminiAnswer {
     /** A criticality answer matched to an already-known counterparty. */
     public record CriticalityFound(String company, Criticality criticality, String quote) { }
 
+    /** One verdict of the second check, for the claim numbered {@code index} (from 1). */
+    public record SecondCheckFound(int index, SecondCheckVerdict verdict, String reason) { }
+
     public List<Found> read(String response) {
         JsonNode list;
         try {
@@ -115,6 +118,29 @@ public class GeminiAnswer {
         return found;
     }
 
+    /**
+     * Reads the second check's answer: a JSON list of {@code { index, verdict, reason }}. An answer that is not a list
+     * throws {@link UnreadableAnswerException}. An item with no whole-number index, or a verdict other than AGREES or
+     * DOUBTS, is left out, so its claim stays unchecked for the pass to ask about again.
+     */
+    public List<SecondCheckFound> readSecondChecks(String response) {
+        JsonNode list;
+        try {
+            list = mapper.readTree(answerText(response));
+        } catch (JacksonException exception) {
+            throw new UnreadableAnswerException();
+        }
+        if (list == null || !list.isArray()) throw new UnreadableAnswerException();
+        List<SecondCheckFound> found = new ArrayList<>();
+        for (JsonNode item : list) {
+            JsonNode index = item.path("index");
+            SecondCheckVerdict verdict = verdict(text(item, "verdict"));
+            if (!index.isIntegralNumber() || verdict == null) continue;
+            found.add(new SecondCheckFound(index.asInt(), verdict, text(item, "reason")));
+        }
+        return found;
+    }
+
     /** Joins the text of the answer's parts, skipping Gemini's "thought" parts. */
     private String answerText(String response) {
         if (response == null || response.isBlank()) {
@@ -155,6 +181,14 @@ public class GeminiAnswer {
     public static class UnreadableAnswerException extends RuntimeException {
         public UnreadableAnswerException() {
             super("The AI's answer was not the JSON list that was asked for.");
+        }
+    }
+
+    private static SecondCheckVerdict verdict(String value) {
+        try {
+            return value.isEmpty() ? null : SecondCheckVerdict.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            return null;
         }
     }
 

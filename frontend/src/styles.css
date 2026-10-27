@@ -164,6 +164,51 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+/* The header's Profile button: the display name (or the email) as a quiet button that opens the Profile window. */
+.profile-button {
+  min-height: 0;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  clip-path: none;
+  font-size: 12px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.profile-button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+/* The Profile window: the email, then two forms. */
+.window.profile-window {
+  width: min(480px, 100%);
+}
+
+.profile-email {
+  margin: 0 0 4px;
+}
+
+.profile-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.profile-section h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.profile-section .actions {
+  align-items: center;
+  margin-top: 12px;
+}
+
 .layout {
   display: flex;
   min-height: calc(100vh - 76px);
@@ -929,7 +974,7 @@ table.holdings td:nth-child(7) {
 .news-check .small {
   text-align: right;
 }
-/* In the News tab: a small outlined Check News with its status beside it. */
+/* A small outlined Check News with its status beside it. */
 .news-check.compact {
   flex-direction: row;
   flex-wrap: wrap;
@@ -1016,10 +1061,6 @@ table.holdings td:nth-child(7) {
   border: 0;
   background: var(--panel-raised);
   color: var(--accent);
-}
-
-.panel-tabs .drawer-close {
-  flex: none;
 }
 
 .workspace-inspector {
@@ -1297,50 +1338,22 @@ button.panel-row.chosen {
   color: var(--lime);
 }
 
-/* The left panel's tabs, Holdings and News. */
-.panel-tabs {
-  display: flex;
-  margin: -14px -14px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.panel-tabs button {
-  flex: 1;
-  min-height: 40px;
-  padding: 8px 10px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  clip-path: none;
-}
-
-.panel-tabs button:hover:not(:disabled) {
-  background: var(--panel-raised);
-  color: var(--text);
-}
-
-.panel-tabs button[aria-selected='true'] {
-  border-bottom-color: var(--accent);
-  color: var(--text);
-}
-
-/* The News tab, and a company's headlines in the Inspector. */
-.news-panel .news-check {
-  margin-bottom: 14px;
-}
-
-.news-filter {
+/* The left panel's heading, with the button that folds it. */
+.panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 10px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  font-size: 13px;
+  margin: -14px -14px 14px;
+  padding: 0 4px 0 14px;
+  border-bottom: 1px solid var(--border);
 }
 
+.panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* A company's open alerts in the Inspector. */
 .news-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1398,26 +1411,8 @@ button.panel-row.chosen {
   font-size: 12px;
 }
 
-.company-tag {
-  min-height: 0;
-  padding: 2px 7px;
-  border: 1px solid var(--border);
-  background: var(--panel-raised);
-  color: var(--text);
-  clip-path: none;
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
-
-.company-tag.holding {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.company-tag:hover:not(:disabled) {
-  border-color: var(--lime);
-  background: var(--panel-raised);
-  color: var(--lime);
+.alert-path {
+  margin: 0 0 8px;
 }
 
 .small-button {
@@ -1633,6 +1628,19 @@ button.panel-row.chosen {
   font-style: italic;
 }
 
+/* What a second AI doubts about a relationship: an amber tag, then its reason. */
+.second-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.second-check-tag {
+  color: var(--amber);
+}
+
 .review-approved {
   color: var(--lime);
 }
@@ -1652,6 +1660,37 @@ button.panel-row.chosen {
   padding: 8px;
   border: 1px solid var(--border);
   background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+/* The Analyst Desk's Events tab. */
+.judged-article h3 {
+  margin: 4px 0 10px;
+}
+
+.judged-article .chips {
+  margin-bottom: 10px;
+}
+
+.overrule-form {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.overrule-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.overrule-form textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
   color: var(--text);
   font: inherit;
 }
@@ -1712,7 +1751,8 @@ button.panel-row.chosen {
     align-items: flex-start;
   }
 
-  .account-email {
+  .account-email,
+  .profile-button {
     max-width: calc(100vw - 140px);
     font-size: 11px;
   }
@@ -1870,4 +1910,23 @@ table.ai-calls td:nth-child(7) {
 
 .ai-call-facts {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+/* Adding, re-weighting and removing one holding on the Portfolio page. */
+.add-holding {
+  margin: 0 0 14px;
+}
+
+.add-holding input {
+  flex: 0 1 140px;
+  min-width: 100px;
+}
+
+.weight-input {
+  width: 90px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
 }

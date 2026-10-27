@@ -1,5 +1,7 @@
 // Turns a portfolio's holdings and relationships into graph elements. Kept apart from the graph that draws them
 // (src/graph/) so this logic can be tested on its own, in milliseconds.
+import type { AlertEvent, ReachedHolding } from '../api/alerts';
+import type { Severity } from '../api/news';
 import type { Holding } from '../api/portfolios';
 import type { CompanySummary, Criticality, Relationship, ReviewStatus } from '../api/relationships';
 
@@ -898,4 +900,80 @@ function clearTheLines(
     }
     if (!moved) break;
   }
+}
+
+// ---- Alerts on the graph -------------------------------------------------------------------------------------------
+
+/** The events still open: a dismissed one is no longer news to act on. */
+export function openAlerts(events: AlertEvent[]): AlertEvent[] {
+  return events.filter((event) => event.status !== 'DISMISSED');
+}
+
+/**
+ * How an alert reaches a holding, as the Alerts page words it: "TSMC supplies Nvidia", or with a company between,
+ * "Zeiss supplies TSMC, which supplies Nvidia". Null for an alert about the holding itself, which runs through no
+ * supplier or customer.
+ */
+export function reachPath(reached: Pick<ReachedHolding, 'supplierName' | 'middleName' | 'customerName'>): string | null {
+  const { supplierName, middleName, customerName } = reached;
+  if (supplierName && middleName && customerName) {
+    return `${supplierName} supplies ${middleName}, which supplies ${customerName}`;
+  }
+  if (supplierName && customerName) return `${supplierName} supplies ${customerName}`;
+  return null;
+}
+
+/**
+ * The open alerts to show for a company: the ones about it, found by the stored name of the company each article is
+ * about (the name the graph's companies are keyed by); and, for a holding, the ones that reach it through a supplier
+ * or customer, found by its holding id. Whatever their age.
+ */
+export function alertsFor(events: AlertEvent[], companyName: string, holdingId: number | null): AlertEvent[] {
+  return openAlerts(events).filter(
+    (event) =>
+      event.headline.article.companyName === companyName ||
+      (holdingId !== null && event.holdings.some((reached) => reached.holdingId === holdingId)),
+  );
+}
+
+/**
+ * The paths to show under an alert: for a holding, how the alert reaches that holding ("Named in the Article" when
+ * the alert is about the holding itself); for any other company, how it reaches the portfolio's holdings.
+ */
+export function alertPaths(event: AlertEvent, holdingId: number | null): string[] {
+  const own = holdingId === null ? [] : event.holdings.filter((reached) => reached.holdingId === holdingId);
+  const reached = own.length > 0 ? own : event.holdings;
+  const paths = reached.map((found) => reachPath(found) ?? (own.length > 0 ? 'Named in the Article' : null));
+  return [...new Set(paths.filter((path): path is string => path !== null))];
+}
+
+const SEVERITY_ORDER: Severity[] = ['LOW', 'MEDIUM', 'HIGH'];
+
+/** The most severe of these alerts, or null when there are none. */
+export function severestOf(events: Pick<AlertEvent, 'headline'>[]): Severity | null {
+  let worst: Severity | null = null;
+  for (const event of events) {
+    const { severity } = event.headline.assessment;
+    if (worst === null || SEVERITY_ORDER.indexOf(severity) > SEVERITY_ORDER.indexOf(worst)) worst = severity;
+  }
+  return worst;
+}
+
+/**
+ * The most severe open alert of each company on the graph, by node id: what the graph's dots show. A company with no
+ * open alert, or whose alerts are all dismissed, has no entry.
+ */
+export function alertSeverities(
+  events: AlertEvent[],
+  nodes: GraphNode[],
+  holdings: Holding[],
+  nodeIdByHolding: Map<number, string>,
+): Map<string, Severity> {
+  const severities = new Map<string, Severity>();
+  for (const node of nodes) {
+    const holding = holdings.find((found) => nodeIdByHolding.get(found.id) === node.id);
+    const worst = severestOf(alertsFor(events, node.name, holding?.id ?? null));
+    if (worst) severities.set(node.id, worst);
+  }
+  return severities;
 }

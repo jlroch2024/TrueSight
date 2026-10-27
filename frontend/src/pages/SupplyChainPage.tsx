@@ -6,24 +6,31 @@
 // or a supplier or customer in the Inspector). The graph keeps a chosen company in focus and centred, and draws a chosen
 // relationship's arrow selected. Clicking the graph's background lets go.
 //
-// The left panel has two tabs: Holdings, and News (Check News and the headlines it collected). "?panel=news" in the
-// address opens the News tab, as the Portfolio page's See News does.
+// The left panel lists the holdings. News reaches the user in one place, the Alerts page; here the portfolio's open
+// alerts are shown where they matter: the Inspector lists a company's open alerts, and the graph marks each company
+// that has some with a dot in its most severe alert's colour.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { type AlertEvent, alertApi } from '../api/alerts';
 import { ApiError } from '../api/client';
-import { type NewsArticle, newsApi } from '../api/news';
-import { type Holding, type Portfolio, holdingApi, portfolioApi } from '../api/portfolios';
+import { type Holding, holdingApi } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
 import { logoApi } from '../api/logos';
 import { settingsApi } from '../api/settings';
 import { HoldingsPanel } from '../components/HoldingsPanel';
 import { Inspector } from '../components/Inspector';
-import { NewsPanel } from '../components/NewsPanel';
 import { LivingGraph } from '../graph/LivingGraph';
 import { risksFrom } from '../graph/model';
 import { paths } from '../paths';
-import { type Selection, buildGraphElements, holdingNodeIds, sharedCompanies, withSharedSummaries } from './supplyChain';
+import {
+  type Selection,
+  alertSeverities,
+  buildGraphElements,
+  holdingNodeIds,
+  openAlerts,
+  sharedCompanies,
+  withSharedSummaries,
+} from './supplyChain';
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Something went wrong.';
@@ -44,15 +51,8 @@ export function SupplyChainPage() {
   const [logoToken, setLogoToken] = useState('');
   // The website domains of companies without a ticker, so their logos can be found too.
   const [logoDomains, setLogoDomains] = useState<Record<string, string>>({});
-  const [searchParams] = useSearchParams();
-  const [panel, setPanel] = useState<'holdings' | 'news'>(searchParams.get('panel') === 'news' ? 'news' : 'holdings');
-  // The portfolio, for Check News and its status; null until it arrives.
-  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
-  // undefined while loading.
-  const [news, setNews] = useState<NewsArticle[] | undefined>(undefined);
-  const [newsError, setNewsError] = useState<string | null>(null);
-  // The company the News tab is narrowed to, by name.
-  const [newsCompany, setNewsCompany] = useState<string | null>(null);
+  // The portfolio's open alerts, loaded once; undefined until they arrive, or when they could not be loaded.
+  const [alerts, setAlerts] = useState<AlertEvent[] | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -82,57 +82,19 @@ export function SupplyChainPage() {
 
   useEffect(() => {
     let active = true;
-    setPortfolio(null);
-    portfolioApi
-      .list()
-      .then((all) => {
-        if (active) setPortfolio(all.find((p) => String(p.id) === portfolioId) ?? null);
+    setAlerts(undefined);
+    alertApi
+      .list(portfolioId)
+      .then((found) => {
+        if (active) setAlerts(openAlerts(found.alerts ?? []));
       })
+      // The graph is still useful without them; the Inspector then shows no alerts section at all.
       .catch(() => {});
     return () => {
       active = false;
     };
   }, [portfolioId]);
-
-  // The news is loaded at first, and again each time a news check finishes.
-  const newsCheckedAt = portfolio?.newsCheckedAt ?? null;
-  const newsChecking = portfolio?.newsStatus === 'CHECKING';
-  useEffect(() => {
-    if (newsChecking) return;
-    let active = true;
-    setNewsError(null);
-    newsApi
-      .list(portfolioId)
-      .then((articles) => {
-        if (active) setNews(articles);
-      })
-      .catch((e: unknown) => {
-        if (active) setNewsError(messageOf(e));
-      });
-    return () => {
-      active = false;
-    };
-  }, [portfolioId, newsCheckedAt, newsChecking]);
-
-  // The portfolio's open alerts, loaded with the news: the graph marks the links they run through.
-  const [alerts, setAlerts] = useState<AlertEvent[]>([]);
-  useEffect(() => {
-    if (newsChecking) return;
-    let active = true;
-    alertApi
-      .list(portfolioId)
-      .then((found) => {
-        if (active) setAlerts(found.alerts ?? []);
-      })
-      // The graph is still useful without them.
-      .catch(() => {
-        if (active) setAlerts([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [portfolioId, newsCheckedAt, newsChecking]);
-  const risks = useMemo(() => risksFrom(alerts), [alerts]);
+  const risks = useMemo(() => risksFrom(alerts ?? []), [alerts]);
 
   const { nodes, edges } = useMemo(
     () => buildGraphElements(relationships ?? [], holdings),
@@ -142,6 +104,11 @@ export function SupplyChainPage() {
   const shared = useMemo(() => sharedCompanies(relationships ?? [], nodes), [relationships, nodes]);
   const graphNodes = useMemo(() => withSharedSummaries(nodes, shared), [nodes, shared]);
   const nodeIdByHolding = useMemo(() => holdingNodeIds(holdings, nodes), [holdings, nodes]);
+  // The most severe open alert of each company, for the dots on the graph.
+  const alertDots = useMemo(
+    () => alertSeverities(alerts ?? [], graphNodes, holdings, nodeIdByHolding),
+    [alerts, graphNodes, holdings, nodeIdByHolding],
+  );
 
   // Only with a Logo.dev token, and only for companies without a ticker. A failure just leaves their letters.
   useEffect(() => {
@@ -167,16 +134,6 @@ export function SupplyChainPage() {
     (relationshipId: number) => setSelection({ kind: 'relationship', relationshipId }),
     [],
   );
-  // A company named in the news: chosen on the graph, found by its name as the graph's companies are.
-  const selectCompanyByName = (name: string) => {
-    const node = nodes.find((n) => n.name === name);
-    if (node) setSelection({ kind: 'company', nodeId: node.id });
-  };
-  const showAllNews = (name: string) => {
-    setNewsCompany(name);
-    setPanel('news');
-  };
-
   if (error) return <p className="error">{error}</p>;
   if (relationships === undefined) return <p className="muted">Loading…</p>;
 
@@ -207,68 +164,33 @@ export function SupplyChainPage() {
       <h1>Supply Chain</h1>
 
       <div className={`workspace${leftOpen ? '' : ' left-closed'}${selection ? '' : ' inspector-closed'}`}>
-        <aside className="workspace-panel workspace-left" aria-label="Holdings and News">
+        <aside className="workspace-panel workspace-left" aria-label="Holdings">
           {!leftOpen ? (
             <button type="button" className="drawer-strip" onClick={() => setLeftOpen(true)}>
-              Show Holdings and News
+              Show Holdings
             </button>
           ) : (
             <>
-              <div className="panel-tabs" role="tablist" aria-label="Left panel">
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-holdings"
-                  aria-selected={panel === 'holdings'}
-                  aria-controls="panel-holdings"
-                  onClick={() => setPanel('holdings')}
-                >
-                  Holdings
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="tab-news"
-                  aria-selected={panel === 'news'}
-                  aria-controls="panel-news"
-                  onClick={() => setPanel('news')}
-                >
-                  News{news && news.length > 0 ? ` (${news.length})` : ''}
-                </button>
+              <div className="panel-head">
+                <h2>Holdings</h2>
                 <button
                   type="button"
                   className="drawer-close"
-                  aria-label="Hide Holdings and News"
-                  title="Hide Holdings and News"
+                  aria-label="Hide Holdings"
+                  title="Hide Holdings"
                   onClick={() => setLeftOpen(false)}
                 >
                   {'\u2039'}
                 </button>
               </div>
-              {panel === 'holdings' ? (
-                <div role="tabpanel" id="panel-holdings" aria-labelledby="tab-holdings">
-                  <HoldingsPanel
-                    holdings={holdings}
-                    nodeIdByHolding={nodeIdByHolding}
-                    relationships={relationships}
-                    shared={shared}
-                    selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
-                    onSelect={selectNode}
-                  />
-                </div>
-              ) : (
-                <div role="tabpanel" id="panel-news" aria-labelledby="tab-news">
-                  <NewsPanel
-                    portfolio={portfolio}
-                    onPortfolioChange={setPortfolio}
-                    articles={news}
-                    error={newsError}
-                    companyFilter={newsCompany}
-                    onClearFilter={() => setNewsCompany(null)}
-                    onSelectCompany={selectCompanyByName}
-                  />
-                </div>
-              )}
+              <HoldingsPanel
+                holdings={holdings}
+                nodeIdByHolding={nodeIdByHolding}
+                relationships={relationships}
+                shared={shared}
+                selectedNodeId={selection?.kind === 'company' ? selection.nodeId : null}
+                onSelect={selectNode}
+              />
             </>
           )}
         </aside>
@@ -285,6 +207,7 @@ export function SupplyChainPage() {
             logoDomains={logoDomains}
             layoutKey={`truesight.graph.${portfolioId}`}
             risks={risks}
+            alertDots={alertDots}
           />
         </div>
 
@@ -307,8 +230,7 @@ export function SupplyChainPage() {
               nodeIdByHolding={nodeIdByHolding}
               onSelectNode={selectNode}
               onSelectRelationship={selectRelationship}
-              news={news}
-              onShowAllNews={showAllNews}
+              alerts={alerts}
             />
           </aside>
         )}

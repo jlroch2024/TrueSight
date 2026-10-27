@@ -2,6 +2,8 @@ package com.truesight.news;
 
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
+import com.truesight.portfolio.Portfolio;
+import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
@@ -34,6 +36,9 @@ import java.util.stream.Stream;
  *
  * <p>Noise never becomes an alert, and an article that already has an alert in this portfolio is skipped, so checking
  * the news again never repeats one.
+ *
+ * <p>When an analyst changes an article's judgement, {@link #rebuildFor} brings every portfolio's alerts for it up to
+ * date at once.
  */
 @Component
 @Order(2)
@@ -48,6 +53,7 @@ public class AlertBuilder implements NewsCheckStep {
             .thenComparing(PathCandidate::second, PREFERRED);
 
     private final NewsCheckService newsCheck;
+    private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
     private final RelationshipRepository relationships;
     private final NewsArticleRepository articles;
@@ -56,10 +62,12 @@ public class AlertBuilder implements NewsCheckStep {
     private final AlertHoldingRepository alertHoldings;
     private final TransactionTemplate transaction;
 
-    public AlertBuilder(NewsCheckService newsCheck, HoldingRepository holdings, RelationshipRepository relationships,
-                        NewsArticleRepository articles, NewsAssessmentRepository assessments, AlertRepository alerts,
+    public AlertBuilder(NewsCheckService newsCheck, PortfolioRepository portfolios, HoldingRepository holdings,
+                        RelationshipRepository relationships, NewsArticleRepository articles,
+                        NewsAssessmentRepository assessments, AlertRepository alerts,
                         AlertHoldingRepository alertHoldings, TransactionTemplate transaction) {
         this.newsCheck = newsCheck;
+        this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
         this.articles = articles;
@@ -71,6 +79,29 @@ public class AlertBuilder implements NewsCheckStep {
 
     @Override
     public void run(Long portfolioId) {
+        build(portfolioId, null);
+    }
+
+    /**
+     * Brings every portfolio's alerts for this article in line with its judgement, after an analyst changes it. Noise:
+     * the article's alerts go from every portfolio. An event: each portfolio whose news covers the article's company
+     * gets its alert, if it has none yet. A new severity needs nothing here, as alerts read it from the assessment.
+     */
+    public void rebuildFor(Long articleId) {
+        NewsArticle article = articles.findById(articleId).orElse(null);
+        if (article == null) return;
+        boolean event = assessments.findByArticleId(articleId).map(NewsAssessment::isEvent).orElse(false);
+        if (!event) {
+            transaction.executeWithoutResult(status -> alerts.deleteByArticleId(articleId));
+            return;
+        }
+        for (Portfolio portfolio : portfolios.findAll()) {
+            build(portfolio.getId(), article);
+        }
+    }
+
+    /** Builds the portfolio's missing alerts: for every article its news covers, or only for {@code only}. */
+    private void build(Long portfolioId, NewsArticle only) {
         List<Holding> held = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId).stream()
                 .filter(holding -> holding.getCompanyId() != null)
                 .toList();
@@ -81,7 +112,9 @@ public class AlertBuilder implements NewsCheckStep {
                 .collect(Collectors.toSet());
         if (checked.isEmpty()) return;
 
-        List<NewsArticle> found = articles.findByCompanyIdInOrderByIdAsc(checked);
+        List<NewsArticle> found = only == null ? articles.findByCompanyIdInOrderByIdAsc(checked)
+                : checked.contains(only.getCompanyId()) ? List.of(only) : List.of();
+        if (found.isEmpty()) return;
         Set<Long> events = assessments.findByArticleIdIn(found.stream().map(NewsArticle::getId).toList()).stream()
                 .filter(NewsAssessment::isEvent)
                 .map(NewsAssessment::getArticleId)

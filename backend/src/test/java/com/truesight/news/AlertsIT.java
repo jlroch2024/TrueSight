@@ -80,6 +80,7 @@ class AlertsIT {
     @Autowired NewsAssessmentRepository assessments;
     @Autowired AlertRepository alerts;
     @Autowired AlertHoldingRepository alertHoldings;
+    @Autowired RecommendationRepository recommendations;
 
     private Map<HeadlineKey, NewsItem> sampleByHeadline;
     private Company nvidia;
@@ -139,6 +140,8 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].headline.article.publishedAt")
                         .value(article.getPublishedAt().truncatedTo(ChronoUnit.MICROS).toString()))
                 .andExpect(jsonPath("$.alerts[0].headline.article.url").value(article.getUrl()))
+                // The stored name of the company the article is about, which is how the graph keys its companies.
+                .andExpect(jsonPath("$.alerts[0].headline.article.companyName").value(tsmc.getName()))
                 .andExpect(jsonPath("$.alerts[0].headline.assessment.eventType").value("PRODUCTION_STOP"))
                 .andExpect(jsonPath("$.alerts[0].headline.assessment.severity").value("HIGH"))
                 .andExpect(jsonPath("$.alerts[0].headline.assessment.confidence").value("MEDIUM"))
@@ -156,6 +159,76 @@ class AlertsIT {
                 .andExpect(jsonPath("$.alerts[0].holdings[0].customerName").value("NVIDIA"))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
                 .andExpect(jsonPath("$.alerts[0].holdings[0].reviewStatus").value("UNREVIEWED"));
+    }
+
+    @Test
+    void managersSeeOnlyAnApprovedRecommendationAndItsEditedText() throws Exception {
+        String email = "alerts-recommendation@example.com";
+        Portfolio portfolio = portfolio(email);
+        hold(portfolio, nvidia, "40");
+        NewsArticle article = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.HIGH, Confidence.HIGH);
+        alert(portfolio, article, "40", AlertStatus.NEW);
+
+        Recommendation recommendation = new Recommendation(article.getId(), "Original suggestion.");
+        recommendation.setEditedText("Check the supplier delivery updates.");
+        recommendation.setStatus(RecommendationStatus.APPROVED);
+        recommendations.save(recommendation);
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].recommendation").value("Check the supplier delivery updates."));
+
+        recommendation.setStatus(RecommendationStatus.PENDING);
+        recommendations.save(recommendation);
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
+
+        recommendation.setStatus(RecommendationStatus.WITHHELD);
+        recommendations.save(recommendation);
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
+    }
+
+    @Test
+    void theArticlesCompanyNameIsItsStoredNameNotItsDisplayNameAndItsHoldingsStayDisplayNames() throws Exception {
+        String email = "alerts-company-name@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        NewsArticle article = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.HIGH, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].headline.article.companyName").value(tsmc.getName()))
+                .andExpect(jsonPath("$.alerts[0].headline.article.companyName")
+                        .value(org.hamcrest.Matchers.not("Taiwan Semiconductor Manufacturing")))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value("Taiwan Semiconductor Manufacturing"));
+    }
+
+    @Test
+    void anAlertAboutTheHoldingItselfNamesTheHoldingsCompany() throws Exception {
+        String email = "alerts-company-name-direct@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        NewsArticle article = article(nvidia, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.MEDIUM, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), null));
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].headline.article.companyName").value(nvidia.getName()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].supplierName").value(nullValue()));
     }
 
     @Test
@@ -473,7 +546,8 @@ class AlertsIT {
                 .andExpect(jsonPath("$.message").value("An alert is either open or dismissed."));
         singleStatus(email, portfolio, alert, "DISMISSED")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DISMISSED"));
+                .andExpect(jsonPath("$.status").value("DISMISSED"))
+                .andExpect(jsonPath("$.article.companyName").value(tsmc.getName()));
         singleStatus(email, portfolio, alert, "NEW")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("NEW"));
