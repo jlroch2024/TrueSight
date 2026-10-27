@@ -67,8 +67,11 @@ class NewsListIT {
     void nvidiaHeldWithTsmcAsItsSupplier() {
         sample = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        nvidia = cleanCompany("NVIDIA Corporation News List " + suffix, null, "NVDA");
-        tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited News List " + suffix, null, "TSM");
+        // Tickers of their own: with NVDA and TSM, each test's "NVIDIA ..." and "Taiwan ..." companies would agree with
+        // the ones an earlier test (or NVIDIA Corporation itself) saved, and the directory would join them, together
+        // with their news (the same ticker and agreeing names).
+        nvidia = cleanCompany("NVIDIA Corporation News List " + suffix, null, "NV" + suffix);
+        tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited News List " + suffix, null, "TS" + suffix);
         // A company with news saved, but outside this portfolio's supply chain.
         outsider = cleanCompany("Panasonic News List " + suffix, null, null);
         reports.deleteByCompanyId(nvidia.getId());
@@ -91,7 +94,7 @@ class NewsListIT {
 
         mockMvc.perform(get("/api/portfolios/{id}/news", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$", hasSize(3))) //
                 .andExpect(jsonPath("$[0].title").value(sample.get(0).title()))
                 .andExpect(jsonPath("$[0].source").value(sample.get(0).source()))
                 .andExpect(jsonPath("$[0].url").value(sample.get(0).url()))
@@ -102,7 +105,8 @@ class NewsListIT {
                 .andExpect(jsonPath("$[1].title").value(sample.get(1).title()))
                 .andExpect(jsonPath("$[1].company.name").value(nvidia.getName()))
                 .andExpect(jsonPath("$[1].isHolding").value(true))
-                .andExpect(jsonPath("$[2].title").value(sample.get(2).title()));
+                .andExpect(jsonPath("$[2].title").value(sample.get(2).title())) //
+                ;
     }
 
     @Test
@@ -115,7 +119,7 @@ class NewsListIT {
 
         mockMvc.perform(get("/api/portfolios/{id}/news", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$", hasSize(1))) //
                 .andExpect(jsonPath("$[0].title").value(sample.get(0).title()));
     }
 

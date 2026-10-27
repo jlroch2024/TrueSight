@@ -181,7 +181,9 @@ class RelationshipEditIT {
 
     private Fixture fixture() {
         String suffix = UUID.randomUUID().toString();
-        Company company = companyDirectory.findOrCreate("NVIDIA Relationship Test " + suffix, null, "NVDA", List.of());
+        // No ticker: the test's company only has to be its own company. With NVDA, its "NVIDIA ..." name would agree
+        // with NVIDIA Corporation's, and the directory would join the two (the same ticker and agreeing names).
+        Company company = companyDirectory.findOrCreate("NVIDIA Relationship Test " + suffix, null, null, List.of());
         Report report = reports.save(new Report(company.getId(), "10-K",
                 "re-" + suffix.replace("-", "").substring(0, 20), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/Archives/relationship-test/" + suffix, Examples.nvidia10K()));

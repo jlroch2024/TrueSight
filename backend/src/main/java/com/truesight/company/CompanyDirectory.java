@@ -6,10 +6,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * The one way to get a company: finds it if TrueSight already knows it, otherwise creates it. Never create a
@@ -19,9 +21,11 @@ import java.util.regex.Pattern;
  * finds). Because both go through here, the same company is one row, whoever finds it first.
  *
  * <p>Matching is, in order: the SEC company number ({@code cik}); then an exact match on {@link #nameKey the tidied
- * name} of {@code name} or any {@code otherNames}, against every name TrueSight has already stored; otherwise a new
- * company is created. Two different names are only ever the same company when one of these matches: when unsure, they
- * are kept apart, because merging two different companies is worse than showing one company twice.
+ * name} of {@code name} or any {@code otherNames}, against every name TrueSight has already stored; then the same
+ * stock {@code ticker}, but only when the names also agree ({@link CompanyNameKeys#namesAgree}: "Sony" and "Sony
+ * Group"); otherwise a new company is created. A ticker alone never joins two companies, in case the AI gave a wrong
+ * one. Two different names are only ever the same company when one of these matches: when unsure, they are kept
+ * apart, because merging two different companies is worse than showing one company twice.
  */
 @Service
 public class CompanyDirectory {
@@ -60,7 +64,8 @@ public class CompanyDirectory {
      *
      * @param name       the company's name, as written, e.g. "Taiwan Semiconductor Manufacturing Company Limited"
      * @param cik        the SEC company number, or null if it does not file with the SEC
-     * @param ticker     its stock ticker, or null if unknown
+     * @param ticker     its stock ticker, or null if unknown. The same ticker joins a company to an existing one only
+     *                   when their names also agree
      * @param otherNames other names for it, such as the AI's {@code alsoKnownAs} ("TSMC"). Empty values are ignored
      */
     @Transactional
@@ -77,6 +82,9 @@ public class CompanyDirectory {
             company = names.findByNameKey(nameKey(allNames.get(i)))
                     .flatMap(known -> companies.findById(known.getCompanyId()))
                     .orElse(null);
+        }
+        if (company == null && ticker != null && !ticker.isBlank()) {
+            company = withSameTickerAndAgreeingName(ticker.strip(), cik, allNames);
         }
         if (company == null) {
             company = companies.save(new Company(name, cik, ticker));
@@ -97,7 +105,7 @@ public class CompanyDirectory {
      * is dropped, and an ending such as "Inc.", "Corp", "Company", "Ltd.", "Limited" or "N.V." is dropped from the
      * end, one word at a time (so "Co., Ltd." loses both). Two names with the same key are the same company.
      */
-    static String nameKey(String name) {
+    public static String nameKey(String name) {
         String cleaned = SEC_REGISTRATION_MARK.matcher(name).replaceFirst("")
                 .toLowerCase(Locale.ROOT)
                 .replace(".", "")
@@ -115,8 +123,40 @@ public class CompanyDirectory {
         return String.join(" ", words);
     }
 
+    /**
+     * A ticker as the AI gave it, tidied: capitals, no spaces, and only letters, digits, dots and dashes, 1 to 10
+     * characters ("BRK.B", "SONY"). Anything else, such as an empty answer or "NYSE: SONY", is no ticker at all (null).
+     * The AI's ticker comes from its own knowledge, so it is never trusted further than this.
+     */
+    public static String cleanTicker(String ticker) {
+        if (ticker == null) {
+            return null;
+        }
+        String tidy = ticker.strip().toUpperCase(Locale.ROOT);
+        return tidy.matches("[A-Z0-9][A-Z0-9.\\-]{0,9}") ? tidy : null;
+    }
+
+    /**
+     * The existing company with this ticker whose name, or any name it has been seen under, agrees with one of these
+     * names. Never one with a different SEC number. If several fit, the oldest.
+     */
+    private Company withSameTickerAndAgreeingName(String ticker, String cik, List<String> allNames) {
+        return companies.findByTickerIgnoreCase(ticker).stream()
+                .filter(candidate -> cik == null || candidate.getCik() == null || cik.equals(candidate.getCik()))
+                .filter(candidate -> knownNames(candidate).anyMatch(
+                        known -> allNames.stream().anyMatch(written -> CompanyNameKeys.namesAgree(known, written))))
+                .min(Comparator.comparing(Company::getId))
+                .orElse(null);
+    }
+
+    /** The company's own name and every other name it has been seen under. */
+    Stream<String> knownNames(Company company) {
+        return Stream.concat(Stream.of(company.getName()),
+                names.findByCompanyId(company.getId()).stream().map(CompanyName::getName));
+    }
+
     /** Stores each name not seen before, so it is matched straight away next time. */
-    private void remember(Company company, List<String> allNames) {
+    void remember(Company company, List<String> allNames) {
         for (String name : allNames) {
             String key = nameKey(name);
             if (!names.existsByNameKey(key)) {
