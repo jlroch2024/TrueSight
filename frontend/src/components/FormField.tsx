@@ -9,6 +9,7 @@ type FormFieldProps = {
   error?: string | null;
 } & Pick<InputHTMLAttributes<HTMLInputElement>, 'type' | 'autoComplete' | 'maxLength'>;
 
+/** A labelled box, with its warning under it once it has been checked and found wrong. */
 export function FormField({
   id,
   label,
@@ -24,10 +25,11 @@ export function FormField({
   const describedBy = error ? errorId : undefined;
 
   return (
-    <div className="form-field">
+    <div className="field form-field">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
+        className="input"
         type={type}
         autoComplete={autoComplete}
         maxLength={maxLength}

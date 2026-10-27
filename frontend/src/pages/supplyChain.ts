@@ -211,11 +211,15 @@ export function focusOn(nodeId: string, edges: GraphEdge[]): Focus {
   return { nodeIds, edgeIds };
 }
 
-// The colours of the holdings' chains, handed out in this order. Checked as a set against the graph's dark panel
-// (#0b2028) with the dataviz skill's palette validator, every pair against every other: each pair is told apart with
-// full colour vision (difference at least 15) and with each kind of colour blindness (at least 9), and each stands out
-// from the panel by at least 3:1. None is the teal, lime or amber that already mean holding, chosen and shared.
-export const CHAIN_COLOURS = ['#d7587e', '#185afa', '#0fac13', '#8480f2', '#a25927', '#2c9fbb', '#9d45ab'];
+// The colours of the holdings' chains, handed out in this order: green, blue and violet, then cyan, magenta and
+// yellow. The key shows them three to a row, so the first three sit on top and the last three, the printer's
+// primaries, beneath. Chosen by the product owner for how clearly they differ, at the same strength as the app's own colours (the alert
+// red, orange and teal), so none shouts louder than the rest. With full colour vision every pair differs by at least
+// 16.5 (green and cyan are the closest; 15 is where colours start to blur). They keep clear of what the graph itself
+// signals: red and orange (High and Medium disruptions and alerts; Low is a quiet white) and the amber badge of a
+// shared company, which yellow comes nearest (9.5) but which is told apart by its shape, a small numbered square. The
+// six largest holdings have a colour and the rest are grey.
+export const CHAIN_COLOURS = ['#62cf77', '#4ba3f7', '#8a59da', '#68def4', '#e06dca', '#ebdf5d'];
 
 /** A holding whose chain has a colour, for the graph's key: its ticker (or name), and the colour. */
 export type ChainKey = { id: string; label: string; colour: string };

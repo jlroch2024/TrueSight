@@ -17,6 +17,7 @@ export function tsmcSuppliesNvidia(holdingId = 1, relationshipId = 1): ReachedHo
     customerName: 'NVIDIA',
     reviewStatus: 'UNREVIEWED',
     relationshipId,
+    secondRelationshipId: null,
   };
 }
 

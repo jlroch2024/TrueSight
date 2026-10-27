@@ -1,14 +1,18 @@
-// The Analyst Desk's Events tab: the last 7 days' judged articles, for every company TrueSight follows, newest first.
-// An analyst confirms the AI's judgement, or overrules it with a note. A decision applies to every portfolio at once.
-// The note form is the confirmation, so there is no extra confirmation window.
+// The Analyst Desk's Events tool: the last 7 days' judged articles, for every company TrueSight follows, newest first.
+// An analyst approves the AI's judgement, or rejects it and says what it should be, with a note; the backend stores
+// these as Confirmed and Overruled. A decision applies to every portfolio at once. The note form is the confirmation, so
+// there is no extra confirmation window.
+import { AnimatePresence, motion } from 'motion/react';
+import { Bot, Check, Newspaper, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { EventType } from '../api/alerts';
 import { ApiError } from '../api/client';
 import type { Severity } from '../api/news';
 import { type AssessmentFilter, type JudgedArticle, type Judgement, newsReviewApi } from '../api/newsReview';
-import { RadioGroup } from '../components/RadioGroup';
+import { Confidence, EventMark, SeverityBars } from '../components/EventMark';
+import { Segmented } from '../components/Segmented';
 import { Select } from '../components/Select';
-import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatDate, openInNewTab } from '../format';
+import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, formatDate, openInNewTab } from '../format';
 
 const EMPTY: Record<AssessmentFilter, string> = {
   EVENTS: 'No undecided events from the last 7 days.',
@@ -35,8 +39,8 @@ const KIND_OPTIONS = [
   { value: 'NOISE', label: 'Noise' },
 ];
 
-/** The overrule form: the new judgement, which starts as the opposite of the current one, and the note. */
-function OverruleForm({
+/** Rejecting: the judgement it should be, which starts as the opposite of the current one, and the note. */
+function RejectForm({
   item,
   busy,
   onSave,
@@ -95,10 +99,14 @@ function OverruleForm({
         maxLength={500}
         onChange={(event) => setNote(event.target.value)}
       />
-      {unchanged && <p className="muted small">Choose a different judgement, or confirm the AI's instead.</p>}
-      <div className="actions">
-        <button type="submit" disabled={busy || unchanged || !note.trim()}>Save Overrule</button>
-        <button type="button" className="secondary" disabled={busy} onClick={onCancel}>Cancel</button>
+      {unchanged && <p className="muted small">Choose a different judgement, or approve the AI's instead.</p>}
+      <div className="review-foot">
+        <span className="grow" />
+        <button type="button" className="btn small quiet" disabled={busy} onClick={onCancel}>Cancel</button>
+        <button type="submit" className="btn small danger solid" disabled={busy || unchanged || !note.trim()}>
+          <X size={15} />
+          Save Rejection
+        </button>
       </div>
     </form>
   );
@@ -107,61 +115,84 @@ function OverruleForm({
 function JudgedCard({
   item,
   busy,
-  onConfirm,
-  onOverrule,
+  onApprove,
+  onReject,
 }: {
   item: JudgedArticle;
   busy: boolean;
-  onConfirm: () => void;
-  onOverrule: (judgement: Judgement, note: string) => void;
+  onApprove: () => void;
+  onReject: (judgement: Judgement, note: string) => void;
 }) {
-  const [overruling, setOverruling] = useState(false);
-  const { article, decision } = item;
+  const [rejecting, setRejecting] = useState(false);
+  const { article, decision, judgement } = item;
+  const event = judgement.isEvent && judgement.eventType && judgement.severity ? judgement : null;
+  const approved = decision?.decision === 'CONFIRMED';
   return (
-    <li className="card judged-article">
-      <p className="news-meta">
-        {article.source ?? 'Unknown Publisher'} · {formatDate(article.publishedAt)}
-        {item.company && <> · {item.company.displayName}</>}
+    <motion.li
+      layout
+      className="review-card glass ticks event-card"
+      data-severity={event?.severity ?? undefined}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: 72, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+    >
+      <div className="event-top">
+        {event ? (
+          <EventMark type={event.eventType!} severity={event.severity!} size={42} />
+        ) : (
+          <span className="noise-mark" aria-hidden="true"><Newspaper size={20} /></span>
+        )}
+        <div className="row-text">
+          <div className="a-top">
+            {event && <SeverityBars severity={event.severity!} />}
+            <span className="a-sev">{judgementLabel(judgement)}</span>
+            <span className="grow" />
+            <span className="confidence-label">
+              <Confidence level={item.confidence} /> {SEVERITY_LABELS[item.confidence]} Confidence
+            </span>
+          </div>
+          <h3 className="review-headline">{article.title}</h3>
+        </div>
+      </div>
+      {decision && <p className="review-meta">AI Said: {judgementLabel(item.aiSaid)}</p>}
+      {item.summary && <p className="prose">{item.summary}</p>}
+      <p className="prose">
+        <Bot size={14} className="muted inline-icon" />
+        {item.reason}
       </p>
-      <h3>{article.title}</h3>
-      <p className="chips">
-        <span className={item.judgement.isEvent ? 'news-tag' : 'news-tag not-event'}>
-          {judgementLabel(item.judgement)}
-        </span>
-        <span className="news-tag not-event">{SEVERITY_LABELS[item.confidence]} Confidence</span>
-        {decision && <span className="news-tag not-event">AI Said: {judgementLabel(item.aiSaid)}</span>}
-      </p>
-      {item.summary && <p className="alert-summary">{item.summary}</p>}
-      <p>{item.reason}</p>
       {decision && (
-        <p className="muted small judged-decision">
-          {decision.decision === 'CONFIRMED' ? 'Confirmed' : 'Overruled'} by {decision.decidedBy ?? 'an Analyst'} on{' '}
-          {formatDate(decision.decidedAt)}
+        <p className={`review-note ${approved ? 'approved' : 'rejected'}`}>
+          {approved ? 'Approved' : 'Rejected'} by {decision.decidedBy ?? 'an Analyst'} on {formatDate(decision.decidedAt)}
           {decision.note && <>: {decision.note}</>}
         </p>
       )}
 
-      {overruling ? (
-        <OverruleForm
-          item={item}
-          busy={busy}
-          onCancel={() => setOverruling(false)}
-          onSave={(judgement, note) => onOverrule(judgement, note)}
-        />
+      {rejecting ? (
+        <RejectForm item={item} busy={busy} onCancel={() => setRejecting(false)} onSave={onReject} />
       ) : (
-        <div className="actions">
-          <button type="button" className="secondary" onClick={() => openInNewTab(article.url)}>Open Article</button>
-          <button type="button" disabled={busy} onClick={onConfirm}>Confirm</button>
-          <button type="button" className="secondary" disabled={busy} onClick={() => setOverruling(true)}>
-            Overrule
+        <div className="review-foot">
+          <span className="review-meta">
+            {article.source ?? 'Unknown Publisher'} · {formatAge(article.publishedAt)}
+            {item.company && <> · {item.company.displayName}</>}
+          </span>
+          <span className="grow" />
+          <button type="button" className="btn small quiet" onClick={() => openInNewTab(article.url)}>Open Article</button>
+          <button type="button" className="btn small danger" disabled={busy} onClick={() => setRejecting(true)}>
+            <X size={15} />
+            Reject
+          </button>
+          <button type="button" className="btn small primary" disabled={busy} onClick={onApprove}>
+            <Check size={15} />
+            Approve
           </button>
         </div>
       )}
-    </li>
+    </motion.li>
   );
 }
 
-export function EventReviewPage() {
+export function EventReviewPage({ onChanged }: { onChanged?: () => void }) {
   const [filter, setFilter] = useState<AssessmentFilter>('EVENTS');
   const [items, setItems] = useState<JudgedArticle[] | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -187,6 +218,7 @@ export function EventReviewPage() {
       setItems((current) => current && (filter === 'DECIDED'
         ? current.map((candidate) => candidate.id === updated.id ? updated : candidate)
         : current.filter((candidate) => candidate.id !== updated.id)));
+      onChanged?.();
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -195,45 +227,45 @@ export function EventReviewPage() {
   }
 
   return (
-    <section className="review-page">
-      <h2>Events</h2>
-      <p className="muted">
-        Confirm or overrule the AI's judgement of each article from the last 7 days. A decision changes the alerts of
-        every portfolio at once.
-      </p>
-      <RadioGroup
-        name="event-filter"
-        label="Show"
-        value={filter}
-        options={[
-          { value: 'EVENTS', label: 'Events' },
-          { value: 'NOISE', label: 'Noise' },
-          { value: 'DECIDED', label: 'Decided' },
-        ]}
-        onChange={(next) => setFilter(next as AssessmentFilter)}
-      />
+    <>
+      <div className="queue-head">
+        <div className="queue-filter narrow">
+          <Segmented
+            label="Show"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: 'EVENTS', label: 'Events' },
+              { value: 'NOISE', label: 'Noise' },
+              { value: 'DECIDED', label: 'Decided' },
+            ]}
+          />
+        </div>
+      </div>
       {error && <p role="alert" className="error">{error}</p>}
       {loadError ? (
         <p className="error">{loadError}</p>
       ) : items === undefined ? (
         <p className="muted">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="muted">{EMPTY[filter]}</p>
+        <div className="glass ticks empty">{EMPTY[filter]}</div>
       ) : (
-        <ol className="recommendation-list">
-          {items.map((item) => (
-            <JudgedCard
-              key={item.id}
-              item={item}
-              busy={busy === item.id}
-              onConfirm={() => { void decide(item, () => newsReviewApi.confirmJudgement(item.id)); }}
-              onOverrule={(judgement, note) => {
-                void decide(item, () => newsReviewApi.overrule(item.id, { ...judgement, note }));
-              }}
-            />
-          ))}
+        <ol className="review-list">
+          <AnimatePresence initial={false}>
+            {items.map((item) => (
+              <JudgedCard
+                key={item.id}
+                item={item}
+                busy={busy === item.id}
+                onApprove={() => { void decide(item, () => newsReviewApi.confirmJudgement(item.id)); }}
+                onReject={(judgement, note) => {
+                  void decide(item, () => newsReviewApi.overrule(item.id, { ...judgement, note }));
+                }}
+              />
+            ))}
+          </AnimatePresence>
         </ol>
       )}
-    </section>
+    </>
   );
 }

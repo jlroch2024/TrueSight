@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Download } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import {
   type AiCallDetail,
@@ -26,6 +27,9 @@ const OUTCOME_OPTIONS = [
 function messageOf(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Something went wrong.';
 }
+
+// A call that takes this long is slow: its bar fills, in red. Gemini calls give up at 30 seconds.
+const SLOW_MS = 30_000;
 
 function duration(milliseconds: number): string {
   return milliseconds < 1000 ? `${milliseconds} ms` : `${(milliseconds / 1000).toFixed(1)} s`;
@@ -61,10 +65,10 @@ function AiCallWindow({ callId, onClose }: { callId: number; onClose: () => void
 
   return createPortal(
     <div className="window-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="window ai-call-window" role="dialog" aria-modal="true" aria-labelledby="ai-call-title">
-        <div className="page-heading">
+      <div className="window glass ticks ai-call-window" role="dialog" aria-modal="true" aria-labelledby="ai-call-title">
+        <div className="window-heading">
           <h2 id="ai-call-title">AI Call</h2>
-          <button ref={closeRef} type="button" className="secondary" onClick={onClose}>
+          <button ref={closeRef} type="button" className="btn small" onClick={onClose}>
             Close
           </button>
         </div>
@@ -84,10 +88,10 @@ function AiCallWindow({ callId, onClose }: { callId: number; onClose: () => void
               <div><dt>Dropped</dt><dd>{call.dropped ?? '—'}</dd></div>
             </dl>
             <section>
-              <div className="page-heading">
+              <div className="window-heading">
                 <h3>Prompt</h3>
                 {call.reportUrl && (
-                  <button type="button" onClick={() => openInNewTab(call.reportUrl!)}>
+                  <button type="button" className="btn small" onClick={() => openInNewTab(call.reportUrl!)}>
                     Show Report
                   </button>
                 )}
@@ -150,13 +154,10 @@ export function AiCallsPage() {
   }
 
   return (
-    <section>
-      <div className="page-heading">
-        <div>
-          <h1>AI Calls</h1>
-          <p className="muted">Inspect what Gemini was asked and exactly what it answered.</p>
-        </div>
-        <button type="button" disabled={exporting} onClick={exportCsv}>
+    <>
+      <div className="queue-head end">
+        <button type="button" className="btn small" disabled={exporting} onClick={exportCsv}>
+          <Download size={15} />
           {exporting ? 'Exporting…' : 'Export CSV'}
         </button>
       </div>
@@ -191,10 +192,10 @@ export function AiCallsPage() {
       ) : result === undefined ? (
         <p className="muted">Loading…</p>
       ) : result.calls.length === 0 ? (
-        <p className="muted">No AI calls match these filters.</p>
+        <div className="glass ticks empty">No AI calls match these filters.</div>
       ) : (
         <>
-          <div className="table-scroll card">
+          <div className="table-scroll glass ticks calls">
             <table className="ai-calls">
               <thead>
                 <tr>
@@ -212,26 +213,35 @@ export function AiCallsPage() {
                 {result.calls.map((call) => (
                   <tr key={call.id}>
                     <td>{formatDateTime(call.startedAt)}</td>
-                    <td>{PURPOSE_LABELS[call.purpose]}</td>
-                    <td>{call.model}</td>
-                    <td>{OUTCOME_LABELS[call.outcome]}</td>
-                    <td>{duration(call.durationMs)}</td>
+                    <td>
+                      <span className="call-purpose"><span className="call-dot" data-purpose={call.purpose} />{PURPOSE_LABELS[call.purpose]}</span>
+                    </td>
+                    <td className="muted">{call.model}</td>
+                    <td><span className={`outcome ${call.outcome.toLowerCase()}`}>{OUTCOME_LABELS[call.outcome]}</span></td>
+                    <td>
+                      <span className="call-time">
+                        <span className="call-bar" aria-hidden="true">
+                          <i className={call.durationMs >= SLOW_MS ? 'slow' : ''} style={{ width: `${Math.min(100, (call.durationMs / SLOW_MS) * 100)}%` }} />
+                        </span>
+                        {duration(call.durationMs)}
+                      </span>
+                    </td>
                     <td>{call.kept ?? '—'}</td>
                     <td>{call.dropped ?? '—'}</td>
-                    <td><button type="button" onClick={() => setOpenId(call.id)}>Show</button></td>
+                    <td><button type="button" className="btn small" onClick={() => setOpenId(call.id)}>Show</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="ai-call-pager">
-            <button type="button" className="secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>
+            <button type="button" className="btn small" disabled={page === 0} onClick={() => setPage(page - 1)}>
               Previous
             </button>
             <span>Page {page + 1} of {result.totalPages}</span>
             <button
               type="button"
-              className="secondary"
+              className="btn small"
               disabled={page + 1 >= result.totalPages}
               onClick={() => setPage(page + 1)}
             >
@@ -241,6 +251,6 @@ export function AiCallsPage() {
         </>
       )}
       {openId !== null && <AiCallWindow callId={openId} onClose={() => setOpenId(null)} />}
-    </section>
+    </>
   );
 }

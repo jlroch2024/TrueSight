@@ -26,7 +26,9 @@ export type ReachedHolding = {
   middleName: string | null;
   customerName: string | null;
   reviewStatus: ReviewStatus | null;
+  // The link the event starts on, and, for a holding reached in two steps, the link from the middle company to it.
   relationshipId: number | null;
+  secondRelationshipId: number | null;
 };
 
 export type AlertEvent = {

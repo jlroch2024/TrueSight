@@ -1,9 +1,11 @@
-// The Manage Portfolios window, opened from the header. It lists every portfolio, marks the open one Active, and gives
+// The Manage Portfolios window, opened from the workspace's portfolio menu. It lists every portfolio, marks the open one Active, and gives
 // each Open, Rename and Delete. A box at the bottom creates one. Everything is a button: the window has no links.
 //
 // Creating a portfolio opens it. Deleting asks first, then the open portfolio opens another, or /portfolios when none
 // is left.
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { type Portfolio, portfolioApi, portfolioChanges } from '../api/portfolios';
@@ -170,11 +172,19 @@ export function ManagePortfolios({ openId, onClose }: Props) {
     }
   }
 
-  return (
-    <div className="window-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
+  // Drawn at the top of the page: a window opened from a frosted-glass bar would otherwise be held inside that bar.
+  return createPortal(
+    <motion.div
+      className="window-backdrop"
+      initial={false}
+      exit={{ opacity: 0, transition: { duration: 0.22 } }}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
         ref={windowRef}
-        className="window"
+        initial={false}
+        exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
+        className="window glass ticks"
         role="dialog"
         aria-modal="true"
         aria-labelledby="manage-portfolios-title"
@@ -183,7 +193,7 @@ export function ManagePortfolios({ openId, onClose }: Props) {
       >
         <div className="window-heading">
           <h2 id="manage-portfolios-title">Manage Portfolios</h2>
-          <button type="button" className="secondary" onClick={onClose}>
+          <button type="button" className="btn small" onClick={onClose}>
             Close
           </button>
         </div>
@@ -211,12 +221,12 @@ export function ManagePortfolios({ openId, onClose }: Props) {
                         maxLength={100}
                         autoFocus
                       />
-                      <button type="submit" disabled={busy || !renameTo.trim()}>
+                      <button type="submit" className="btn small primary" disabled={busy || !renameTo.trim()}>
                         Save
                       </button>
                       <button
                         type="button"
-                        className="secondary"
+                        className="btn small quiet"
                         onClick={() => stopRenaming(portfolio.id)}
                         disabled={busy}
                       >
@@ -232,7 +242,7 @@ export function ManagePortfolios({ openId, onClose }: Props) {
                       <span className="actions">
                         <button
                           type="button"
-                          className="secondary"
+                          className="btn small"
                           disabled={busy || active}
                           aria-label={`Open ${portfolio.name}`}
                           onClick={() => open(portfolio.id)}
@@ -245,7 +255,7 @@ export function ManagePortfolios({ openId, onClose }: Props) {
                             else renameButtons.current.delete(portfolio.id);
                           }}
                           type="button"
-                          className="secondary"
+                          className="btn small"
                           disabled={busy}
                           aria-label={`Rename ${portfolio.name}`}
                           onClick={() => {
@@ -257,7 +267,7 @@ export function ManagePortfolios({ openId, onClose }: Props) {
                         </button>
                         <button
                           type="button"
-                          className="danger"
+                          className="btn small danger"
                           disabled={busy}
                           aria-label={`Delete ${portfolio.name}`}
                           onClick={() => remove(portfolio)}
@@ -276,12 +286,13 @@ export function ManagePortfolios({ openId, onClose }: Props) {
         <form className="inline-form window-create" onSubmit={create}>
           <label htmlFor="new-portfolio-name">New Portfolio Name</label>
           <input id="new-portfolio-name" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={100} />
-          <button type="submit" disabled={busy || !newName.trim()}>
+          <button type="submit" className="btn primary" disabled={busy || !newName.trim()}>
             Create Portfolio
           </button>
         </form>
-      </div>
+      </motion.div>
       {dialog}
-    </div>
+    </motion.div>,
+    document.body,
   );
 }

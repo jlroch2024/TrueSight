@@ -1,9 +1,10 @@
-// The Profile window, opened from the header's Profile button, like Manage Portfolios. It shows the email, which cannot
+// The Profile window, opened from the account menu's Profile. It shows the email, which cannot
 // be changed, and lets the user set the display name shown instead of it, and change their password.
 //
 // Changing the password asks for the current one, then the new one twice, under the same rules as Sign Up (see
 // authChecks.ts); a new password that does not match its confirmation is caught here, before anything is sent. The user
 // stays logged in. The backend remains authoritative: a wrong current password comes back as its own message.
+import { motion } from 'motion/react';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { type Me, authApi } from '../api/auth';
 import { ApiError } from '../api/client';
@@ -129,10 +130,17 @@ export function ProfileWindow({ me, onChange, onClose }: Props) {
   }
 
   return (
-    <div className="window-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
+    <motion.div
+      className="window-backdrop"
+      initial={false}
+      exit={{ opacity: 0, transition: { duration: 0.22 } }}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
         ref={windowRef}
-        className="window profile-window"
+        initial={false}
+        exit={{ opacity: 0, y: 10, scale: 0.97, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
+        className="window glass ticks profile-window"
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-title"
@@ -141,7 +149,7 @@ export function ProfileWindow({ me, onChange, onClose }: Props) {
       >
         <div className="window-heading">
           <h2 id="profile-title">Profile</h2>
-          <button type="button" className="secondary" onClick={onClose}>
+          <button type="button" className="btn small" onClick={onClose}>
             Close
           </button>
         </div>
@@ -157,7 +165,7 @@ export function ProfileWindow({ me, onChange, onClose }: Props) {
         <form className="profile-section" onSubmit={saveName} noValidate aria-label="Display name settings">
           <h3>Display Name</h3>
           <p className="muted small">
-            Shown in the header, and on the decisions you make, instead of your email. 1 to {MAX_DISPLAY_NAME} characters.
+            Shown in your account menu, and on the decisions you make, instead of your email. 1 to {MAX_DISPLAY_NAME} characters.
           </p>
           <FormField
             id="display-name"
@@ -174,7 +182,7 @@ export function ProfileWindow({ me, onChange, onClose }: Props) {
             maxLength={MAX_DISPLAY_NAME}
           />
           <div className="actions">
-            <button type="submit" disabled={savingName}>
+            <button type="submit" className="btn primary" disabled={savingName}>
               {savingName ? 'Saving…' : 'Save Display Name'}
             </button>
             {nameSaved && (
@@ -229,7 +237,7 @@ export function ProfileWindow({ me, onChange, onClose }: Props) {
           />
           {passwordError && <FormError message={passwordError} />}
           <div className="actions">
-            <button type="submit" disabled={changingPassword}>
+            <button type="submit" className="btn primary" disabled={changingPassword}>
               {changingPassword ? 'Changing…' : 'Change Password'}
             </button>
             {passwordChanged && (
@@ -239,7 +247,7 @@ export function ProfileWindow({ me, onChange, onClose }: Props) {
             )}
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

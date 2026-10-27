@@ -1,10 +1,11 @@
 // The address /portfolios. There is no separate Portfolios page: this opens the user's first portfolio (the first in
 // their list, which is sorted by name). A user with none, such as somebody who has just signed up, is asked to create
-// one here, and creating it opens it. Everything else about portfolios is in the header's Manage Portfolios window.
+// one here, and creating it opens it. Everything else about portfolios is in the workspace's Manage Portfolios window.
 import { type FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { portfolioApi } from '../api/portfolios';
+import { PageFrame } from '../components/PageFrame';
 import { paths } from '../paths';
 
 function messageOf(e: unknown): string {
@@ -56,40 +57,45 @@ export function PortfolioStart() {
 
   if (none === null) {
     return (
-      <section>
+      <PageFrame>
         {error ? (
           <>
             <p className="error">{error}</p>
-            <button type="button" onClick={() => setAttempt((n) => n + 1)}>
-              Retry
-            </button>
+            <div className="actions">
+              <button type="button" className="btn primary" onClick={() => setAttempt((n) => n + 1)}>
+                Retry
+              </button>
+            </div>
           </>
         ) : (
           <p className="muted">Opening Your Portfolio…</p>
         )}
-      </section>
+      </PageFrame>
     );
   }
   return (
-    <section>
+    <PageFrame>
       <h1>Create Your First Portfolio</h1>
-      <p className="muted">
+      <p>
         You have no portfolios yet. A portfolio is a set of holdings that TrueSight maps to its suppliers and customers.
         Name your first one to start.
       </p>
-      <form className="card inline-form" onSubmit={create}>
-        <label htmlFor="first-portfolio-name">New Portfolio Name</label>
-        <input
-          id="first-portfolio-name"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          maxLength={100}
-        />
-        <button type="submit" disabled={busy || !newName.trim()}>
+      <form className="first-portfolio" onSubmit={create}>
+        <div className="field">
+          <label htmlFor="first-portfolio-name">New Portfolio Name</label>
+          <input
+            id="first-portfolio-name"
+            className="input"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            maxLength={100}
+          />
+        </div>
+        <button type="submit" className="btn primary" disabled={busy || !newName.trim()}>
           Create Portfolio
         </button>
       </form>
       {error && <p className="error">{error}</p>}
-    </section>
+    </PageFrame>
   );
 }
