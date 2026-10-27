@@ -1930,3 +1930,103 @@ table.ai-calls td:nth-child(7) {
   display: flex;
   gap: 8px;
 }
+
+/* The AI Quality Dashboard: a table per AI step, each week a bar of divs sized in percent, its figures beside it. */
+.quality-section > .muted {
+  margin: 4px 0 0;
+}
+
+.quality-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 14px 0 6px;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.quality-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.quality-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+table.quality-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+table.quality-table th,
+table.quality-table td {
+  padding: 10px 10px 10px 0;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+table.quality-table thead th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+table.quality-table tbody th {
+  width: 130px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.quality-bar {
+  display: flex;
+  width: 100%;
+  max-width: 340px;
+  height: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.quality-segment.teal,
+.quality-swatch.teal {
+  background: var(--accent);
+}
+
+.quality-segment.lime,
+.quality-swatch.lime {
+  background: var(--lime);
+}
+
+.quality-segment.amber,
+.quality-swatch.amber {
+  background: var(--amber);
+}
+
+.quality-segment.danger,
+.quality-swatch.danger {
+  background: var(--danger);
+}
+
+.quality-segment.muted,
+.quality-swatch.muted {
+  background: var(--muted);
+}
+
+.quality-figures {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.quality-median {
+  white-space: nowrap;
+}

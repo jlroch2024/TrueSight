@@ -8,6 +8,7 @@ import { type KeyboardEvent, type ReactNode, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { AiCallsPage } from './AiCallsPage';
 import { EventReviewPage } from './EventReviewPage';
+import { QualityPage } from './QualityPage';
 import { ReviewPage } from './ReviewPage';
 import { RecommendationsPage } from './RecommendationsPage';
 
@@ -19,6 +20,7 @@ const TABS: Tab[] = [
   { id: 'events', label: 'Events', content: () => <EventReviewPage /> },
   { id: 'recommendations', label: 'Recommendations', content: () => <RecommendationsPage /> },
   { id: 'ai-calls', label: 'AI Calls', content: () => <AiCallsPage /> },
+  { id: 'quality', label: 'Quality', content: () => <QualityPage /> },
 ];
 
 export function AnalystDeskPage() {
