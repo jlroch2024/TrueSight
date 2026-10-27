@@ -381,6 +381,7 @@ select:focus {
   max-width: 420px;
   padding: 30px;
   border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
   background: var(--panel);
   box-shadow: 6px 6px 0 rgb(37 67 75 / 28%);
 }
@@ -415,8 +416,21 @@ select:focus {
   width: 100%;
 }
 
+/* The fields' labels and their warnings are capitals of the app's own font (not a second typeface), with a little
+   spacing so they stay easy to read: the one exception to Title Case. */
 .auth-card .form-field label {
   color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-card .field-error {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .form-field input[aria-invalid='true'] {
@@ -448,51 +462,23 @@ select:focus {
   text-align: center;
 }
 
-/* Sign Up: what TrueSight does on the left, the form on the right; stacked on a phone. */
+/* Sign Up is the same card as Log In, told apart by its accent: lime instead of teal. */
 .auth-card.sign-up {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  max-width: 820px;
-  padding: 0;
+  border-top-color: var(--lime);
 }
 
-.sign-up-intro {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  padding: 30px;
-  border-right: 1px solid var(--border);
-  background: linear-gradient(160deg, rgb(45 212 191 / 14%), rgb(45 212 191 / 3%));
+.auth-card.sign-up .auth-motto {
+  color: var(--lime);
 }
 
-.sign-up-intro .brand {
-  margin-bottom: 0;
+.auth-card.sign-up button[type='submit'] {
+  border-color: var(--lime);
+  background: var(--lime);
 }
 
-/* The motto fills the panel as a statement, centred in the space under the logo. */
-.sign-up-motto {
-  margin: auto 0;
-  color: var(--text);
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.03em;
-}
-
-.sign-up-form {
-  padding: 30px;
-}
-
-@media (max-width: 720px) {
-  .auth-card.sign-up {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 420px;
-  }
-
-  .sign-up-intro {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
+.auth-card.sign-up button[type='submit']:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
 }
 
 .auth-switch {
