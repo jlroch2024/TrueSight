@@ -1429,6 +1429,53 @@ button.panel-row.chosen {
   color: var(--lime);
 }
 
+/* How confident TrueSight is about a relationship: teal when high, amber when medium, red when low. */
+.confidence-tag.confidence-high {
+  color: var(--accent);
+}
+
+.confidence-tag.confidence-medium {
+  color: var(--amber);
+}
+
+.confidence-tag.confidence-low {
+  color: var(--danger);
+}
+
+.inspector-section.confidence {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.confidence-reasons {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.confidence-reasons li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.confidence-effect {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.confidence-reasons .effect-raises .confidence-effect {
+  color: var(--accent);
+}
+
+.confidence-reasons .effect-lowers .confidence-effect {
+  color: var(--danger);
+}
+
 .alerts-toolbar {
   margin: 20px 0;
 }

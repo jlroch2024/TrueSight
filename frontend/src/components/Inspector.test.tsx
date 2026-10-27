@@ -153,6 +153,43 @@ describe('the Inspector, about a holding', () => {
     expect(within(section()).getByText('Taiwan Semiconductor Manufacturing supplies NVIDIA')).toBeInTheDocument();
   });
 
+  // As the backend's RelationshipConfidence works it out for the path; the website only shows it (See How Confident
+  // TrueSight Is). An alert about the holding itself reaches it through no relationship, so it has no tag.
+  it('tags each path with how confident TrueSight is about it, and an alert named in the article with none', () => {
+    const about = sampleAlert({
+      id: 1,
+      headline: 0,
+      companyName: 'NVIDIA Corporation',
+      holdings: [
+        { ...tsmcSuppliesNvidia(1, 1), supplierName: null, customerName: null, relationshipId: null, confidence: null },
+      ],
+    });
+    const reaching = sampleAlert({
+      id: 2,
+      headline: 1,
+      companyName: TSMC_NAME,
+      holdings: [
+        {
+          ...tsmcSuppliesNvidia(1, 1),
+          confidence: {
+            level: 'HIGH',
+            reasons: [
+              { text: 'An Analyst Approved It', effect: 'RAISES' },
+              { text: 'Quote Match Not Recorded', effect: 'NONE' },
+              { text: 'Not Yet Second-Checked', effect: 'NONE' },
+            ],
+          },
+        },
+      ],
+    });
+    inspect('1', [about, reaching]); // NVIDIA
+
+    const path = within(section()).getByText('Taiwan Semiconductor Manufacturing supplies NVIDIA').closest('p')!;
+    expect(within(path).getByText('High Confidence')).toHaveClass('confidence-high');
+    const named = within(section()).getByText('Named in the Article').closest('p')!;
+    expect(named).not.toHaveTextContent(/Confidence/);
+  });
+
   it('words a two-step path through a middle company', () => {
     const twoStep = sampleAlert({
       companyName: 'Carl Zeiss SMT GmbH',

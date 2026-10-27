@@ -58,8 +58,9 @@ public class RelationshipEditService {
                 .orElseThrow(() -> ApiException.notFound("Company not found."));
         Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(company.getId())
                 .orElseThrow(() -> sentenceNotFound(company));
-        String evidence = new QuoteChecker(report.getText()).evidenceFor(request.sentence())
+        QuoteChecker.QuoteMatch match = new QuoteChecker(report.getText()).match(request.sentence())
                 .orElseThrow(() -> sentenceNotFound(company));
+        String evidence = match.evidence();
 
         Company counterparty = companyDirectory.findOrCreate(
                 request.counterpartyName().strip(), null, null, List.of());
@@ -74,6 +75,8 @@ public class RelationshipEditService {
         Instant now = Instant.now();
         Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
                 request.type(), optionalText(request.provides()), evidence);
+        // Recorded as for relationships the AI finds, so it never reads "Quote Match Not Recorded".
+        relationship.setQuoteMatch(match.recordedShare());
         relationship.setSource(RelationshipSource.ANALYST);
         relationship.setAddedBy(currentUser.id());
         relationship.setReviewStatus(ReviewStatus.APPROVED);

@@ -1,6 +1,6 @@
 import { api } from './client';
 import type { Severity } from './news';
-import type { ReviewStatus } from './relationships';
+import type { Confidence, ReviewStatus } from './relationships';
 
 // Alert rows may contain a legacy ACKNOWLEDGED status; responses normalize it to NEW.
 export type AlertStatus = 'NEW' | 'DISMISSED';
@@ -27,6 +27,9 @@ export type ReachedHolding = {
   customerName: string | null;
   reviewStatus: ReviewStatus | null;
   relationshipId: number | null;
+  // How confident TrueSight is about the path: for two steps, the weaker of its two relationships. Null when the
+  // article names the holding itself.
+  confidence: Confidence | null;
 };
 
 export type AlertEvent = {

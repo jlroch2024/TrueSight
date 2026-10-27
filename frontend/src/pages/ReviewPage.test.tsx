@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tokenStore } from '../api/client';
 import type { ReviewItem } from '../api/reviews';
 import { ReviewPage } from './ReviewPage';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 const sentence =
   'We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung ' +
@@ -23,6 +24,7 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
       provides: 'semiconductor wafers',
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
       source: 'AI',
+      confidence: UNREVIEWED_CONFIDENCE,
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
       reviewStatus: 'UNREVIEWED',
       criticality: null,

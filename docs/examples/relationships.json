@@ -26,7 +26,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 2,
@@ -55,7 +72,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 3,
@@ -84,7 +118,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 4,
@@ -113,7 +164,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 5,
@@ -142,7 +210,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 6,
@@ -171,7 +256,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 7,
@@ -200,7 +302,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 8,
@@ -229,7 +348,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 9,
@@ -258,7 +394,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 10,
@@ -287,7 +440,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 11,
@@ -316,7 +486,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 12,
@@ -345,7 +532,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 13,
@@ -374,7 +578,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 14,
@@ -403,7 +624,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 15,
@@ -432,7 +670,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 16,
@@ -461,7 +716,24 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   },
   {
     "id": 17,
@@ -490,6 +762,23 @@
     "reviewedAt": null,
     "reviewNote": null,
     "criticality": null,
-    "criticalityEvidence": null
+    "criticalityEvidence": null,
+    "confidence": {
+      "level": "MEDIUM",
+      "reasons": [
+        {
+          "text": "Not Yet Reviewed",
+          "effect": "NONE"
+        },
+        {
+          "text": "Quote Match Not Recorded",
+          "effect": "NONE"
+        },
+        {
+          "text": "Not Yet Second-Checked",
+          "effect": "NONE"
+        }
+      ]
+    }
   }
 ]

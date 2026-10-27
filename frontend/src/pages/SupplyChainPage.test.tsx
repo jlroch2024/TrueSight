@@ -18,6 +18,7 @@ import { sampleAlert } from '../test/sampleAlerts';
 import { TSMC } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 import { SupplyChainPage } from './SupplyChainPage';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 vi.mock('../graph/LivingGraph', () => ({
   LivingGraph: ({
@@ -88,6 +89,7 @@ function relationship(overrides: Partial<Relationship> = {}): Relationship {
     provides: 'semiconductor wafers',
     evidence: tsmcSentence,
     source: 'AI',
+    confidence: UNREVIEWED_CONFIDENCE,
     criticality: null,
     criticalityEvidence: null,
     report: {
@@ -193,8 +195,8 @@ describe('Supply Chain page', () => {
         url: 'https://example.com/event',
       }],
       holdings: [
-        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1 },
-        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2 },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1, confidence: UNREVIEWED_CONFIDENCE },
+        { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2, confidence: UNREVIEWED_CONFIDENCE },
       ],
       recommendation: null,
     };
@@ -231,6 +233,58 @@ describe('Supply Chain page', () => {
 
     expect(await screen.findByText(/Run Analyse on the/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Portfolio Page' })).toBeInTheDocument();
+  });
+
+  // As the backend's RelationshipConfidence works them out; the website only shows them.
+  it("shows a relationship's confidence in the Inspector, with each reason and its effect", async () => {
+    const approved = relationship({
+      reviewStatus: 'APPROVED',
+      confidence: {
+        level: 'HIGH',
+        reasons: [
+          { text: 'An Analyst Approved It', effect: 'RAISES' },
+          { text: 'Quote Match Not Recorded', effect: 'NONE' },
+          { text: 'Second Check Agrees', effect: 'NONE' },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fakeFetch([approved], [holding()]));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+
+    const confidence = within(screen.getByRole('complementary', { name: 'Inspector' })).getByRole('region', {
+      name: 'Confidence',
+    });
+    expect(within(confidence).getByText('High Confidence')).toHaveClass('confidence-high');
+    expect(within(confidence).getAllByRole('listitem').map((reason) => reason.textContent)).toEqual([
+      'An Analyst Approved ItRaises Confidence',
+      'Quote Match Not RecordedNo Effect',
+      'Second Check AgreesNo Effect',
+    ]);
+  });
+
+  it('shows a doubted relationship as Low Confidence, with the doubt lowering it', async () => {
+    const doubted = relationship({
+      confidence: {
+        level: 'LOW',
+        reasons: [
+          { text: 'Not Yet Reviewed', effect: 'NONE' },
+          { text: 'Strong Quote Match (100%)', effect: 'NONE' },
+          { text: 'Second Check Doubts', effect: 'LOWERS' },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fakeFetch([doubted], [holding()]));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select edge 1' }));
+
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    expect(within(inspector).getByText('Low Confidence')).toHaveClass('confidence-low');
+    expect(within(inspector).getByText('Second Check Doubts').closest('li')).toHaveTextContent('Lowers Confidence');
   });
 
   // The SEC calls it "NVIDIA CORP"; the website once guessed "Nvidia" from that. NVIDIA's report writes "NVIDIA".

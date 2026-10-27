@@ -126,8 +126,8 @@ public class RelationshipFinder {
         List<Relationship> proven = new ArrayList<>();
         int dropped = 0;
         for (GeminiAnswer.Found item : asked.found()) {
-            Optional<String> evidence = checker.evidenceFor(item.quote());
-            if (evidence.isEmpty()) {
+            Optional<QuoteChecker.QuoteMatch> match = checker.match(item.quote());
+            if (match.isEmpty()) {
                 dropped++;
                 continue;
             }
@@ -138,12 +138,13 @@ public class RelationshipFinder {
             Company counterparty = companies.findOrCreate(common, null, CompanyDirectory.cleanTicker(item.ticker()),
                     List.of(written, cut(item.alsoKnownAs(), MAX_NAME)));
             if (counterparty.getId().equals(company.getId())
-                    || !saved.add(counterparty.getId() + " " + item.relationship() + " " + evidence.get())) {
+                    || !saved.add(counterparty.getId() + " " + item.relationship() + " " + match.get().evidence())) {
                 continue; // the company itself, or the same relationship twice
             }
             Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
                     item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
-                    evidence.get());
+                    match.get().evidence());
+            relationship.setQuoteMatch(match.get().recordedShare());
             if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
                 checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
                     relationship.setCriticality(item.criticality());

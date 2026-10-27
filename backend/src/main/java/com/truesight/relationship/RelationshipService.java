@@ -95,7 +95,8 @@ public class RelationshipService {
                     new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()),
                     r.getReviewStatus(),
                     r.getReviewedAt(),
-                    r.getReviewNote());
+                    r.getReviewNote(),
+                    RelationshipConfidence.of(r));
         }).toList();
     }
 

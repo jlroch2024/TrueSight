@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import type { Portfolio } from '../api/portfolios';
 import { portfolioApi } from '../api/portfolios';
 import { CheckNewsButton } from '../components/CheckNewsButton';
+import { ConfidenceTag } from '../components/Confidence';
 import { RadioGroup } from '../components/RadioGroup';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatDate, openInNewTab } from '../format';
 
@@ -111,6 +112,7 @@ function AlertCard({
                   ? `${holding.supplierName} supplies ${holding.customerName}`
                   : 'Named in the Article'}
               </span>
+              {holding.confidence && <ConfidenceTag confidence={holding.confidence} />}
               {holding.reviewStatus === 'UNREVIEWED' && (
                 <span className="muted small">Not Yet Reviewed by an Analyst</span>
               )}
