@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +18,8 @@ class CompanyDirectoryIT {
 
     @Autowired
     CompanyDirectory directory;
+    @Autowired
+    CompanyRepository companies;
 
     @Test
     void theSameSecNumberIsAlwaysTheSameCompany() {
@@ -137,5 +140,137 @@ class CompanyDirectoryIT {
         Company withoutEnding = directory.findOrCreate("Koninklijke Philips", null, null, List.of());
 
         assertThat(withoutEnding.getId()).isEqualTo(withEnding.getId());
+    }
+
+    // ---- the same ticker, when the names also agree (TS-180) -------------------------------------------------------
+
+    /** A word no other test uses, so a name made from it meets no company a test left in the shared database. */
+    private static String word() {
+        return "Zq" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+    }
+
+    /** A made-up SEC number: ten digits, as the column allows. */
+    private static String cik() {
+        return "9" + java.util.concurrent.ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L);
+    }
+
+    private static String ticker() {
+        return "T" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    /** The story's own case: the holding "SONY GROUP CORP" from the SEC, and a customer a report calls "Sony". */
+    @Test
+    void aCustomerWithTheHoldingsTickerAndAnAgreeingNameIsTheHoldingsCompany() {
+        String sony = word();
+        String ticker = ticker();
+        Company holding = directory.findOrCreate(sony.toUpperCase() + " GROUP CORP", cik(), ticker, List.of());
+
+        Company customer = directory.findOrCreate(sony, null, ticker, List.of());
+
+        assertThat(customer.getId()).isEqualTo(holding.getId());
+        assertThat(customer.getCik()).isEqualTo(holding.getCik());
+    }
+
+    /**
+     * The story's own case, with its real names. Nothing the AI said is involved, only how the directory matches a
+     * customer "Sony" with ticker SONY to the SEC's holding "SONY GROUP CORP". The companies are removed afterwards.
+     */
+    @Test
+    void aCustomerSonyWithTickerSonyIsTheHoldingSonyGroupCorp() {
+        Company holding = directory.findOrCreate("SONY GROUP CORP", "0000313838", "SONY", List.of());
+        Company customer = null;
+        try {
+            customer = directory.findOrCreate("Sony", null, "SONY", List.of());
+
+            assertThat(customer.getId()).isEqualTo(holding.getId());
+            assertThat(companies.findById(holding.getId()).orElseThrow().getName()).isEqualTo("SONY GROUP CORP");
+            assertThat(companies.findByTickerIgnoreCase("SONY")).extracting(Company::getId)
+                    .containsOnly(holding.getId());
+        } finally {
+            companies.findById(holding.getId()).ifPresent(companies::delete);
+            if (customer != null) companies.findById(customer.getId()).ifPresent(companies::delete);
+        }
+    }
+
+    @Test
+    void theSameCompanyIsFoundWhicheverWayRoundTheTwoAreSaved() {
+        String sony = word();
+        String ticker = ticker();
+        String cik = cik();
+        Company customerFirst = directory.findOrCreate(sony, null, ticker, List.of());
+
+        Company holdingLater = directory.findOrCreate(sony.toUpperCase() + " GROUP CORP", cik, ticker, List.of());
+
+        assertThat(holdingLater.getId()).isEqualTo(customerFirst.getId());
+        assertThat(holdingLater.getCik()).isEqualTo(cik);
+    }
+
+    @Test
+    void theTickerIsComparedIgnoringCapitals() {
+        String name = word();
+        String ticker = ticker();
+        Company first = directory.findOrCreate(name + " Group", null, ticker, List.of());
+
+        Company again = directory.findOrCreate(name, null, ticker.toLowerCase(), List.of());
+
+        assertThat(again.getId()).isEqualTo(first.getId());
+    }
+
+    @Test
+    void theAgreeingNameMayBeAnotherNameTheCompanyWasSeenUnder() {
+        String ticker = ticker();
+        String full = word();
+        String shortName = word();
+        Company first = directory.findOrCreate(full + " Holdings Limited", null, ticker, List.of(shortName));
+
+        // Not the short name's own tidied form, so only the ticker and the agreeing name can find the company.
+        Company again = directory.findOrCreate(shortName + " Industries", null, ticker, List.of());
+
+        assertThat(again.getId()).isEqualTo(first.getId());
+    }
+
+    @Test
+    void aTickerAloneNeverJoinsTwoCompanies() {
+        String ticker = ticker();
+        Company existing = directory.findOrCreate(word() + " Inc.", null, ticker, List.of());
+
+        Company unrelated = directory.findOrCreate(word() + " Holdings", null, ticker, List.of());
+
+        assertThat(unrelated.getId()).isNotEqualTo(existing.getId());
+    }
+
+    @Test
+    void anAgreeingNameAloneNeedsTheSameTickerToJoinTwoCompanies() {
+        String name = word();
+        Company existing = directory.findOrCreate(name + " Group", null, ticker(), List.of());
+
+        Company otherTicker = directory.findOrCreate(name, null, ticker(), List.of());
+        Company noTicker = directory.findOrCreate(name + " Foods", null, null, List.of());
+
+        assertThat(otherTicker.getId()).isNotEqualTo(existing.getId());
+        assertThat(noTicker.getId()).isNotEqualTo(existing.getId());
+    }
+
+    @Test
+    void twoCompaniesWithDifferentSecNumbersAreNeverJoinedByTicker() {
+        String name = word();
+        String ticker = ticker();
+        Company first = directory.findOrCreate(name + " Group", cik(), ticker, List.of());
+
+        Company second = directory.findOrCreate(name, cik(), ticker, List.of());
+
+        assertThat(second.getId()).isNotEqualTo(first.getId());
+    }
+
+    @Test
+    void aCompanyWithoutATickerIsGivenOneWhenItsTickerIsLearned() {
+        String name = word();
+        String ticker = ticker();
+        Company known = directory.findOrCreate(name, null, null, List.of());
+
+        Company again = directory.findOrCreate(name, null, ticker, List.of());
+
+        assertThat(again.getId()).isEqualTo(known.getId());
+        assertThat(again.getTicker()).isEqualTo(ticker);
     }
 }

@@ -17,6 +17,15 @@ export type ReportSummary = { form: string; filingDate: string; url: string };
 // company is the holding whose report it came from; counterparty is the other company. type SUPPLIER means the
 // counterparty supplies company; CUSTOMER means it buys from company. evidence is the report's own words.
 // reviewedAt (ISO text) and reviewNote are null until an Analyst decides; the note may stay empty for an approval.
+// How confident TrueSight is about a relationship, worked out by the backend from the analyst's review, how much of
+// the AI's quote was found in the report, and the second AI check. Each reason says what it did to the level.
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+export type ConfidenceEffect = 'RAISES' | 'LOWERS' | 'NONE';
+export type Confidence = {
+  level: ConfidenceLevel;
+  reasons: { text: string; effect: ConfidenceEffect }[];
+};
+
 export type Relationship = {
   id: number;
   company: CompanySummary;
@@ -31,6 +40,7 @@ export type Relationship = {
   reviewStatus: ReviewStatus;
   reviewedAt: string | null;
   reviewNote: string | null;
+  confidence: Confidence;
 };
 
 export type CompanyOption = { id: number; name: string; displayName: string };

@@ -7,12 +7,13 @@
 // with no tab, or one this page does not know, opens the first. The tiles are tabs: Left and Right move between them,
 // Home and End jump to the first and last.
 import { AnimatePresence, type Variants, motion } from 'motion/react';
-import { ArrowLeft, Lightbulb, Link2, Radar, ScrollText, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Gauge, Lightbulb, Link2, Radar, ScrollText, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { type CSSProperties, type KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { aiCallApi } from '../api/aiCalls';
 import { newsReviewApi } from '../api/newsReview';
 import { type Portfolio, portfolioApi } from '../api/portfolios';
+import { qualityApi } from '../api/quality';
 import { recommendationApi } from '../api/recommendations';
 import { reviewApi } from '../api/reviews';
 import { AccountMenu } from '../components/AccountMenu';
@@ -22,10 +23,11 @@ import { useSlidingPlate } from '../components/useSlidingPlate';
 import { paths } from '../paths';
 import { AiCallsPage } from './AiCallsPage';
 import { EventReviewPage } from './EventReviewPage';
+import { QualityPage } from './QualityPage';
 import { RecommendationsPage } from './RecommendationsPage';
 import { ReviewPage } from './ReviewPage';
 
-type ToolId = 'relationships' | 'events' | 'recommendations' | 'ai-calls';
+type ToolId = 'relationships' | 'events' | 'recommendations' | 'ai-calls' | 'quality';
 
 type Tool = {
   id: ToolId;
@@ -35,6 +37,8 @@ type Tool = {
   colour: string;
   group: 'Review' | 'Record';
   unit: string;
+  // Written after the figure, for a share ("86%").
+  suffix?: string;
   // onChanged: the tool calls it after a decision, so the tiles' counts follow.
   content: (onChanged: () => void) => ReactNode;
 };
@@ -44,6 +48,7 @@ const TOOLS: Tool[] = [
   { id: 'events', label: 'Events', icon: Radar, colour: '#ff8a3d', group: 'Review', unit: 'Waiting', content: (onChanged) => <EventReviewPage onChanged={onChanged} /> },
   { id: 'recommendations', label: 'Recommendations', icon: Lightbulb, colour: '#c4f36a', group: 'Review', unit: 'Waiting', content: (onChanged) => <RecommendationsPage onChanged={onChanged} /> },
   { id: 'ai-calls', label: 'AI Calls', icon: ScrollText, colour: '#a5b4fc', group: 'Record', unit: 'Today', content: () => <AiCallsPage /> },
+  { id: 'quality', label: 'Quality', icon: Gauge, colour: '#7dd3fc', group: 'Record', unit: 'Agreed', suffix: '%', content: () => <QualityPage /> },
 ];
 
 // A tool's work: the old one goes quickly, the new one comes in from the side its tile lies on.
@@ -70,6 +75,14 @@ function useToolCounts() {
     void count('relationships', () => reviewApi.list('UNREVIEWED').then((items) => items.length));
     void count('events', () => newsReviewApi.list('EVENTS').then((items) => items.length));
     void count('recommendations', () => recommendationApi.list().then((items) => items.length));
+    // Quality: how often analysts agreed with the AI's relationships, in the latest week that had reviews.
+    void count('quality', () =>
+      qualityApi.get().then((quality) => {
+        const week = [...(quality?.relationships ?? [])].reverse().find((found) => found.reviewed > 0);
+        if (!week) throw new Error('No reviews yet.');
+        return Math.round((week.approved / week.reviewed) * 100);
+      }),
+    );
     void count('ai-calls', () =>
       aiCallApi.list({ purpose: '', outcome: '', from: today(), to: '' }, 0).then((page) => {
         if (typeof page?.total !== 'number') throw new Error('No count.');
@@ -164,7 +177,7 @@ export function AnalystDeskPage() {
                         <span className="tool-icon"><Icon size={18} /></span>
                         <span className="tool-name">{tool.label}</span>
                         <span className="tool-figure">
-                          <strong className="num">{count === undefined ? '—' : <Count value={count} />}</strong>
+                          <strong className="num">{count === undefined ? '—' : <Count value={count} suffix={tool.suffix} />}</strong>
                           <small>{tool.unit}</small>
                         </span>
                       </button>

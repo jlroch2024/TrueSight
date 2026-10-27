@@ -3,6 +3,7 @@
 // the company the article is about, and the path names are display names.
 import type { AlertEvent, AlertStatus, ReachedHolding } from '../api/alerts';
 import type { Severity } from '../api/news';
+import { UNREVIEWED_CONFIDENCE } from './sampleConfidence';
 import { TSMC, sampleNews } from './sampleNews';
 
 /** TSMC supplies NVIDIA, as the Alerts page words it: how an alert about TSMC reaches the NVDA holding. */
@@ -17,6 +18,7 @@ export function tsmcSuppliesNvidia(holdingId = 1, relationshipId = 1): ReachedHo
     customerName: 'NVIDIA',
     reviewStatus: 'UNREVIEWED',
     relationshipId,
+    confidence: UNREVIEWED_CONFIDENCE,
     secondRelationshipId: null,
   };
 }

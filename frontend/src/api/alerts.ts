@@ -1,6 +1,6 @@
 import { api } from './client';
 import type { Severity } from './news';
-import type { ReviewStatus } from './relationships';
+import type { Confidence, ReviewStatus } from './relationships';
 
 // Alert rows may contain a legacy ACKNOWLEDGED status; responses normalize it to NEW.
 export type AlertStatus = 'NEW' | 'DISMISSED';
@@ -28,6 +28,9 @@ export type ReachedHolding = {
   reviewStatus: ReviewStatus | null;
   // The link the event starts on, and, for a holding reached in two steps, the link from the middle company to it.
   relationshipId: number | null;
+  // How confident TrueSight is about the path: for two steps, the weaker of its two relationships. Null when the
+  // article names the holding itself.
+  confidence: Confidence | null;
   secondRelationshipId: number | null;
 };
 

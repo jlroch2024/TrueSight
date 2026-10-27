@@ -8,6 +8,7 @@ import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
+import com.truesight.relationship.RelationshipConfidence;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
@@ -248,7 +249,7 @@ public class AlertService {
         if (found.getRelationshipId() == null) {
             return new ReachedPath(new AlertEventResponse.ReachedHolding(
                     holding.getId(), holding.getTicker(), holding.getWeight(), false,
-                    null, null, null, null, null, null), null);
+                    null, null, null, null, null, null, null), null);
         }
         Relationship relationship = data.relationshipById().get(found.getRelationshipId());
         if (relationship == null) return null;
@@ -257,7 +258,8 @@ public class AlertService {
                     holding.getId(), holding.getTicker(), holding.getWeight(), false,
                     nameOf(data.companyById().get(supplierId(relationship))), null,
                     nameOf(data.companyById().get(customerId(relationship))),
-                    relationship.getReviewStatus(), relationship.getId(), null), null);
+                    relationship.getReviewStatus(), relationship.getId(), RelationshipConfidence.of(relationship),
+                    null), null);
         }
         Relationship second = data.relationshipById().get(found.getSecondRelationshipId());
         if (second == null) return null;
@@ -267,6 +269,7 @@ public class AlertService {
                 nameOf(data.companyById().get(customerId(relationship))),
                 nameOf(data.companyById().get(customerId(second))),
                 weaker(relationship.getReviewStatus(), second.getReviewStatus()), relationship.getId(),
+                weaker(RelationshipConfidence.of(relationship), RelationshipConfidence.of(second)),
                 second.getId()), second.getId());
     }
 
@@ -276,7 +279,7 @@ public class AlertService {
         AlertEventResponse.ReachedHolding reached = path.holding();
         return new AlertResponse.ReachedHolding(reached.holdingId(), reached.ticker(), reached.weight(),
                 reached.indirect(), reached.supplierName(), reached.middleName(), reached.customerName(),
-                reached.reviewStatus(), reached.relationshipId());
+                reached.reviewStatus(), reached.relationshipId(), reached.confidence());
     }
 
     private static Long supplierId(Relationship relationship) {
@@ -287,6 +290,11 @@ public class AlertService {
     private static Long customerId(Relationship relationship) {
         return relationship.getType() == RelationshipType.SUPPLIER
                 ? relationship.getCompanyId() : relationship.getCounterpartyId();
+    }
+
+    /** A chain is as strong as its weakest link: the lower confidence, or the first when they are level. */
+    private static RelationshipConfidence weaker(RelationshipConfidence first, RelationshipConfidence second) {
+        return second.level().compareTo(first.level()) < 0 ? second : first;
     }
 
     private static ReviewStatus weaker(ReviewStatus first, ReviewStatus second) {

@@ -48,15 +48,29 @@ public class GeminiClient {
                     "properties", Map.of(
                             "company", Map.of("type", "STRING"),
                             "alsoKnownAs", Map.of("type", "STRING"),
+                            "commonName", Map.of("type", "STRING"),
+                            "ticker", Map.of("type", "STRING"),
                             "relationship", Map.of("type", "STRING", "enum", List.of("SUPPLIER", "CUSTOMER")),
                             "provides", Map.of("type", "STRING"),
                             "quote", Map.of("type", "STRING"),
                             "criticality", Map.of("type", "STRING"),
                             "criticalityQuote", Map.of("type", "STRING")),
-                    "required", List.of("company", "alsoKnownAs", "relationship", "provides", "quote",
-                            "criticality", "criticalityQuote"),
-                    "propertyOrdering", List.of("company", "alsoKnownAs", "relationship", "provides", "quote",
-                            "criticality", "criticalityQuote")));
+                    "required", List.of("company", "alsoKnownAs", "commonName", "ticker", "relationship", "provides",
+                            "quote", "criticality", "criticalityQuote"),
+                    "propertyOrdering", List.of("company", "alsoKnownAs", "commonName", "ticker", "relationship",
+                            "provides", "quote", "criticality", "criticalityQuote")));
+
+    /** For each listed company name: the name echoed back, its common name, and its ticker. */
+    private static final Map<String, Object> COMMON_NAMES_SCHEMA = Map.of(
+            "type", "ARRAY",
+            "items", Map.of(
+                    "type", "OBJECT",
+                    "properties", Map.of(
+                            "name", Map.of("type", "STRING"),
+                            "commonName", Map.of("type", "STRING"),
+                            "ticker", Map.of("type", "STRING")),
+                    "required", List.of("name", "commonName", "ticker"),
+                    "propertyOrdering", List.of("name", "commonName", "ticker")));
 
     /** A criticality-only response, matched against known counterparties by name. */
     private static final Map<String, Object> CRITICALITY_SCHEMA = Map.of(
@@ -114,6 +128,11 @@ public class GeminiClient {
     /** Asks for criticality-only answers, matched to previously found counterparties. */
     public AiAnswer generateCriticality(AiRequest request) {
         return generate(request, CRITICALITY_SCHEMA);
+    }
+
+    /** Asks for each listed company's common name and ticker, in the shape of {@link #COMMON_NAMES_SCHEMA}. */
+    public AiAnswer generateCommonNames(AiRequest request) {
+        return generate(request, COMMON_NAMES_SCHEMA);
     }
 
     /** Asks for a verdict, Agrees or Doubts with a reason, on each numbered claim of the second check. */

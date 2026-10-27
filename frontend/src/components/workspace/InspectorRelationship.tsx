@@ -5,6 +5,7 @@ import { ArrowRight, CircleDashed, ExternalLink, FileText, Package, ShieldCheck,
 import type { CompanySummary } from '../../api/relationships';
 import { formatDate, openInNewTab, showInReportUrl, titleCase } from '../../format';
 import { NEUTRAL_EDGE } from '../../graph/model';
+import { ConfidenceReasons, ConfidenceTag } from '../Confidence';
 import { FlowLink } from '../FlowLink';
 import { Tile } from '../Tile';
 import { type Chosen, type WorkspaceView } from './view';
@@ -92,6 +93,12 @@ export function RelationshipView({
         )}
       </div>
       {approved && relationship.reviewNote && <p className="prose muted review-note">{relationship.reviewNote}</p>}
+
+      {/* How confident TrueSight is, as the backend works it out (See How Confident TrueSight Is), and why. */}
+      <section className="insp-section confidence" aria-label="Confidence">
+        <ConfidenceTag confidence={relationship.confidence} />
+        <ConfidenceReasons confidence={relationship.confidence} />
+      </section>
 
       <blockquote className="evidence">
         {relationship.evidence}

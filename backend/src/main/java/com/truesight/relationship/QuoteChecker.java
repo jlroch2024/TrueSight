@@ -1,5 +1,7 @@
 package com.truesight.relationship;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +48,14 @@ public final class QuoteChecker {
 
     /** The report's passage that matches the quote, or empty if the quote is not in the report. */
     public Optional<String> evidenceFor(String quote) {
+        return match(quote).map(QuoteMatch::evidence);
+    }
+
+    /**
+     * The report's passage that matches the quote, and the share of the quote's words found in it, in order: 1.0 when
+     * every word was found. Empty if the quote is not in the report, so a share is never below 85%.
+     */
+    public Optional<QuoteMatch> match(String quote) {
         List<Word> quoteWords = split(quote);
         int n = quoteWords.size();
         if (n == 0) {
@@ -94,7 +104,8 @@ public final class QuoteChecker {
                 best = match;
             }
         }
-        return best == null ? Optional.empty() : Optional.of(passage(best.first, best.last));
+        return best == null ? Optional.empty()
+                : Optional.of(new QuoteMatch(passage(best.first, best.last), (double) best.found / n));
     }
 
     /**
@@ -185,6 +196,18 @@ public final class QuoteChecker {
             result.add(new Word(matcher.group().toLowerCase(Locale.ROOT), matcher.start(), matcher.end()));
         }
         return result;
+    }
+
+    /** A quote found in the report: the report's own words for it, and the share of the quote's words found. */
+    public record QuoteMatch(String evidence, double share) {
+
+        /**
+         * The share as {@code relationships.quote_match} records it, to three places and rounded down, so a share just
+         * under 95% is never recorded as a strong match.
+         */
+        public BigDecimal recordedShare() {
+            return BigDecimal.valueOf(share).setScale(3, RoundingMode.DOWN);
+        }
     }
 
     /** One word, lower-cased, and where it is in the original text. */

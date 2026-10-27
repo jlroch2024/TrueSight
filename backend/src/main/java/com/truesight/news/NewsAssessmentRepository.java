@@ -26,4 +26,8 @@ public interface NewsAssessmentRepository extends JpaRepository<NewsAssessment, 
             order by article.publishedAt desc, article.id desc
             """)
     List<AssessmentRow> findJudgedSince(@Param("since") Instant since);
+
+    /** The assessments an analyst confirmed or overruled in {@code [from, to)}, for the AI Quality Dashboard. */
+    @Query("select a from NewsAssessment a where a.decidedAt >= :from and a.decidedAt < :to")
+    List<NewsAssessment> findDecidedBetween(@Param("from") Instant from, @Param("to") Instant to);
 }

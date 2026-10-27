@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { tokenStore } from '../api/client';
 import type { ReviewItem } from '../api/reviews';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 /** NVIDIA's own words about TSMC, from its 10-K in docs/examples. */
 const evidence =
@@ -27,6 +28,7 @@ const waiting: ReviewItem = {
     provides: 'semiconductor wafers',
     evidence,
     source: 'AI',
+    confidence: UNREVIEWED_CONFIDENCE,
     report: { form: '10-K', filingDate: '2026-02-25', url: 'https://www.sec.gov/report-1' },
     reviewStatus: 'UNREVIEWED',
     criticality: null,
@@ -75,6 +77,7 @@ beforeEach(() => {
       if (url === '/api/auth/me') return json({ email: 'analyst@example.com', role: 'ANALYST' });
       if (url.startsWith('/api/reviews')) return json([waiting]);
       if (url.startsWith('/api/ai-calls')) return json({ calls: [], page: 0, totalPages: 0, total: 0 });
+      if (url === '/api/quality') return json({ relationships: [], news: [], recommendations: [], calls: [] });
       return json([]);
     }),
   );
@@ -158,6 +161,15 @@ describe('Analyst Desk', () => {
     expect(screen.getByRole('tab', { name: 'AI Calls' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByText('No AI calls match these filters.')).toBeInTheDocument();
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/ai-calls?page=0', expect.anything());
+  });
+
+  it('opens the Quality tab named in the address', async () => {
+    renderAt('/review?tab=quality');
+
+    expect(screen.getByRole('tab', { name: 'Quality' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText(/Nothing was decided and no AI call was made in the last 8 weeks/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing was decided and no AI call was made/)).toBeInTheDocument();
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/quality', expect.anything());
   });
 
   it('opens the Events tab named in the address, with the undecided events', async () => {

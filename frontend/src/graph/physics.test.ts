@@ -24,6 +24,7 @@ import {
 import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView } from './physics';
 import { fitCamera } from './camera';
 import { lineCrosses } from '../pages/supplyChain';
+import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
 
 // The holdings the sample relationships belong to, as the Supply Chain page would have them.
 function sampleHoldings(): Holding[] {
@@ -146,6 +147,7 @@ describe('disruptions and zoom', () => {
       customerName: relationshipId === null ? null : 'NVIDIA',
       reviewStatus: null,
       relationshipId,
+      confidence: relationshipId === null ? null : UNREVIEWED_CONFIDENCE,
       secondRelationshipId: null,
     }],
   });

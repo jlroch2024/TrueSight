@@ -216,6 +216,9 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
     (explanations, error messages), which are in sentence case.
   - **Company names** are shown with the display name the API sends (`CompanyDisplayNames` in the backend); the website
     never reformats a name.
+  - **Log In and Sign Up** are the same card, told apart by their accent: teal for Log In, lime for Sign Up. Their
+    fields' labels and warnings are in capitals of the same font (`text-transform: uppercase`, 11 px): the one
+    exception to Title Case.
   - **Phones:** the workspace keeps its computer layout below 760px until One Workspace on a Phone (Sprint 4).
 - **No new libraries** unless the story names one. No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native

@@ -8,6 +8,7 @@ import type { AlertEvent, ReachedHolding } from '../../api/alerts';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, openInNewTab } from '../../format';
 import { NEUTRAL_EDGE } from '../../graph/model';
 import { Confidence, EventMark, SeverityBars } from '../EventMark';
+import { ConfidenceTag } from '../Confidence';
 import { Count } from '../Count';
 import { FlowLink } from '../FlowLink';
 import { Tile } from '../Tile';
@@ -202,6 +203,8 @@ function PathRow({ item, view, onChoose }: { item: ReachedHolding; view: Workspa
           {item.ticker}
         </span>
         <span className={`reach-kind${item.indirect ? ' indirect' : ''}`}>{item.indirect ? 'Indirect' : 'Direct'}</span>
+        {/* How confident TrueSight is about this path; none for an alert about the holding itself. */}
+        {item.confidence && <ConfidenceTag confidence={item.confidence} />}
         {item.reviewStatus === 'UNREVIEWED' && <span className="faint small">Not Yet Reviewed by an Analyst</span>}
       </span>
       <span className="path-steps">

@@ -137,7 +137,9 @@ describe('Sign Up', () => {
     expect(card).toHaveClass('auth-card', 'sign-up');
     expect(within(card).getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
     expect(within(card).getByLabelText('Confirm Password')).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Create Account' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Create Account' })).toHaveAttribute('type', 'submit');
+    // One card, as Log In is: no side panel beside it (Polish Log In and Sign Up).
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
     expect(screen.getByText(/Already Have an Account\?/)).toContainElement(screen.getByRole('button', { name: 'Log In' }));
   });
 

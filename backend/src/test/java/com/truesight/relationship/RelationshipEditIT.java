@@ -115,6 +115,27 @@ class RelationshipEditIT {
         assertThat(saved.getReviewedBy()).isEqualTo(logins.user(email).getId());
     }
 
+    /** As for relationships the AI finds (See How Confident TrueSight Is), so none added today reads "Not Recorded". */
+    @Test
+    void anAddedRelationshipRecordsHowMuchOfTheAnalystsSentenceIsInTheReport() throws Exception {
+        String exactBody = add(analyst(), fixture().company(), "SK Hynix Inc.", MEMORY_SENTENCE)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.relationship.confidence.reasons[1].text").value("Strong Quote Match (100%)"))
+                .andReturn().getResponse().getContentAsString();
+        // The real sentence's 12 words with "purchase" changed to "buy": 11 of 12 found, recorded rounded down.
+        String reworded = "We buy memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.";
+        String rewordedBody = add(analyst(), fixture().company(), "SK Hynix Inc.", reworded)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.relationship.evidence").value(MEMORY_SENTENCE))
+                .andExpect(jsonPath("$.relationship.confidence.reasons[1].text").value("Partial Quote Match (91%)"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(relationships.findById(json.readTree(exactBody).path("relationship").path("id").asLong())
+                .orElseThrow().getQuoteMatch()).isEqualByComparingTo("1.000");
+        assertThat(relationships.findById(json.readTree(rewordedBody).path("relationship").path("id").asLong())
+                .orElseThrow().getQuoteMatch()).isEqualByComparingTo("0.916");
+    }
+
     @Test
     void aSentenceThatIsNotInTheReportIsRefusedAndNothingIsSaved() throws Exception {
         Fixture fixture = fixture();
@@ -181,7 +202,9 @@ class RelationshipEditIT {
 
     private Fixture fixture() {
         String suffix = UUID.randomUUID().toString();
-        Company company = companyDirectory.findOrCreate("NVIDIA Relationship Test " + suffix, null, "NVDA", List.of());
+        // No ticker: the test's company only has to be its own company. With NVDA, its "NVIDIA ..." name would agree
+        // with NVIDIA Corporation's, and the directory would join the two (the same ticker and agreeing names).
+        Company company = companyDirectory.findOrCreate("NVIDIA Relationship Test " + suffix, null, null, List.of());
         Report report = reports.save(new Report(company.getId(), "10-K",
                 "re-" + suffix.replace("-", "").substring(0, 20), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/Archives/relationship-test/" + suffix, Examples.nvidia10K()));

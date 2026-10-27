@@ -740,6 +740,33 @@ describe('a chosen alert', () => {
     expect(path).toHaveTextContent(`Lam Research${TSMC.displayName}NVIDIA`);
   });
 
+  // As the backend's RelationshipConfidence works it out for the path; the website only shows it (See How Confident
+  // TrueSight Is). An alert about the holding itself reaches it through no relationship, so it has no tag.
+  it('tagsEachPathWithHowConfidentTrueSightIsAndAHoldingNamedInTheArticleWithNone', async () => {
+    const named: ReachedHolding = { ...tsmcSuppliesNvidia(1, 1), supplierName: null, customerName: null, relationshipId: null, confidence: null };
+    const reaching: ReachedHolding = {
+      ...tsmcSuppliesNvidia(1, 1),
+      confidence: {
+        level: 'HIGH',
+        reasons: [
+          { text: 'An Analyst Approved It', effect: 'RAISES' },
+          { text: 'Quote Match Not Recorded', effect: 'NONE' },
+          { text: 'Not Yet Second-Checked', effect: 'NONE' },
+        ],
+      },
+    };
+    const alert = sampleAlert({ holdings: [named, reaching] });
+    backend.alerts = [alert];
+    renderAt('/portfolios/7?tab=alerts');
+    await graph();
+
+    await userEvent.click(within(drawer()).getByRole('button', { name: alert.headline.article.title }));
+
+    const path = within(inspector()).getByRole('region', { name: 'How It Reaches You' });
+    expect(within(path).getByText('High Confidence')).toHaveClass('confidence-high');
+    expect(within(path).getByText('Named in the Article').closest('button')).not.toHaveTextContent(/Confidence/);
+  });
+
   it('putsTheMostSeriousOpenAlertFirstOnTheHoldingsTabAndThePillOpensTheAlertsTab', async () => {
     const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
     backend.alerts = [alert];
@@ -848,6 +875,59 @@ describe('the Inspector', () => {
     expect(within(inspector()).getByText('Added by an Analyst')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Link 3' }));
     expect(within(inspector()).getByText('Not Yet Reviewed by an Analyst')).toBeInTheDocument();
+  });
+
+  // As the backend's RelationshipConfidence works them out; the website only shows them.
+  it('showsARelationshipsConfidenceWithEachReasonAndItsEffect', async () => {
+    backend.relationships = [
+      {
+        ...sample[0]!,
+        reviewStatus: 'APPROVED',
+        confidence: {
+          level: 'HIGH',
+          reasons: [
+            { text: 'An Analyst Approved It', effect: 'RAISES' },
+            { text: 'Quote Match Not Recorded', effect: 'NONE' },
+            { text: 'Second Check Agrees', effect: 'NONE' },
+          ],
+        },
+      },
+    ];
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Link 1' }));
+
+    const confidence = within(inspector()).getByRole('region', { name: 'Confidence' });
+    expect(within(confidence).getByText('High Confidence')).toHaveClass('confidence-high');
+    expect(within(confidence).getAllByRole('listitem').map((reason) => reason.textContent)).toEqual([
+      'An Analyst Approved ItRaises Confidence',
+      'Quote Match Not RecordedNo Effect',
+      'Second Check AgreesNo Effect',
+    ]);
+  });
+
+  it('showsADoubtedRelationshipAsLowConfidenceWithTheDoubtLoweringIt', async () => {
+    backend.relationships = [
+      {
+        ...sample[0]!,
+        confidence: {
+          level: 'LOW',
+          reasons: [
+            { text: 'Not Yet Reviewed', effect: 'NONE' },
+            { text: 'Strong Quote Match (100%)', effect: 'NONE' },
+            { text: 'Second Check Doubts', effect: 'LOWERS' },
+          ],
+        },
+      },
+    ];
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Link 1' }));
+
+    expect(within(inspector()).getByText('Low Confidence')).toHaveClass('confidence-low');
+    expect(within(inspector()).getByText('Second Check Doubts').closest('li')).toHaveTextContent('Lowers Confidence');
   });
 });
 
