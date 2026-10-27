@@ -7,9 +7,19 @@ type FormFieldProps = {
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onBlur: (event: FocusEvent<HTMLInputElement>) => void;
   error?: string | null;
-} & Pick<InputHTMLAttributes<HTMLInputElement>, 'type' | 'autoComplete'>;
+} & Pick<InputHTMLAttributes<HTMLInputElement>, 'type' | 'autoComplete' | 'maxLength'>;
 
-export function FormField({ id, label, value, onChange, onBlur, error, type = 'text', autoComplete }: FormFieldProps) {
+export function FormField({
+  id,
+  label,
+  value,
+  onChange,
+  onBlur,
+  error,
+  type = 'text',
+  autoComplete,
+  maxLength,
+}: FormFieldProps) {
   const errorId = `${id}-error`;
   const describedBy = error ? errorId : undefined;
 
@@ -20,6 +30,7 @@ export function FormField({ id, label, value, onChange, onBlur, error, type = 't
         id={id}
         type={type}
         autoComplete={autoComplete}
+        maxLength={maxLength}
         value={value}
         onChange={onChange}
         onBlur={onBlur}

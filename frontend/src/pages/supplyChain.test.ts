@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
+import { sampleAlert, tsmcSuppliesNvidia } from '../test/sampleAlerts';
 import {
+  alertPaths,
+  alertSeverities,
+  alertsFor,
   buildGraphElements,
   CHAIN_COLOURS,
   chainColours,
@@ -24,10 +28,13 @@ import {
   lineCrosses,
   logoUrl,
   nodeLabel,
+  openAlerts,
   plainName,
   readSavedLayout,
+  reachPath,
   relationshipSummary,
   saveLayout,
+  severestOf,
   shortName,
   sharedCompanies,
   spreadLayout,
@@ -1057,5 +1064,126 @@ describe('saved layouts', () => {
     });
     expect(() => saveLayout('truesight.graph.7', { positions: {} })).not.toThrow();
     expect(readSavedLayout('truesight.graph.7')).toBeNull();
+  });
+});
+
+describe('alerts on the graph', () => {
+  const TSMC_NAME = 'Taiwan Semiconductor Manufacturing Company Limited';
+
+  it('keeps the open alerts and drops the dismissed ones', () => {
+    const open = sampleAlert({ id: 1 });
+    const dismissed = sampleAlert({ id: 2, headline: 1, status: 'DISMISSED' });
+
+    expect(openAlerts([open, dismissed])).toEqual([open]);
+  });
+
+  it('words how an alert reaches a holding as the Alerts page does', () => {
+    expect(reachPath({ supplierName: 'TSMC', middleName: null, customerName: 'Nvidia' })).toBe('TSMC supplies Nvidia');
+    expect(reachPath({ supplierName: 'Zeiss', middleName: 'TSMC', customerName: 'Nvidia' })).toBe(
+      'Zeiss supplies TSMC, which supplies Nvidia',
+    );
+    expect(reachPath({ supplierName: null, middleName: null, customerName: null })).toBeNull();
+  });
+
+  it("finds the open alerts about a company by the stored name of its article's company, whatever their age", () => {
+    const old = sampleAlert({ id: 1, daysOld: 90 });
+    const other = sampleAlert({ id: 2, headline: 1, companyName: 'Samsung Electronics Co., Ltd.', holdings: [] });
+
+    expect(alertsFor([old, other], TSMC_NAME, null)).toEqual([old]);
+    expect(alertsFor([old, other], 'Taiwan Semiconductor Manufacturing', null)).toEqual([]);
+  });
+
+  it('finds, for a holding, the open alerts that reach it too', () => {
+    const reaching = sampleAlert({ id: 1, companyName: TSMC_NAME, holdings: [tsmcSuppliesNvidia(1, 1)] });
+    const reachingOther = sampleAlert({ id: 2, headline: 1, companyName: TSMC_NAME, holdings: [tsmcSuppliesNvidia(2, 2)] });
+    const dismissed = sampleAlert({ id: 3, headline: 2, status: 'DISMISSED', holdings: [tsmcSuppliesNvidia(1, 1)] });
+
+    expect(alertsFor([reaching, reachingOther, dismissed], 'NVIDIA Corporation', 1)).toEqual([reaching]);
+    expect(alertsFor([reaching, reachingOther, dismissed], 'NVIDIA Corporation', null)).toEqual([]);
+  });
+
+  it('lists the paths under an alert: into the chosen holding, or to the holdings it reaches', () => {
+    const both = sampleAlert({
+      holdings: [tsmcSuppliesNvidia(1, 1), { ...tsmcSuppliesNvidia(2, 3), ticker: 'AMD', customerName: 'Advanced Micro Devices' }],
+    });
+    const itself = sampleAlert({
+      holdings: [{ ...tsmcSuppliesNvidia(1, 1), supplierName: null, customerName: null, relationshipId: null }],
+    });
+
+    expect(alertPaths(both, 1)).toEqual(['Taiwan Semiconductor Manufacturing supplies NVIDIA']);
+    expect(alertPaths(both, null)).toEqual([
+      'Taiwan Semiconductor Manufacturing supplies NVIDIA',
+      'Taiwan Semiconductor Manufacturing supplies Advanced Micro Devices',
+    ]);
+    expect(alertPaths(itself, 1)).toEqual(['Named in the Article']);
+    expect(alertPaths(itself, null)).toEqual([]);
+  });
+
+  it('takes the most severe of some alerts', () => {
+    const severities = (...list: ('LOW' | 'MEDIUM' | 'HIGH')[]) =>
+      severestOf(list.map((severity, index) => sampleAlert({ id: index, severity })));
+
+    expect(severities('LOW', 'HIGH', 'MEDIUM')).toBe('HIGH');
+    expect(severities('LOW', 'MEDIUM')).toBe('MEDIUM');
+    expect(severities('LOW')).toBe('LOW');
+    expect(severities()).toBeNull();
+  });
+
+  describe('the most severe open alert of each company on the graph', () => {
+    const holdings: Holding[] = [
+      {
+        id: 1,
+        ticker: 'NVDA',
+        weight: 20,
+        companyName: 'NVIDIA Corporation',
+        companyDisplayName: 'NVIDIA',
+        status: 'DONE',
+        statusReason: null,
+        reportType: '10-K',
+        reportDate: '2026-02-25',
+        reportLink: null,
+        lastAnalysed: null,
+      },
+    ];
+    const { nodes } = buildGraphElements(sampleRelationships, holdings);
+    const byHolding = holdingNodeIds(holdings, nodes);
+    const idOf = (name: string) => nodes.find((node) => node.name === name)!.id;
+
+    it('marks the company an alert is about, and the holding it reaches, each with the most severe', () => {
+      const low = sampleAlert({ id: 1, headline: 0, severity: 'LOW' });
+      const high = sampleAlert({ id: 2, headline: 1, severity: 'HIGH' });
+
+      const dots = alertSeverities([low, high], nodes, holdings, byHolding);
+
+      expect(dots.get(idOf(TSMC_NAME))).toBe('HIGH');
+      expect(dots.get(idOf('NVIDIA Corporation'))).toBe('HIGH');
+      expect(dots.size).toBe(2);
+    });
+
+    it('marks no company whose alerts are all dismissed', () => {
+      const dots = alertSeverities(
+        [sampleAlert({ id: 1, status: 'DISMISSED' }), sampleAlert({ id: 2, headline: 1, status: 'DISMISSED' })],
+        nodes,
+        holdings,
+        byHolding,
+      );
+
+      expect(dots.size).toBe(0);
+    });
+
+    it('keeps an open alert\'s dot when another alert of the company is dismissed', () => {
+      const dots = alertSeverities(
+        [sampleAlert({ id: 1, severity: 'MEDIUM' }), sampleAlert({ id: 2, headline: 1, severity: 'HIGH', status: 'DISMISSED' })],
+        nodes,
+        holdings,
+        byHolding,
+      );
+
+      expect(dots.get(idOf(TSMC_NAME))).toBe('MEDIUM');
+    });
+
+    it('marks nothing without alerts', () => {
+      expect(alertSeverities([], nodes, holdings, byHolding).size).toBe(0);
+    });
   });
 });

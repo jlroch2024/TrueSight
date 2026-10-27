@@ -53,6 +53,11 @@ public final class Examples {
         return read("gemini-news-assessment.json");
     }
 
+    /** Gemini's real recommendation response supplied during TS-183 implementation. */
+    public static String geminiRecommendation() {
+        return read("gemini-recommendation.json");
+    }
+
     /** The team's hand labels, event or noise, for the 20 headlines in {@link #geminiNewsAssessment()}. */
     public static String newsLabels() {
         return read("news-labels.csv");

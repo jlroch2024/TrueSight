@@ -37,7 +37,8 @@ export type AlertEvent = {
   status: AlertStatus;
   exposure: number;
   headline: {
-    article: { title: string; source: string | null; publishedAt: string; url: string };
+    // companyName is the stored name of the company the article is about, which is how the graph's companies are keyed.
+    article: { title: string; source: string | null; publishedAt: string; url: string; companyName: string | null };
     assessment: {
       eventType: EventType;
       severity: Severity;
@@ -48,6 +49,7 @@ export type AlertEvent = {
   };
   sources: Array<{ title: string; source: string | null; publishedAt: string; url: string }>;
   holdings: ReachedHolding[];
+  recommendation: string | null;
 };
 
 // weighted describes current portfolio weights, while event exposure is stored when alerts are created.

@@ -1,6 +1,7 @@
 package com.truesight.news;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +20,11 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     Optional<Alert> findByIdAndPortfolioId(Long id, Long portfolioId);
 
+    /** Removes this article's alerts from every portfolio; the table removes their holdings with them. */
+    @Modifying
+    @Query("delete from Alert a where a.articleId = :articleId")
+    int deleteByArticleId(@Param("articleId") Long articleId);
+
     /** Alerts ordered for the page; event grouping and dismissed filtering happen after this query. */
     @Query("""
             select new com.truesight.news.AlertRow(a, article, assessment)
@@ -36,4 +42,16 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     List<AlertRow> findOrdered(@Param("portfolioId") Long portfolioId);
 
     List<Alert> findByIdInAndPortfolioId(Collection<Long> ids, Long portfolioId);
+
+    /**
+     * Deletes this portfolio's alerts that reach no holding any more, for example after the last holding they reached
+     * was removed. The database has already removed the removed holding's places in alerts (ON DELETE CASCADE).
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            delete from Alert a
+            where a.portfolioId = :portfolioId
+              and not exists (select 1 from AlertHolding h where h.alertId = a.id)
+            """)
+    void deleteWithoutHoldings(@Param("portfolioId") Long portfolioId);
 }

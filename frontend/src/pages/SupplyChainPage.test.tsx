@@ -9,12 +9,13 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import type { AlertEvent } from '../api/alerts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
-import type { NewsArticle } from '../api/news';
-import type { Holding, Portfolio } from '../api/portfolios';
+import type { Severity } from '../api/news';
+import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { tokenStore } from '../api/client';
 import { showInReportUrl } from '../format';
-import { TSMC, sampleNews } from '../test/sampleNews';
+import { sampleAlert } from '../test/sampleAlerts';
+import { TSMC } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 import { SupplyChainPage } from './SupplyChainPage';
 import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
@@ -30,6 +31,7 @@ vi.mock('../graph/LivingGraph', () => ({
     logoToken,
     logoDomains,
     risks,
+    alertDots,
   }: {
     nodes: GraphNode[];
     edges: GraphEdge[];
@@ -40,6 +42,7 @@ vi.mock('../graph/LivingGraph', () => ({
     logoToken?: string;
     logoDomains?: Record<string, string>;
     risks?: Map<number, { severity: string; eventType: string; title: string }>;
+    alertDots?: Map<string, Severity>;
   }) => (
     <div data-testid="fake-graph">
       <span data-testid="logo-domains">{JSON.stringify(logoDomains ?? {})}</span>
@@ -49,6 +52,9 @@ vi.mock('../graph/LivingGraph', () => ({
       <span data-testid="selected-node">{selectedNodeId ?? ''}</span>
       <span data-testid="selected-relationship">{selectedRelationshipId ?? ''}</span>
       <span data-testid="risk-relationships">{[...(risks?.keys() ?? [])].sort().join(',')}</span>
+      <span data-testid="alert-dots">
+        {[...(alertDots ?? [])].map(([nodeId, severity]) => `${nodeId}:${severity}`).sort().join(',')}
+      </span>
       {edges.map((edge) => (
         <button key={edge.id} onClick={() => onEdgeSelect(edge.relationshipId)}>
           {`Select edge ${edge.relationshipId}`}
@@ -115,24 +121,14 @@ function holding(overrides: Partial<Holding> = {}): Holding {
   };
 }
 
-const PORTFOLIO: Portfolio = {
-  id: 7,
-  name: 'Semiconductors',
-  createdAt: '2026-10-01T00:00:00Z',
-  newsStatus: 'IDLE',
-  newsStatusReason: null,
-  newsCheckedAt: null,
-};
-
-// Answers the page's calls. settings is GET /api/settings's answer, or a status code for it to fail with. news is
-// GET .../news's answer, and portfolio the open portfolio in GET /api/portfolios.
+// Answers the page's calls. settings is GET /api/settings's answer, or a status code for it to fail with. alerts is
+// GET .../alerts's answer, or a status code for it to fail with. GET .../news is never asked for, and answers an empty
+// list if it is.
 function fakeFetch(
   relationships: Relationship[],
   holdings: Holding[],
   settings: { logoToken: string } | number = { logoToken: '' },
-  news: NewsArticle[] = [],
-  portfolio: Portfolio = PORTFOLIO,
-  alerts: AlertEvent[] = [],
+  alerts: AlertEvent[] | number = [],
 ) {
   return vi.fn(async (url: string) => {
     if (url.endsWith('/settings')) {
@@ -140,11 +136,12 @@ function fakeFetch(
         ? new Response(JSON.stringify({ message: 'Something went wrong.' }), { status: settings })
         : new Response(JSON.stringify(settings));
     }
-    if (url === '/api/portfolios') return new Response(JSON.stringify([portfolio]));
     if (url.includes('/alerts')) {
-      return new Response(JSON.stringify({ weighted: false, holdingCount: holdings.length, alerts }));
+      return typeof alerts === 'number'
+        ? new Response(JSON.stringify({ message: 'Something went wrong.' }), { status: alerts })
+        : new Response(JSON.stringify({ weighted: false, holdingCount: holdings.length, alerts }));
     }
-    if (url.endsWith('/news')) return new Response(JSON.stringify(news));
+    if (url.endsWith('/news')) return new Response('[]');
     if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({}));
     return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
   });
@@ -181,6 +178,7 @@ describe('Supply Chain page', () => {
           source: 'Local test fixture',
           publishedAt: '2026-10-20T00:00:00Z',
           url: 'https://example.com/event',
+          companyName: 'Taiwan Semiconductor Manufacturing Company Limited',
         },
         assessment: {
           eventType: 'SUPPLY_SHORTAGE',
@@ -200,8 +198,9 @@ describe('Supply Chain page', () => {
         { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'TSMC', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 1, confidence: UNREVIEWED_CONFIDENCE },
         { holdingId: 1, ticker: 'NVDA', weight: 40, indirect: false, supplierName: 'Samsung Electronics', middleName: null, customerName: 'NVIDIA', reviewStatus: 'UNREVIEWED', relationshipId: 2, confidence: UNREVIEWED_CONFIDENCE },
       ],
+      recommendation: null,
     };
-    vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [], PORTFOLIO, [event]));
+    vi.stubGlobal('fetch', fakeFetch([first, second], [holding()], undefined, [event]));
 
     renderAt('/portfolios/7/supply-chain');
 
@@ -293,7 +292,7 @@ describe('Supply Chain page', () => {
     vi.stubGlobal('fetch', fakeFetch([relationship()], [holding({ weight: 18 })]));
     renderAt('/portfolios/7/supply-chain');
     await screen.findByTestId('fake-graph');
-    const panel = screen.getByRole('complementary', { name: 'Holdings and News' });
+    const panel = screen.getByRole('complementary', { name: 'Holdings' });
 
     expect(within(panel).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
       'NVDANVIDIA18%1 Supplier · 0 Customers',
@@ -410,7 +409,7 @@ describe('Supply Chain page', () => {
       renderAt('/portfolios/7/supply-chain');
 
       await screen.findByTestId('fake-graph');
-      const panel = screen.getByRole('complementary', { name: 'Holdings and News' });
+      const panel = screen.getByRole('complementary', { name: 'Holdings' });
       expect(within(panel).getByRole('heading', { name: 'Shared Suppliers and Customers' })).toBeInTheDocument();
       const shared = within(panel).getAllByRole('button').filter((button) => button.classList.contains('shared'));
       expect(shared.map((button) => button.textContent)).toEqual([
@@ -473,7 +472,7 @@ describe('Supply Chain workspace', () => {
   }
 
   const inspector = () => screen.getByRole('complementary', { name: 'Inspector' });
-  const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings and News' });
+  const holdingsPanel = () => screen.getByRole('complementary', { name: 'Holdings' });
 
   it('shows the holdings and the graph, with the Inspector closed until something is chosen', async () => {
     await openWorkspace();
@@ -497,16 +496,26 @@ describe('Supply Chain workspace', () => {
     expect(screen.getByTestId('selected-node')).toBeEmptyDOMElement();
   });
 
-  it('folds the Holdings and News drawer to a strip, and opens it again', async () => {
+  it('folds the Holdings drawer to a strip, and opens it again', async () => {
     await openWorkspace();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Hide Holdings and News' }));
-    expect(screen.queryByRole('tab', { name: 'Holdings' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Hide Holdings' }));
+    expect(screen.queryByRole('heading', { name: 'Holdings' })).not.toBeInTheDocument();
     expect(document.querySelector('.workspace')).toHaveClass('left-closed');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show Holdings and News' }));
-    expect(screen.getByRole('tab', { name: 'Holdings' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show Holdings' }));
+    expect(screen.getByRole('heading', { name: 'Holdings' })).toBeInTheDocument();
     expect(document.querySelector('.workspace')).not.toHaveClass('left-closed');
+  });
+
+  it('has no News tab: the Holdings panel stands alone, with no tabs and no Check News', async () => {
+    await openWorkspace();
+
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /News/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /News/ })).not.toBeInTheDocument();
+    expect(within(holdingsPanel()).getByRole('heading', { name: 'Holdings' })).toBeInTheDocument();
   });
 
   it('lists holdings largest first, each with its weight and how many suppliers and customers it has', async () => {
@@ -657,76 +666,130 @@ describe('Supply Chain workspace', () => {
   });
 });
 
-describe('Supply Chain news', () => {
+describe('Supply Chain alerts', () => {
   const nvidia = { id: 1, name: 'NVIDIA CORP', displayName: 'NVIDIA', ticker: 'NVDA' };
   const relationships = [relationship({ id: 1, company: nvidia, counterparty: TSMC })];
   const holdings = [
     holding({ id: 1, ticker: 'NVDA', companyName: nvidia.name, companyDisplayName: nvidia.displayName, weight: 18 }),
   ];
-  const checked = { ...PORTFOLIO, newsCheckedAt: '2026-10-13T00:00:00Z' };
 
-  it('opens on the News tab from ?panel=news, listing the collected headlines', async () => {
-    const news = sampleNews(3);
-    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, news, checked));
+  /** The requests the page made. */
+  const asked = (fetch: ReturnType<typeof fakeFetch>) => fetch.mock.calls.map(([url]) => url);
+  /** The Inspector's Alerts section, once the alerts have arrived. */
+  const alertsRegion = () =>
+    within(screen.getByRole('complementary', { name: 'Inspector' })).findByRole('region', { name: 'Alerts' });
+
+  it('asks for the alerts once, and never for the news list', async () => {
+    const fetch = fakeFetch(relationships, holdings, undefined, [sampleAlert()]);
+    vi.stubGlobal('fetch', fetch);
+
+    renderAt('/portfolios/7/supply-chain?panel=news');
+    await screen.findByTestId('fake-graph');
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 11' }));
+
+    await alertsRegion();
+    expect(asked(fetch).filter((url) => url.includes('/alerts'))).toEqual(['/api/portfolios/7/alerts']);
+    expect(asked(fetch).filter((url) => url.endsWith('/news'))).toEqual([]);
+    expect(asked(fetch).filter((url) => url === '/api/portfolios')).toEqual([]);
+  });
+
+  it('ignores ?panel=news: there is no News tab to open', async () => {
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings));
 
     renderAt('/portfolios/7/supply-chain?panel=news');
 
-    expect(await screen.findByRole('tab', { name: 'News (3)' })).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByText(news[0]!.title)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Open Article' })).toHaveLength(3);
+    expect(await screen.findByTestId('fake-graph')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Holdings' })).toBeInTheDocument();
   });
 
-  it('lists the headlines once a running news check finishes, without reloading the page', async () => {
-    let finished = false;
-    const news = sampleNews(2);
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-      if (url === '/api/portfolios') {
-        return new Response(JSON.stringify([finished ? checked : { ...PORTFOLIO, newsStatus: 'CHECKING' }]));
-      }
-      if (url.endsWith('/news')) return new Response(JSON.stringify(finished ? news : []));
-      if (url.endsWith('/settings')) return new Response(JSON.stringify({ logoToken: '' }));
-      return new Response(JSON.stringify(url.endsWith('/relationships') ? relationships : holdings));
-    }));
-    renderAt('/portfolios/7/supply-chain?panel=news');
-    expect(await screen.findByRole('button', { name: 'Checking News…' })).toBeDisabled();
-
-    finished = true;
-
-    expect(await screen.findByText(news[0]!.title, undefined, { timeout: 4000 })).toBeInTheDocument();
-  });
-
-  it("chooses a headline's company on the graph, and the Inspector shows its newest headlines", async () => {
-    const news = sampleNews(5);
-    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, news, checked));
-    renderAt('/portfolios/7/supply-chain?panel=news');
-    await screen.findByText(news[0]!.title);
-
-    await userEvent.click(screen.getAllByRole('button', { name: 'TSM' })[0]!);
-
-    expect(screen.getByTestId('selected-node')).toHaveTextContent('11');
-    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
-    const recent = within(inspector).getByRole('region', { name: 'Recent News' });
-    expect(within(recent).getAllByRole('listitem')).toHaveLength(3);
-    expect(within(recent).getByText('(5)')).toBeInTheDocument();
-  });
-
-  it('narrows the News tab to one company with Show All News, and Clear lifts it', async () => {
-    const [tsmcNews, other] = sampleNews(2);
-    const nvidiaNews = { ...other!, id: 99, company: nvidia, isHolding: true };
-    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, [tsmcNews!, nvidiaNews], checked));
+  it("lists a company's open alerts in the Inspector, however old, with the path and Open Article", async () => {
+    const fresh = sampleAlert({ id: 1, headline: 0 });
+    const old = sampleAlert({ id: 2, headline: 1, daysOld: 40, severity: 'MEDIUM' });
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, [fresh, old]));
     renderAt('/portfolios/7/supply-chain');
     await screen.findByTestId('fake-graph');
-    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' })); // NVIDIA
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Show All News' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 11' })); // TSMC
 
-    const panel = screen.getByRole('tabpanel');
-    expect(screen.getByRole('tab', { name: 'News (2)' })).toHaveAttribute('aria-selected', 'true');
-    expect(within(panel).getAllByRole('listitem')).toHaveLength(1);
-    expect(within(panel).getByText('Only NVIDIA')).toBeInTheDocument();
+    const alerts = await alertsRegion();
+    expect(within(alerts).getByText('(2)')).toBeInTheDocument();
+    expect(within(alerts).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(alerts).getByText(fresh.headline.article.title)).toBeInTheDocument();
+    expect(within(alerts).getByText(old.headline.article.title)).toBeInTheDocument();
+    expect(within(alerts).getAllByText('Taiwan Semiconductor Manufacturing supplies NVIDIA')).toHaveLength(2);
+    expect(within(alerts).getAllByRole('button', { name: 'Open Article' })).toHaveLength(2);
+  });
 
-    await userEvent.click(within(panel).getByRole('button', { name: 'Clear' }));
-    expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
+  it('also lists, for a holding, the open alerts that reach it through a supplier, with the path', async () => {
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, [sampleAlert()]));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 1' })); // NVIDIA, the holding
+
+    const alerts = await alertsRegion();
+    expect(within(alerts).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(alerts).getByText('Taiwan Semiconductor Manufacturing supplies NVIDIA')).toBeInTheDocument();
+  });
+
+  it('says there are no open alerts for a company with none', async () => {
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, []));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 11' }));
+
+    const alerts = await alertsRegion();
+    expect(within(alerts).getByText('(0)')).toBeInTheDocument();
+    expect(within(alerts).getByText('No open alerts.')).toBeInTheDocument();
+  });
+
+  it('does not list a dismissed alert', async () => {
+    vi.stubGlobal('fetch', fakeFetch(relationships, holdings, undefined, [sampleAlert({ status: 'DISMISSED' })]));
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 11' }));
+
+    expect(await within(await alertsRegion()).findByText('No open alerts.')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-dots')).toBeEmptyDOMElement();
+  });
+
+  it("gives the graph each company's most severe open alert, and none to a company with only dismissed ones", async () => {
+    const samsung = { id: 12, name: 'Samsung Electronics Co., Ltd.', displayName: 'Samsung Electronics', ticker: null };
+    const both = [
+      relationship({ id: 1, company: nvidia, counterparty: TSMC }),
+      relationship({ id: 2, company: nvidia, counterparty: samsung }),
+    ];
+    const alerts = [
+      sampleAlert({ id: 1, headline: 0, severity: 'LOW' }),
+      sampleAlert({ id: 2, headline: 1, severity: 'HIGH' }),
+      sampleAlert({ id: 3, headline: 2, severity: 'HIGH', status: 'DISMISSED', companyName: samsung.name }),
+    ];
+    vi.stubGlobal('fetch', fakeFetch(both, holdings, undefined, alerts));
+
+    renderAt('/portfolios/7/supply-chain');
+
+    // TSMC (company 11) has two open alerts: the HIGH one wins. NVIDIA (company 1) is reached by both, so it too.
+    // Samsung (company 12) has only a dismissed one, so it has no dot.
+    await vi.waitFor(() => expect(screen.getByTestId('alert-dots')).toHaveTextContent('11:HIGH,1:HIGH'));
+    expect(screen.getByTestId('alert-dots')).not.toHaveTextContent('12:');
+  });
+
+  it('still shows the graph, and no alerts section, when the alerts cannot be loaded', async () => {
+    const fetch = fakeFetch(relationships, holdings, undefined, 500);
+    vi.stubGlobal('fetch', fetch);
+    renderAt('/portfolios/7/supply-chain');
+    await screen.findByTestId('fake-graph');
+    await vi.waitFor(() => expect(asked(fetch)).toContain('/api/portfolios/7/alerts'));
+    await new Promise((resolve) => setTimeout(resolve, 20)); // the failure has been handled
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select company 11' }));
+
+    expect(screen.getByRole('complementary', { name: 'Inspector' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Alerts' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-dots')).toBeEmptyDOMElement();
   });
 });
 
@@ -737,7 +800,7 @@ describe('Supply Chain logos', () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith('/settings')) return new Response(JSON.stringify({ logoToken: 'pk_test' }));
       if (url.startsWith('/api/logos/domains')) return new Response(JSON.stringify({ [samsung.name]: 'samsung.example' }));
-      if (url === '/api/portfolios') return new Response(JSON.stringify([PORTFOLIO]));
+      if (url === '/api/portfolios') return new Response(JSON.stringify([{ id: 7, name: 'Semiconductors' }]));
       if (url.endsWith('/news')) return new Response('[]');
       return new Response(JSON.stringify(url.endsWith('/relationships') ? [relationship(), relationship({ id: 2, counterparty: samsung })] : [holding()]));
     });

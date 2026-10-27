@@ -11,6 +11,7 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |
 | `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
+| `gemini-recommendation.json` | Gemini's real answer text and response identifiers for the NVIDIA shipment theft headline below | Get a Recommendation tests, so tests never call Gemini |
 | `news-labels.csv` | The team's own event-or-noise label for each of those 20 headlines, made by hand before looking at Gemini's answer | Filter Out Noise, to measure how often Gemini is right |
 
 ## Where It Came From
@@ -20,6 +21,17 @@ Real data to build and test against, so every story can start on day 1 and tests
 ```text
 https://news.google.com/rss/search?q=%22Taiwan%20Semiconductor%20Manufacturing%22+when:7d&hl=en-US&gl=US&ceid=US:en
 ```
+
+## The Recommendation
+
+`gemini-recommendation.json` preserves Gemini's returned recommendation text, model version and response ID. It was generated on
+25 October 2026 with `gemini-3.8-flash` for this real event headline:
+
+> GPUs from stolen $470,000 Nvidia RTX 5090 shipment at Brazil airport appear for sale online, identified by serial numbers — three employees identified by police helped steal equipment
+
+The prompt included NVIDIA's AI assessment that the shipment theft directly disrupted delivery, and its recorded
+suppliers and customers. The Gemini response ID is `pcbdapzhJvCyjuMP_uzwwQY`. Tests parse the saved Gemini API envelope;
+they do not call Gemini.
 
 ## The Gemini News Assessment
 

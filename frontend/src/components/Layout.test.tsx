@@ -115,6 +115,69 @@ describe('Layout', () => {
       expect(screen.queryByText('Analyst')).not.toBeInTheDocument();
     });
 
+    describe('the Profile button', () => {
+      type Account = { email: string; role: 'PORTFOLIO_MANAGER' | 'ANALYST'; displayName: string | null };
+
+      function logInWith(account: Account) {
+        tokenStore.set('a-token');
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+          if (url === '/api/portfolios') return new Response('[]');
+          if (url === '/api/me' && init?.method === 'PUT') {
+            const { displayName } = JSON.parse(String(init.body)) as { displayName: string };
+            return new Response(JSON.stringify({ ...account, displayName }));
+          }
+          return new Response(JSON.stringify(account));
+        }));
+      }
+
+      it('is the email, as a button, until the user sets a display name', async () => {
+        logInWith({ email: 'pm@firm.com', role: 'PORTFOLIO_MANAGER', displayName: null });
+
+        renderAt('/');
+
+        const button = await screen.findByRole('button', { name: 'Profile (pm@firm.com)' });
+        expect(button).toHaveTextContent('pm@firm.com');
+      });
+
+      it('shows the display name instead of the email once it is set', async () => {
+        logInWith({ email: 'jo@firm.com', role: 'ANALYST', displayName: 'Jo Tan' });
+
+        renderAt('/');
+
+        const button = await screen.findByRole('button', { name: 'Profile (Jo Tan)' });
+        expect(button).toHaveTextContent('Jo Tan');
+        expect(screen.queryByText('jo@firm.com')).not.toBeInTheDocument();
+        expect(screen.getByText('Analyst')).toBeInTheDocument();
+      });
+
+      it('opens the Profile window, and Close puts the keyboard back on the button', async () => {
+        logInWith({ email: 'pm@firm.com', role: 'PORTFOLIO_MANAGER', displayName: null });
+        renderAt('/');
+        const button = await screen.findByRole('button', { name: 'Profile (pm@firm.com)' });
+
+        await userEvent.click(button);
+        const profile = screen.getByRole('dialog', { name: 'Profile' });
+        expect(within(profile).getByText('pm@firm.com')).toBeInTheDocument();
+        await userEvent.click(within(profile).getByRole('button', { name: 'Close' }));
+
+        expect(screen.queryByRole('dialog', { name: 'Profile' })).not.toBeInTheDocument();
+        expect(button).toHaveFocus();
+      });
+
+      it('shows a saved display name in the header at once, replacing the email', async () => {
+        logInWith({ email: 'pm@firm.com', role: 'PORTFOLIO_MANAGER', displayName: null });
+        renderAt('/');
+        await userEvent.click(await screen.findByRole('button', { name: 'Profile (pm@firm.com)' }));
+
+        await userEvent.type(screen.getByLabelText('Display Name'), 'Jo Tan');
+        await userEvent.click(screen.getByRole('button', { name: 'Save Display Name' }));
+
+        expect(await screen.findByRole('button', { name: 'Profile (Jo Tan)' })).toHaveTextContent('Jo Tan');
+        // The window still shows the email, which is never replaced there.
+        expect(within(screen.getByRole('dialog', { name: 'Profile' })).getByText('pm@firm.com')).toBeInTheDocument();
+      });
+    });
+
     it('shows the Analyst-only items to an Analyst', async () => {
       logInAs('ANALYST', 'analyst@firm.com');
 

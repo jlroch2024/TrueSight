@@ -1,6 +1,7 @@
 package com.truesight.news;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -25,18 +26,28 @@ public class NewsClient {
     private final long intervalMillis;
     private long nextRequestAt;
 
+    @Autowired
     public NewsClient(@Value("${truesight.news.base-url:https://news.google.com/rss/search}") String baseUrl,
                       @Value("${truesight.news.requests-per-second:1}") int requestsPerSecond,
                       @Value("${truesight.sec.user-agent}") String userAgent) {
+        this(createClient(userAgent), baseUrl, requestsPerSecond);
+    }
+
+    NewsClient(RestClient client, String baseUrl, int requestsPerSecond) {
+        this.client = client;
+        this.baseUrl = baseUrl;
+        // Google News is a public feed; do not exceed one request per second even if configured higher.
+        this.intervalMillis = 1100L / Math.min(1, Math.max(1, requestsPerSecond));
+    }
+
+    private static RestClient createClient(String userAgent) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
         requestFactory.setReadTimeout(Duration.ofSeconds(30));
-        this.client = RestClient.builder()
+        return RestClient.builder()
                 .requestFactory(requestFactory)
                 .defaultHeader("User-Agent", userAgent)
                 .build();
-        this.baseUrl = baseUrl;
-        this.intervalMillis = 1000L / Math.min(1, Math.max(1, requestsPerSecond));
     }
 
     public List<NewsItem> search(String companyName) {

@@ -1,24 +1,28 @@
 // Shared authenticated frame: the TrueSight header, navigation sidebar and current page.
 // <Outlet /> is where React Router puts the page for the current address.
 //
-// The header shows who is logged in: their email, with "Analyst" under it for an Analyst. The sidebar also lists the
-// Analyst-only pages (ANALYST_NAV_ITEMS), but only for an Analyst.
+// The header shows who is logged in as a Profile button: their display name once they set one, otherwise their email,
+// with "Analyst" under it for an Analyst. It opens the Profile window, where they change their display name and
+// password. The sidebar also lists the Analyst-only pages (ANALYST_NAV_ITEMS), but only for an Analyst.
 //
 // When the address contains a portfolio (/portfolios/7/...), the sidebar also shows that portfolio's pages, from
 // PORTFOLIO_NAV_ITEMS in navigation.ts. The header has the Portfolio list and Manage Portfolios (PortfolioPicker) on
 // every page, so an Analyst on Review can always get back to a portfolio.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useMatch, useNavigate } from 'react-router';
-import { authApi, type Me } from '../api/auth';
+import { authApi, nameShown, type Me } from '../api/auth';
 import { tokenStore } from '../api/client';
 import { ANALYST_NAV_ITEMS, NAV_ITEMS, PORTFOLIO_NAV_ITEMS } from '../navigation';
 import { paths } from '../paths';
 import { PortfolioPicker } from './PortfolioPicker';
+import { ProfileWindow } from './ProfileWindow';
 
 export function Layout() {
   const [me, setMe] = useState<Me | null>(null);
   const [accountError, setAccountError] = useState(false);
   const [accountAttempt, setAccountAttempt] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileButton = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const portfolioId = useMatch('/portfolios/:portfolioId/*')?.params.portfolioId;
@@ -43,6 +47,12 @@ export function Layout() {
     };
   }, [accountAttempt]);
 
+  // Closing the window puts the keyboard back on the button that opened it.
+  const closeProfile = useCallback(() => {
+    setProfileOpen(false);
+    profileButton.current?.focus();
+  }, []);
+
   // Logging out only forgets the token: the backend keeps nothing to undo.
   function logOut() {
     tokenStore.clear();
@@ -62,7 +72,16 @@ export function Layout() {
             <div className="account-identity">
               {me ? (
                 <>
-                  <span className="account-email">{me.email}</span>
+                  <button
+                    ref={profileButton}
+                    type="button"
+                    className="profile-button"
+                    aria-label={`Profile (${nameShown(me)})`}
+                    title="Profile"
+                    onClick={() => setProfileOpen(true)}
+                  >
+                    {nameShown(me)}
+                  </button>
                   {me.role === 'ANALYST' && <span className="account-role">Analyst</span>}
                 </>
               ) : (
@@ -82,6 +101,7 @@ export function Layout() {
           <button type="button" className="log-out" onClick={logOut}>Log Out</button>
         </div>
       </header>
+      {profileOpen && me && <ProfileWindow me={me} onChange={setMe} onClose={closeProfile} />}
       <div className="layout">
         <aside className="sidebar">
           <nav aria-label="Main">
