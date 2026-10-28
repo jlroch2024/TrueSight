@@ -84,6 +84,14 @@ describe('room', () => {
     expect(empty?.body).toMatch(/margin-right:\s*0;/);
   });
 
+  it('centresAButtonsWordsInTheRoomItKeepsForItsLongerWords', () => {
+    // One rule for the button's two faces, of its own name: another class's alignment never reaches them.
+    const own = rules(styles).filter(({ selector }) => selector.split(',').some((part) => /^\.btn-swap(\s|$)/.test(part.trim())));
+    expect(own).toHaveLength(1);
+    expect(own[0]!.body).not.toMatch(/justify-items/);
+    expect(rules(styles).find(({ selector }) => selector === '.btn-swap-face')?.body).toMatch(/justify-content:\s*center;/);
+  });
+
   it('foldsTheWorkspacesQuieterActionsToIconsBelow1440PixelsWide', () => {
     expect(styles).toMatch(/@media \(max-width: 1439\.98px\) \{\s*\.ws \.island\.right \.btn\.quiet \{[^}]*width: 36px;[\s\S]*?\.ws \.island\.right \.btn-word \{\s*display: none;/);
   });

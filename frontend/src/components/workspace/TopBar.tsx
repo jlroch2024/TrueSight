@@ -263,9 +263,9 @@ export function ActionsIsland({
  */
 function Swap({ on, busy, idle }: { on: boolean; busy: ReactNode; idle: ReactNode }) {
   return (
-    <span className="swap" data-on={on}>
-      <span className="swap-face busy" aria-hidden={!on}>{busy}</span>
-      <span className="swap-face idle" aria-hidden={on}>{idle}</span>
+    <span className="btn-swap" data-on={on}>
+      <span className="btn-swap-face busy" aria-hidden={!on}>{busy}</span>
+      <span className="btn-swap-face idle" aria-hidden={on}>{idle}</span>
     </span>
   );
 }
