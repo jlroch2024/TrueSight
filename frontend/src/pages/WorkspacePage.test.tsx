@@ -685,6 +685,34 @@ describe('the Alerts tab', () => {
     expect(within(drawer()).getByText('No Open Alerts')).toBeInTheDocument();
   });
 
+  it('keepsAPortfolioLeftBehindsAlertsOutOfTheOneSwitchedTo', async () => {
+    backend.alerts = [open()];
+    // Semiconductors' alerts are slow to arrive; Utilities holds AMD and has no alerts.
+    let release = () => {};
+    const late = new Promise<void>((resolve) => (release = resolve));
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.startsWith('/api/portfolios/7/alerts')) {
+        await late;
+        return answer(url, init);
+      }
+      if (url === '/api/portfolios/9/holdings') return json([held(AMD, 30)]);
+      if (url === '/api/portfolios/9/relationships') return json([]);
+      if (url.startsWith('/api/portfolios/9/alerts')) return json({ weighted: true, holdingCount: 1, alerts: [] });
+      return answer(url, init);
+    }));
+    renderAt('/portfolios/7?tab=alerts');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Portfolio: Semiconductors' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Utilities/ }));
+    await screen.findByRole('button', { name: 'Portfolio: Utilities' });
+    await waitFor(() => expect(within(drawer()).getAllByText('News Not Checked Yet')[0]).toBeInTheDocument());
+    release();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(within(drawer()).getAllByText('News Not Checked Yet')[0]).toBeInTheDocument();
+    expect(within(drawer()).queryByRole('listitem', { name: open().headline.article.title })).not.toBeInTheDocument();
+  });
+
   it('putsTheOpenTabInTheAddress', async () => {
     renderAt();
     await graph();

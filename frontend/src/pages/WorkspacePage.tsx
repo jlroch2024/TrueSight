@@ -114,6 +114,11 @@ export function WorkspacePage() {
 
   // ---------- Loading ----------
 
+  // The portfolio now in the address. An answer that arrives after a switch belongs to the portfolio left behind, so the
+  // loaders below drop it rather than show it under the new one.
+  const shownPortfolio = useRef(portfolioId);
+  shownPortfolio.current = portfolioId;
+
   useEffect(() => {
     let active = true;
     setPortfolios(undefined);
@@ -151,10 +156,12 @@ export function WorkspacePage() {
   // be loaded, the Alerts tab says so and offers Retry.
   const loadAlerts = useCallback(async () => {
     try {
-      setAlertsResponse(await alertApi.list(portfolioId, true));
+      const answer = await alertApi.list(portfolioId, true);
+      if (shownPortfolio.current !== portfolioId) return;
+      setAlertsResponse(answer);
       setAlertsError(null);
     } catch (e) {
-      setAlertsError(messageOf(e));
+      if (shownPortfolio.current === portfolioId) setAlertsError(messageOf(e));
     }
   }, [portfolioId]);
   useEffect(() => {
@@ -177,17 +184,19 @@ export function WorkspacePage() {
 
   const loadHoldings = useCallback(async () => {
     try {
-      setHoldings(await holdingApi.list(portfolioId));
+      const answer = await holdingApi.list(portfolioId);
+      if (shownPortfolio.current === portfolioId) setHoldings(answer);
     } catch (e) {
-      toast(messageOf(e), { error: true });
+      if (shownPortfolio.current === portfolioId) toast(messageOf(e), { error: true });
     }
   }, [portfolioId, toast]);
 
   const loadRelationships = useCallback(async () => {
     try {
-      setRelationships(await relationshipApi.list(portfolioId));
+      const answer = await relationshipApi.list(portfolioId);
+      if (shownPortfolio.current === portfolioId) setRelationships(answer);
     } catch (e) {
-      toast(messageOf(e), { error: true });
+      if (shownPortfolio.current === portfolioId) toast(messageOf(e), { error: true });
     }
   }, [portfolioId, toast]);
 
