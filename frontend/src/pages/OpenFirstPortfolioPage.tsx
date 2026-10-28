@@ -1,10 +1,11 @@
 // The address "/", where logging in and signing up land. There is no Home page: TrueSight opens the user's first
 // portfolio (the first in their list, which is sorted by name), so they start where the work is. A user with no
-// portfolio yet, such as somebody who has just signed up, goes to the Portfolios page to create their first one.
+// portfolio yet, such as somebody who has just signed up, goes to /portfolios to create their first one.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { portfolioApi } from '../api/portfolios';
+import { PageFrame } from '../components/PageFrame';
 import { paths } from '../paths';
 
 export function OpenFirstPortfolioPage() {
@@ -30,16 +31,18 @@ export function OpenFirstPortfolioPage() {
 
   if (error) {
     return (
-      <section>
+      <PageFrame>
         <h1>Your Portfolios</h1>
         <p className="error">{error}</p>
-        <button type="button" onClick={() => navigate(paths.portfolios)}>Open My Portfolios</button>
-      </section>
+        <div className="actions">
+          <button type="button" className="btn primary" onClick={() => navigate(paths.portfolios)}>Open My Portfolios</button>
+        </div>
+      </PageFrame>
     );
   }
   return (
-    <section>
+    <PageFrame>
       <p className="muted">Opening Your Portfolio…</p>
-    </section>
+    </PageFrame>
   );
 }

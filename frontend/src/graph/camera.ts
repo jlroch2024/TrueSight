@@ -43,9 +43,15 @@ export function fitCamera(bounds: Bounds, width: number, height: number, padding
   return { k, x: room.left + clearWidth / 2 - middle.x * k, y: room.top + clearHeight / 2 - middle.y * k };
 }
 
-/** The camera with a world point at the middle of the screen, at zoom k. */
-export function centredOn(point: Point, k: number, width: number, height: number): Camera {
-  return { k, x: width / 2 - point.x * k, y: height / 2 - point.y * k };
+/**
+ * The camera with a world point at the middle of the screen, at zoom k; with insets, at the middle of what they leave
+ * clear (the part of the graph not under the page's panels).
+ */
+export function centredOn(point: Point, k: number, width: number, height: number, insets?: Insets): Camera {
+  const room = insets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const middleX = room.left + (width - room.left - room.right) / 2;
+  const middleY = room.top + (height - room.top - room.bottom) / 2;
+  return { k, x: middleX - point.x * k, y: middleY - point.y * k };
 }
 
 /** Smooth step for flights: slow start, quick middle, gentle landing. */
@@ -77,7 +83,7 @@ export class CameraRig {
   camera: Camera = { x: 0, y: 0, k: 1 };
   // A wheel zoom gliding in: the zoom it is heading for, and the point that must stay under the pointer.
   private zoomTo: { k: number; screen: Point; world: Point } | null = null;
-  private flight: { from: Camera; to: Camera; startedAt: number | null } | null = null;
+  private flight: { from: Camera; to: Camera; startedAt: number | null; ms: number } | null = null;
   private drift: Point = { x: 0, y: 0 };
   width = 1;
   height = 1;
@@ -129,7 +135,13 @@ export class CameraRig {
   }
 
   /** Flies to another camera. */
-  flyTo(camera: Camera) {
+  /** Whether a flight is under way (a wheel zoom or drift is not one). */
+  get flying(): boolean {
+    return this.flight !== null;
+  }
+
+  /** Flies to the camera, in FLY_MS unless told otherwise (a short glide, say). */
+  flyTo(camera: Camera, ms = FLY_MS) {
     this.zoomTo = null;
     this.drift = { x: 0, y: 0 };
     if (this.instant) {
@@ -137,14 +149,14 @@ export class CameraRig {
       this.flight = null;
       return;
     }
-    this.flight = { from: { ...this.camera }, to: camera, startedAt: null };
+    this.flight = { from: { ...this.camera }, to: camera, startedAt: null, ms };
   }
 
   /** One frame: dt is the milliseconds since the last, now the frame's time. Returns the camera. */
   step(dt: number, now: number): Camera {
     if (this.flight) {
       this.flight.startedAt ??= now;
-      const t = (now - this.flight.startedAt) / FLY_MS;
+      const t = (now - this.flight.startedAt) / this.flight.ms;
       this.camera = between(this.flight.from, this.flight.to, easeInOut(t), this.width, this.height);
       if (t >= 1 || this.instant) {
         this.camera = { ...this.flight.to };

@@ -69,7 +69,7 @@ function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswe
       onMouseDown={(event) => event.target === event.currentTarget && onAnswer(false)}
     >
       <div
-        className="window confirm-window"
+        className="window glass ticks confirm-window"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -79,13 +79,13 @@ function ConfirmDialog({ options, onAnswer }: { options: ConfirmOptions; onAnswe
         <h2 id={titleId}>{options.title}</h2>
         <p id={messageId}>{options.message}</p>
         <div className="confirm-actions">
-          <button ref={cancelRef} type="button" className="secondary" onClick={() => onAnswer(false)}>
+          <button ref={cancelRef} type="button" className="btn quiet" onClick={() => onAnswer(false)}>
             Cancel
           </button>
           <button
             ref={confirmRef}
             type="button"
-            className={options.danger ? 'danger' : undefined}
+            className={options.danger ? 'btn danger solid' : 'btn primary'}
             onClick={() => onAnswer(true)}
           >
             {options.confirmLabel}

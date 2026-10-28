@@ -1,13 +1,12 @@
-// One Portfolio Page, as the user sees it: the header's Portfolio list and Manage Portfolios window, /portfolios, and
-// the sidebar. Every Manage My Portfolios criterion is kept, now in the window.
+// Portfolios, as the user sees them: the workspace's portfolio menu and its Manage Portfolios window, /portfolios, and
+// no sidebar. Every Manage My Portfolios criterion is kept, in the window.
 // The backend is a small fake that keeps portfolios in memory and answers like the real one.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { tokenStore } from '../api/client';
-import { Layout } from './Layout';
 
 type Stored = { id: number; name: string; createdAt: string };
 let stored: Stored[];
@@ -60,7 +59,8 @@ async function fakeBackend(url: string, init: RequestInit = {}): Promise<Respons
 
 /** Where the app is, so a test can check the address. */
 function Address() {
-  return <output aria-label="Address">{useLocation().pathname}</output>;
+  const { pathname, search } = useLocation();
+  return <output aria-label="Address">{pathname + search}</output>;
 }
 
 function renderAt(path: string) {
@@ -76,8 +76,12 @@ function address() {
   return screen.getByLabelText('Address');
 }
 
+// The open portfolio's menu, in the workspace's top bar: its button is named after the portfolio.
+const picker = (name: string) => screen.findByRole('button', { name: `Portfolio: ${name}` });
+
 async function openWindow() {
-  await userEvent.click(await screen.findByRole('button', { name: 'Manage Portfolios' }));
+  await userEvent.click(await picker('Tech Book'));
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Manage Portfolios' }));
   const window = await screen.findByRole('dialog', { name: 'Manage Portfolios' });
   await within(window).findByText('Tech Book');
   return window;
@@ -108,7 +112,17 @@ describe('Manage Portfolios window', () => {
     }
 
     await userEvent.click(within(window).getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('opens over the whole screen, not inside the top bar it was opened from', async () => {
+    renderAt('/portfolios/1');
+
+    const window = await openWindow();
+
+    // A frosted-glass bar holds a fixed window inside itself, so the window is drawn at the top of the page.
+    expect(window.closest('.window-backdrop')!.parentElement).toBe(document.body);
+    expect(window.closest('.island')).toBeNull();
   });
 
   it('has no links', async () => {
@@ -127,8 +141,8 @@ describe('Manage Portfolios window', () => {
     await userEvent.click(within(window).getByRole('button', { name: 'Create Portfolio' }));
 
     await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/10'));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await vi.waitFor(() => expect(screen.getByLabelText('Portfolio')).toHaveTextContent('Pharma Book'));
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await picker('Pharma Book')).toBeInTheDocument();
   });
 
   it('refuses a name the user already uses', async () => {
@@ -167,7 +181,7 @@ describe('Manage Portfolios window', () => {
     backendDown = true;
     await userEvent.click(within(window).getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByRole('heading', { name: 'Technology Book' })).toBeInTheDocument();
+    expect(await picker('Technology Book')).toBeInTheDocument();
     expect(await within(window).findByText('The server is restarting.')).toBeInTheDocument();
   });
 
@@ -220,7 +234,7 @@ describe('Manage Portfolios window', () => {
     expect(within(manage).getByText('Energy Book')).toBeInTheDocument();
 
     await userEvent.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('Rename selects the whole name, and Save or Cancel gives the focus back to Rename', async () => {
@@ -249,12 +263,12 @@ describe('Manage Portfolios window', () => {
     await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
 
     await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  it('renaming the open portfolio shows the new name in its heading straight away', async () => {
+  it('renaming the open portfolio shows the new name in its menu straight away', async () => {
     renderAt('/portfolios/1');
-    expect(await screen.findByRole('heading', { name: 'Tech Book' })).toBeInTheDocument();
+    expect(await picker('Tech Book')).toBeInTheDocument();
     const window = await openWindow();
 
     await userEvent.click(within(window).getByRole('button', { name: 'Rename Tech Book' }));
@@ -263,10 +277,10 @@ describe('Manage Portfolios window', () => {
     await userEvent.type(input, 'Chips Book');
     await userEvent.click(within(window).getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByRole('heading', { name: 'Chips Book' })).toBeInTheDocument();
+    expect(await picker('Chips Book')).toBeInTheDocument();
   });
 
-  it('keeps Tab inside the window, and gives focus back to Manage Portfolios when it closes', async () => {
+  it('keeps Tab inside the window, and gives focus back to the portfolio menu when it closes', async () => {
     const user = userEvent.setup();
     renderAt('/portfolios/1');
     const window = await openWindow();
@@ -282,7 +296,7 @@ describe('Manage Portfolios window', () => {
     }
 
     await user.click(within(window).getByRole('button', { name: 'Close' }));
-    expect(screen.getByRole('button', { name: 'Manage Portfolios' })).toHaveFocus();
+    expect(await picker('Tech Book')).toHaveFocus();
   });
 
   it('Open switches to the chosen portfolio', async () => {
@@ -292,7 +306,7 @@ describe('Manage Portfolios window', () => {
     await userEvent.click(within(window).getByRole('button', { name: 'Open Energy Book' }));
 
     await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });
 
@@ -327,51 +341,33 @@ describe('/portfolios', () => {
   });
 });
 
-describe('header and sidebar', () => {
-  it('the sidebar shows Portfolio and Supply Chain for the open portfolio, and no Portfolios page', async () => {
+describe('no sidebar: the portfolio menu and the Analyst Desk', () => {
+  it('has no sidebar of portfolio pages, and no Portfolios page', async () => {
     renderAt('/portfolios/1');
 
-    const sidebar = screen.getByRole('navigation', { name: 'Main' });
-    expect(within(sidebar).getByRole('button', { name: 'Portfolio' })).toBeInTheDocument();
-    expect(within(sidebar).getByRole('button', { name: 'Supply Chain' })).toBeInTheDocument();
-    expect(within(sidebar).queryByRole('button', { name: 'Portfolios' })).not.toBeInTheDocument();
+    await screen.findByRole('button', { name: 'Portfolio: Tech Book' });
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
+    for (const page of ['Supply Chain', 'Alerts', 'Portfolios']) {
+      expect(screen.queryByRole('button', { name: page })).not.toBeInTheDocument();
+    }
   });
 
-  it('an Analyst on the Review page can get back to a portfolio from the header', async () => {
+  it('an Analyst on the Analyst Desk can get back to a portfolio', async () => {
     role = 'ANALYST';
     renderAt('/review');
 
-    const list = await screen.findByLabelText('Portfolio');
-    expect(list).toHaveTextContent('Choose a Portfolio');
-    await userEvent.click(list);
-    await userEvent.click(screen.getByRole('option', { name: 'Tech Book' }));
+    // Sorted by name, Energy Book (id 2) is the first.
+    await userEvent.click(await screen.findByRole('button', { name: 'Energy Book' }));
 
-    await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/1'));
+    await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2'));
   });
 
-  it('Manage Portfolios is in the header on a page with no portfolio open', async () => {
-    role = 'ANALYST';
-    renderAt('/review');
+  it('switching portfolios from the portfolio menu keeps the open drawer tab', async () => {
+    renderAt('/portfolios/1?tab=alerts');
 
-    const header = screen.getByRole('banner');
-    expect(await within(header).findByRole('button', { name: 'Manage Portfolios' })).toBeInTheDocument();
-  });
+    await userEvent.click(await screen.findByRole('button', { name: 'Portfolio: Tech Book' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Energy Book' }));
 
-  it('switching portfolios keeps the same kind of page: Supply Chain stays on Supply Chain', async () => {
-    render(
-      <MemoryRouter initialEntries={['/portfolios/1/supply-chain']}>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/portfolios/:portfolioId/supply-chain" element={<h1>Supply Chain</h1>} />
-          </Route>
-        </Routes>
-        <Address />
-      </MemoryRouter>,
-    );
-
-    await userEvent.click(await screen.findByLabelText('Portfolio'));
-    await userEvent.click(screen.getByRole('option', { name: 'Energy Book' }));
-
-    expect(address()).toHaveTextContent('/portfolios/2/supply-chain');
+    await vi.waitFor(() => expect(address()).toHaveTextContent('/portfolios/2?tab=alerts'));
   });
 });

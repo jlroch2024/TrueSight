@@ -1,6 +1,6 @@
 // The Analyst Desk: the open tab lives in the address, and the Relationships tab is today's Review page. The backend is
 // a small fake: who is logged in, the portfolios for the header, and one relationship waiting for review.
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -53,6 +53,11 @@ function json(body: unknown) {
 function Address() {
   const { pathname, search } = useLocation();
   return <output aria-label="Address">{pathname + search}</output>;
+}
+
+/** A tool's tile: a tab of the Analyst Desk. */
+function tool(name: string) {
+  return within(screen.getByRole('tablist', { name: 'Analyst Desk' })).getByRole('tab', { name });
 }
 
 function renderAt(path: string) {
@@ -108,7 +113,11 @@ describe('Analyst Desk', () => {
     renderAt('/review?tab=recommendations');
 
     expect(await screen.findByRole('heading', { name: 'A real saved event headline' })).toBeInTheDocument();
-    const text = screen.getByLabelText('Suggested next step');
+    // The AI's suggestion is shown as it wrote it; Edit opens it in a box.
+    expect(screen.getByText('Check supplier delivery updates.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Suggested Next Step')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    const text = screen.getByLabelText('Suggested Next Step');
     await userEvent.clear(text);
     await userEvent.type(text, 'Check the supplier delivery updates.');
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }));
@@ -125,7 +134,7 @@ describe('Analyst Desk', () => {
     const tab = screen.getByRole('tab', { name: 'Relationships' });
     expect(tab).toHaveAttribute('aria-selected', 'true');
     const panel = screen.getByRole('tabpanel', { name: 'Relationships' });
-    expect(within(panel).getByRole('heading', { name: 'Review' })).toBeInTheDocument();
+    expect(within(panel).getByRole('tablist', { name: 'Show' })).toBeInTheDocument();
     expect(
       await within(panel).findByRole('heading', {
         name: 'Taiwan Semiconductor Manufacturing → NVIDIA',
@@ -158,7 +167,7 @@ describe('Analyst Desk', () => {
     renderAt('/review?tab=quality');
 
     expect(screen.getByRole('tab', { name: 'Quality' })).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByRole('heading', { name: 'AI Quality' })).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing was decided and no AI call was made in the last 8 weeks/)).toBeInTheDocument();
     expect(await screen.findByText(/Nothing was decided and no AI call was made/)).toBeInTheDocument();
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/quality', expect.anything());
   });
@@ -166,7 +175,7 @@ describe('Analyst Desk', () => {
   it('opens the Events tab named in the address, with the undecided events', async () => {
     renderAt('/review?tab=events');
 
-    expect(screen.getByRole('tab', { name: 'Events' })).toHaveAttribute('aria-selected', 'true');
+    expect(tool('Events')).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/news/assessments?filter=EVENTS', expect.anything());
   });
@@ -188,11 +197,42 @@ describe('Analyst Desk', () => {
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
-  it('the sidebar says Analyst Desk', async () => {
+  it('shows each tool as a tile saying how much waits there, the record apart from the queues', async () => {
     renderAt('/review');
 
-    const sidebar = screen.getByRole('navigation', { name: 'Main' });
-    expect(await within(sidebar).findByRole('button', { name: 'Analyst Desk' })).toBeInTheDocument();
-    expect(within(sidebar).queryByRole('button', { name: 'Review' })).not.toBeInTheDocument();
+    await waitFor(() => expect(tool('Relationships')).toHaveTextContent('1Waiting'));
+    expect(tool('Events')).toHaveTextContent('0Waiting');
+    expect(tool('Recommendations')).toHaveTextContent('0Waiting');
+    expect(tool('AI Calls')).toHaveTextContent('0Today');
+    expect(screen.getByText('Review Queues')).toBeInTheDocument();
+    expect(screen.getByText('Record')).toBeInTheDocument();
+  });
+
+  it('counts one less waiting once a claim is decided', async () => {
+    let decided = false;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/api/auth/me') return json({ email: 'analyst@example.com', role: 'ANALYST' });
+      if (url === '/api/relationships/1/review' && init?.method === 'PUT') {
+        decided = true;
+        return json({ ...waiting, reviewStatus: 'APPROVED' });
+      }
+      if (url.startsWith('/api/reviews')) return json(decided && url.includes('UNREVIEWED') ? [] : [waiting]);
+      if (url.startsWith('/api/ai-calls')) return json({ calls: [], page: 0, totalPages: 0, total: 0 });
+      return json([]);
+    });
+    renderAt('/review');
+    await waitFor(() => expect(tool('Relationships')).toHaveTextContent('1Waiting'));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => expect(tool('Relationships')).toHaveTextContent('0Waiting'));
+  });
+
+  it('offers no sidebar: the way back is the portfolio button', async () => {
+    renderAt('/review');
+
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'My Portfolios' })).toBeInTheDocument();
   });
 });

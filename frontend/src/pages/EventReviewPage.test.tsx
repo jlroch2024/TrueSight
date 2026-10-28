@@ -1,4 +1,5 @@
-// The Analyst Desk's Events tab: the judged articles, Confirm, and Overrule with a note. The headlines are real (the
+// The Analyst Desk's Events tool: the judged articles, Approve (stored as Confirmed), and Reject with the judgement it
+// should be and a note (stored as Overruled). The headlines are real (the
 // saved Google News answer for TSMC), and so is the noise reason (Gemini's saved answer); the event's reason is the
 // test's own, and says so.
 import { render, screen, within } from '@testing-library/react';
@@ -85,13 +86,13 @@ describe('Events tab', () => {
     render(<EventReviewPage />);
     await card(eventArticle!.title);
 
-    await userEvent.click(screen.getByLabelText('Noise'));
+    await userEvent.click(screen.getByRole('tab', { name: 'Noise' }));
     const noise = await card(noiseArticle!.title);
     expect(noise).toHaveTextContent('Noise');
     expect(noise).toHaveTextContent(noiseArticle!.assessment!.reason);
     expect(screen.queryByRole('heading', { name: eventArticle!.title })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText('Decided'));
+    await userEvent.click(screen.getByRole('tab', { name: 'Decided' }));
     expect(await screen.findByText('No articles from the last 7 days have been decided yet.')).toBeInTheDocument();
     expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
       '/api/news/assessments?filter=EVENTS',
@@ -100,24 +101,24 @@ describe('Events tab', () => {
     ]);
   });
 
-  it('confirms the AI\'s judgement, and the article leaves Events', async () => {
+  it('confirms the AI\'s judgement with Approve, and the article leaves Events', async () => {
     render(<EventReviewPage />);
     const item = await card(eventArticle!.title);
 
-    await userEvent.click(within(item).getByRole('button', { name: 'Confirm' }));
+    await userEvent.click(within(item).getByRole('button', { name: 'Approve' }));
 
     expect(sent).toEqual([{ url: '/api/news/assessments/1', body: { decision: 'CONFIRMED' } }]);
     expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
   });
 
-  it('overrules an event to noise only with a note', async () => {
+  it('rejects an event as noise only with a note', async () => {
     render(<EventReviewPage />);
     const item = await card(eventArticle!.title);
 
-    await userEvent.click(within(item).getByRole('button', { name: 'Overrule' }));
+    await userEvent.click(within(item).getByRole('button', { name: 'Reject' }));
     expect(within(item).getByLabelText(/Make It/)).toHaveTextContent('Noise');
     expect(within(item).queryByLabelText(/Event Type/)).not.toBeInTheDocument();
-    const save = within(item).getByRole('button', { name: 'Save Overrule' });
+    const save = within(item).getByRole('button', { name: 'Save Rejection' });
     expect(save).toBeDisabled();
 
     await userEvent.type(within(item).getByLabelText('Note'), 'An earnings preview, not a disruption.');
@@ -133,20 +134,20 @@ describe('Events tab', () => {
     expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
   });
 
-  it('overrules noise to an event, choosing its type and severity', async () => {
+  it('rejects noise as an event, choosing its type and severity', async () => {
     render(<EventReviewPage />);
     await card(eventArticle!.title);
-    await userEvent.click(screen.getByLabelText('Noise'));
+    await userEvent.click(screen.getByRole('tab', { name: 'Noise' }));
     const item = await card(noiseArticle!.title);
 
-    await userEvent.click(within(item).getByRole('button', { name: 'Overrule' }));
+    await userEvent.click(within(item).getByRole('button', { name: 'Reject' }));
     expect(within(item).getByLabelText(/Make It/)).toHaveTextContent('Event');
     await userEvent.click(within(item).getByLabelText(/Event Type/));
     await userEvent.click(screen.getByRole('option', { name: 'Labour Action' }));
     await userEvent.click(within(item).getByLabelText(/Severity/));
     await userEvent.click(screen.getByRole('option', { name: 'High' }));
     await userEvent.type(within(item).getByLabelText('Note'), 'The headline reports a strike at the plant.');
-    await userEvent.click(within(item).getByRole('button', { name: 'Save Overrule' }));
+    await userEvent.click(within(item).getByRole('button', { name: 'Save Rejection' }));
 
     expect(sent[0]!.body).toEqual({
       decision: 'OVERRULED', isEvent: true, eventType: 'LABOUR_ACTION', severity: 'HIGH',
@@ -154,17 +155,17 @@ describe('Events tab', () => {
     });
   });
 
-  it('will not save an overrule that changes nothing', async () => {
+  it('will not save a rejection that changes nothing', async () => {
     render(<EventReviewPage />);
     const item = await card(eventArticle!.title);
 
-    await userEvent.click(within(item).getByRole('button', { name: 'Overrule' }));
+    await userEvent.click(within(item).getByRole('button', { name: 'Reject' }));
     await userEvent.click(within(item).getByLabelText(/Make It/));
     await userEvent.click(screen.getByRole('option', { name: 'Event' }));
     await userEvent.type(within(item).getByLabelText('Note'), 'Same.');
 
-    expect(within(item).getByRole('button', { name: 'Save Overrule' })).toBeDisabled();
-    expect(item).toHaveTextContent("Choose a different judgement, or confirm the AI's instead.");
+    expect(within(item).getByRole('button', { name: 'Save Rejection' })).toBeDisabled();
+    expect(item).toHaveTextContent("Choose a different judgement, or approve the AI's instead.");
   });
 
   it('shows a decided article\'s AI answer beside the analyst\'s decision', async () => {
@@ -175,12 +176,12 @@ describe('Events tab', () => {
     }];
     render(<EventReviewPage />);
     await card(eventArticle!.title);
-    await userEvent.click(screen.getByLabelText('Decided'));
+    await userEvent.click(screen.getByRole('tab', { name: 'Decided' }));
     const item = await card(noiseArticle!.title);
 
     expect(item).toHaveTextContent('Supply Shortage · Low');
     expect(item).toHaveTextContent('AI Said: Noise');
-    expect(item).toHaveTextContent('Overruled by Ana Analyst on Oct 26, 2026: Chip supply is short.');
+    expect(item).toHaveTextContent('Rejected by Ana Analyst on Oct 26, 2026: Chip supply is short.');
   });
 
   it('shows the backend\'s reason when a decision is refused, and keeps the article', async () => {
@@ -188,7 +189,7 @@ describe('Events tab', () => {
     render(<EventReviewPage />);
     const item = await card(eventArticle!.title);
 
-    await userEvent.click(within(item).getByRole('button', { name: 'Confirm' }));
+    await userEvent.click(within(item).getByRole('button', { name: 'Approve' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent("Please say why the AI's judgement is overruled.");
     expect(screen.getByRole('heading', { name: eventArticle!.title })).toBeInTheDocument();

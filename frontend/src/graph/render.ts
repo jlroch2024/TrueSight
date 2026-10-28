@@ -1,13 +1,15 @@
 // Draws the living graph on a <canvas>, every frame, back to front:
 // 1. the backdrop: a deep night gradient, two slow-moving lights (an aurora), and a dot grid that slides at half the
 //    speed of a pan, so the graph seems to float above it;
-// 2. the arrows, each in four layers: a soft bloom, a faint rail that tapers from supplier to customer, a conveyor of
-//    small segments along it through which waves of light run towards the customer, and a chevron at the customer's
-//    end that flashes as each wave arrives; the colour deepens from a dim shade of the holding's colour at the supplier
-//    to its full colour at the customer. An arrow not yet reviewed is fainter, without the bloom;
+// 2. the arrows, each in three layers: a soft glow, a faint rail that tapers from supplier to customer, and a conveyor
+//    of small segments along it through which waves of light run towards the customer; the colour deepens from a dim
+//    shade of the holding's colour at the supplier to its full colour at the customer. An arrow not yet reviewed is
+//    fainter, without the bloom;
 // 3. the companies: a soft shadow, a holding's ring in its chain colour with a glow, the tile itself (its logo, or its
-//    initials on a gradient of its own), a glassy sheen, a badge on a company several holdings depend on, a dot in its
-//    most severe alert's colour on a company with open alerts, and a breathing ring on the chosen one;
+//    initials on a gradient of its own), a glassy sheen, a badge on a company several holdings depend on (flush in its
+//    top-left corner), and a breathing ring on the chosen one; then, over the tiles, each arrow's chevron at the
+//    customer's end, flashing as each wave arrives, the ports where arrows meet tiles, and a beacon in its most severe
+//    alert's colour, flush in the bottom-right corner of a company with open alerts;
 // 4. the labels, drawn at the screen's own scale so they are sharp at every zoom; those without room fade out (see
 //    Scene.placeLabels);
 // 5. a vignette and a whisper of film grain over everything;
@@ -17,14 +19,14 @@
 // each arrow meets its tiles at small square ports, like pads on a circuit board.
 import type { Severity } from '../api/news';
 import type { Camera } from './camera';
-import { arrowEnds, leaveTile } from './geometry';
+import { ARROW_GAP, HOLDING_ARROW_GAP, arrowEnds, leaveTile } from './geometry';
 import { type Logo, logoSource, type LogoBook } from './logos';
 import { type LiveNode, ALERT_COLOUR, LABEL_GAP, TITLE_LINE } from './model';
 import type { Scene } from './scene';
 import { easeOutBack, easeOutCubic, labelScale } from './scene';
 import { labelZoom } from './model';
 
-export const FONT = '"Geist Variable", "Geist", "Inter", system-ui, sans-serif';
+export const FONT = '"IBM Plex Sans Variable", "IBM Plex Sans", system-ui, sans-serif';
 
 // The palette, for a canvas cannot read CSS custom properties.
 export const INK = {
@@ -43,22 +45,24 @@ export const INK = {
   pin: '#c4f36a',
 };
 
-// The radius of a company's alert dot, in the graph's own units.
-const ALERT_DOT_RADIUS = 6;
+// Half the side of a company's alert beacon, in the graph's own units; and how long its slow signal takes to spread
+// and fade, quicker the more serious the alert.
+const BEACON_HALF = 5.5;
+const BEACON_PERIOD_MS: Record<Severity, number> = { HIGH: 1500, MEDIUM: 2200, LOW: 3000 };
 
-/** A disruption's colour, by how serious it is. */
-export const RISK_COLOUR = { HIGH: '#ff4d5e', MEDIUM: '#ff8a3d', LOW: '#ffd166' } as const;
+/** A disruption's colour, by how serious it is: the one severity set, the beacons' own (ALERT_COLOUR). */
+export const RISK_COLOUR = ALERT_COLOUR;
 
 // How faint companies and arrows outside the focus become.
 const DIMMED = 0.13;
-// Arrows, on screen: the rail's width at the supplier's end and the customer's, the bloom's and the conveyor's width,
+// Arrows, on screen: the rail's width at the supplier's end and the customer's, the glow's and the conveyor's width,
 // and the chevron's size.
-const RAIL_FROM = 2.6;
-const RAIL_TO = 1.1;
-const BLOOM_WIDTH = 9;
-const TRACK_WIDTH = 2.2;
-const CRITICAL_WIDTH = 1.8;
-const CHEVRON = 8;
+const RAIL_FROM = 3.4;
+const RAIL_TO = 1.6;
+const GLOW_WIDTH = 16;
+const TRACK_WIDTH = 3;
+const CRITICAL_WIDTH = 1.6;
+const CHEVRON = 10;
 // The conveyor, in the graph's own units (so its segments keep their place on the arrow as the view zooms): how far
 // apart the segments are and how long each is; how far apart the waves of light are, how long a wave's fading trail is,
 // and how long the chevron's flash lasts after a wave arrives.
@@ -282,16 +286,27 @@ function drawBackdrop(context: CanvasRenderingContext2D, o: RenderOptions) {
   }
 }
 
-function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions) {
+/** An arrow's chevron, worked out while its arrow is drawn, and drawn later, over the tiles. */
+export type Chevron = {
+  end: { x: number; y: number };
+  along: { x: number; y: number };
+  size: number;
+  colour: string;
+  flash: number;
+  shown: number;
+  width: number;
+};
+
+/** Draws every arrow but its chevron; returns the chevrons, to be drawn over the tiles. */
+function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions): Chevron[] {
+  const chevrons: Chevron[] = [];
   const { scene, camera, dpr, still, now } = o;
   const k = camera.k;
-  // Zoomed out past 1:1, the chevrons shrink with the graph, as its tiles do.
-  const shrink = Math.max(k, 1);
   context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
   context.lineCap = 'butt';
   context.lineJoin = 'miter';
   // Lit arrows last, so they sit over dimmed ones.
-  const edges = [...scene.graph.edges].sort(
+  const edges = [...scene.drawnEdges].sort(
     (a, b) =>
       scene.edgeLook.get(a.id)!.lit +
       scene.edgeLook.get(a.id)!.hover -
@@ -305,106 +320,228 @@ function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions) {
       scene.positionOf(edge.target),
       scene.sizeOf(edge.source),
       scene.sizeOf(edge.target),
+      edge.source.isHolding ? HOLDING_ARROW_GAP : ARROW_GAP,
+      edge.target.isHolding ? HOLDING_ARROW_GAP : ARROW_GAP,
     );
     if (!ends) continue;
-    const grow = easeOutCubic(look.appear);
-    const { start } = ends;
-    const full = Math.hypot(ends.end.x - start.x, ends.end.y - start.y);
-    const along = { x: (ends.end.x - start.x) / full, y: (ends.end.y - start.y) / full };
-    const across = { x: -along.y, y: along.x };
-    const length = full * grow;
-    const end = { x: start.x + along.x * length, y: start.y + along.y * length };
-    const strength =
-      (DIMMED + (1 - DIMMED) * look.lit) *
-      (edge.reviewed ? 1 : 0.62) *
-      (0.3 + 0.7 * Math.min(scene.presenceOf(edge.source), scene.presenceOf(edge.target)));
-    const hover = look.hover;
-    // The colour deepens along the arrow: a dim shade of the holding's colour at the supplier, its full colour (and,
-    // under the pointer, brighter still) at the customer.
-    // A disruption on this link (an open alert runs through it): its colour, a pulse, and a conveyor that has stalled.
-    const risk = scene.risks.get(edge.relationshipId);
-    const colour = risk ? RISK_COLOUR[risk.severity] : edge.colour;
-    const alarm = risk ? (still ? 0.6 : 0.5 + 0.5 * Math.sin((now / 650) * Math.PI)) : 0;
-    const deep = mix(colour, '#ffffff', hover * 0.35);
-    const dim = mix(colour, INK.night, risk ? 0.45 : 0.6);
-    const shade = (alphaFrom: number, alphaTo: number) => {
-      const gradient = context.createLinearGradient(start.x, start.y, end.x, end.y);
-      gradient.addColorStop(0, withAlpha(dim, alphaFrom * strength));
-      gradient.addColorStop(1, withAlpha(deep, alphaTo * strength));
-      return gradient;
-    };
-
-    // 1. The bloom: a soft halo, stronger towards the customer and under the pointer. Reviewed arrows only.
-    if (edge.reviewed || hover > 0.01 || risk) {
-      context.strokeStyle = shade(0.02 + alarm * 0.08, 0.12 + hover * 0.2 + alarm * 0.22);
-      context.lineWidth = (BLOOM_WIDTH + hover * 6 + alarm * 4) / k;
-      context.beginPath();
-      context.moveTo(start.x, start.y);
-      context.lineTo(end.x, end.y);
-      context.stroke();
-    }
-
-    // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
-    const criticalWidth = edge.critical ? CRITICAL_WIDTH : 1;
-    const from = (RAIL_FROM * criticalWidth + hover * 1) / k / 2;
-    const to = (RAIL_TO * criticalWidth + hover * 0.6) / k / 2;
-    context.fillStyle = shade(0.16, 0.38 + hover * 0.3);
-    context.beginPath();
-    context.moveTo(start.x + across.x * from, start.y + across.y * from);
-    context.lineTo(end.x + across.x * to, end.y + across.y * to);
-    context.lineTo(end.x - across.x * to, end.y - across.y * to);
-    context.lineTo(start.x - across.x * from, start.y - across.y * from);
-    context.closePath();
-    context.fill();
-
-    // 3. The conveyor: small segments along the rail, each dim until a wave of light passes through it, when it lights
-    // up and fades behind the wave. The waves run from supplier to customer at one steady pace (see Scene.flow); the
-    // segments themselves stay still.
-    const wave = still || risk ? null : ((scene.flow % WAVE_GAP) + WAVE_GAP) % WAVE_GAP;
-    const lit = (distance: number) => {
-      // Stalled: every segment pulses together, nothing flows.
-      if (risk) return alarm;
-      if (wave === null) return 0;
-      const behind = (((wave - distance) % WAVE_GAP) + WAVE_GAP) % WAVE_GAP;
-      return behind < WAVE_TRAIL ? (1 - behind / WAVE_TRAIL) ** 1.6 : 0;
-    };
-    const head = mix(colour, '#ffffff', (risk ? 0.2 : 0.5) + hover * 0.3);
-    const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) / k;
-    context.save();
-    context.translate(start.x, start.y);
-    context.rotate(Math.atan2(along.y, along.x));
-    for (let distance = SEGMENT_PITCH / 2; distance + SEGMENT_LENGTH < length - 4; distance += SEGMENT_PITCH) {
-      const glow = lit(distance + SEGMENT_LENGTH);
-      const ends = Math.min(1, distance / 14, (length - distance) / 14);
-      context.fillStyle = withAlpha(mix(dim, head, 0.35 + glow * 0.65), (0.22 + 0.78 * glow) * strength * ends);
-      context.fillRect(distance, -thick / 2, SEGMENT_LENGTH, thick);
-    }
-    context.restore();
-
-    // 4. The chevron at the customer's end, once the arrow has nearly reached it, flashing as each wave arrives.
-    if (grow > 0.85) {
-      const since = wave === null ? ARRIVAL : (((wave - length) % WAVE_GAP) + WAVE_GAP) % WAVE_GAP;
-      const flash = since < ARRIVAL ? 1 - since / ARRIVAL : 0;
-      const size = (CHEVRON + hover * 2 + flash * 2) / shrink;
-      const back = { x: end.x - along.x * size, y: end.y - along.y * size };
-      const chevron = () => {
-        context.beginPath();
-        context.moveTo(back.x + across.x * size * 0.62, back.y + across.y * size * 0.62);
-        context.lineTo(end.x, end.y);
-        context.lineTo(back.x - across.x * size * 0.62, back.y - across.y * size * 0.62);
-        context.stroke();
-      };
-      const shown = Math.min(1, strength * ((grow - 0.85) / 0.15));
-      if (flash > 0.01) {
-        context.strokeStyle = withAlpha(head, 0.35 * flash * shown);
-        context.lineWidth = (6 + hover) / shrink;
-        chevron();
-      }
-      context.strokeStyle = withAlpha(mix(deep, '#ffffff', 0.25 + flash * 0.5), shown);
-      context.lineWidth = (1.8 + hover * 0.6 + flash * 0.6) / shrink;
-      chevron();
-    }
+    const chevron = drawArrow(context, {
+      start: ends.start,
+      end: ends.end,
+      grow: easeOutCubic(look.appear),
+      strength:
+        (DIMMED + (1 - DIMMED) * look.lit) *
+        (edge.reviewed ? 1 : 0.62) *
+        (0.3 + 0.7 * Math.min(scene.presenceOf(edge.source), scene.presenceOf(edge.target))),
+      hover: look.hover,
+      colour: edge.colour,
+      risk: scene.risks.get(edge.relationshipId)?.severity ?? null,
+      reviewed: edge.reviewed,
+      critical: edge.critical,
+      flow: scene.flow,
+      still,
+      now,
+      k,
+      dpr,
+    });
+    if (chevron) chevrons.push(chevron);
   }
+  return chevrons;
+}
+
+/** One arrow, as drawArrow needs it: its ends and how it looks this frame. */
+export type ArrowLook = {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  // How far it has grown from the supplier, 0 to 1.
+  grow: number;
+  // How strongly it shows: dimmed, unreviewed and fading arrows are fainter.
+  strength: number;
+  hover: number;
+  colour: string;
+  // A disruption runs through it, this serious.
+  risk: Severity | null;
+  reviewed: boolean;
+  critical: boolean;
+  // How far the waves of light have travelled (Scene.flow).
+  flow: number;
+  still: boolean;
+  now: number;
+  // The view's zoom and the screen's pixel ratio; the context is already scaled by both.
+  k: number;
+  dpr: number;
+};
+
+/**
+ * Draws one arrow but its chevron, as the graph draws each of its own: also used to draw a link anywhere else on the
+ * page, so every link in the app is this one drawing. Returns its chevron, if it has grown far enough to show one.
+ */
+export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chevron | null {
+  const { start, grow, strength, hover, reviewed, still, now, k, dpr } = a;
+  // Zoomed out past 1:1, the chevrons shrink with the graph, as its tiles do.
+  const shrink = Math.max(k, 1);
+  const full = Math.hypot(a.end.x - start.x, a.end.y - start.y);
+  const along = { x: (a.end.x - start.x) / full, y: (a.end.y - start.y) / full };
+  const across = { x: -along.y, y: along.x };
+  const length = full * grow;
+  const end = { x: start.x + along.x * length, y: start.y + along.y * length };
+  // The colour deepens along the arrow: a dim shade of the holding's colour at the supplier, its full colour (and,
+  // under the pointer, brighter still) at the customer.
+  // A disruption on this link (an open alert runs through it): its colour, a pulse, and a conveyor that has stalled.
+  const risk = a.risk;
+  const colour = risk ? RISK_COLOUR[risk] : a.colour;
+  const alarm = risk ? (still ? 0.6 : 0.5 + 0.5 * Math.sin((now / 650) * Math.PI)) : 0;
+  const deep = mix(colour, '#ffffff', hover * 0.35);
+  const dim = mix(colour, INK.night, risk ? 0.45 : 0.6);
+  const shade = (alphaFrom: number, alphaTo: number) => {
+    const gradient = context.createLinearGradient(start.x, start.y, end.x, end.y);
+    gradient.addColorStop(0, withAlpha(dim, alphaFrom * strength));
+    gradient.addColorStop(1, withAlpha(deep, alphaTo * strength));
+    return gradient;
+  };
+
+  // 1. The glow: light the arrow gives off, added to the dark rather than laid over it, soft at its edges and fading
+  // out before either end, so it never shows a hard edge where it meets a tile or the chevron. Stronger towards the
+  // customer, under the pointer, and pulsing on a disruption. Reviewed arrows only, until pointed at.
+  if (reviewed || hover > 0.01 || risk) {
+    const peak = (0.16 + hover * 0.45 + alarm * 0.4) * strength;
+    glow(context, start, end, deep, peak, (GLOW_WIDTH + hover * 8 + alarm * 6) * dpr, k * dpr);
+  }
+
+  // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
+  const criticalWidth = a.critical ? CRITICAL_WIDTH : 1;
+  const from = (RAIL_FROM * criticalWidth + hover * 1) / k / 2;
+  const to = (RAIL_TO * criticalWidth + hover * 0.6) / k / 2;
+  context.fillStyle = shade(0.16, 0.38 + hover * 0.3);
+  context.beginPath();
+  context.moveTo(start.x + across.x * from, start.y + across.y * from);
+  context.lineTo(end.x + across.x * to, end.y + across.y * to);
+  context.lineTo(end.x - across.x * to, end.y - across.y * to);
+  context.lineTo(start.x - across.x * from, start.y - across.y * from);
+  context.closePath();
+  context.fill();
+
+  // 3. The conveyor: small segments along the rail, each dim until a wave of light passes through it, when it lights
+  // up and fades behind the wave. The waves run from supplier to customer at one steady pace (see Scene.flow); the
+  // segments themselves stay still.
+  const wave = still || risk ? null : ((a.flow % WAVE_GAP) + WAVE_GAP) % WAVE_GAP;
+  const lit = (distance: number) => {
+    // Stalled: every segment pulses together, nothing flows.
+    if (risk) return alarm;
+    if (wave === null) return 0;
+    const behind = (((wave - distance) % WAVE_GAP) + WAVE_GAP) % WAVE_GAP;
+    return behind < WAVE_TRAIL ? (1 - behind / WAVE_TRAIL) ** 1.6 : 0;
+  };
+  const head = mix(colour, '#ffffff', (risk ? 0.2 : 0.5) + hover * 0.3);
+  const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) / k;
+  context.save();
+  context.translate(start.x, start.y);
+  context.rotate(Math.atan2(along.y, along.x));
+  for (let distance = SEGMENT_PITCH / 2; distance + SEGMENT_LENGTH < length - 4; distance += SEGMENT_PITCH) {
+    const glow = lit(distance + SEGMENT_LENGTH);
+    const ends = Math.min(1, distance / 14, (length - distance) / 14);
+    context.fillStyle = withAlpha(mix(dim, head, 0.35 + glow * 0.65), (0.3 + 0.7 * glow) * strength * ends);
+    context.fillRect(distance, -thick / 2, SEGMENT_LENGTH, thick);
+  }
+  context.restore();
+
+  // 4. The chevron at the customer's end, once the arrow has nearly reached it, flashing as each wave arrives: drawn
+  // later, over the tiles (see drawChevrons).
+  if (grow > 0.85) {
+    const since = wave === null ? ARRIVAL : (((wave - length) % WAVE_GAP) + WAVE_GAP) % WAVE_GAP;
+    const flash = since < ARRIVAL ? 1 - since / ARRIVAL : 0;
+    return {
+      end,
+      along,
+      size: (CHEVRON + hover * 2 + flash * 2) / shrink,
+      colour: mix(deep, '#ffffff', 0.3 + flash * 0.5),
+      flash,
+      shown: Math.min(1, strength * ((grow - 0.85) / 0.15)),
+      width: (2.4 + hover * 0.6 + flash * 0.6) / shrink,
+    };
+  }
+  return null;
+}
+
+/**
+ * Each arrow's chevron, over the tiles so a holding's ring and its glow never hide it: a dark edge, so it reads against
+ * any ring or logo, the chevron itself in the arrow's brightest colour, and as a wave arrives, a flash of light.
+ */
+function drawChevrons(context: CanvasRenderingContext2D, o: RenderOptions, chevrons: Chevron[]) {
+  const { camera, dpr } = o;
+  const k = camera.k;
+  context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
+  for (const chevron of chevrons) drawChevron(context, chevron, k);
+}
+
+/** One arrow's chevron (see drawChevrons), in a context already scaled to the view; k is the view's zoom. */
+export function drawChevron(context: CanvasRenderingContext2D, { end, along, size, colour, flash, shown, width }: Chevron, k: number) {
+  context.lineCap = 'square';
+  context.lineJoin = 'miter';
+  const across = { x: -along.y, y: along.x };
+  const back = { x: end.x - along.x * size, y: end.y - along.y * size };
+  const chevron = () => {
+    context.beginPath();
+    context.moveTo(back.x + across.x * size * 0.62, back.y + across.y * size * 0.62);
+    context.lineTo(end.x, end.y);
+    context.lineTo(back.x - across.x * size * 0.62, back.y - across.y * size * 0.62);
+    context.stroke();
+  };
+  context.strokeStyle = withAlpha(INK.night, 0.75 * shown);
+  context.lineWidth = width + 2.6 / Math.max(k, 1);
+  chevron();
+  if (flash > 0.01) {
+    context.save();
+    context.globalCompositeOperation = 'lighter';
+    context.strokeStyle = withAlpha(colour, 0.4 * flash * shown);
+    context.lineWidth = width * 3.2;
+    chevron();
+    context.restore();
+  }
+  context.strokeStyle = withAlpha(colour, shown);
+  context.lineWidth = width;
+  chevron();
+  context.lineCap = 'butt';
+}
+
+// How far out of sight the glow's line is drawn, in device pixels, so only its shadow shows.
+const GLOW_AWAY = 20000;
+
+/**
+ * Light along a line: the soft shadow of a thin line, a true blur with no steps and no edges, added to what is beneath.
+ * The line itself is drawn far out of sight and only its shadow brought back, so the light is all that shows. It fades
+ * in from nothing at the start, is brightest three-quarters of the way along, and fades out before the end. blur is in
+ * device pixels; scale is how many device pixels one unit of the drawing is.
+ */
+function glow(
+  context: CanvasRenderingContext2D,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  colour: string,
+  peak: number,
+  blur: number,
+  scale: number,
+) {
+  if (peak <= 0.002) return;
+  const away = GLOW_AWAY / scale;
+  context.save();
+  context.globalCompositeOperation = 'lighter';
+  context.lineCap = 'butt';
+  const light = context.createLinearGradient(start.x, start.y + away, end.x, end.y + away);
+  light.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  light.addColorStop(0.22, 'rgba(0, 0, 0, 0.45)');
+  light.addColorStop(0.74, 'rgba(0, 0, 0, 1)');
+  light.addColorStop(0.95, 'rgba(0, 0, 0, 0.3)');
+  light.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  context.strokeStyle = light;
+  context.shadowColor = withAlpha(colour, Math.min(1, peak));
+  context.shadowBlur = blur;
+  context.shadowOffsetY = -GLOW_AWAY;
+  context.lineWidth = 3.5 / (scale / (window.devicePixelRatio || 1));
+  context.beginPath();
+  context.moveTo(start.x, start.y + away);
+  context.lineTo(end.x, end.y + away);
+  context.stroke();
+  context.restore();
 }
 
 /** Two #rrggbb colours mixed, share 0 the first, 1 the second. */
@@ -482,15 +619,138 @@ function drawTile(context: CanvasRenderingContext2D, node: LiveNode, logo: Logo,
   }
 }
 
-/** A round dot in an alert's severity colour with a night-coloured rim, centred on a tile's corner. */
-export function drawAlertDot(context: CanvasRenderingContext2D, x: number, y: number, severity: Severity) {
-  context.beginPath();
-  context.arc(x, y, ALERT_DOT_RADIUS, 0, Math.PI * 2);
-  context.fillStyle = ALERT_COLOUR[severity];
+// A holding's ring with no chain colour, as on the graph.
+export const PLAIN_RING = '#94a3b8';
+
+/**
+ * A company's tile as the graph draws it, for the page's own lists: a holding's ring in its chain colour (slate when it
+ * has none), glowing, then the tile (its logo on its own background, or its initials on a gradient), chamfered for a
+ * holding, and its marks flush in its corners as on the graph: the badge of how many holdings share it, and the beacon
+ * of its most severe open alert. size is the tile's side; the ring sits 3.5 outside it, 1.5 wide.
+ */
+export function drawTileMark(
+  context: CanvasRenderingContext2D,
+  node: Pick<LiveNode, 'isHolding' | 'hue' | 'initials'>,
+  logo: Logo,
+  x: number,
+  y: number,
+  size: number,
+  colour: string | null,
+  marks: { beacon?: Severity | null; shared?: number } = {},
+) {
+  const tile = node as LiveNode;
+  if (node.isHolding) {
+    const ring = colour ?? PLAIN_RING;
+    context.save();
+    context.shadowColor = withAlpha(ring, colour ? 0.85 : 0.4);
+    context.shadowBlur = 8;
+    boxPath(context, x, y, size + 7, cutOf(tile, size) + 3.5 * (2 - Math.SQRT2));
+    context.strokeStyle = withAlpha(ring, colour ? 0.95 : 0.7);
+    context.lineWidth = 1.5;
+    context.stroke();
+    context.restore();
+  }
+  drawTile(context, tile, logo, x, y, size);
+  const reach = node.isHolding ? size / 2 + 4.25 : size / 2;
+  if (marks.shared && marks.shared > 1) {
+    const side = size >= 34 ? 14 : 12;
+    drawSharedBadge(context, x - reach + side / 2, y - reach + side / 2, marks.shared, side);
+  }
+  if (marks.beacon) {
+    const half = size >= 26 ? 5 : 4.2;
+    drawBeaconFace(context, x + reach - half, y + reach - half, marks.beacon, half);
+  }
+}
+
+/**
+ * A company's alert beacon, centred on its tile's corner, in its most severe alert's colour: a soft light around it, a
+ * square outline spreading out from it and fading, as a signal sent (quicker the more serious; none when motion is
+ * reduced), and the beacon itself, a small chamfered square lit from above, rimmed in the night's colour so it stands
+ * out against any logo, with an exclamation mark cut into it.
+ */
+export function drawAlertBeacon(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  severity: Severity,
+  now: number,
+  still: boolean,
+) {
+  const colour = ALERT_COLOUR[severity];
+  const half = BEACON_HALF;
+  context.save();
+  context.globalCompositeOperation = 'lighter';
+  const halo = context.createRadialGradient(x, y, 0, x, y, half * 4);
+  halo.addColorStop(0, withAlpha(colour, 0.42));
+  halo.addColorStop(1, withAlpha(colour, 0));
+  context.fillStyle = halo;
+  context.fillRect(x - half * 4, y - half * 4, half * 8, half * 8);
+  if (!still) {
+    const t = (now % BEACON_PERIOD_MS[severity]) / BEACON_PERIOD_MS[severity];
+    const reach = half * (1.2 + easeOutCubic(t) * 2.4);
+    context.strokeStyle = withAlpha(colour, 0.7 * (1 - t) ** 1.5);
+    context.lineWidth = 1.2;
+    context.strokeRect(x - reach, y - reach, reach * 2, reach * 2);
+  }
+  context.restore();
+  drawBeaconFace(context, x, y, severity, half);
+}
+
+/**
+ * The beacon itself, without its light: a small chamfered square lit from above in the alert's colour, rimmed in the
+ * night's colour so it stands out against any logo, with an exclamation mark cut into it. The graph, the page's lists
+ * and the key all draw it with this, so it is the same mark everywhere. half is half its side.
+ */
+export function drawBeaconFace(context: CanvasRenderingContext2D, x: number, y: number, severity: Severity, half = BEACON_HALF) {
+  const colour = ALERT_COLOUR[severity];
+  boxPath(context, x, y, half * 2, half * 0.7);
+  const face = context.createLinearGradient(x, y - half, x, y + half);
+  face.addColorStop(0, mix(colour, '#ffffff', 0.35));
+  face.addColorStop(1, colour);
+  context.fillStyle = face;
   context.fill();
   context.strokeStyle = INK.night;
-  context.lineWidth = 2;
+  context.lineWidth = 1.6;
   context.stroke();
+  // The mark: a short bar and a dot, in the night's colour.
+  const stroke = Math.max(1.4, half * 0.29);
+  context.fillStyle = INK.night;
+  context.fillRect(x - stroke / 2, y - half * 0.62, stroke, half * 0.78);
+  context.fillRect(x - stroke / 2, y + half * 0.34, stroke, stroke);
+}
+
+// The side of the badge on a company several holdings depend on, in the graph's own units.
+export const SHARED_BADGE = 16;
+
+/**
+ * The badge on a company several holdings depend on: an amber square lit from above, rimmed in the night's colour, with
+ * how many. Centred on (x, y); the graph, the page's lists and the key all draw it with this.
+ */
+export function drawSharedBadge(context: CanvasRenderingContext2D, x: number, y: number, count: number, side = SHARED_BADGE) {
+  const half = side / 2;
+  const face = context.createLinearGradient(x, y - half, x, y + half);
+  face.addColorStop(0, '#ffd27a');
+  face.addColorStop(1, INK.amber);
+  context.beginPath();
+  context.rect(x - half, y - half, side, side);
+  context.fillStyle = face;
+  context.fill();
+  context.strokeStyle = INK.night;
+  context.lineWidth = 1.6;
+  context.stroke();
+  context.fillStyle = '#1a1205';
+  context.font = `700 ${Math.round(side * 0.62)}px ${FONT}`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(String(count), x, y + 0.5);
+}
+
+/**
+ * How far out from a company's middle its corner marks sit flush: the outer edge of a holding's ring (5 out, 2 wide),
+ * or the tile's own edge.
+ */
+export function cornerReach(isHolding: boolean, size: number): number {
+  return isHolding ? size / 2 + 6 : size / 2;
 }
 
 function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
@@ -498,7 +758,7 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   const k = camera.k;
   context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
   // Suppliers and customers first, then holdings, then whatever is pointed at, so the important sit on top.
-  const order = [...scene.graph.nodes].sort(
+  const order = [...scene.drawnNodes].sort(
     (a, b) =>
       Number(a.isHolding) - Number(b.isHolding) || scene.nodeLook.get(a.id)!.hover - scene.nodeLook.get(b.id)!.hover,
   );
@@ -559,27 +819,11 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
       context.stroke();
     }
 
-    // A company several holdings depend on: a small amber badge with how many, on its top-left corner.
+    // A company several holdings depend on: a small amber badge with how many, flush in its top-left corner.
     if (node.sharedCount > 1) {
-      const bx = x - size / 2 + 2;
-      const by = y - size / 2 + 2;
-      context.fillStyle = INK.amber;
-      context.strokeStyle = INK.night;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.rect(bx - 8, by - 8, 16, 16);
-      context.fill();
-      context.stroke();
-      context.fillStyle = '#1a1205';
-      context.font = `700 10px ${FONT}`;
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText(String(node.sharedCount), bx, by + 0.5);
+      const reach = cornerReach(node.isHolding, size) - SHARED_BADGE / 2;
+      drawSharedBadge(context, x - reach, y - reach, node.sharedCount);
     }
-
-    // A company with open alerts: a dot in its most severe alert's colour, on its bottom-right corner.
-    const alert = scene.alertDots.get(node.id);
-    if (alert) drawAlertDot(context, x + size / 2 - 1, y + size / 2 - 1, alert);
 
     // Outside the focus: veiled in the night's colour and hatched over, as a drawing marks what is set aside.
     if (strength < 0.99) {
@@ -623,7 +867,7 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
   context.textBaseline = 'alphabetic';
   // Text keeps a readable size: it grows a little when zoomed in, and shrinks a little when zoomed out.
   const scale = labelScale(k);
-  for (const node of scene.graph.nodes) {
+  for (const node of scene.drawnNodes) {
     const look = scene.nodeLook.get(node.id)!;
     // Shown when it has room (see Scene.placeLabels) and the zoom is close enough for it (labelZoom), and faint with
     // its company when outside the focus.
@@ -682,6 +926,29 @@ function drawFinish(context: CanvasRenderingContext2D, o: RenderOptions) {
 }
 
 /**
+ * Each company with open alerts: a beacon in its most severe alert's colour, flush in its bottom-right corner, drawn
+ * after the ports so it sits above where arrows meet the tile.
+ */
+function drawBeacons(context: CanvasRenderingContext2D, o: RenderOptions) {
+  const { scene, camera, dpr, now, still } = o;
+  if (scene.alertDots.size === 0) return;
+  const k = camera.k;
+  context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
+  for (const node of scene.graph.nodes) {
+    const alert = scene.alertDots.get(node.id);
+    const look = scene.nodeLook.get(node.id)!;
+    if (!alert || look.appear <= 0) continue;
+    const { x, y } = scene.positionOf(node);
+    const size = scene.sizeOf(node) * (still ? 1 : easeOutBack(look.appear)) * (1 + look.hover * 0.08);
+    context.globalAlpha = Math.min(1, look.appear * 2) * (DIMMED + (1 - DIMMED) * look.lit);
+    // Flush in the corner: its edges on the ring's outer edge (a holding's) or the tile's.
+    const reach = cornerReach(node.isHolding, size) - BEACON_HALF;
+    drawAlertBeacon(context, x + reach, y + reach, alert, now, still);
+  }
+  context.globalAlpha = 1;
+}
+
+/**
  * Where each arrow meets its tiles: a small square port at the tile's edge, in the arrow's colour, as an arrow on a
  * circuit board meets its pads. A port keeps its size on screen, but never grows past a share of its tile.
  */
@@ -689,7 +956,7 @@ function drawPorts(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr } = o;
   const k = camera.k;
   context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
-  for (const edge of scene.graph.edges) {
+  for (const edge of scene.drawnEdges) {
     const look = scene.edgeLook.get(edge.id)!;
     if (look.appear <= 0.05) continue;
     const strength =
@@ -756,16 +1023,14 @@ function drawCrosshair(context: CanvasRenderingContext2D, o: RenderOptions) {
 }
 
 /**
- * Marks the middle of each disrupted link with a small diamond and "!", in the disruption's colour, drawn at the
- * screen's own scale over everything else, so a disruption is seen even zoomed out.
+ * Marks the middle of each disrupted link, drawn at the screen's own scale over everything else so a disruption is seen
+ * even zoomed out: a dark glass diamond with a bright mark and a hairline in the disruption's colour, with soft light
+ * breathing around it.
  */
 function drawRiskMarks(context: CanvasRenderingContext2D, o: RenderOptions) {
-  const { scene, camera, dpr } = o;
+  const { scene, camera, dpr, now, still } = o;
   if (scene.risks.size === 0) return;
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.font = `800 8px ${FONT}`;
   for (const edge of scene.graph.edges) {
     const risk = scene.risks.get(edge.relationshipId);
     const look = scene.edgeLook.get(edge.id)!;
@@ -774,32 +1039,71 @@ function drawRiskMarks(context: CanvasRenderingContext2D, o: RenderOptions) {
     const to = scene.positionOf(edge.target);
     const x = ((from.x + to.x) / 2) * camera.k + camera.x;
     const y = ((from.y + to.y) / 2) * camera.k + camera.y;
-    const half = 7;
+    const breath = still ? 0.6 : 0.5 + 0.5 * Math.sin((now / 650) * Math.PI);
+    context.save();
     context.globalAlpha = DIMMED + (1 - DIMMED) * look.lit;
-    context.beginPath();
-    context.moveTo(x, y - half);
-    context.lineTo(x + half, y);
-    context.lineTo(x, y + half);
-    context.lineTo(x - half, y);
-    context.closePath();
-    context.fillStyle = RISK_COLOUR[risk.severity];
-    context.fill();
-    context.strokeStyle = INK.night;
-    context.lineWidth = 1.5;
-    context.stroke();
-    context.fillStyle = INK.night;
-    context.fillText('!', x, y + 0.5);
+    drawRiskMark(context, x, y, risk.severity, breath, dpr);
+    context.restore();
   }
   context.globalAlpha = 1;
+}
+
+/**
+ * A disruption's mark, centred on (x, y) at the screen's own scale: soft light breathing round it (breath, 0 to 1), and
+ * a dark glass diamond with a hairline and a bright exclamation mark in the disruption's colour. The key draws it too.
+ */
+export function drawRiskMark(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  severity: Severity,
+  breath: number,
+  dpr: number,
+  half = 7.5,
+  // How strongly its light shows around it: the graph's key gives every mark the same glow of its own instead.
+  glow = 1,
+) {
+  const colour = RISK_COLOUR[severity];
+  context.save();
+  context.translate(x, y);
+  context.globalCompositeOperation = 'lighter';
+  const reach = half * 3.5;
+  const light = context.createRadialGradient(0, 0, 0, 0, 0, reach);
+  light.addColorStop(0, withAlpha(colour, (0.26 + breath * 0.2) * glow));
+  light.addColorStop(1, withAlpha(colour, 0));
+  context.fillStyle = light;
+  context.fillRect(-reach, -reach, reach * 2, reach * 2);
+  context.globalCompositeOperation = 'source-over';
+
+  // The mark: a dark glass diamond, its hairline and a bright core.
+  context.beginPath();
+  context.moveTo(0, -half);
+  context.lineTo(half, 0);
+  context.lineTo(0, half);
+  context.lineTo(-half, 0);
+  context.closePath();
+  context.fillStyle = 'rgba(8, 11, 19, 0.92)';
+  context.fill();
+  context.strokeStyle = colour;
+  context.lineWidth = 1.4;
+  context.stroke();
+  context.fillStyle = colour;
+  context.shadowColor = colour;
+  context.shadowBlur = 8 * dpr;
+  context.fillRect(-0.9, -half * 0.5, 1.8, half * 0.58);
+  context.fillRect(-0.9, half * 0.24, 1.8, 1.8);
+  context.restore();
 }
 
 /** Draws one frame of the living graph. */
 export function render(context: CanvasRenderingContext2D, options: RenderOptions) {
   context.save();
   drawBackdrop(context, options);
-  drawEdges(context, options);
+  const chevrons = drawEdges(context, options);
   drawNodes(context, options);
+  drawChevrons(context, options, chevrons);
   drawPorts(context, options);
+  drawBeacons(context, options);
   drawRiskMarks(context, options);
   drawSweep(context, options);
   drawLabels(context, options);

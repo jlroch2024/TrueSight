@@ -19,8 +19,7 @@
   background: #05070d;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--lg-text);
-  font-family: 'Geist Variable', 'Geist', 'Inter', system-ui, sans-serif;
-  font-feature-settings: 'ss01', 'cv11';
+  font-family: 'IBM Plex Sans Variable', 'IBM Plex Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   isolation: isolate;
 }
@@ -31,6 +30,21 @@
 
 .lg-root.lg-cut::after {
   z-index: 3;
+}
+
+/* Bare: the graph is the ground of a page, edge to edge, so it has no frame of its own. */
+.lg-root.lg-bare {
+  min-height: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+/* Narrow between a page's panels: the minimap, the hint and the chains' chips step aside (a page lists its holdings'
+   colours itself); the key stays. */
+.lg-narrow .lg-minimap,
+.lg-narrow .lg-hint,
+.lg-narrow .lg-chains {
+  display: none;
 }
 
 /* Full screen: the graph lifts over the page, which dims behind it. */
@@ -92,14 +106,15 @@
 
 /* Registration marks: small corner ticks, as on a drawing sheet or in a viewfinder, at the corners a chamfer leaves
    square (all four on a panel without one). --tick and --tick-length set their colour and size. */
+/* The same as the page's own panels: 42% slate, 6px, on the panel's border. */
 .lg-mark {
-  --tick: rgba(203, 213, 225, 0.5);
+  --tick: rgba(203, 213, 225, 0.42);
   --tick-length: 6px;
 }
 
 .lg-mark::before {
   position: absolute;
-  inset: 0;
+  inset: -1px;
   background:
     linear-gradient(var(--tick), var(--tick)) top left / var(--tick-length) 1px no-repeat,
     linear-gradient(var(--tick), var(--tick)) top left / 1px var(--tick-length) no-repeat,
@@ -131,6 +146,7 @@
 
 .lg-root.lg-mark::before {
   z-index: 3;
+  inset: 0;
 }
 
 /* Glass: every control floats over the graph on a blurred, tinted pane. */
@@ -170,12 +186,16 @@
 }
 
 /* Top: the title with how much is on the graph, search, and the arrangement and full screen. */
+/* The controls keep 14px from the edge of what is in view: the graph's own edge, or a page's panel over it (--lg-inset-*,
+   set from the graph's insets). They glide with a panel as it opens or closes, as the view does. */
 .lg-top {
   position: absolute;
   z-index: 2;
-  top: 14px;
-  right: 14px;
-  left: 14px;
+  top: calc(14px + var(--lg-inset-top, 0px));
+  right: calc(14px + var(--lg-inset-right, 0px));
+  left: calc(14px + var(--lg-inset-left, 0px));
+  transition: top 0.48s cubic-bezier(0.65, 0, 0.35, 1), right 0.48s cubic-bezier(0.65, 0, 0.35, 1),
+    left 0.48s cubic-bezier(0.65, 0, 0.35, 1);
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -194,7 +214,7 @@
   gap: 9px;
   height: 36px;
   padding: 0 13px;
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -203,9 +223,73 @@
   letter-spacing: -0.01em;
 }
 
+.lg-title-text {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
 .lg-title-count {
   color: var(--lg-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* On a page with its own top bars, the title and search follow straight after the left bar, in line with it: bars of
+   their own, as tall as the page's (52px, 12px from the top) and as far apart, the same width as each other, and the
+   title's count under its name as the portfolio's progress is under its name. */
+.lg-in-bar .lg-top {
+  top: 12px;
+  right: var(--lg-bar-right);
+  left: var(--lg-bar-left);
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.lg-in-bar .lg-title,
+.lg-in-bar .lg-search,
+.lg-in-bar .lg-search[data-open='true'] {
+  width: 240px;
+  height: 52px;
+}
+
+/* With the page's bars, its gaps are the graph's too: the page's insets already hold its 12px gaps (after the drawer,
+   before the Inspector, along the bottom), so the key and the view controls sit right on them, 12px apart. */
+.lg-in-bar .lg-bottom {
+  right: var(--lg-inset-right);
+  bottom: var(--lg-inset-bottom);
+  left: var(--lg-inset-left);
+  gap: 12px;
+}
+
+.lg-in-bar .lg-bottom-right {
+  gap: 12px;
+}
+
+.lg-in-bar .lg-title {
+  gap: 14px;
+  padding: 0 16px;
+}
+
+.lg-in-bar .lg-search {
+  padding: 0 14px 0 16px;
+}
+
+.lg-in-bar .lg-title-text {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+
+.lg-in-bar .lg-title-name {
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.lg-in-bar .lg-title-count {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* A small light that says the graph is live. */
@@ -260,7 +344,7 @@
   background: transparent;
   color: var(--lg-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 
@@ -270,6 +354,15 @@
 
 .lg-root .lg-search input:focus-visible {
   outline: none;
+}
+
+/* The page's own form boxes are styled for forms; the search box is the graph's, and keeps its own look. */
+.lg-root .lg-search input {
+  width: auto;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  box-shadow: none;
 }
 
 .lg-search:focus-within {
@@ -302,7 +395,7 @@
   padding: 8px 10px;
   color: var(--lg-text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .lg-result[aria-selected='true'] {
@@ -361,9 +454,11 @@
 .lg-bottom {
   position: absolute;
   z-index: 2;
-  right: 14px;
-  bottom: 14px;
-  left: 14px;
+  right: calc(14px + var(--lg-inset-right, 0px));
+  bottom: calc(14px + var(--lg-inset-bottom, 0px));
+  left: calc(14px + var(--lg-inset-left, 0px));
+  transition: right 0.48s cubic-bezier(0.65, 0, 0.35, 1), bottom 0.48s cubic-bezier(0.65, 0, 0.35, 1),
+    left 0.48s cubic-bezier(0.65, 0, 0.35, 1);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -371,68 +466,119 @@
   pointer-events: none;
 }
 
-/* The key: one compact row, each holding's colour, then what the amber badge means. */
-.lg-key {
+/* The key: each holding's colour in even rows, then what the marks mean beneath, the panel hugging both. */
+.lg-key-holder {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  max-width: min(560px, 60%);
-  padding: 6px 8px;
 }
 
-.lg-chains,
-.lg-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.lg-key {
+  position: relative;
+  display: grid;
+  width: max-content;
+  max-width: 100%;
+  gap: 8px;
+  padding: 8px;
+}
+
+.lg-chains {
+  display: grid;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .lg-legend {
-  padding-left: 10px;
-  border-left: 1px solid var(--lg-line);
+  display: flex;
+  flex-wrap: wrap;
+  /* The key's one spacing, 8px: around it, between its chips, and between its rows. */
+  gap: 8px 16px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--lg-line);
   color: var(--lg-muted);
-  font-size: 11px;
+  font-size: 12px;
+  list-style: none;
+}
+
+.lg-chains:empty + .lg-legend,
+.lg-key > .lg-legend:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .lg-legend li {
   display: flex;
   align-items: center;
   gap: 7px;
+  white-space: nowrap;
 }
 
 .lg-root .lg-chain {
+  position: relative;
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 7px;
-  padding: 2px 7px 2px 6px;
+  padding: 4px 9px 4px 7px;
   border: 1px solid var(--lg-line);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--lg-text);
+  color: var(--lg-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   letter-spacing: 0.01em;
   transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    background 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
 }
 
 .lg-root .lg-chain:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lg-text);
 }
 
 .lg-root .lg-chain[aria-pressed='true'],
 .lg-root .lg-chain[aria-pressed='true']:hover:not(:disabled) {
-  border-color: var(--chain);
+  border-color: transparent;
+  background: transparent;
+  color: var(--lg-text);
+}
+
+/* The chosen chain's plate: slides from one chain to the next (see useSlidingPlate). */
+.lg-root .lg-chains {
+  position: relative;
+}
+
+.lg-root .lg-chain-plate {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  border: 1px solid var(--chain);
   background: color-mix(in srgb, var(--chain) 18%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--chain) 35%, transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--chain) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition:
+    transform 420ms cubic-bezier(0.3, 1.15, 0.4, 1),
+    width 420ms cubic-bezier(0.3, 1.15, 0.4, 1),
+    height 420ms cubic-bezier(0.3, 1.15, 0.4, 1),
+    opacity 200ms ease,
+    border-color 300ms ease,
+    background 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.lg-chain-swatch,
+.lg-chain-label {
+  position: relative;
+  z-index: 1;
 }
 
 .lg-chain-swatch {
@@ -440,17 +586,52 @@
   height: 3px;
   background: var(--chain);
   box-shadow: 0 0 8px var(--chain);
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.lg-legend-badge {
-  display: grid;
+.lg-chain[aria-pressed='true'] .lg-chain-swatch {
   width: 14px;
-  height: 14px;
-  place-items: center;
-  background: var(--lg-amber);
-  color: #1a1205;
-  font-size: 10px;
-  font-weight: 700;
+}
+
+/* The key's marks are drawn by the graph's own drawing (see KeyMark): the badge, the disruption, the beacon. Each
+   gives off the same soft light, in its own colour (its color). */
+.lg-legend-badge,
+.lg-legend-risk,
+.lg-legend-dot {
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 45%, transparent));
+}
+
+/* Narrow: the key folds to a button, and opens above it. */
+.lg-root .lg-key-button {
+  --cut: 8px;
+
+  position: relative;
+  color: var(--lg-text);
+}
+
+.lg-root .lg-key-button[aria-expanded='true'] {
+  border-color: rgba(94, 234, 212, 0.4);
+  color: #5eead4;
+}
+
+.lg-key.lg-key-pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 264px;
+  max-width: calc(100vw - 32px);
+  transform-origin: bottom left;
+}
+
+.lg-narrow .lg-key-pop .lg-chains {
+  display: grid;
+}
+
+.lg-key-pop .lg-legend {
+  flex-direction: column;
+  gap: 6px;
 }
 
 .lg-zoom {
@@ -465,6 +646,7 @@
   display: grid;
   width: 30px;
   height: 30px;
+  flex: none;
   place-items: center;
   padding: 0;
   border: 0;
@@ -474,11 +656,6 @@
   transition: background 140ms ease;
 }
 
-/* The control in a chamfered panel's corner takes the chamfer too, so its highlight follows the panel's edge. */
-.lg-zoom .lg-zoom-button:last-child {
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
-}
-
 .lg-root .lg-zoom-button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
 }
@@ -486,7 +663,7 @@
 .lg-zoom-value {
   min-width: 46px;
   color: var(--lg-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
@@ -501,9 +678,9 @@
 .lg-hint {
   position: absolute;
   z-index: 1;
-  right: 0;
-  bottom: 84px;
-  left: 0;
+  right: var(--lg-inset-right, 0px);
+  bottom: calc(132px + var(--lg-inset-bottom, 0px));
+  left: var(--lg-inset-left, 0px);
   width: max-content;
   max-width: calc(100% - 28px);
   margin: 0 auto;
@@ -511,7 +688,7 @@
   border: 1px solid var(--lg-line);
   background: rgba(12, 17, 29, 0.5);
   color: var(--lg-muted);
-  font-size: 12px;
+  font-size: 13px;
   pointer-events: none;
   backdrop-filter: blur(10px);
 }
@@ -535,7 +712,7 @@
 
 .lg-tip-title {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -546,7 +723,7 @@
   gap: 8px;
   margin: 5px 0 0;
   color: var(--lg-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* A company the user placed: the same teal pin as on its tile. */
@@ -554,43 +731,12 @@
   color: #c4f36a;
 }
 
-/* A disruption: a small diamond in its severity's colour. */
-.lg-legend-risk {
-  width: 9px;
-  height: 9px;
-  flex: none;
-  background: #ff4d5e;
-  transform: rotate(45deg);
-}
-
-/* A company with open alerts: a round dot, in the colour of its most severe alert. */
-.lg-legend-dot {
-  width: 9px;
-  height: 9px;
-  flex: none;
-  border-radius: 50%;
-  background: #ff7272;
-}
 
 .lg-tip-alert {
   align-items: center;
   gap: 6px;
 }
 
-.lg-legend-critical {
-  width: 22px;
-  height: 3px;
-  flex: none;
-  background: #5d6b80;
-}
-
-.lg-legend-risk[data-severity='MEDIUM'] {
-  background: #ff8a3d;
-}
-
-.lg-legend-risk[data-severity='LOW'] {
-  background: #ffd166;
-}
 
 .lg-tip-risk {
   align-items: flex-start;
@@ -599,7 +745,7 @@
 }
 
 .lg-tip-risk .lg-legend-risk {
-  margin-top: 4px;
+  margin-top: -1px;
 }
 
 .lg-pin {
@@ -626,16 +772,25 @@
 /* The minimap and the view's controls, stacked on the right. */
 .lg-bottom-right {
   display: flex;
+  /* The view controls' own width, so their buttons stay square, and the minimap matches it. */
+  width: 195px;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 8px;
 }
 
+/* It hides what lies beyond its edge, but no further than its border, where its ticks sit. */
 .lg-minimap {
   position: relative;
   padding: 0;
   overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 1px;
   line-height: 0;
+}
+
+.lg-bottom-right .lg-zoom {
+  justify-content: space-between;
 }
 
 .lg-minimap canvas {
@@ -648,9 +803,9 @@
 .lg-chosen {
   position: absolute;
   z-index: 3;
-  right: 0;
-  bottom: 84px;
-  left: 0;
+  right: var(--lg-inset-right, 0px);
+  bottom: calc(84px + var(--lg-inset-bottom, 0px));
+  left: var(--lg-inset-left, 0px);
   display: flex;
   width: min(580px, calc(100% - 28px));
   align-items: center;
@@ -707,18 +862,54 @@
   color: var(--lg-muted);
 }
 
+/* Narrow, the search is a square icon until it is used; it then opens across the free width. */
+.lg-narrow .lg-search {
+  width: 36px;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.lg-narrow .lg-search[data-open='false'] {
+  gap: 0;
+}
+
+.lg-narrow .lg-search svg {
+  flex: none;
+  color: var(--lg-text);
+}
+
+.lg-narrow .lg-search[data-open='false'] input,
+.lg-narrow .lg-search .lg-kbd {
+  width: 0;
+  min-width: 0;
+  flex: 0 0 0;
+  padding: 0;
+  opacity: 0;
+}
+
+.lg-narrow .lg-search[data-open='true'] {
+  width: 240px;
+  min-width: 0;
+  flex: 0 1 auto;
+  justify-content: flex-start;
+  padding: 0 10px 0 11px;
+  cursor: text;
+}
+
+.lg-narrow .lg-search[data-open='true'] input {
+  flex: 1;
+  opacity: 1;
+}
+
+.lg-narrow .lg-title-count {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .lg-title-count,
   .lg-hint {
     display: none;
-  }
-
-  .lg-search {
-    width: 150px;
-  }
-
-  .lg-search[data-open='true'] {
-    width: 200px;
   }
 
   .lg-bottom {
@@ -742,5 +933,10 @@
 @media (prefers-reduced-motion: reduce) {
   .lg-pulse::after {
     animation: none;
+  }
+
+  .lg-top,
+  .lg-bottom {
+    transition: none;
   }
 }

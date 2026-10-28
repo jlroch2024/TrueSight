@@ -1,40 +1,61 @@
-// The dot a company with open alerts carries at its tile's corner. jsdom cannot draw on a <canvas>, so the drawing is
-// watched on a stand-in that remembers what was filled, and in which colour.
+// The beacon a company with open alerts carries at its tile's corner. jsdom cannot draw on a <canvas>, so the drawing is
+// watched on a stand-in that remembers the shape filled, the colours its gradients run to, and the rim's colour.
 import { describe, expect, it } from 'vitest';
 import { ALERT_COLOUR } from './model';
-import { INK, drawAlertDot } from './render';
+import { INK, drawAlertBeacon } from './render';
 
 function fakeContext() {
-  const filled: { colour: string; x: number; y: number }[] = [];
-  let arcAt = { x: 0, y: 0 };
+  const gradients: string[][] = [];
+  const strokes: string[] = [];
+  let path: { x: number; y: number }[] = [];
+  const filled: { x: number; y: number }[][] = [];
+  const gradient = () => {
+    const stops: string[] = [];
+    gradients.push(stops);
+    return { addColorStop: (_: number, colour: string) => stops.push(colour) };
+  };
   const context = {
-    fillStyle: '',
+    fillStyle: '' as unknown,
     strokeStyle: '',
     lineWidth: 0,
-    beginPath: () => {},
-    arc: (x: number, y: number) => {
-      arcAt = { x, y };
+    globalCompositeOperation: 'source-over',
+    save: () => {},
+    restore: () => {},
+    beginPath: () => {
+      path = [];
     },
-    fill: () => filled.push({ colour: context.fillStyle, ...arcAt }),
-    stroke: () => {},
+    moveTo: (x: number, y: number) => path.push({ x, y }),
+    lineTo: (x: number, y: number) => path.push({ x, y }),
+    closePath: () => {},
+    createRadialGradient: gradient,
+    createLinearGradient: gradient,
+    fillRect: () => {},
+    strokeRect: () => {},
+    fill: () => filled.push(path),
+    stroke: () => strokes.push(context.strokeStyle),
   };
-  return { context: context as unknown as CanvasRenderingContext2D, filled };
+  return { context: context as unknown as CanvasRenderingContext2D, gradients, strokes, filled };
 }
 
-describe('drawAlertDot', () => {
-  it.each(['HIGH', 'MEDIUM', 'LOW'] as const)('fills the dot in the colour of a %s alert, at the corner given', (severity) => {
-    const { context, filled } = fakeContext();
+describe('drawAlertBeacon', () => {
+  it.each(['HIGH', 'MEDIUM', 'LOW'] as const)('lights the beacon in the colour of a %s alert, at the corner given', (severity) => {
+    const { context, gradients, filled } = fakeContext();
 
-    drawAlertDot(context, 40, 25, severity);
+    drawAlertBeacon(context, 40, 25, severity, 0, true);
 
-    expect(filled).toEqual([{ colour: ALERT_COLOUR[severity], x: 40, y: 25 }]);
+    expect(gradients.at(-1)!.at(-1)).toBe(ALERT_COLOUR[severity]);
+    const face = filled.at(-1)!;
+    const xs = face.map((point) => point.x);
+    const ys = face.map((point) => point.y);
+    expect((Math.min(...xs) + Math.max(...xs)) / 2).toBeCloseTo(40);
+    expect((Math.min(...ys) + Math.max(...ys)) / 2).toBeCloseTo(25);
   });
 
-  it('rims the dot in the night colour so it stands out against a logo', () => {
-    const { context } = fakeContext();
+  it('rims the beacon in the night colour so it stands out against a logo', () => {
+    const { context, strokes } = fakeContext();
 
-    drawAlertDot(context, 0, 0, 'HIGH');
+    drawAlertBeacon(context, 0, 0, 'HIGH', 0, true);
 
-    expect((context as unknown as { strokeStyle: string }).strokeStyle).toBe(INK.night);
+    expect(strokes.at(-1)).toBe(INK.night);
   });
 });

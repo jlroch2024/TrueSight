@@ -1,25 +1,28 @@
-// Which page shows for which address.
+// Which screen shows for which address.
 //
-// Adding a page is two lines: a <Route> here, using the address in paths.ts, and an entry in navigation.ts so it
-// appears in the sidebar. Pages that are not built yet are simply not listed: the sidebar shows only pages that work.
+// A portfolio is one screen, the workspace. A story adds to it by filling one of its slots (the drawer's tabs, the
+// Inspector, the top bar), never by adding a page; an analyst tool is a tab of the Analyst Desk. See AGENTS.md.
 //
-// Log In and Sign Up are outside <Layout>, so they have no sidebar. Every other page is inside <RequireLogIn>, which
-// sends anybody without a login to the Log In page.
+// Log In and Sign Up are outside <Layout>: one card that switches between the two in place (AuthPage). Every other
+// screen is inside <RequireLogIn>, which sends anybody without a login to the Log In page.
 import { useEffect } from 'react';
-import { Route, Routes, useNavigate } from 'react-router';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
 import { setLoggedOutHandler } from './api/client';
 import { Layout } from './components/Layout';
 import { RequireLogIn } from './components/RequireLogIn';
-import { AlertsPage } from './pages/AlertsPage';
 import { AnalystDeskPage } from './pages/AnalystDeskPage';
-import { LogInPage } from './pages/LogInPage';
+import { AuthPage } from './pages/AuthPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OpenFirstPortfolioPage } from './pages/OpenFirstPortfolioPage';
-import { PortfolioPage } from './pages/PortfolioPage';
 import { PortfolioStart } from './pages/PortfolioStart';
-import { SignUpPage } from './pages/SignUpPage';
-import { SupplyChainPage } from './pages/SupplyChainPage';
-import { paths } from './paths';
+import { WorkspacePage } from './pages/WorkspacePage';
+import { type WorkspaceTab, paths } from './paths';
+
+/** An old portfolio address (Supply Chain, Alerts): opens the workspace, on the tab it stood for. */
+function OldPortfolioAddress({ tab }: { tab: WorkspaceTab }) {
+  const { portfolioId = '' } = useParams();
+  return <Navigate to={paths.portfolio(portfolioId, tab)} replace />;
+}
 
 export function App() {
   const navigate = useNavigate();
@@ -31,16 +34,16 @@ export function App() {
 
   return (
     <Routes>
-      <Route path={paths.logIn} element={<LogInPage />} />
-      <Route path={paths.signUp} element={<SignUpPage />} />
+      <Route path={paths.logIn} element={<AuthPage />} />
+      <Route path={paths.signUp} element={<AuthPage />} />
       <Route element={<RequireLogIn />}>
         <Route element={<Layout />}>
           <Route index element={<OpenFirstPortfolioPage />} />
           <Route path={paths.portfolios} element={<PortfolioStart />} />
-          <Route path={paths.portfolio(':portfolioId')} element={<PortfolioPage />} />
+          <Route path={paths.portfolio(':portfolioId')} element={<WorkspacePage />} />
+          <Route path={paths.supplyChain(':portfolioId')} element={<OldPortfolioAddress tab="holdings" />} />
+          <Route path={paths.alerts(':portfolioId')} element={<OldPortfolioAddress tab="alerts" />} />
           <Route path={paths.review} element={<AnalystDeskPage />} />
-          <Route path={paths.supplyChain(':portfolioId')} element={<SupplyChainPage />} />
-          <Route path={paths.alerts(':portfolioId')} element={<AlertsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

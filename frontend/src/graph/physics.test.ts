@@ -148,6 +148,7 @@ describe('disruptions and zoom', () => {
       reviewStatus: null,
       relationshipId,
       confidence: relationshipId === null ? null : UNREVIEWED_CONFIDENCE,
+      secondRelationshipId: null,
     }],
   });
 

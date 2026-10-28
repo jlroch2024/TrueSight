@@ -350,7 +350,7 @@ describe('chainColours', () => {
     expect(colours.get('maker-near')).toBe(maker);
   });
 
-  it('never uses a colour twice: holdings smaller than the seven largest keep grey arrows', () => {
+  it('never uses a colour twice: holdings smaller than the six largest keep grey arrows', () => {
     // Holding h0 is the smallest, h8 the largest.
     const holdings = Array.from({ length: CHAIN_COLOURS.length + 2 }, (_, index) => ({
       id: `h${index}`, name: `Holding ${index}`, displayName: `Holding ${index}`, ticker: `H${index}`, isHolding: true,

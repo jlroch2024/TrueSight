@@ -310,6 +310,40 @@ class AlertsIT {
     }
 
     @Test
+    void aHoldingReachedInTwoStepsCarriesBothLinksAndOneReachedDirectlyOnlyItsFirst() throws Exception {
+        String email = "alerts-second-link@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        Company zeiss = companyDirectory.findOrCreate(
+                "Carl Zeiss SMT Alerts IT " + UUID.randomUUID(), null, null, List.of());
+        Report report = reports.save(new Report(tsmc.getId(), "20-F",
+                "A-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20),
+                LocalDate.parse("2026-04-10"), "https://www.sec.gov/", Examples.nvidia10K()));
+        Relationship zeissSuppliesTsmc = relationships.save(new Relationship(
+                report.getId(), tsmc.getId(), zeiss.getId(), RelationshipType.SUPPLIER,
+                "lithography systems", EVIDENCE));
+        NewsArticle twoSteps = article(zeiss, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(twoSteps, Severity.HIGH, Confidence.HIGH);
+        Alert indirect = alert(portfolio, twoSteps, "40", AlertStatus.NEW);
+        AlertHolding reached = new AlertHolding(indirect.getId(), holding.getId(), zeissSuppliesTsmc.getId());
+        reached.setSecondRelationshipId(tsmcSuppliesNvidia.getId());
+        alertHoldings.save(reached);
+        NewsArticle oneStep = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(oneStep, Severity.LOW, Confidence.HIGH);
+        Alert direct = alert(portfolio, oneStep, "40", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(direct.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
+
+        // The most severe event comes first: the two-step one (High), then the direct one (Low).
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts[0].holdings[0].relationshipId").value(zeissSuppliesTsmc.getId()))
+                .andExpect(jsonPath("$.alerts[0].holdings[0].secondRelationshipId").value(tsmcSuppliesNvidia.getId()))
+                .andExpect(jsonPath("$.alerts[1].holdings[0].relationshipId").value(tsmcSuppliesNvidia.getId()))
+                .andExpect(jsonPath("$.alerts[1].holdings[0].secondRelationshipId").value(nullValue()));
+    }
+
+    @Test
     void groupedEventUsesItsMostSevereAlertAsHeadline() throws Exception {
         String email = "alerts-order@example.com";
         Portfolio portfolio = portfolio(email);

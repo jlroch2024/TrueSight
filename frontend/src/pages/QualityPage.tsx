@@ -82,7 +82,7 @@ function Section(props: {
   rows: { week: string; cells: ReactNode }[];
 }) {
   return (
-    <section className="card quality-section" aria-labelledby={`quality-${props.id}`}>
+    <section className="glass ticks quality-section" aria-labelledby={`quality-${props.id}`}>
       <h2 id={`quality-${props.id}`}>{props.title}</h2>
       <p className="muted">{props.explanation}</p>
       <Legend items={props.legend} />
@@ -299,9 +299,7 @@ export function QualityPage() {
   }, []);
 
   return (
-    <section>
-      <h1>AI Quality</h1>
-      <p className="muted">See how far to trust each AI step, and whether it is improving, from the last 8 weeks of decisions.</p>
+    <section className="quality">
       {error ? (
         <p className="error">{error}</p>
       ) : quality === undefined ? (

@@ -1,5 +1,6 @@
-// The Sign Up page's Acceptance Criteria, against a fake backend.
-import { render, screen, within } from '@testing-library/react';
+// Log In and Sign Up: one card at /login and /signup that switches between the two in place. Every Acceptance
+// Criterion of Sign Up and Log In, against a fake backend.
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,6 +10,108 @@ import { tokenStore } from '../api/client';
 function answer(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status });
 }
+
+function renderLogIn() {
+  return render(
+    <MemoryRouter initialEntries={['/login']}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
+async function logIn(email: string, password: string) {
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('Email'), email);
+  await user.type(screen.getByLabelText('Password'), password);
+  await user.click(screen.getByRole('button', { name: 'Log In' }));
+}
+
+describe('Log In', () => {
+  it('logs in, keeps the token, and opens the first portfolio', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url === '/api/auth/login') return Promise.resolve(answer(200, { token: 'new-token', email: 'pm@example.com' }));
+      if (url === '/api/portfolios') {
+        return Promise.resolve(answer(200, [{ id: 7, name: 'Consumer Goods', createdAt: '2026-10-01T00:00:00Z' }]));
+      }
+      return Promise.resolve(answer(200, []));
+    }));
+    renderLogIn();
+
+    await logIn('pm@example.com', 'right-password');
+
+    expect(await screen.findByRole('button', { name: 'Portfolio: Consumer Goods' })).toBeInTheDocument();
+    expect(tokenStore.get()).toBe('new-token');
+  });
+
+  it('shows "Wrong email or password." when the login is refused', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(401, { message: 'Wrong email or password.' })));
+    renderLogIn();
+
+    await logIn('pm@example.com', 'wrong-password');
+
+    expect(await screen.findByText('Wrong email or password.')).toBeInTheDocument();
+    expect(tokenStore.get()).toBeNull();
+  });
+
+  it('shows a refused log in in the same style as a field error, announced to screen readers', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(401, { message: 'Wrong email or password.' })));
+    renderLogIn();
+
+    await logIn('pm@example.com', 'wrong-password');
+
+    const message = await screen.findByRole('alert');
+    expect(message).toHaveTextContent('Wrong email or password.');
+    expect(message).toHaveClass('field-error');
+  });
+
+  it('shows an unreachable server in the same style as a field error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    renderLogIn();
+
+    await logIn('pm@example.com', 'right-password');
+
+    const message = await screen.findByRole('alert');
+    expect(message).toHaveTextContent('Cannot reach the server.');
+    expect(message).toHaveClass('field-error');
+  });
+
+  it("shows TrueSight's motto above Log In, and no welcome line", () => {
+    renderLogIn();
+
+    expect(screen.getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
+    expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument();
+  });
+
+  it('offers Sign Up under the form, for someone new to TrueSight', () => {
+    renderLogIn();
+
+    expect(screen.getByText(/New to TrueSight\?/)).toContainElement(screen.getByRole('button', { name: 'Sign Up' }));
+  });
+
+  it('shows email and required-password errors on submit without sending a request', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderLogIn();
+
+    await user.type(screen.getByLabelText('Email'), 'gtfsdege');
+    await user.click(screen.getByRole('button', { name: 'Log In' }));
+
+    expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(screen.getByText('Enter your password.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/characters/i)).not.toBeInTheDocument();
+  });
+
+  it('switches to Sign Up with a button and has no account-switching link', async () => {
+    const user = userEvent.setup();
+    renderLogIn();
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+    expect(await screen.findByRole('heading', { name: 'Create Your Account' })).toBeInTheDocument();
+  });
+});
 
 function renderSignUp() {
   return render(
@@ -26,15 +129,17 @@ async function signUp(email: string, password: string, confirm = password) {
   await user.click(screen.getByRole('button', { name: 'Create Account' }));
 }
 
-describe('SignUpPage', () => {
-  it('is one card like Log In, with the motto, told apart by its heading and its lime accent', () => {
-    const { container } = renderSignUp();
+describe('Sign Up', () => {
+  it("is the same card in lime: Create Your Account, under TrueSight's motto, with Confirm Password", () => {
+    renderSignUp();
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Create Your Account' })).toBeInTheDocument();
-    expect(screen.getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
+    const card = screen.getByRole('heading', { level: 1, name: 'Create Your Account' }).closest('form')!;
+    expect(card).toHaveClass('auth-card', 'sign-up');
+    expect(within(card).getByText('Supply-Chain Risk, Traced to the Source')).toBeInTheDocument();
+    expect(within(card).getByLabelText('Confirm Password')).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Create Account' })).toHaveAttribute('type', 'submit');
+    // One card, as Log In is: no side panel beside it (Polish Log In and Sign Up).
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
-    expect(container.querySelector('form.auth-card')).toHaveClass('sign-up');
-    expect(screen.getByRole('button', { name: 'Create Account' })).toHaveAttribute('type', 'submit');
     expect(screen.getByText(/Already Have an Account\?/)).toContainElement(screen.getByRole('button', { name: 'Log In' }));
   });
 
@@ -174,5 +279,27 @@ describe('SignUpPage', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Log In' }));
     expect(await screen.findByRole('heading', { name: 'Log In' })).toBeInTheDocument();
+  });
+});
+
+describe('one card', () => {
+  it('switchesBetweenLogInAndSignUpInPlaceWithConfirmPasswordOpeningAndClosing', async () => {
+    const user = userEvent.setup();
+    renderLogIn();
+    const card = screen.getByRole('heading', { name: 'Log In' }).closest('form')!;
+    expect(screen.queryByLabelText('Confirm Password')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Sign Up' }));
+    expect(await screen.findByRole('heading', { name: 'Create Your Account' })).toBeInTheDocument();
+    // The same card, changed in place: not a new one.
+    expect(screen.getByRole('heading', { name: 'Create Your Account' }).closest('form')).toBe(card);
+    expect(card).toHaveClass('sign-up');
+    expect(within(card).getByLabelText('Confirm Password')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Log In' }));
+    expect(await screen.findByRole('heading', { name: 'Log In' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Log In' }).closest('form')).toBe(card);
+    expect(card).not.toHaveClass('sign-up');
+    await waitFor(() => expect(screen.queryByLabelText('Confirm Password')).not.toBeInTheDocument());
   });
 });

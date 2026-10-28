@@ -9,11 +9,11 @@
 //
 // Drawing is on one <canvas> (render.ts); the controls over it are HTML. A visitor whose computer is set to reduce
 // motion gets a still graph: no entrance, float, travelling dashes or flights.
-import '@fontsource-variable/geist';
 import { AnimatePresence, motion } from 'motion/react';
-import { Maximize2, Minimize2, Minus, Plus, RotateCcw, Scan, Search, X } from 'lucide-react';
+import { Layers, Maximize2, Minimize2, Minus, Plus, RotateCcw, Scan, Search, X } from 'lucide-react';
 import {
   type CSSProperties,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
@@ -23,8 +23,9 @@ import {
   useState,
 } from 'react';
 import type { Severity } from '../api/news';
+import { useSlidingPlate } from '../components/useSlidingPlate';
 import { type GraphEdge, type GraphNode, forgetLayout, readSavedLayout, saveLayout } from '../pages/supplyChain';
-import { type Bounds, CameraRig, centredOn, fitCamera, toWorld } from './camera';
+import { type Bounds, type Insets, CameraRig, centredOn, fitCamera, toWorld } from './camera';
 import { edgeAt, nodeAt } from './geometry';
 import { LogoBook } from './logos';
 import {
@@ -38,7 +39,18 @@ import {
   eventLabel,
 } from './model';
 import { restoreSettled, settleForView } from './physics';
-import { FONT, type MapFrame, mapFrame, render, renderMinimap } from './render';
+import {
+  FONT,
+  INK,
+  type MapFrame,
+  RISK_COLOUR,
+  drawBeaconFace,
+  drawRiskMark,
+  drawSharedBadge,
+  mapFrame,
+  render,
+  renderMinimap,
+} from './render';
 import { Scene } from './scene';
 import './livingGraph.css';
 
@@ -62,7 +74,25 @@ type Props = {
   risks?: Map<number, Risk>;
   // The most severe open alert of each company, by node id: each is marked with a dot in that severity's colour.
   alertDots?: Map<string, Severity>;
+  // What the page asks to be lit, such as the companies and links a chosen alert runs through: everything else dims,
+  // and the view frames them. Null lets go.
+  focus?: GraphFocus | null;
+  // A company pointed at outside the graph (a holding in a list): lit with its neighbours, as if pointed at here.
+  peekNodeId?: string | null;
+  // Drawn edge to edge, as the ground of a page: no frame and no Full Screen button (the page is the full screen).
+  bare?: boolean;
+  // How much of each side is under the page's panels: the controls stay clear of them, and fitting and flying centre
+  // on what is left in view.
+  insets?: Insets;
+  // The free band along the top between the page's own top bars, by its distance from each edge: the title and search
+  // sit there, centred and in line with the bars, rather than below them.
+  topBar?: { left: number; right: number };
+  // Something of the page's to put first in that band, before the title (the workspace's Open Alerts bar).
+  barStart?: ReactNode;
 };
+
+/** Companies and links to light, by node id and relationship id. */
+export type GraphFocus = { nodeIds: string[]; relationshipIds: number[] };
 
 type Tip =
   | { kind: 'node'; node: LiveNode; x: number; y: number }
@@ -76,8 +106,9 @@ const EDGE_REACH = 7;
 // How fast the physics runs while a company is dragged (d3-force's alpha).
 const DRAG_HEAT = 0.22;
 // The minimap's size on screen.
-const MAP_WIDTH = 176;
-const MAP_HEIGHT = 112;
+// As wide as the view controls under it (their square buttons, the zoom and the divider: 193px inside its border).
+const MAP_WIDTH = 193;
+const MAP_HEIGHT = 123;
 // How warm the physics may still be when the view fits around companies on their way somewhere new.
 const NEARLY_SETTLED = 0.12;
 // How much room above the pointer the card needs; nearer the top, it goes below instead.
@@ -86,12 +117,62 @@ const TIP_ROOM = 96;
 const ZOOM_STEP = 1.35;
 // The room a fit leaves for the controls along the top and the key along the bottom.
 const FIT_ROOM = { top: 70, right: 40, bottom: 104, left: 40 };
+const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+// How long the view takes to follow a panel opening or closing, so what was in the middle stays there: the pace the
+// page's panels move at, on the same smooth step (easeInOut), so the view and the panels move as one.
+const INSET_GLIDE_MS = 480;
+// The closest a focus frames what it lights, so a single link never fills the screen; and the furthest, so between
+// wide panels it stays readable rather than shrinking to fit.
+const FOCUS_MAX_ZOOM = 1.15;
+const FOCUS_MIN_ZOOM = 0.45;
+// Narrower than this between the page's panels, the minimap and the hint step aside so the key stays readable.
+const NARROW_BELOW = 640;
 const EMPTY: Record<string, string> = {};
 const NO_RISKS = new Map<number, Risk>();
 const NO_DOTS = new Map<string, Severity>();
 
 /** A holding's share of the portfolio, as shown: "18%", "12.5%". */
 const share = (weight: number) => `${Number(weight.toFixed(1))}%`;
+
+/**
+ * A mark in the key, drawn by the very function the graph draws it with, so the key shows exactly what is on the graph.
+ * size is its side on screen; draw gets the context scaled to it.
+ */
+function KeyMark({
+  className,
+  size,
+  draw,
+  severity,
+  colour,
+}: {
+  className: string;
+  size: number;
+  draw: (context: CanvasRenderingContext2D, dpr: number) => void;
+  severity?: Severity;
+  colour?: string;
+}) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.clearRect(0, 0, size, size);
+    draw(context, dpr);
+  });
+  return (
+    <canvas
+      ref={ref}
+      className={className}
+      aria-hidden="true"
+      data-severity={severity}
+      style={{ width: size, height: size, color: colour }}
+    />
+  );
+}
 
 function reducesMotion(): boolean {
   return typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
@@ -104,6 +185,17 @@ function measurer(): (text: string, fontSize: number) => number {
   return (text, fontSize) => {
     context.font = `600 ${fontSize}px ${FONT}`;
     return context.measureText(text).width;
+  };
+}
+
+/** Room on every side, plus what the page's panels cover. */
+function around(room: number | Insets, covered: Insets): Insets {
+  const own = typeof room === 'number' ? { top: room, right: room, bottom: room, left: room } : room;
+  return {
+    top: own.top + covered.top,
+    right: own.right + covered.right,
+    bottom: own.bottom + covered.bottom,
+    left: own.left + covered.left,
   };
 }
 
@@ -136,6 +228,12 @@ export function LivingGraph({
   layoutKey,
   risks = NO_RISKS,
   alertDots = NO_DOTS,
+  focus = null,
+  peekNodeId = null,
+  bare = false,
+  insets = NO_INSETS,
+  topBar,
+  barStart,
 }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -143,6 +241,8 @@ export function LivingGraph({
   // How the minimap last mapped the graph, so a click on it can be turned back into a place on the graph.
   const mapFrameRef = useRef<MapFrame | null>(null);
   const sceneRef = useRef<Scene | null>(null);
+  // The scene last shown, and for which layout: a new graph for the same portfolio carries on from it (Scene.carryFrom).
+  const shownRef = useRef<{ scene: Scene; layoutKey: string | undefined } | null>(null);
   const rigRef = useRef<CameraRig | null>(null);
   const viewChosenRef = useRef(false);
   // Set when the companies are on their way somewhere new (Reset Layout): the view fits around them once
@@ -156,14 +256,18 @@ export function LivingGraph({
   const [zoom, setZoom] = useState(1);
   const [tip, setTip] = useState<Tip>(null);
   const [spotlight, setSpotlight] = useState<string | null>(null);
+  const chainPlate = useSlidingPlate<HTMLUListElement, HTMLLIElement>(spotlight);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const [touched, setTouched] = useState(false);
+  const [narrow, setNarrow] = useState(false);
+  // Narrow, the key folds to a button; pointed at or pressed, it opens.
+  const [keyOpen, setKeyOpen] = useState(false);
 
   // Read by the long-lived handlers, so changing them does not rebuild the graph.
-  const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey });
-  latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey };
+  const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets });
+  latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets };
   const redrawRef = useRef(() => {});
   const logos = useMemo(() => new LogoBook(() => redrawRef.current()), []);
 
@@ -197,7 +301,8 @@ export function LivingGraph({
     const scene = sceneRef.current;
     const rig = rigRef.current;
     if (!scene || !rig) return;
-    const target = fitCamera(boundsAround(scene, scene.graph.nodes), rig.width, rig.height, FIT_ROOM);
+    const room = around(FIT_ROOM, latest.current.insets);
+    const target = fitCamera(boundsAround(scene, scene.graph.nodes), rig.width, rig.height, room);
     if (instant) rig.jump(target);
     else rig.flyTo(target);
   }, []);
@@ -211,13 +316,14 @@ export function LivingGraph({
     const rig = rigRef.current;
     const node = scene?.nodeById(nodeId);
     if (!scene || !rig || !node) return;
-    const around = scene.graph.edges
+    const neighbours = scene.graph.edges
       .filter((edge) => edge.source.id === nodeId || edge.target.id === nodeId)
       .flatMap((edge) => [edge.source, edge.target]);
-    const view = fitCamera(boundsAround(scene, [node, ...around]), rig.width, rig.height, 110);
+    const covered = latest.current.insets;
+    const view = fitCamera(boundsAround(scene, [node, ...neighbours]), rig.width, rig.height, around(110, covered));
     const at = scene.positionOf(node);
     // Centred on the company itself, no further out than needed to see its neighbours, nor closer than 1:1.
-    rig.flyTo(centredOn(at, Math.min(1.1, Math.max(view.k, 0.55)), rig.width, rig.height));
+    rig.flyTo(centredOn(at, Math.min(1.1, Math.max(view.k, 0.55)), rig.width, rig.height, covered));
     viewChosenRef.current = true;
   }, []);
 
@@ -230,54 +336,90 @@ export function LivingGraph({
     const width = rect.width || root.clientWidth || 800;
     const height = rect.height || root.clientHeight || 500;
 
-    // What the user did to this portfolio's graph earlier in the tab: companies they placed, and the view.
-    // When every company of this graph has a saved place, it is put back exactly; otherwise (a company has come or
-    // gone since) it settles again, with the companies the user placed held where they were put.
-    const saved = latest.current.layoutKey ? readSavedLayout(latest.current.layoutKey) : null;
-    const placed = new Set(saved?.placed ?? Object.keys(saved?.positions ?? {}));
-    const complete = saved?.placed !== undefined && graph.nodes.every((node) => saved.positions[node.id]);
-    for (const node of graph.nodes) {
-      const point = saved?.positions[node.id];
-      if (!point || !(complete || placed.has(node.id))) continue;
-      node.x = point.x;
-      node.y = point.y;
-      if (placed.has(node.id)) {
-        node.anchorX = point.x;
-        node.anchorY = point.y;
+    // The same portfolio's graph, changed (a holding analysed, weighted again, added or removed): it carries on from
+    // what is on screen, without opening again, and the view stays where it is.
+    const shown = shownRef.current;
+    const carried = shown && shown.layoutKey === latest.current.layoutKey && rigRef.current ? shown.scene : null;
+    const scene = new Scene(graph, still);
+    let rig: CameraRig;
+    if (carried) {
+      scene.carryFrom(carried);
+      restoreSettled(scene.physics, carried.graph.nodes[0]?.labelRoom ?? 1);
+      // Newcomers find their place among the rest; a gap left by a company taken away closes gently.
+      const arrived = graph.nodes.some((node) => !carried.nodeById(node.id));
+      const left = carried.graph.nodes.some((node) => !scene.nodeById(node.id));
+      if (arrived || left) scene.physics.alpha(arrived ? 0.3 : 0.12);
+      rig = rigRef.current!;
+    } else {
+      // What the user did to this portfolio's graph earlier in the tab: companies they placed, and the view.
+      // When every company of this graph has a saved place, it is put back exactly; otherwise (a company has come or
+      // gone since) it settles again, with the companies the user placed held where they were put.
+      const saved = latest.current.layoutKey ? readSavedLayout(latest.current.layoutKey) : null;
+      const placed = new Set(saved?.placed ?? Object.keys(saved?.positions ?? {}));
+      const complete = saved?.placed !== undefined && graph.nodes.every((node) => saved.positions[node.id]);
+      for (const node of graph.nodes) {
+        const point = saved?.positions[node.id];
+        if (!point || !(complete || placed.has(node.id))) continue;
+        node.x = point.x;
+        node.y = point.y;
+        if (placed.has(node.id)) {
+          node.anchorX = point.x;
+          node.anchorY = point.y;
+        }
+      }
+      if (complete) restoreSettled(scene.physics, saved.labelRoom ?? 1);
+      // Settled for the view it opens in: every label with room at that zoom, every link clear of other companies.
+      else {
+        const room = around(FIT_ROOM, latest.current.insets);
+        settleForView(scene.physics, (bounds) => fitCamera(bounds, width, height, room).k);
+      }
+      rig = new CameraRig(still);
+      rig.setSize(width, height);
+      rigRef.current = rig;
+      if (saved?.zoom !== undefined && saved.pan) {
+        rig.jump({ k: saved.zoom, x: saved.pan.x, y: saved.pan.y });
+        viewChosenRef.current = true;
+      } else {
+        rig.jump(fitCamera(boundsAround(scene, graph.nodes), width, height, around(FIT_ROOM, latest.current.insets)));
+        viewChosenRef.current = false;
       }
     }
-    const scene = new Scene(graph, still);
-    if (complete) restoreSettled(scene.physics, saved.labelRoom ?? 1);
-    // Settled for the view it opens in: every label with room at that zoom, every link clear of other companies.
-    else settleForView(scene.physics, (bounds) => fitCamera(bounds, width, height, FIT_ROOM).k);
     sceneRef.current = scene;
-    const rig = new CameraRig(still);
-    rig.setSize(width, height);
-    rigRef.current = rig;
-    if (saved?.zoom !== undefined && saved.pan) {
-      rig.jump({ k: saved.zoom, x: saved.pan.x, y: saved.pan.y });
-      viewChosenRef.current = true;
-    } else {
-      rig.jump(fitCamera(boundsAround(scene, graph.nodes), width, height, FIT_ROOM));
-      viewChosenRef.current = false;
-    }
+    shownRef.current = { scene, layoutKey: latest.current.layoutKey };
 
     const context = canvas.getContext?.('2d') ?? null;
     let size = { width, height, dpr: window.devicePixelRatio || 1 };
-    const resize = () => {
+    // glide: a graph carried on whose view the user never chose glides to fit its companies, rather than jumping.
+    const resize = (glide = false) => {
       const box = root.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
+      const before = size;
       size = { width: Math.max(1, box.width), height: Math.max(1, box.height), dpr };
+      // A view the user chose keeps its middle where it was, so a window resized keeps in view what was looked at.
+      if (viewChosenRef.current && (before.width !== size.width || before.height !== size.height)) {
+        const camera = rig.camera;
+        rig.jump({
+          ...camera,
+          x: camera.x + (size.width - before.width) / 2,
+          y: camera.y + (size.height - before.height) / 2,
+        });
+      }
       canvas.width = Math.round(size.width * dpr);
       canvas.height = Math.round(size.height * dpr);
       canvas.style.width = `${size.width}px`;
       canvas.style.height = `${size.height}px`;
       rig.setSize(size.width, size.height);
-      if (!viewChosenRef.current)
-        rig.jump(fitCamera(boundsAround(scene, graph.nodes), size.width, size.height, FIT_ROOM));
+      const covered = latest.current.insets;
+      setNarrow(size.width - covered.left - covered.right < NARROW_BELOW);
+      if (!viewChosenRef.current) {
+        const room = around(FIT_ROOM, latest.current.insets);
+        const target = fitCamera(boundsAround(scene, graph.nodes), size.width, size.height, room);
+        if (glide && !still) rig.flyTo(target);
+        else rig.jump(target);
+      }
     };
-    resize();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
+    resize(carried !== null);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => resize());
     observer?.observe(root);
 
     let frame: number | undefined;
@@ -368,12 +510,19 @@ export function LivingGraph({
     redrawRef.current();
   }, [alertDots, graph]);
 
-  // What the page has chosen: lit, and flown to.
+  // What the page has chosen: lit, and flown to. A graph carried on keeps the view where it is, unless the choice changed.
+  const flownTo = useRef<{ node: string | null; edge: number | null; focus: string | null }>({
+    node: null,
+    edge: null,
+    focus: null,
+  });
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
     scene.selectedNode = selectedNodeId;
-    if (selectedNodeId) flyToNode(selectedNodeId);
+    const changed = !scene.carried || flownTo.current.node !== selectedNodeId;
+    flownTo.current.node = selectedNodeId;
+    if (selectedNodeId && changed) flyToNode(selectedNodeId);
     redrawRef.current();
   }, [selectedNodeId, flyToNode, graph]);
 
@@ -383,13 +532,17 @@ export function LivingGraph({
     if (!scene || !rig) return;
     const edge = scene.graph.edges.find((item) => item.relationshipId === selectedRelationshipId);
     scene.selectedEdge = edge?.id ?? null;
-    if (edge) {
+    const changed = !scene.carried || flownTo.current.edge !== selectedRelationshipId;
+    flownTo.current.edge = selectedRelationshipId;
+    if (edge && changed) {
       // Centred on the arrow's middle, close enough to see both ends.
-      const view = fitCamera(boundsAround(scene, [edge.source, edge.target]), rig.width, rig.height, 140);
+      const covered = latest.current.insets;
+      const ends = boundsAround(scene, [edge.source, edge.target]);
+      const view = fitCamera(ends, rig.width, rig.height, around(140, covered));
       const from = scene.positionOf(edge.source);
       const to = scene.positionOf(edge.target);
       const middle = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
-      rig.flyTo(centredOn(middle, Math.min(1.1, Math.max(0.6, view.k)), rig.width, rig.height));
+      rig.flyTo(centredOn(middle, Math.min(1.1, Math.max(0.6, view.k)), rig.width, rig.height, covered));
       viewChosenRef.current = true;
     }
     redrawRef.current();
@@ -401,6 +554,79 @@ export function LivingGraph({
     scene.spotlight = spotlight;
     redrawRef.current();
   }, [spotlight, graph]);
+
+  // What the page asks to be lit: everything else dims, and the view frames what is lit.
+  useEffect(() => {
+    const scene = sceneRef.current;
+    const rig = rigRef.current;
+    if (!scene || !rig) return;
+    if (!focus) {
+      scene.focusSet = null;
+      flownTo.current.focus = null;
+      redrawRef.current();
+      return;
+    }
+    const wanted = new Set(focus.relationshipIds);
+    const edgeIds = new Set(
+      scene.graph.edges.filter((edge) => wanted.has(edge.relationshipId)).map((edge) => edge.id),
+    );
+    const nodeIds = new Set(focus.nodeIds.filter((id) => scene.nodeById(id)));
+    for (const edge of scene.graph.edges) {
+      if (!edgeIds.has(edge.id)) continue;
+      nodeIds.add(edge.source.id);
+      nodeIds.add(edge.target.id);
+    }
+    scene.focusSet = { nodeIds, edgeIds };
+    const lit = scene.graph.nodes.filter((node) => nodeIds.has(node.id));
+    const key = [...nodeIds].sort().join() + '|' + [...edgeIds].sort().join();
+    const changed = !scene.carried || flownTo.current.focus !== key;
+    flownTo.current.focus = key;
+    if (lit.length > 0 && changed) {
+      const covered = latest.current.insets;
+      const box = boundsAround(scene, lit);
+      // Room around what is lit, less when little is clear between the panels.
+      const clear = rig.width - covered.left - covered.right;
+      const view = fitCamera(box, rig.width, rig.height, around(Math.min(120, Math.max(24, clear / 8)), covered));
+      const middle = { x: (box.x1 + box.x2) / 2, y: (box.y1 + box.y2) / 2 };
+      // Close enough to read, never so close that one company fills the screen.
+      const k = Math.min(FOCUS_MAX_ZOOM, Math.max(FOCUS_MIN_ZOOM, view.k));
+      rig.flyTo(centredOn(middle, k, rig.width, rig.height, covered));
+      viewChosenRef.current = true;
+    }
+    redrawRef.current();
+  }, [focus, graph]);
+
+  // A company pointed at outside the graph: lit, without moving the view.
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.peekNode = peekNodeId;
+    redrawRef.current();
+  }, [peekNodeId, graph]);
+
+  // A panel opens or closes over the graph: the view glides by half the change, so what was in the middle of the clear
+  // part stays in the middle of it. A view the user never moved simply fits again.
+  const shownInsets = useRef(insets);
+  useEffect(() => {
+    const rig = rigRef.current;
+    const before = shownInsets.current;
+    shownInsets.current = insets;
+    if (!rig) return;
+    const dx = (insets.left - before.left - (insets.right - before.right)) / 2;
+    const dy = (insets.top - before.top - (insets.bottom - before.bottom)) / 2;
+    setNarrow(rig.width - insets.left - insets.right < NARROW_BELOW);
+    if (dx === 0 && dy === 0) return;
+    // A flight already under way was aimed with these insets (the panel opened because something was chosen), so it
+    // is left to land where it was going.
+    if (rig.flying) return;
+    if (!viewChosenRef.current) fitAllRef.current();
+    else {
+      const target = { ...rig.camera, x: rig.camera.x + dx, y: rig.camera.y + dy };
+      if (still) rig.jump(target);
+      else rig.flyTo(target, INSET_GLIDE_MS);
+    }
+    redrawRef.current();
+  }, [insets, still]);
 
   // Pointer: point, press, drag a company, pan the background, click, double-click.
   useEffect(() => {
@@ -634,7 +860,7 @@ export function LivingGraph({
       x: (event.clientX - box.left - frame.x) / frame.scale,
       y: (event.clientY - box.top - frame.y) / frame.scale,
     };
-    const target = centredOn(world, rig.camera.k, rig.width, rig.height);
+    const target = centredOn(world, rig.camera.k, rig.width, rig.height, insets);
     if (glide) rig.flyTo(target);
     else rig.jump(target);
     viewChosenRef.current = true;
@@ -645,7 +871,12 @@ export function LivingGraph({
   const zoomBy = (factor: number) => {
     const rig = rigRef.current;
     if (!rig) return;
-    rig.zoomAt(factor, { x: rig.width / 2, y: rig.height / 2 });
+    // Around the middle of what is in view, not of what is under a panel.
+    const middle = {
+      x: insets.left + (rig.width - insets.left - insets.right) / 2,
+      y: insets.top + (rig.height - insets.top - insets.bottom) / 2,
+    };
+    rig.zoomAt(factor, middle);
     viewChosenRef.current = true;
     redrawRef.current();
   };
@@ -709,7 +940,7 @@ export function LivingGraph({
     } else if (event.key === '+' || event.key === '=') zoomBy(ZOOM_STEP);
     else if (event.key === '-') zoomBy(1 / ZOOM_STEP);
     else if (event.key === '0') fitAll();
-    else if (event.key.toLowerCase() === 'f') setFull((value) => !value);
+    else if (event.key.toLowerCase() === 'f' && !bare) setFull((value) => !value);
     else if (event.key === 'Escape') {
       if (full) setFull(false);
       setSpotlight(null);
@@ -727,7 +958,8 @@ export function LivingGraph({
 
   const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
   const companies = plural(graph.nodes.length, 'Company', 'Companies');
-  const counts = `${companies} · ${plural(graph.edges.length, 'Link', 'Links')}`;
+  const links = plural(graph.edges.length, 'Relationship', 'Relationships');
+  const counts = `${companies} // ${links}`;
   const selectedEdge = graph.edges.find((edge) => edge.relationshipId === selectedRelationshipId) ?? null;
   const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId) ?? null;
   const linksOf = (node: LiveNode) => {
@@ -739,17 +971,37 @@ export function LivingGraph({
   return (
     <>
       {full && <div className="lg-backdrop" aria-hidden="true" onClick={() => setFull(false)} />}
-      <div ref={rootRef} className={`lg-root lg-cut lg-mark${full ? ' lg-full' : ''}`} onKeyDown={graphKeys}>
+      <div
+        ref={rootRef}
+        className={`${bare ? 'lg-root lg-bare' : `lg-root lg-cut lg-mark${full ? ' lg-full' : ''}`}${narrow ? ' lg-narrow' : ''}${topBar ? ' lg-in-bar' : ''}`}
+        onKeyDown={graphKeys}
+        style={
+          {
+            '--lg-inset-top': `${insets.top}px`,
+            '--lg-inset-right': `${insets.right}px`,
+            '--lg-inset-bottom': `${insets.bottom}px`,
+            '--lg-inset-left': `${insets.left}px`,
+            ...(topBar && { '--lg-bar-left': `${topBar.left}px`, '--lg-bar-right': `${topBar.right}px` }),
+          } as CSSProperties
+        }
+      >
         <canvas ref={canvasRef} className="lg-canvas" role="application" aria-label="Supply chain graph" tabIndex={0} />
 
         <div className="lg-top">
-          <div className="lg-glass lg-title lg-cut lg-mark">
+          {barStart}
+          <div className="lg-glass lg-title lg-mark">
             <span className="lg-pulse" aria-hidden="true" />
-            <span className="lg-title-name">Supply Chain</span>
-            <span className="lg-title-count">{counts}</span>
+            <span className="lg-title-text">
+              <span className="lg-title-name">Supply Chain</span>
+              <span className="lg-title-count">{counts}</span>
+            </span>
           </div>
 
-          <div className="lg-glass lg-search lg-mark" data-open={searching || query ? 'true' : 'false'}>
+          <div
+            className="lg-glass lg-search lg-mark"
+            data-open={searching || query ? 'true' : 'false'}
+            onClick={() => searchRef.current?.focus()}
+          >
             <Search size={15} aria-hidden="true" />
             <input
               ref={searchRef}
@@ -768,7 +1020,7 @@ export function LivingGraph({
             <AnimatePresence>
               {query && (
                 <motion.ul
-                  className="lg-glass lg-results"
+                  className="lg-glass lg-results lg-mark"
                   role="listbox"
                   aria-label="Companies found"
                   initial={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -777,7 +1029,7 @@ export function LivingGraph({
                   transition={{ duration: 0.16 }}
                 >
                   {matches.length === 0 && (
-                    <li className="lg-result-empty">No company by that name is on the graph.</li>
+                    <li className="lg-result-empty">No Company by That Name</li>
                   )}
                   {matches.map((node, index) => (
                     <li
@@ -804,86 +1056,139 @@ export function LivingGraph({
             </AnimatePresence>
           </div>
 
-          <div className="lg-top-right">
-            <button
-              type="button"
-              className="lg-glass lg-icon-button lg-cut"
-              aria-label={full ? 'Leave Full Screen' : 'Full Screen'}
-              title={full ? 'Leave Full Screen (F)' : 'Full Screen (F)'}
-              onClick={() => setFull((value) => !value)}
-            >
-              {full ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
-          </div>
+          {!bare && (
+            <div className="lg-top-right">
+              <button
+                type="button"
+                className="lg-glass lg-icon-button lg-mark"
+                aria-label={full ? 'Leave Full Screen' : 'Full Screen'}
+                title={full ? 'Leave Full Screen (F)' : 'Full Screen (F)'}
+                onClick={() => setFull((value) => !value)}
+              >
+                {full ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="lg-bottom">
-          <div className="lg-glass lg-key lg-cut lg-mark">
+          <div
+            className="lg-key-holder"
+            onPointerEnter={(event) => event.pointerType === 'mouse' && setKeyOpen(true)}
+            onPointerLeave={(event) => event.pointerType === 'mouse' && setKeyOpen(false)}
+          >
+          {narrow && (
+            <button
+              type="button"
+              className="lg-glass lg-icon-button lg-key-button lg-mark"
+              aria-label="Graph Key"
+              aria-expanded={keyOpen}
+              title="Graph Key"
+              onClick={() => setKeyOpen((open) => !open)}
+            >
+              <Layers size={16} />
+            </button>
+          )}
+          <AnimatePresence initial={false}>
+          {(!narrow || keyOpen) && (
+          <motion.div
+            key="key"
+            className={`lg-glass lg-key lg-mark${narrow ? ' lg-key-pop' : ''}`}
+            initial={narrow ? { opacity: 0, y: 10, scale: 0.97 } : false}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+          >
             {graph.chains.length > 0 && (
-              <ul className="lg-chains" aria-label="Each holding's chain">
+              <ul
+                ref={chainPlate.container}
+                className="lg-chains"
+                aria-label="Each holding's chain"
+                // Three to a row, so the first three chains sit on top and the next three beneath them.
+                style={{ gridTemplateColumns: `repeat(${Math.min(3, graph.chains.length) || 1}, auto)` }}
+              >
+                <li
+                  ref={chainPlate.plate}
+                  className="lg-chain-plate"
+                  aria-hidden="true"
+                  style={{ '--chain': spotlight ?? 'transparent' } as CSSProperties}
+                />
                 {graph.chains.map((chain) => (
                   <li key={chain.id}>
                     <button
                       type="button"
                       className="lg-chain"
                       aria-pressed={spotlight === chain.colour}
+                      data-chosen={spotlight === chain.colour}
                       onClick={() => setSpotlight((current) => (current === chain.colour ? null : chain.colour))}
                       style={{ '--chain': chain.colour } as CSSProperties}
                     >
                       <span className="lg-chain-swatch" aria-hidden="true" />
-                      {chain.label}
+                      <span className="lg-chain-label">{chain.label}</span>
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-            {(graph.nodes.some((node) => node.sharedCount > 1) ||
-              risks.size > 0 ||
-              alertDots.size > 0 ||
-              graph.edges.some((edge) => edge.critical)) && (
+            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0) && (
               <ul className="lg-legend" aria-label="Graph key">
                 {graph.nodes.some((node) => node.sharedCount > 1) && (
                   <li>
-                    <span className="lg-legend-badge" aria-hidden="true">
-                      2
-                    </span>
-                    Holdings Sharing It
+                    <KeyMark
+                      className="lg-legend-badge"
+                      size={18}
+                      colour={INK.amber}
+                      draw={(context) => drawSharedBadge(context, 9, 9, 2, 14)}
+                    />
+                    Shared Holding
                   </li>
                 )}
                 {risks.size > 0 && (
                   <li>
-                    <span className="lg-legend-risk" aria-hidden="true" />
+                    {(['HIGH', 'MEDIUM', 'LOW'] as Severity[])
+                      .filter((severity) => [...risks.values()].some((risk) => risk.severity === severity))
+                      .slice(0, 1)
+                      .map((severity) => (
+                        <KeyMark
+                          key={severity}
+                          className="lg-legend-risk"
+                          size={18}
+                          severity={severity}
+                          colour={RISK_COLOUR[severity]}
+                          draw={(context, dpr) => drawRiskMark(context, 9, 9, severity, 0.3, dpr, 6, 0)}
+                        />
+                      ))}
                     Disruption
                   </li>
                 )}
                 {alertDots.size > 0 && (
                   <li>
+                    {/* One beacon, in the most severe colour on the graph: the colour of the others is on the graph. */}
                     {(['HIGH', 'MEDIUM', 'LOW'] as Severity[])
                       .filter((severity) => [...alertDots.values()].includes(severity))
+                      .slice(0, 1)
                       .map((severity) => (
-                        <span
+                        <KeyMark
                           key={severity}
                           className="lg-legend-dot"
-                          data-severity={severity}
-                          aria-hidden="true"
-                          style={{ background: ALERT_COLOUR[severity] }}
+                          size={18}
+                          severity={severity}
+                          colour={ALERT_COLOUR[severity]}
+                          draw={(context) => drawBeaconFace(context, 9, 9, severity, 5.5)}
                         />
                       ))}
-                    Company With Open Alerts
-                  </li>
-                )}
-                {graph.edges.some((edge) => edge.critical) && (
-                  <li>
-                    <span className="lg-legend-critical" aria-hidden="true" />
-                    Sole or Single Source
+                    Open Alert
                   </li>
                 )}
               </ul>
             )}
+          </motion.div>
+          )}
+          </AnimatePresence>
           </div>
 
           <div className="lg-bottom-right">
-            <div className="lg-glass lg-minimap lg-cut lg-mark">
+            <div className="lg-glass lg-minimap lg-mark">
               <canvas
                 ref={minimapRef}
                 aria-label="Overview of the whole graph"
@@ -902,7 +1207,7 @@ export function LivingGraph({
                 }}
               />
             </div>
-            <div className="lg-glass lg-zoom lg-cut lg-mark" role="group" aria-label="View">
+            <div className="lg-glass lg-zoom lg-mark" role="group" aria-label="View">
               <button
                 type="button"
                 className="lg-zoom-button"
@@ -957,7 +1262,7 @@ export function LivingGraph({
           {full && (selectedEdge || selectedNode) && (
             <motion.div
               key={selectedEdge?.id ?? selectedNode?.id}
-              className="lg-glass lg-chosen lg-cut"
+              className="lg-glass lg-chosen lg-mark"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 12 }}
@@ -974,7 +1279,7 @@ export function LivingGraph({
                   <span className="lg-chosen-line">{linksOf(selectedNode!)}</span>
                 </p>
               )}
-              <button type="button" className="lg-chosen-button lg-cut" onClick={() => setFull(false)}>
+              <button type="button" className="lg-chosen-button" onClick={() => setFull(false)}>
                 {selectedEdge ? 'Show Evidence' : 'Show Details'}
               </button>
               <button
@@ -994,7 +1299,7 @@ export function LivingGraph({
             <motion.div
               key={tip.kind === 'node' ? tip.node.id : tip.edge.id}
               role="tooltip"
-              className={`lg-glass lg-tip lg-cut${tip.y < TIP_ROOM ? ' lg-tip-below' : ''}`}
+              className={`lg-glass lg-tip lg-mark${tip.y < TIP_ROOM ? ' lg-tip-below' : ''}`}
               // It appears where the pointer is (only fading and growing in), then follows it.
               initial={{ opacity: 0, scale: 0.96, x: tip.x, y: tip.y }}
               animate={{ opacity: 1, scale: 1, x: tip.x, y: tip.y }}
@@ -1017,11 +1322,12 @@ export function LivingGraph({
                   </p>
                   {alertDots.get(tip.node.id) && (
                     <p className="lg-tip-line lg-tip-alert">
-                      <span
+                      <KeyMark
                         className="lg-legend-dot"
-                        aria-hidden="true"
-                        data-severity={alertDots.get(tip.node.id)}
-                        style={{ background: ALERT_COLOUR[alertDots.get(tip.node.id)!] }}
+                        size={18}
+                        severity={alertDots.get(tip.node.id)}
+                        colour={ALERT_COLOUR[alertDots.get(tip.node.id)!]}
+                        draw={(context) => drawBeaconFace(context, 9, 9, alertDots.get(tip.node.id)!, 5.5)}
                       />
                       {`Most Severe Open Alert: ${eventLabel(alertDots.get(tip.node.id)!)}`}
                     </p>
@@ -1038,10 +1344,14 @@ export function LivingGraph({
                   <p className="lg-tip-title">{tip.edge.summary}</p>
                   {risks.get(tip.edge.relationshipId) && (
                     <p className="lg-tip-line lg-tip-risk">
-                      <span
+                      <KeyMark
                         className="lg-legend-risk"
-                        aria-hidden="true"
-                        data-severity={risks.get(tip.edge.relationshipId)!.severity}
+                        size={18}
+                        severity={risks.get(tip.edge.relationshipId)!.severity}
+                        colour={RISK_COLOUR[risks.get(tip.edge.relationshipId)!.severity]}
+                        draw={(context, dpr) =>
+                          drawRiskMark(context, 9, 9, risks.get(tip.edge.relationshipId)!.severity, 0.3, dpr, 6, 0)
+                        }
                       />
                       {`${eventLabel(risks.get(tip.edge.relationshipId)!.severity)} · ${eventLabel(
                         risks.get(tip.edge.relationshipId)!.eventType,

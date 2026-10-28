@@ -1,6 +1,6 @@
-// Tests the whole website shell: the login guard, the sidebar, and "/" opening the first portfolio, with a fake backend.
+// Tests the whole website shell: the login guard, no sidebar, and "/" opening the first portfolio, with a fake backend.
 // This is the example for page tests: draw the page inside a router, fake the backend, check what the user sees.
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -32,7 +32,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Log In' })).toBeInTheDocument();
   });
 
-  it('opens the first portfolio once logged in, with no Home page in the sidebar', async () => {
+  it('opens the first portfolio once logged in, on its workspace, with no Home page and no sidebar', async () => {
     tokenStore.set('a-token');
     vi.stubGlobal('fetch', fakeBackend({
       '/portfolios': [{ id: 7, name: 'Consumer Goods', createdAt: '2026-10-01T00:00:00Z' }],
@@ -41,12 +41,11 @@ describe('App', () => {
 
     renderAt('/');
 
-    expect(await screen.findByRole('heading', { name: 'Consumer Goods' })).toBeInTheDocument();
-    const sidebar = screen.getByRole('navigation', { name: 'Main' });
-    // No Portfolios page: portfolios are switched and managed from the header.
-    expect(within(sidebar).getByRole('button', { name: 'Portfolio' })).toBeInTheDocument();
-    expect(within(sidebar).queryByRole('button', { name: 'Portfolios' })).not.toBeInTheDocument();
-    expect(sidebar).not.toHaveTextContent('Home');
+    // Portfolios are switched and managed from the workspace's portfolio menu.
+    expect(await screen.findByRole('button', { name: 'Portfolio: Consumer Goods' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Portfolio' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Home' })).not.toBeInTheDocument();
   });
 
   it("shows the backend's problem when it is not reachable", async () => {

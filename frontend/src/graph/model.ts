@@ -242,10 +242,12 @@ export function chainOf(colour: string, edges: Pick<LiveEdge, 'id' | 'source' | 
 }
 
 /**
- * The colour of a company's alert dot, by how severe its most severe open alert is: the colours of the severity tags
- * on the Alerts page (--danger, --amber and --lime in styles.css).
+ * The colour of a company's alert beacon, by how severe its most severe open alert is: red for High, orange for Medium,
+ * and a quiet white for Low, so a Low alert still shows without competing. The same three as a disruption's
+ * (RISK_COLOUR in render.ts); amber stays the shared companies' and lime the placed companies' colour, never a
+ * severity's.
  */
-export const ALERT_COLOUR: Record<Severity, string> = { HIGH: '#ff7272', MEDIUM: '#f5b73b', LOW: '#c4f36a' };
+export const ALERT_COLOUR: Record<Severity, string> = { HIGH: '#ff7272', MEDIUM: '#ff8a3d', LOW: '#cbd5e1' };
 
 /** A disruption on a relationship: how serious, what kind, and the headline it came from. */
 export type Risk = { severity: Severity; eventType: string; title: string };

@@ -54,10 +54,11 @@ the repository root: copy `.env.example`.
 | `backend/src/main/resources/application.yml` | Every setting, filled from `.env` |
 | `backend/src/main/resources/db/migration/` | The database tables. `V1__sprint_1_tables.sql` creates every Sprint 1 table |
 | `backend/src/test/java/com/truesight/` | Tests, in the same packages as the code. `support/` holds the shared test setup |
-| `frontend/src/pages/` | One file per page |
-| `frontend/src/components/` | Pieces used by more than one page, such as `Layout.tsx` |
+| `frontend/src/pages/` | One file per screen: the workspace (`WorkspacePage.tsx`), Log In and Sign Up (`AuthPage.tsx`), the Analyst Desk and its tools |
+| `frontend/src/components/` | Pieces used by more than one screen, such as `Layout.tsx`, `Tile.tsx`, `Segmented.tsx` |
+| `frontend/src/components/workspace/` | The workspace's slots: the top bar, the drawer's tabs and the Inspector |
 | `frontend/src/api/client.ts` | `api()`, the only way the website calls the backend |
-| `frontend/src/paths.ts`, `frontend/src/navigation.ts` | Every page's address, and the sidebar's links |
+| `frontend/src/paths.ts`, `frontend/src/navigation.ts` | Every screen's address, and where screens are reached from |
 | `docs/examples/` | Real sample data to build and test against. Its README explains every file |
 | `docs/stories/` | Every Jira story, one file per issue, copied from a Jira export. Its README lists them by sprint |
 
@@ -150,40 +151,76 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   and turns errors into an `ApiError` whose `message` is ready to show.
 - **The website has no links.** Do not render anchors, `Link` or `NavLink`; use buttons for navigation and actions.
   Open external destinations with `openInNewTab()` from `src/format.ts`.
-- **Page addresses are fixed** in `src/paths.ts`. Use them exactly, and navigate with `paths.portfolio(id)` rather than
+- **Addresses are fixed** in `src/paths.ts`. Use them exactly, and navigate with `paths.portfolio(id)` rather than
   typing addresses:
 
-  | Address | Page | Built by |
-  |---|---|---|
-  | `/` | Opens the first portfolio; a user with none goes to `/portfolios` (no Home page) | Open on the Portfolio Page |
-  | `/login`, `/signup` | Log In, Sign Up | Sign Up and Log In |
-  | `/portfolios` | Opens the first portfolio, or asks a user with none to create one. There is no Portfolios page: the header's Portfolio list switches portfolios and Manage Portfolios opens a window to create, rename and delete them | Manage My Portfolios, then One Portfolio Page |
-  | `/portfolios/:portfolioId` | Portfolio: holdings, Upload CSV, Analyse | Manage My Portfolios (the page and its name), then Upload a Portfolio CSV adds holdings and upload, then the annual report story adds Analyse. |
-  | `/portfolios/:portfolioId/supply-chain` | Supply Chain: the graph | See the Supply Chain as a Graph |
-  | `/review` | Analyst Desk (Analysts only): a tab per analyst tool, the open tab in the address (`?tab=relationships`). Relationships is the review list | Review, then Set Up Sprint 3 |
+  | Address | Screen |
+  |---|---|
+  | `/` | Opens the first portfolio; a user with none goes to `/portfolios` (no Home page) |
+  | `/login`, `/signup` | Log In and Sign Up: one card that switches between the two in place |
+  | `/portfolios` | Opens the first portfolio, or asks a user with none to create one. There is no Portfolios page: the workspace's portfolio menu switches portfolios, and its Manage Portfolios opens a window to create, rename and delete them |
+  | `/portfolios/:portfolioId` | The workspace: the whole portfolio on one screen (below). `?tab=alerts` opens its drawer on Alerts |
+  | `/portfolios/:portfolioId/supply-chain`, `/portfolios/:portfolioId/alerts` | Old addresses, kept so saved links work: they open the workspace, the second on its Alerts tab |
+  | `/review` | The Analyst Desk (Analysts only): a tile per analyst tool, the open tool in the address (`?tab=relationships`) |
 
-- **The open portfolio is the one in the address.** A page reads it with `const { portfolioId } = useParams()`.
-  Nothing else stores which portfolio is open.
-- **Adding a page:** create it in `src/pages/`, and add a `<Route>` in `App.tsx`. For the sidebar, add a line to
-  `NAV_ITEMS` in `navigation.ts` for a page everyone sees, or to `PORTFOLIO_NAV_ITEMS` for a page belonging to the open
-  portfolio. Only working pages appear in the sidebar.
-- **Subtitles speak to the user.** A page's subtitle says what the user can do there, or what it shows about their
-  portfolio. It never describes the app to the team.
-- **Every page handles four states:** loading, error (show the `ApiError` message), empty (say why it is empty and what
-  to do next), and loaded. `pages/PortfolioPage.tsx` is the example.
-- **Look:** use the colours and classes in `styles.css`. Dark blueprint palette, hairline borders, square corners,
-  teal primary actions with one top-right chamfer, lime accents.
-  - **One font: Space Grotesk, everywhere,** the graph included. Text differs only in size, weight and colour. No
-    monospace font and no small capitals. Numbers that must line up use `font-variant-numeric: tabular-nums`.
-  - **Title Case for everything that is not a full sentence:** labels, buttons, headings, tags, counts, times and
-    status lines ("7 of 7 Holdings Analysed", "3 Hours Ago", "0 Suppliers · 1 Customer"). Full sentences (subtitles,
-    explanations, empty states, error messages) are in sentence case.
+- **A portfolio is one screen, the workspace** (`pages/WorkspacePage.tsx`). The living graph fills it, edge to edge,
+  and glass panels float over it. **A story fills one of its slots; it never adds a page:**
+
+  | Slot | What goes there | Where |
+  |---|---|---|
+  | Top bar, left | The brand, the portfolio menu (its name and analysis ring), the Open Alerts pill | `components/workspace/TopBar.tsx` (`PortfolioIsland`) |
+  | Top bar, middle | The graph's own title (with how many companies and links) and search, centred between the islands. The Sprint 4 timeline (SEC Filing Timeline) decides how it shares this place | `LivingGraph`'s `topBar` |
+  | Top bar, right | The portfolio's actions (Upload CSV, Check News, Analyse), Analyst Desk for analysts, the account | `TopBar.tsx` (`ActionsIsland`) |
+  | Left drawer, Holdings tab | One row per holding, Add Holding, the shared suppliers and customers | `components/workspace/HoldingsTab.tsx` |
+  | Left drawer, Alerts tab | The alerts, with Open, Closed and All | `components/workspace/AlertsTab.tsx` |
+  | Inspector, right | Detail of what is chosen: a company, a relationship or an alert | `components/workspace/Inspector*.tsx` |
+  | Bottom middle | Kept empty for the Sprint 4 chat (Ask TrueSight) | |
+
+  Alerts go in the drawer's Alerts tab, detail in the Inspector, analyst tools in Analyst Desk tools. Nothing is drawn
+  in a kept place until its story builds it: no placeholders or pretend controls. What the graph, the drawer and the
+  Inspector show is worked out once, in `components/workspace/view.ts`.
+- **The open portfolio and drawer tab are the ones in the address.** A screen reads the portfolio with
+  `const { portfolioId } = useParams()`, and the tab from `?tab=`. Nothing else stores which portfolio or tab is open.
+- **Adding a screen** is rare: the workspace and the Analyst Desk hold everything. A screen that is not a portfolio
+  (such as Page Not Found) uses `PageFrame`; it gets a `<Route>` in `App.tsx`. There is no sidebar: `NAV_ITEMS` and
+  `PORTFOLIO_NAV_ITEMS` in `navigation.ts` are empty.
+- **Subtitles speak to the user.** A line under a tool's title says what the user can do there. It never describes the
+  app to the team.
+- **Every screen and slot handles four states:** loading (the drawer's loading rows), error (show the `ApiError`
+  message, with Retry where trying again can help), empty and loaded. **An empty state is a short Title Case phrase with
+  its action beside it** ("No Holdings Yet" with Upload CSV and Add Holding; "News Not Checked Yet" with Check News).
+  `pages/WorkspacePage.tsx` is the example.
+- **Look: "Signal and Schematic",** a circuit drawn on a night-blue sheet (the top of `styles.css` says it in full). Use
+  the colours and classes in `styles.css`; do not invent new ones for something a class already does.
+  - **Panels are frosted glass** with square corners and the same registration ticks on all four corners: every panel
+    is `glass ticks` (the graph's own controls, `lg-glass lg-mark`). Buttons are `btn`, `btn primary` (teal glass, the
+    one main action), `btn quiet` and `btn danger`; `icon-btn` for an icon alone.
+  - **The chamfered corner belongs only to companies and their marks** (a holding's tile, an alert's beacon, an event's
+    mark), with one even 1px edge. Panels, buttons and chips are square. Light is information: nothing glows for
+    decoration. Icons have square caps.
+  - **A company and its marks are drawn by the graph's own drawing wherever they appear:** `Tile` (a company's tile
+    with its ring, beacon and shared badge), `FlowLink` (a link, as the graph draws its arrows) and `EventMark` (an
+    event's kind, severity bars and confidence), all in `src/components/`. Never draw a company another way.
+  - **Panels move on one curve** (`PANEL_MOVE` in `components/motion.ts`, 0.48s), the graph's view gliding with them.
+    Tabs and filters are `Segmented`: every option the same width, the chosen one on a plate the browser slides
+    (`useSlidingPlate`).
+  - **One typeface, IBM Plex Sans, everywhere,** the graph included (`@fontsource-variable/ibm-plex-sans`). No
+    monospace font and no small capitals. Figures that must line up use `font-variant-numeric: tabular-nums` (`.num`).
+  - **Colours.** Teal is the app's controls; lime is what is supplied, what is new, and the analyst's marks; amber is
+    only the shared badge. **One severity set everywhere** (beacons, cards, tags, disrupted links): High red, Medium
+    orange, Low a quiet white (`--high`, `--medium`, `--low`, the graph's `ALERT_COLOUR`). **Holding colours,** three
+    to a row in the graph's key: green, blue and violet, then cyan, magenta and yellow (`CHAIN_COLOURS`); the six
+    largest holdings have one, the rest a grey ring.
+  - **Title Case for every short phrase,** with no full stop: labels, buttons, headings, tags, counts, times, status
+    lines and empty states ("10 of 10 Analysed", "3 Hours Ago", "No Open Alerts"). Full stops only on full sentences
+    (explanations, error messages), which are in sentence case.
   - **Company names** are shown with the display name the API sends (`CompanyDisplayNames` in the backend); the website
     never reformats a name.
   - **Log In and Sign Up** are the same card, told apart by their accent: teal for Log In, lime for Sign Up. Their
     fields' labels and warnings are in capitals of the same font (`text-transform: uppercase`, 11 px): the one
     exception to Title Case.
-- **No new libraries** unless the story names one (the graph story uses Cytoscape.js). No styling frameworks.
+  - **Phones:** the workspace keeps its computer layout below 760px until One Workspace on a Phone (Sprint 4).
+- **No new libraries** unless the story names one. No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
   `<select>`, checkbox or radio button.
   Ask for confirmation with `useConfirm()` from `components/ConfirmDialog.tsx`, never `window.confirm`, `alert` or
@@ -280,8 +317,9 @@ file in the demo. Then they open the pull request.
   `ai_calls`. Never copy a report's text into the record: pass the prompt with the report replaced by
   `AiRequest.reportMarker(reportId, text)` as `recordedPrompt`. A caller that cannot read the answer calls
   `AiCallLog.unreadable(callId)`. Never log or record the API key.
-- Analyst tools are tabs of the Analyst Desk (`AnalystDeskPage.tsx`, at `/review`), never new pages. A story adds one
-  entry to its `TABS`.
+- Analyst tools are tools of the Analyst Desk (`AnalystDeskPage.tsx`, at `/review`), never new pages. A story adds one
+  entry to its `TOOLS`: a tile with its own colour and how much waits there. Every review queue decides with Approve and
+  Reject.
 - A portfolio manager's screen shows only what they act on. Analyst detail stays on the Analyst Desk.
 - Recommendations are research support, never investment advice: no buy, sell or hold, and no price targets.
 

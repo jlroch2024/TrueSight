@@ -19,6 +19,7 @@ export function tsmcSuppliesNvidia(holdingId = 1, relationshipId = 1): ReachedHo
     reviewStatus: 'UNREVIEWED',
     relationshipId,
     confidence: UNREVIEWED_CONFIDENCE,
+    secondRelationshipId: null,
   };
 }
 
