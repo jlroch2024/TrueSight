@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Type | Story |
-| Status | To Do (in Jira on 23 October 2026) |
+| Status | Done (in Jira on 29 October 2026) |
 | Epic | [TS-2 Portfolios](TS-2-Portfolios.md) |
 | Sprint | Sprint 3 |
 | Points | 3 |
