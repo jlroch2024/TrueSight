@@ -4,7 +4,7 @@
 // News, Analyse, Analyst Desk (analysts only) and the account; the Inspector takes this island's width.
 import { AnimatePresence, motion } from 'motion/react';
 import { BriefcaseBusiness, Check, ChevronDown, FolderCog, LoaderCircle, Radar, ScanSearch, ShieldCheck, Upload } from 'lucide-react';
-import { type Ref, useCallback, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Severity } from '../../api/news';
 import type { Portfolio } from '../../api/portfolios';
@@ -208,17 +208,33 @@ export function ActionsIsland({
   const busy = analysing || starting;
   return (
     <div ref={islandRef} className="island right glass ticks">
-      <button type="button" className="btn quiet" disabled={uploading} onClick={onUpload}>
-        {uploading ? <LoaderCircle size={16} className="spin" /> : <Upload size={16} />}
-        Upload CSV
+      <button type="button" className="btn quiet" disabled={uploading} aria-label="Upload CSV" title="Upload CSV" onClick={onUpload}>
+        <Swap
+          on={uploading}
+          busy={<><LoaderCircle size={16} className="spin" /><span className="btn-word">Upload CSV</span></>}
+          idle={<><Upload size={16} /><span className="btn-word">Upload CSV</span></>}
+        />
       </button>
-      <button type="button" className="btn quiet" disabled={checking || !hasHoldings} onClick={onCheck}>
-        {checking ? <LoaderCircle size={16} className="spin" /> : <Radar size={16} />}
-        {checking ? 'Checking News' : 'Check News'}
+      <button
+        type="button"
+        className="btn quiet"
+        disabled={checking || !hasHoldings}
+        aria-label={checking ? 'Checking News' : 'Check News'}
+        title={checking ? 'Checking News' : 'Check News'}
+        onClick={onCheck}
+      >
+        <Swap
+          on={checking}
+          busy={<><LoaderCircle size={16} className="spin" /><span className="btn-word">Checking News</span></>}
+          idle={<><Radar size={16} /><span className="btn-word">Check News</span></>}
+        />
       </button>
       <button type="button" className={`btn primary${busy ? ' busy' : ''}`} disabled={busy || !hasHoldings} onClick={onAnalyse}>
-        {busy ? <LoaderCircle size={16} className="spin" /> : <ScanSearch size={16} />}
-        {busy ? 'Analysing' : 'Analyse'}
+        <Swap
+          on={busy}
+          busy={<><LoaderCircle size={16} className="spin" />Analysing</>}
+          idle={<><ScanSearch size={16} />Analyse</>}
+        />
       </button>
       {me?.role === 'ANALYST' && (
         <>
@@ -226,15 +242,30 @@ export function ActionsIsland({
           <button
             type="button"
             className="btn quiet lime-ink"
+            aria-label="Analyst Desk"
+            title="Analyst Desk"
             onClick={() => navigate(paths.review, { state: { fromPortfolio: portfolioId } })}
           >
             <ShieldCheck size={16} />
-            Analyst Desk
+            <span className="btn-word">Analyst Desk</span>
           </button>
         </>
       )}
       <span className="island-divider tight" />
       <AccountMenu />
     </div>
+  );
+}
+
+/**
+ * A button's icon and words while it works and while it waits (Analysing, Analyse), laid in one place: the button keeps
+ * the longer one's width, so the island beside it never jumps, and one fades into the other.
+ */
+function Swap({ on, busy, idle }: { on: boolean; busy: ReactNode; idle: ReactNode }) {
+  return (
+    <span className="swap" data-on={on}>
+      <span className="swap-face busy" aria-hidden={!on}>{busy}</span>
+      <span className="swap-face idle" aria-hidden={on}>{idle}</span>
+    </span>
   );
 }
