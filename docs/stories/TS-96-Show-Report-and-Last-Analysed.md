@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Type | Story |
-| Status | Done (in Jira on 23 October 2026) |
+| Status | Done (in Jira on 29 October 2026) |
 | Epic | [TS-7 Running TrueSight](TS-7-Running-TrueSight.md) |
 | Sprint | Sprint 2 |
 | Points | 2 |

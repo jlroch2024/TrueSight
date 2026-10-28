@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Type | Story |
-| Status | Done (in Jira on 23 October 2026) |
+| Status | Done (in Jira on 29 October 2026) |
 | Epic | [TS-3 Reading Annual Reports](TS-3-Reading-Annual-Reports.md) |
 | Sprint | Sprint 1 |
 | Points | 3 |

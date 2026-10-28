@@ -1,6 +1,6 @@
 # Stories
 
-Every TrueSight issue in Jira, one file each, exported on 23 October 2026. Jira is the source: these files are a
+Every TrueSight issue in Jira, one file each, exported on 29 October 2026. Jira is the source: these files are a
 copy for agents and people who cannot open Jira. Each file holds the issue as Jira has it: the User Story, What
 We Agreed, Acceptance Criteria and Technical Notes, with its epic, sprint, points and status on the export date.
 
@@ -59,49 +59,51 @@ To refresh them after stories change in Jira, export every issue from Jira as a 
 |---|---|---|---|---|
 | [TS-168 Show Dates and Labels the Same Way](TS-168-Show-Dates-and-Labels-the-Same-Way.md) | Story | Supply Chain Map | 3 | Done |
 | [TS-169 Ask in TrueSight's Own Window](TS-169-Ask-in-TrueSight-s-Own-Window.md) | Story | Portfolios | 3 | Done |
-| [TS-170 Polish Log In and Sign Up](TS-170-Polish-Log-In-and-Sign-Up.md) | Story | Accounts and Access | 1 | To Do |
-| [TS-171 A Flowing Supply Chain Graph](TS-171-A-Flowing-Supply-Chain-Graph.md) | Story | Supply Chain Map | 8 | In Progress |
-| [TS-172 Clearer Alerts](TS-172-Clearer-Alerts.md) | Story | News and Alerts | 5 | In Progress |
-| [TS-173 Easier Review](TS-173-Easier-Review.md) | Story | Trust and Review | 2 | To Do |
-| [TS-174 Group Alerts About One Event](TS-174-Group-Alerts-About-One-Event.md) | Story | News and Alerts | 5 | To Do |
-| [TS-175 Sharper Noise Filter](TS-175-Sharper-Noise-Filter.md) | Story | News and Alerts | 3 | To Do |
-| [TS-176 Spell Each Company as Its Own Report Does](TS-176-Spell-Each-Company-as-Its-Own-Report-Does.md) | Story | Supply Chain Map | 8 | To Do |
-| [TS-177 Say When Something Fails](TS-177-Say-When-Something-Fails.md) | Story | Running TrueSight | 3 | To Do |
-| [TS-178 One Workspace](TS-178-One-Workspace.md) | Story | Supply Chain Map | 8 | To Do |
-| [TS-179 Faster Analyse and Check News](TS-179-Faster-Analyse-and-Check-News.md) | Story | Running TrueSight | 5 | To Do |
-| [TS-180 Name Companies the Way People Know Them](TS-180-Name-Companies-the-Way-People-Know-Them.md) | Story | Reading Annual Reports | 8 | To Do |
-| [TS-181 Alerts Are the One Source of News](TS-181-Alerts-Are-the-One-Source-of-News.md) | Story | News and Alerts | 5 | To Do |
+| [TS-170 Polish Log In and Sign Up](TS-170-Polish-Log-In-and-Sign-Up.md) | Story | Accounts and Access | 1 | Done |
+| [TS-171 A Flowing Supply Chain Graph](TS-171-A-Flowing-Supply-Chain-Graph.md) | Story | Supply Chain Map | 8 | Done |
+| [TS-172 Clearer Alerts](TS-172-Clearer-Alerts.md) | Story | News and Alerts | 5 | Done |
+| [TS-173 Easier Review](TS-173-Easier-Review.md) | Story | Trust and Review | 2 | Done |
+| [TS-174 Group Alerts About One Event](TS-174-Group-Alerts-About-One-Event.md) | Story | News and Alerts | 5 | Done |
+| [TS-175 Sharper Noise Filter](TS-175-Sharper-Noise-Filter.md) | Story | News and Alerts | 3 | Done |
+| [TS-176 Spell Each Company as Its Own Report Does](TS-176-Spell-Each-Company-as-Its-Own-Report-Does.md) | Story | Supply Chain Map | 8 | Done |
+| [TS-177 Say When Something Fails](TS-177-Say-When-Something-Fails.md) | Story | Running TrueSight | 3 | Done |
+| [TS-178 One Workspace](TS-178-One-Workspace.md) | Story | Supply Chain Map | 8 | Done |
+| [TS-179 Faster Analyse and Check News](TS-179-Faster-Analyse-and-Check-News.md) | Story | Running TrueSight | 5 | Done |
+| [TS-180 Name Companies the Way People Know Them](TS-180-Name-Companies-the-Way-People-Know-Them.md) | Story | Reading Annual Reports | 8 | Done |
+| [TS-181 Alerts Are the One Source of News](TS-181-Alerts-Are-the-One-Source-of-News.md) | Story | News and Alerts | 5 | Done |
 | [TS-182 Set Up Sprint 3](TS-182-Set-Up-Sprint-3.md) | Task | Running TrueSight | 5 | Done |
-| [TS-183 Get a Recommendation](TS-183-Get-a-Recommendation.md) | Story | News and Alerts | 8 | To Do |
-| [TS-184 Confirm or Overrule an Event](TS-184-Confirm-or-Overrule-an-Event.md) | Story | Trust and Review | 5 | To Do |
-| [TS-185 Fix or Add a Relationship](TS-185-Fix-or-Add-a-Relationship.md) | Story | Trust and Review | 5 | To Do |
-| [TS-186 How Critical Each Supplier Is](TS-186-How-Critical-Each-Supplier-Is.md) | Story | Reading Annual Reports | 5 | In Progress |
-| [TS-187 Two Steps Along the Graph](TS-187-Two-Steps-Along-the-Graph.md) | Story | Supply Chain Map | 3 | To Do |
-| [TS-188 See How Confident TrueSight Is](TS-188-See-How-Confident-TrueSight-Is.md) | Story | Trust and Review | 5 | To Do |
-| [TS-189 Second AI Checks the First](TS-189-Second-AI-Checks-the-First.md) | Story | Trust and Review | 5 | To Do |
-| [TS-190 AI Audit Trail](TS-190-AI-Audit-Trail.md) | Story | Trust and Review | 5 | To Do |
-| [TS-191 AI Quality Dashboard](TS-191-AI-Quality-Dashboard.md) | Story | Trust and Review | 5 | To Do |
-| [TS-192 Edit My Profile](TS-192-Edit-My-Profile.md) | Story | Accounts and Access | 3 | To Do |
-| [TS-193 Edit or Remove Holdings](TS-193-Edit-or-Remove-Holdings.md) | Story | Portfolios | 3 | To Do |
+| [TS-183 Get a Recommendation](TS-183-Get-a-Recommendation.md) | Story | News and Alerts | 8 | Done |
+| [TS-184 Confirm or Overrule an Event](TS-184-Confirm-or-Overrule-an-Event.md) | Story | Trust and Review | 5 | Done |
+| [TS-185 Fix or Add a Relationship](TS-185-Fix-or-Add-a-Relationship.md) | Story | Trust and Review | 5 | Done |
+| [TS-186 How Critical Each Supplier Is](TS-186-How-Critical-Each-Supplier-Is.md) | Story | Reading Annual Reports | 5 | Done |
+| [TS-187 Two Steps Along the Graph](TS-187-Two-Steps-Along-the-Graph.md) | Story | Supply Chain Map | 3 | Done |
+| [TS-188 See How Confident TrueSight Is](TS-188-See-How-Confident-TrueSight-Is.md) | Story | Trust and Review | 5 | Done |
+| [TS-189 Second AI Checks the First](TS-189-Second-AI-Checks-the-First.md) | Story | Trust and Review | 5 | Done |
+| [TS-190 AI Audit Trail](TS-190-AI-Audit-Trail.md) | Story | Trust and Review | 5 | Done |
+| [TS-191 AI Quality Dashboard](TS-191-AI-Quality-Dashboard.md) | Story | Trust and Review | 5 | Done |
+| [TS-192 Edit My Profile](TS-192-Edit-My-Profile.md) | Story | Accounts and Access | 3 | Done |
+| [TS-193 Edit or Remove Holdings](TS-193-Edit-or-Remove-Holdings.md) | Story | Portfolios | 3 | Done |
+| [TS-202 Refresh Reports Saved Before the Text Extraction Fix](TS-202-Refresh-Reports-Saved-Before-the-Text-Extraction-Fix.md) | Bug |  |  | Done |
 
 ## Sprint 4
 
 | Issue | Type | Epic | Points | Status |
 |---|---|---|---|---|
-| [TS-194 Set Up Sprint 4](TS-194-Set-Up-Sprint-4.md) | Task | Running TrueSight | 2 | To Do |
-| [TS-195 Disruption Simulator](TS-195-Disruption-Simulator.md) | Story | Supply Chain Map | 5 | To Do |
-| [TS-196 Publish a Scenario](TS-196-Publish-a-Scenario.md) | Story | Supply Chain Map | 3 | To Do |
-| [TS-197 SEC Filing Timeline](TS-197-SEC-Filing-Timeline.md) | Story | Reading Annual Reports | 5 | To Do |
-| [TS-198 Ask TrueSight](TS-198-Ask-TrueSight.md) | Story | Supply Chain Map | 8 | To Do |
-| [TS-199 Executive Briefing PDF](TS-199-Executive-Briefing-PDF.md) | Story | News and Alerts | 5 | To Do |
-| [TS-200 Get News Automatically](TS-200-Get-News-Automatically.md) | Story | News and Alerts | 3 | To Do |
-| [TS-201 Scrub the Graph Through the Years](TS-201-Scrub-the-Graph-Through-the-Years.md) | Story | Supply Chain Map | 5 | To Do |
-
-## Backlog
-
-| Issue | Type | Epic | Points | Status |
-|---|---|---|---|---|
-| [TS-163 Coverage Lists](TS-163-Coverage-Lists.md) | Story |  | 2 | To Do |
+| [TS-206 Set Up Sprint 4](TS-206-Set-Up-Sprint-4.md) | Story | Running TrueSight | 2 | To Do |
+| [TS-207 Disruption Simulator](TS-207-Disruption-Simulator.md) | Story | Supply Chain Map | 5 | To Do |
+| [TS-208 SEC Filing Timeline](TS-208-SEC-Filing-Timeline.md) | Story | Reading Annual Reports | 5 | To Do |
+| [TS-209 Ask TrueSight](TS-209-Ask-TrueSight.md) | Story | Supply Chain Map | 8 | To Do |
+| [TS-210 Executive Briefing PDF](TS-210-Executive-Briefing-PDF.md) | Story | News and Alerts | 5 | To Do |
+| [TS-211 Get News Automatically](TS-211-Get-News-Automatically.md) | Story | News and Alerts | 3 | To Do |
+| [TS-212 Scrub the Graph Through the Years](TS-212-Scrub-the-Graph-Through-the-Years.md) | Story | Supply Chain Map | 5 | To Do |
+| [TS-213 Measure Test Coverage](TS-213-Measure-Test-Coverage.md) | Story | Running TrueSight | 2 | To Do |
+| [TS-214 One Suggestion per Event](TS-214-One-Suggestion-per-Event.md) | Story | News and Alerts | 3 | To Do |
+| [TS-215 Highlight What Matters in a Quote](TS-215-Highlight-What-Matters-in-a-Quote.md) | Story | Trust and Review | 5 | To Do |
+| [TS-216 One Workspace on a Phone](TS-216-One-Workspace-on-a-Phone.md) | Story | Supply Chain Map | 5 | To Do |
+| [TS-217 Read Each Supplier's Own Report](TS-217-Read-Each-Supplier-s-Own-Report.md) | Story | Reading Annual Reports | 8 | To Do |
+| [TS-218 Holdings in Order of Weight](TS-218-Holdings-in-Order-of-Weight.md) | Story | Portfolios | 1 | To Do |
+| [TS-219 Readable Supplier and Customer Counts](TS-219-Readable-Supplier-and-Customer-Counts.md) | Story | Portfolios | 2 | To Do |
+| [TS-220 The Right Logo for Every Company](TS-220-The-Right-Logo-for-Every-Company.md) | Story | Supply Chain Map | 3 | To Do |
 
 ## Epics
 
