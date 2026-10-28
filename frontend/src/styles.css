@@ -774,11 +774,11 @@ svg.lucide {
 
 /* A button's two faces (Analyse and Analysing) in one place, as wide as the longer: one fades into the other, and the
    island keeps its width. */
-.swap {
+.btn-swap {
   display: inline-grid;
 }
 
-.swap-face {
+.btn-swap-face {
   display: inline-flex;
   grid-area: 1 / 1;
   align-items: center;
@@ -789,8 +789,8 @@ svg.lucide {
     transform 0.24s var(--ease);
 }
 
-.swap[data-on='true'] .swap-face.idle,
-.swap[data-on='false'] .swap-face.busy {
+.btn-swap[data-on='true'] .btn-swap-face.idle,
+.btn-swap[data-on='false'] .btn-swap-face.busy {
   opacity: 0;
   transform: translateY(4px);
 }
