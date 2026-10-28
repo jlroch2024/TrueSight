@@ -1161,7 +1161,8 @@ describe('every state', () => {
     renderAt();
 
     expect(await screen.findByRole('heading', { name: 'No Supply Chain Yet' })).toBeInTheDocument();
-    expect(within(drawer()).getByText('No Holdings Yet')).toBeInTheDocument();
+    // The drawer's loading rows leave before its holdings arrive, a moment after the card.
+    expect(await within(drawer()).findByText('No Holdings Yet')).toBeInTheDocument();
     const card = screen.getByRole('heading', { name: 'No Supply Chain Yet' }).parentElement!;
     expect(within(card).getByRole('button', { name: 'Upload CSV' })).toBeInTheDocument();
     await userEvent.click(within(card).getByRole('button', { name: 'Add Holding' }));
