@@ -772,6 +772,43 @@ svg.lucide {
   padding-right: 8px;
 }
 
+/* A button's two faces (Analyse and Analysing) in one place, as wide as the longer: one fades into the other, and the
+   island keeps its width. */
+.swap {
+  display: inline-grid;
+}
+
+.swap-face {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    opacity 0.24s var(--ease),
+    transform 0.24s var(--ease);
+}
+
+.swap[data-on='true'] .swap-face.idle,
+.swap[data-on='false'] .swap-face.busy {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+/* Below 1440px wide, the workspace's quieter actions fold to their icons (named on hover), leaving the graph's title
+   and search room between the bars. */
+@media (max-width: 1439.98px) {
+  .ws .island.right .btn.quiet {
+    width: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .ws .island.right .btn-word {
+    display: none;
+  }
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -4268,6 +4305,12 @@ button.source-row:hover {
   min-width: 96px;
   justify-content: flex-end;
   margin-right: 8px;
+}
+
+/* Until a holding is analysed it has no links, and its status (beside its ticker) takes their room. */
+.h-links:empty {
+  min-width: 0;
+  margin-right: 0;
 }
 
 /* The Open Alerts bar, in the graph's row after the left bar: a bar like the others, lit in the most severe open

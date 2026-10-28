@@ -76,3 +76,15 @@ describe('the colours', () => {
     expect(RISK_COLOUR).toEqual(ALERT_COLOUR);
   });
 });
+
+describe('room', () => {
+  it('givesAHoldingsStatusTheRoomOfItsSuppliersAndCustomersUntilItHasThem', () => {
+    const empty = rules(styles).find(({ selector }) => selector === '.h-links:empty');
+    expect(empty?.body).toMatch(/min-width:\s*0;/);
+    expect(empty?.body).toMatch(/margin-right:\s*0;/);
+  });
+
+  it('foldsTheWorkspacesQuieterActionsToIconsBelow1440PixelsWide', () => {
+    expect(styles).toMatch(/@media \(max-width: 1439\.98px\) \{\s*\.ws \.island\.right \.btn\.quiet \{[^}]*width: 36px;[\s\S]*?\.ws \.island\.right \.btn-word \{\s*display: none;/);
+  });
+});

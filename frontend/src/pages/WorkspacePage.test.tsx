@@ -547,6 +547,21 @@ describe('Analyse', () => {
     expect(screen.getByRole('button', { name: 'Analysing' })).toBeDisabled();
   });
 
+  it('keepsTheAnalyseButtonAsWideAsAnalysingSoItFadesBetweenThemWithoutTheBarJumping', async () => {
+    renderAt();
+    await graph();
+    const button = screen.getByRole('button', { name: 'Analyse' });
+    // Both words are laid in the button at once; only the one it means is read out.
+    expect(button).toHaveTextContent('Analysing');
+    expect(within(button).getByText('Analysing').closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true');
+
+    await userEvent.click(button);
+
+    const busy = await screen.findByRole('button', { name: 'Analysing' });
+    expect(busy).toBe(button);
+    expect(within(busy).getByText('Analyse').closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('loadsTheSuppliersAndCustomersAgainWhenTheAnalysisFinishes', async () => {
     backend.analysed = (holding) => ({ ...holding, status: 'DONE' });
     renderAt();

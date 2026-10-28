@@ -127,6 +127,8 @@ const FOCUS_MAX_ZOOM = 1.15;
 const FOCUS_MIN_ZOOM = 0.45;
 // Narrower than this between the page's panels, the minimap and the hint step aside so the key stays readable.
 const NARROW_BELOW = 640;
+// In a page's top bar, the title and the open search are each this wide (livingGraph.css, .lg-in-bar).
+const BAR_ITEM = 240;
 const EMPTY: Record<string, string> = {};
 const NO_RISKS = new Map<number, Risk>();
 const NO_DOTS = new Map<string, Severity>();
@@ -262,6 +264,10 @@ export function LivingGraph({
   const [highlighted, setHighlighted] = useState(0);
   const [touched, setTouched] = useState(false);
   const [narrow, setNarrow] = useState(false);
+  // In a page's top bar, too little room between the page's bars for the title and the whole search: the search
+  // folds to an icon until it is used.
+  const topRef = useRef<HTMLDivElement | null>(null);
+  const [crowded, setCrowded] = useState(false);
   // Narrow, the key folds to a button; pointed at or pressed, it opens.
   const [keyOpen, setKeyOpen] = useState(false);
 
@@ -404,8 +410,11 @@ export function LivingGraph({
           y: camera.y + (size.height - before.height) / 2,
         });
       }
-      canvas.width = Math.round(size.width * dpr);
-      canvas.height = Math.round(size.height * dpr);
+      // Setting a canvas's size clears it, even to the size it has: only a real change does, or the graph carried on
+      // to new data (a holding analysed) would show one empty frame before its next drawing.
+      const pixels = { width: Math.round(size.width * dpr), height: Math.round(size.height * dpr) };
+      if (canvas.width !== pixels.width) canvas.width = pixels.width;
+      if (canvas.height !== pixels.height) canvas.height = pixels.height;
       canvas.style.width = `${size.width}px`;
       canvas.style.height = `${size.height}px`;
       rig.setSize(size.width, size.height);
@@ -968,12 +977,33 @@ export function LivingGraph({
     return `${plural(suppliers, 'Supplier', 'Suppliers')} · ${plural(customers, 'Customer', 'Customers')}`;
   };
 
+  const inBar = topBar !== undefined;
+  const hasBarStart = barStart !== undefined && barStart !== null;
+  // The room is measured as the bars move (a panel opening, the window resized) and as the page's own bar in the row
+  // changes width (the Open Alerts bar opening).
+  useEffect(() => {
+    const top = topRef.current;
+    if (!inBar || !top || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const gap = parseFloat(getComputedStyle(top).columnGap) || 0;
+      const items = [...top.children] as HTMLElement[];
+      const start = items.filter((item) => !item.classList.contains('lg-title') && !item.classList.contains('lg-search'));
+      const needed = start.reduce((sum, item) => sum + item.offsetWidth, 0) + BAR_ITEM * 2 + gap * (start.length + 1);
+      setCrowded(top.clientWidth < needed);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(top);
+    for (const item of top.children) observer.observe(item);
+    measure();
+    return () => observer.disconnect();
+  }, [inBar, hasBarStart]);
+
   return (
     <>
       {full && <div className="lg-backdrop" aria-hidden="true" onClick={() => setFull(false)} />}
       <div
         ref={rootRef}
-        className={`${bare ? 'lg-root lg-bare' : `lg-root lg-cut lg-mark${full ? ' lg-full' : ''}`}${narrow ? ' lg-narrow' : ''}${topBar ? ' lg-in-bar' : ''}`}
+        className={`${bare ? 'lg-root lg-bare' : `lg-root lg-cut lg-mark${full ? ' lg-full' : ''}`}${narrow ? ' lg-narrow' : ''}${topBar ? ' lg-in-bar' : ''}${topBar && crowded ? ' lg-bar-crowded' : ''}`}
         onKeyDown={graphKeys}
         style={
           {
@@ -987,7 +1017,7 @@ export function LivingGraph({
       >
         <canvas ref={canvasRef} className="lg-canvas" role="application" aria-label="Supply chain graph" tabIndex={0} />
 
-        <div className="lg-top">
+        <div ref={topRef} className="lg-top">
           {barStart}
           <div className="lg-glass lg-title lg-mark">
             <span className="lg-pulse" aria-hidden="true" />

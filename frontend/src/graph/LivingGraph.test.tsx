@@ -51,6 +51,34 @@ function drawGraph(props: Partial<Parameters<typeof LivingGraph>[0]> = {}) {
 }
 
 describe('LivingGraph', () => {
+  it('carries on to new data without clearing its canvas, so the picture never blinks', () => {
+    const sized = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
+    const fewer = buildGraphElements(relationships.slice(0, -1), []);
+    const view = drawGraph({ nodes: fewer.nodes, edges: fewer.edges });
+    const before = sized.mock.calls.length;
+
+    // A holding analysed: one more relationship on the same portfolio's graph.
+    const more = buildGraphElements(relationships, []);
+    view.rerender(
+      <LivingGraph nodes={more.nodes} edges={more.edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+
+    expect(sized.mock.calls.length).toBe(before);
+  });
+
+  it('folds its search to an icon when the top bar of a page leaves too little room for it', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const room = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
+    const { container, unmount } = drawGraph({ bare: true, topBar: { left: 0, right: 0 } });
+    expect(container.querySelector('.lg-root')).toHaveClass('lg-bar-crowded');
+    unmount();
+
+    room.mockReturnValue(1200);
+    const wide = drawGraph({ bare: true, topBar: { left: 0, right: 0 } });
+    expect(wide.container.querySelector('.lg-root')).not.toHaveClass('lg-bar-crowded');
+    vi.unstubAllGlobals();
+  });
+
   it('says how many companies and links it shows, on a graph the keyboard can reach', () => {
     drawGraph();
 
