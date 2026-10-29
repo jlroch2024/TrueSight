@@ -104,6 +104,7 @@ To refresh them after stories change in Jira, export every issue from Jira as a 
 | [TS-218 Holdings in Order of Weight](TS-218-Holdings-in-Order-of-Weight.md) | Story | Portfolios | 1 | To Do |
 | [TS-219 Readable Supplier and Customer Counts](TS-219-Readable-Supplier-and-Customer-Counts.md) | Story | Portfolios | 2 | To Do |
 | [TS-220 The Right Logo for Every Company](TS-220-The-Right-Logo-for-Every-Company.md) | Story | Supply Chain Map | 3 | To Do |
+| [TS-221 Alerts From SEC 8-K Filings](TS-221-Alerts-From-SEC-8-K-Filings.md) | Story | News and Alerts | 8 | To Do |
 
 ## Epics
 
