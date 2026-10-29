@@ -7,5 +7,8 @@ public enum AiPurpose {
     SECOND_CHECK,
     RECOMMEND,
     CRITICALITY,
-    COMMON_NAMES
+    COMMON_NAMES,
+    ASK,
+    TIMELINE,
+    HIGHLIGHT
 }

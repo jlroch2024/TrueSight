@@ -9,7 +9,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Proves the database is built the agreed way: only by Flyway's migrations, with exactly the Sprint 3 tables.
+ * Proves the database is built the agreed way: only by Flyway's migrations, with exactly the Sprint 4 tables.
  *
  * <p>An extra table would mean something other than Flyway created it. When a later migration genuinely adds a
  * table, add its name to {@link #TABLES}.
@@ -19,7 +19,8 @@ class DatabaseSchemaIT {
 
     private static final List<String> TABLES = List.of(
             "ai_calls", "alert_holdings", "alerts", "companies", "company_names", "holdings", "news_articles",
-            "news_assessments", "portfolios", "recommendations", "relationships", "reports", "users");
+            "news_assessments", "past_relationships", "portfolios", "recommendations", "relationship_highlights",
+            "relationships", "reports", "users");
 
     @Autowired
     JdbcTemplate jdbc;
@@ -32,6 +33,7 @@ class DatabaseSchemaIT {
         assertThat(applied).contains("1");
         assertThat(applied).contains("2");
         assertThat(applied).contains("3");
+        assertThat(applied).contains("4");
     }
 
     @Test
