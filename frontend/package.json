@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fontsource-variable/ibm-plex-sans": "5.3.0",
@@ -29,6 +30,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "5.2.0",
+    "@vitest/coverage-v8": "3.2.7",
     "jsdom": "26.1.0",
     "typescript": "5.9.3",
     "vite": "7.3.6",
