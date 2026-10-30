@@ -3,7 +3,7 @@
 // meter), Add Holding, and the companies several holdings depend on. Choosing a row shows the company in the
 // Inspector; pointing at one lights it on the graph.
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, Check, Inbox, LoaderCircle, Plus, Upload } from 'lucide-react';
+import { ArrowRight, Check, Inbox, LoaderCircle, Plus, Upload } from 'lucide-react';
 import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from 'react';
 import type { AlertEvent } from '../../api/alerts';
 import type { Holding } from '../../api/portfolios';
@@ -187,11 +187,36 @@ export function HoldingsTab({
 }
 
 /**
+ * How many suppliers and customers a holding has, on two lines: the top one level with the holding's name, the bottom
+ * one with its ticker. A zero stays, faint, so every row lines up; a holding with neither says so on the top line.
+ */
+function LinkLines({ suppliers, customers }: { suppliers: number; customers: number }) {
+  if (suppliers === 0 && customers === 0) {
+    return (
+      <span className="link-lines">
+        <span className="link-line faint">Nothing Found</span>
+      </span>
+    );
+  }
+  const line = (kind: 'supplier' | 'customer', count: number, one: string, many: string) => (
+    <span className={`link-line ${kind}${count === 0 ? ' zero' : ''}`}>
+      <span className="link-number num">{count}</span> <span className="link-word">{count === 1 ? one : many}</span>
+    </span>
+  );
+  return (
+    <span className="link-lines">
+      {line('supplier', suppliers, 'Supplier', 'Suppliers')}
+      {line('customer', customers, 'Customer', 'Customers')}
+    </span>
+  );
+}
+
+/**
  * One holding: its tile (with a beacon when an alert reaches it), name, and a meter of its weight. While it is analysed,
  * the meter scans; when done, it fills to the holding's share, and a tick lights briefly. A new weight counts to its
  * value and the meter glides with it.
  */
-function HoldingRow({
+export function HoldingRow({
   holding,
   colour,
   beacon,
@@ -284,16 +309,7 @@ function HoldingRow({
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: 'spring', stiffness: 420, damping: 34 }}
             >
-              <span className="link-count supplier" title={plural(links.suppliers.length, 'Supplier', 'Suppliers')}>
-                <ArrowDownToLine size={12} strokeWidth={2.4} />
-                {links.suppliers.length}
-                <span className="link-word">{links.suppliers.length === 1 ? 'Supplier' : 'Suppliers'}</span>
-              </span>
-              <span className="link-count customer" title={plural(links.customers.length, 'Customer', 'Customers')}>
-                <ArrowUpFromLine size={12} strokeWidth={2.4} />
-                {links.customers.length}
-                <span className="link-word">{links.customers.length === 1 ? 'Customer' : 'Customers'}</span>
-              </span>
+              <LinkLines suppliers={links.suppliers.length} customers={links.customers.length} />
             </motion.span>
           )}
         </AnimatePresence>
