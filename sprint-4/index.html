@@ -391,24 +391,24 @@ const UNASSIGNED = { name: 'Unassigned', init: '?', c: '#6a8c8e' };
 const personOf = code => PEOPLE[code] || UNASSIGNED;
 
 // Sprint 4 stories from Sprint-4-Stories.md and Jira: [number, key, name, kind, points, needs, assignee]. Needs are the
-// Sprint 4 stories each one waits for (its Sprint 3 needs are all merged). Assignees are filled in once Jira has them.
+// Sprint 4 stories each one waits for (its Sprint 3 needs are all merged). Assignees are from Jira.
 const STORIES = [
-  [27, 206, 'Set Up Sprint 4', 'setup', 2, [], null],
-  [28, 207, 'Disruption Simulator', 'new', 5, [27], null],
-  [30, 208, 'SEC Filing Timeline', 'new', 5, [27], null],
-  [31, 209, 'Ask TrueSight', 'new', 8, [27], null],
-  [32, 210, 'Executive Briefing PDF', 'new', 5, [], null],
-  [33, 211, 'Get News Automatically', 'new', 3, [], null],
-  [34, 212, 'Scrub the Graph Through the Years', 'new', 5, [30, 28], null],
-  [35, 213, 'Measure Test Coverage', 'new', 2, [], null],
-  [36, 214, 'One Suggestion per Event', 'fix', 3, [], null],
-  [37, 215, 'Highlight What Matters in a Quote', 'new', 5, [27], null],
-  [38, 216, 'One Workspace on a Phone', 'new', 5, [], null],
-  [39, 217, "Read Each Supplier's Own Report", 'new', 8, [27], null],
-  [40, 218, 'Holdings in Order of Weight', 'new', 1, [], null],
-  [41, 219, 'Readable Supplier and Customer Counts', 'new', 2, [], null],
-  [42, 220, 'The Right Logo for Every Company', 'new', 3, [], null],
-  [43, 221, 'Alerts From SEC 8-K Filings', 'new', 8, [], null],
+  [27, 206, 'Set Up Sprint 4', 'setup', 2, [], 'I'],
+  [28, 207, 'Disruption Simulator', 'new', 5, [27], 'I'],
+  [30, 208, 'SEC Filing Timeline', 'new', 5, [27], 'I'],
+  [31, 209, 'Ask TrueSight', 'new', 8, [27], 'BY'],
+  [32, 210, 'Executive Briefing PDF', 'new', 5, [], 'BY'],
+  [33, 211, 'Get News Automatically', 'new', 3, [], 'AY'],
+  [34, 212, 'Scrub the Graph Through the Years', 'new', 5, [30, 28], 'JR'],
+  [35, 213, 'Measure Test Coverage', 'new', 2, [], 'AY'],
+  [36, 214, 'One Suggestion per Event', 'fix', 3, [], 'AY'],
+  [37, 215, 'Highlight What Matters in a Quote', 'new', 5, [27], 'LA'],
+  [38, 216, 'One Workspace on a Phone', 'new', 5, [], 'JR'],
+  [39, 217, "Read Each Supplier's Own Report", 'new', 8, [27], 'LA'],
+  [40, 218, 'Holdings in Order of Weight', 'new', 1, [], 'AY'],
+  [41, 219, 'Readable Supplier and Customer Counts', 'new', 2, [], 'AY'],
+  [42, 220, 'The Right Logo for Every Company', 'new', 3, [], 'ZY'],
+  [43, 221, 'Alerts From SEC 8-K Filings', 'new', 8, [], 'ZY'],
 ].map(([n, key, name, kind, pts, needs, who]) => ({ n, key: 'TS-' + key, name, kind, pts, needs, who: who || NOBODY }));
 const BY_N = Object.fromEntries(STORIES.map(s => [s.n, s]));
 
