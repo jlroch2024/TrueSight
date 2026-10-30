@@ -409,13 +409,15 @@ const STORIES = [
   [41, 219, 'Readable Supplier and Customer Counts', 'new', 2, [], 'AY'],
   [42, 220, 'The Right Logo for Every Company', 'new', 3, [], 'ZY'],
   [43, 221, 'Alerts From SEC 8-K Filings', 'new', 8, [], 'ZY'],
+  [44, 222, 'Grow the Graph as Results Arrive', 'new', 3, [], 'JR'],
+  [45, 223, 'Shorter Waits for Analyse and Check News', 'new', 5, []],
 ].map(([n, key, name, kind, pts, needs, who]) => ({ n, key: 'TS-' + key, name, kind, pts, needs, who: who || NOBODY }));
 const BY_N = Object.fromEntries(STORIES.map(s => [s.n, s]));
 
 // Merge order: Set Up Sprint 4 and the stories that need nothing else from Sprint 4 first, then what Set Up unlocks,
 // then the scrubber, which needs the timeline's history and the simulator's What If It Stops?.
 const STAGES = [
-  { label: 'First', wide: true, ids: [27, 36, 35, 32, 33, 43, 38, 40, 41, 42] },
+  { label: 'First', wide: true, ids: [27, 36, 35, 32, 33, 43, 38, 40, 41, 42, 44, 45] },
   { label: 'Then', ids: [28, 30, 31, 37, 39] },
   { label: 'Last', ids: [34] },
 ];
