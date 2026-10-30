@@ -67,6 +67,22 @@ public class NewsCheckService {
         portfolio.setNewsStatusReason(null);
     }
 
+    /** The portfolios the daily check covers: every one with at least one analysed holding. */
+    @Transactional(readOnly = true)
+    public List<Long> portfolioIdsWithAnalysedHoldings() {
+        return holdings.findPortfolioIdsWithStatus(HoldingStatus.DONE);
+    }
+
+    /** Like {@link #start}, for the daily check, which has no logged-in user. False if it should be skipped. */
+    @Transactional
+    public boolean startForDaily(Long portfolioId) {
+        Portfolio portfolio = portfolios.findById(portfolioId).orElse(null);
+        if (portfolio == null || portfolio.getNewsStatus() == NewsStatus.CHECKING) return false;
+        portfolio.setNewsStatus(NewsStatus.CHECKING);
+        portfolio.setNewsStatusReason(null);
+        return true;
+    }
+
     @Transactional(readOnly = true)
     public List<NewsCompany> companiesFor(Long portfolioId) {
         Set<Long> heldCompanies = new LinkedHashSet<>();

@@ -49,6 +49,46 @@ next line. They need the Google Cloud CLI, logged in with `gcloud auth login`.
 | Set or change the Logo.dev token, for the graph's logos | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="LOGO_DEV_TOKEN=pk_..."`. This starts a new revision with it, keeping every other setting |
 | Add Logo.dev's secret key, for the logos of companies without a ticker (optional) | It is a real secret, so it goes in Secret Manager: `gcloud secrets create LOGO_DEV_SECRET_KEY --data-file=<file holding sk_...>`, then `gcloud secrets add-iam-policy-binding LOGO_DEV_SECRET_KEY --member="serviceAccount:truesight-app@truesight-509715.iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"`, then `gcloud run services update truesight --region asia-southeast1 --update-secrets="LOGO_DEV_SECRET_KEY=LOGO_DEV_SECRET_KEY:latest"`. Without it, those companies show their first letter |
 
+## The Daily News Check
+
+Every day at 7:00 Singapore time, Google Cloud Scheduler calls `POST /api/news-checks/daily`, which checks the news for
+every portfolio with an analysed holding. The address takes no login: it needs the secret `NEWS_SCHEDULER_TOKEN` in the
+`X-Scheduler-Token` header, and a wrong or missing one is refused with 401. A Cloud Run service sleeps between
+requests, so a timer inside the app would not fire reliably. Set `NEWS_DAILY_ENABLED=false` on the service to turn it
+off (the address then answers 202 and checks nothing).
+
+Run this once, in PowerShell, as the product owner:
+
+```powershell
+gcloud services enable cloudscheduler.googleapis.com
+
+# 1. The secret
+$schedulerToken = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+$f = New-TemporaryFile
+[IO.File]::WriteAllText($f, $schedulerToken)
+gcloud secrets create NEWS_SCHEDULER_TOKEN --data-file=$f; Remove-Item $f
+
+# 2. Let the app read it
+gcloud secrets add-iam-policy-binding NEWS_SCHEDULER_TOKEN `
+  --member="serviceAccount:truesight-app@truesight-509715.iam.gserviceaccount.com" `
+  --role="roles/secretmanager.secretAccessor"
+
+# 3. Hand it to the service (this starts a new revision and keeps every other setting)
+gcloud run services update truesight --region asia-southeast1 `
+  --update-secrets="NEWS_SCHEDULER_TOKEN=NEWS_SCHEDULER_TOKEN:latest"
+
+# 4. The daily job: 7:00 every day, Singapore time
+$url = gcloud run services describe truesight --region asia-southeast1 --format="value(status.url)"
+gcloud scheduler jobs create http truesight-daily-news --location asia-southeast1 `
+  --schedule "0 7 * * *" --time-zone "Asia/Singapore" `
+  --uri "$url/api/news-checks/daily" --http-method POST `
+  --headers "X-Scheduler-Token=$schedulerToken"
+```
+
+To try it now: `gcloud scheduler jobs run truesight-daily-news --location asia-southeast1`. To change the secret, add a
+new version in Secret Manager, redeploy, and run `gcloud scheduler jobs update http truesight-daily-news --location
+asia-southeast1 --update-headers "X-Scheduler-Token=<new value>"`.
+
 ## Setting It Up From Nothing
 
 This was done once, by hand. It never needs doing again unless the project is rebuilt.

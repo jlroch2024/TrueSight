@@ -55,6 +55,10 @@ truesight:
     requests-per-second: 1
     # Maximum Gemini headline batches judged at once; Google News fetching remains paced separately.
     parallel-batches: ${NEWS_PARALLEL_BATCHES:4}
+    # The daily check is started by Google Cloud Scheduler, which sends this secret in X-Scheduler-Token.
+    # Empty means the daily address refuses every request.
+    scheduler-token: ${NEWS_SCHEDULER_TOKEN:}
+    daily-enabled: ${NEWS_DAILY_ENABLED:true}
   # The supply chain graph's logos come from Logo.dev. Without a token, the graph shows letters instead.
   logo-dev:
     token: ${LOGO_DEV_TOKEN:}
