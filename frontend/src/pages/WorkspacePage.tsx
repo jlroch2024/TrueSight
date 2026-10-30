@@ -29,6 +29,8 @@ import { type AlertFilter, AlertsTab } from '../components/workspace/AlertsTab';
 import { HoldingsTab, LoadingRows } from '../components/workspace/HoldingsTab';
 import { InspectorBody, InspectorKind } from '../components/workspace/Inspector';
 import { ActionsIsland, OpenAlertsBar, PortfolioIsland } from '../components/workspace/TopBar';
+import { LoadHistory } from '../components/workspace/LoadHistory';
+import { useHistory } from '../components/workspace/useHistory';
 import { type Chosen, alertKey, byUrgency, spotlightOf, useWorkspaceView } from '../components/workspace/view';
 import { LivingGraph } from '../graph/LivingGraph';
 import { type WorkspaceTab, paths } from '../paths';
@@ -86,6 +88,8 @@ export function WorkspacePage() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [chosen, setChosen] = useState<Chosen>(null);
+  // The SEC Filing Timeline: earlier annual reports, read on request, and the years they cover.
+  const timeline = useHistory(portfolioId);
   // The last thing the Inspector showed, so a closed Inspector can be opened again where it was.
   const [lastChosen, setLastChosen] = useState<Chosen>(null);
   const [peek, setPeek] = useState<string | null>(null);
@@ -546,6 +550,15 @@ export function WorkspacePage() {
                   onOpen={openAlertsTab}
                 />
               }
+              barEnd={
+                <LoadHistory
+                  state={timeline.state}
+                  starting={timeline.starting}
+                  startError={timeline.startError}
+                  onLoad={() => void timeline.load()}
+                  onRetry={() => void timeline.refresh()}
+                />
+              }
               focus={focus}
               peekNodeId={peek}
               onNodeSelect={(nodeId) => setChosen(nodeId ? { kind: 'company', nodeId } : null)}
@@ -752,6 +765,7 @@ export function WorkspacePage() {
                   chosen={chosen}
                   view={view}
                   busyKey={busyKey}
+                  history={timeline.state.status === 'ready' ? timeline.state.history : null}
                   onChoose={setChosen}
                   onWeight={saveWeight}
                   onRemove={(holding) => void removeHolding(holding)}

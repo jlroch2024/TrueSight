@@ -4,6 +4,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { FileText, Link2, Waypoints } from 'lucide-react';
 import type { AlertEvent } from '../../api/alerts';
+import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
 import { AlertView } from './InspectorAlert';
 import { CompanyView } from './InspectorCompany';
@@ -20,9 +21,11 @@ type Props = {
   onRemove: (holding: Holding) => void;
   onClose: (alert: AlertEvent) => void;
   onRestore: (alert: AlertEvent) => void;
+  // What the SEC Filing Timeline has read, for the years a company was named in.
+  history: History | null;
 };
 
-export function InspectorBody({ chosen, view, busyKey, onChoose, onWeight, onRemove, onClose, onRestore }: Props) {
+export function InspectorBody({ chosen, view, busyKey, history, onChoose, onWeight, onRemove, onClose, onRestore }: Props) {
   const key = chosen.kind === 'company' ? chosen.nodeId : chosen.kind === 'relationship' ? `r${chosen.relationshipId}` : chosen.key;
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -34,7 +37,7 @@ export function InspectorBody({ chosen, view, busyKey, onChoose, onWeight, onRem
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       >
         {chosen.kind === 'company' && (
-          <CompanyView view={view} nodeId={chosen.nodeId} onChoose={onChoose} onWeight={onWeight} onRemove={onRemove} />
+          <CompanyView view={view} nodeId={chosen.nodeId} history={history} onChoose={onChoose} onWeight={onWeight} onRemove={onRemove} />
         )}
         {chosen.kind === 'relationship' && <RelationshipView view={view} relationshipId={chosen.relationshipId} onChoose={onChoose} />}
         {chosen.kind === 'alert' && (

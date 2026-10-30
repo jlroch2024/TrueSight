@@ -2,6 +2,7 @@
 // graph, the drawer and the Inspector, so each draws the same companies in the same colours with the same marks.
 import { useMemo } from 'react';
 import type { AlertEvent } from '../../api/alerts';
+import type { History } from '../../api/history';
 import type { Severity } from '../../api/news';
 import type { Holding } from '../../api/portfolios';
 import type { Relationship } from '../../api/relationships';
@@ -130,4 +131,29 @@ export function spotlightOf(alert: AlertEvent, view: Pick<WorkspaceView, 'nodeId
     [reached.relationshipId, reached.secondRelationshipId].filter((id): id is number => id != null),
   );
   return { nodeIds: [...new Set(nodeIds)], relationshipIds: [...new Set(relationshipIds)] };
+}
+
+/** Years as a sentence's list: 2024, 2024 and 2025, 2024, 2025 and 2026. */
+export function joinYears(years: number[]): string {
+  if (years.length <= 1) return years.join('');
+  return `${years.slice(0, -1).join(', ')} and ${years[years.length - 1]}`;
+}
+
+/**
+ * The years a company was named in a holding's annual reports, as a supplier and as a customer: the lines "Named as a
+ * Supplier in 2024, 2025 and 2026". Only the years the timeline has read; a company never named has no line.
+ */
+export function namedIn(history: History, companyId: number) {
+  const roles = [
+    { role: 'Supplier', type: 'SUPPLIER' },
+    { role: 'Customer', type: 'CUSTOMER' },
+  ] as const;
+  return roles
+    .map(({ role, type }) => ({
+      role,
+      years: history.years
+        .filter((year) => year.relationships.some((entry) => entry.counterpartyId === companyId && entry.type === type))
+        .map((year) => year.year),
+    }))
+    .filter((named) => named.years.length > 0);
 }

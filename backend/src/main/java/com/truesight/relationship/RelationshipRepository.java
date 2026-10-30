@@ -20,6 +20,9 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     boolean existsByReportId(Long reportId);
 
+    /** The relationships found in these reports. */
+    List<Relationship> findByReportIdIn(Collection<Long> reportIds);
+
     @Query("select distinct r.reportId from Relationship r where r.type = :type and r.criticality is null")
     List<Long> findReportIdsWithoutCriticality(@Param("type") RelationshipType type);
 

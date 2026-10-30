@@ -6,7 +6,8 @@ export type AiPurpose =
   | 'SECOND_CHECK'
   | 'RECOMMEND'
   | 'CRITICALITY'
-  | 'COMMON_NAMES';
+  | 'COMMON_NAMES'
+  | 'TIMELINE';
 export type AiOutcome = 'ANSWERED' | 'UNREADABLE' | 'FAILED';
 
 export type AiCall = {
@@ -49,6 +50,7 @@ export const PURPOSE_LABELS: Record<AiPurpose, string> = {
   RECOMMEND: 'Recommending',
   CRITICALITY: 'Criticality',
   COMMON_NAMES: 'Common Names',
+  TIMELINE: 'Timeline',
 };
 
 export const OUTCOME_LABELS: Record<AiOutcome, string> = {

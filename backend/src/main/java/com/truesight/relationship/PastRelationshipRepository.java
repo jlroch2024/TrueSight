@@ -12,4 +12,10 @@ public interface PastRelationshipRepository extends JpaRepository<PastRelationsh
     List<PastRelationship> findByCompanyIdIn(Collection<Long> companyIds);
 
     List<PastRelationship> findByReportIdOrderByIdAsc(Long reportId);
+
+    /** True when the report has been read for the timeline and named at least one relationship. */
+    boolean existsByReportId(Long reportId);
+
+    /** The older relationships of these reports. */
+    List<PastRelationship> findByReportIdIn(Collection<Long> reportIds);
 }

@@ -4,6 +4,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, CircleDashed, Clock, FileText, Package, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
 import { type CSSProperties, type FormEvent, type ReactNode, useState } from 'react';
+import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, formatDate, openInNewTab, titleCase } from '../../format';
 import { type Connection, alertsFor, connectionsOf } from '../../pages/supplyChain';
@@ -11,7 +12,7 @@ import { Count } from '../Count';
 import { EventMark, SeverityBars } from '../EventMark';
 import { Tile } from '../Tile';
 import { State } from './status';
-import { type Chosen, type WorkspaceView, alertKey } from './view';
+import { type Chosen, type WorkspaceView, alertKey, joinYears, namedIn } from './view';
 
 /** A strip of big figures: what the eye should take in first. */
 export function Stats({ children }: { children: ReactNode }) {
@@ -34,9 +35,12 @@ export function CompanyView({
   onChoose,
   onWeight,
   onRemove,
+  history = null,
 }: {
   view: WorkspaceView;
   nodeId: string;
+  // What the SEC Filing Timeline has read, once it has: the years this company was named in.
+  history?: History | null;
   onChoose: (chosen: Chosen) => void;
   // Saves a holding's new weight; answers the message to show if it was refused.
   onWeight: (holding: Holding, weight: string) => Promise<string | null>;
@@ -57,6 +61,9 @@ export function CompanyView({
   if (!node) return <p className="muted">No Longer on the Graph</p>;
   const { suppliers, customers } = connectionsOf(nodeId, view.relationships);
   const theirs = alertsFor(view.open, node.name, holding?.id ?? null);
+  // A node on the graph is keyed by its company's id; a holding off the graph has none the website knows.
+  const companyId = /^\d+$/.test(nodeId) ? Number(nodeId) : null;
+  const named = history && companyId !== null ? namedIn(history, companyId) : [];
   const colour = view.colourOf.get(nodeId) ?? null;
   const shared = view.shared.find((company) => company.id === nodeId);
 
@@ -129,6 +136,20 @@ export function CompanyView({
             </div>
           )}
         </div>
+      )}
+
+      {named.length > 0 && (
+        <section className="insp-section" aria-label="History">
+          <h3>
+            <span className="h3-mark teal" />
+            History
+          </h3>
+          {named.map((line) => (
+            <p key={line.role} className="prose">
+              Named as a {line.role} in {joinYears(line.years)}
+            </p>
+          ))}
+        </section>
       )}
 
       {theirs.length > 0 && (
