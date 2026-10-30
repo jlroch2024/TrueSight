@@ -62,6 +62,21 @@ export type WorkspaceView = {
   weighted: boolean;
 };
 
+/**
+ * The holdings from the largest weight to the smallest; the same weight in ticker order; those without a weight last,
+ * in ticker order. The backend's order is left as it is.
+ */
+export function byWeight(holdings: Holding[]): Holding[] {
+  return [...holdings].sort((a, b) => {
+    if (a.weight !== b.weight) {
+      if (a.weight === null) return 1;
+      if (b.weight === null) return -1;
+      return b.weight - a.weight;
+    }
+    return a.ticker < b.ticker ? -1 : a.ticker > b.ticker ? 1 : 0;
+  });
+}
+
 export function useWorkspaceView(
   holdings: Holding[],
   relationships: Relationship[],
@@ -77,7 +92,7 @@ export function useWorkspaceView(
     const holdingOfNode = new Map(holdings.map((holding) => [nodeIdOf(holding), holding]));
     const open = openAlerts(alerts);
     return {
-      holdings,
+      holdings: byWeight(holdings),
       relationships,
       alerts,
       nodes,
