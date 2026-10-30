@@ -776,6 +776,61 @@ class AlertsIT {
                 .andExpect(jsonPath("$.message").value("An alert is either open or dismissed."));
     }
 
+    @Test
+    void aCardShowsTheApprovedSuggestionOfAnyArticleInItsEventWithTheEditedText() throws Exception {
+        String email = "alerts-event-suggestion@example.com";
+        Portfolio portfolio = portfolio(email);
+        hold(portfolio, nvidia, "40");
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        NewsArticle lead = recentArticle(tsmc, "lead", now.minus(Duration.ofHours(2)));
+        NewsArticle other = recentArticle(tsmc, "other", now.minus(Duration.ofHours(30)));
+        event(lead, Severity.HIGH, Confidence.HIGH);
+        event(other, Severity.LOW, Confidence.HIGH);
+        alert(portfolio, lead, "40", AlertStatus.NEW);
+        alert(portfolio, other, "40", AlertStatus.NEW);
+
+        Recommendation recommendation = new Recommendation(other.getId(), "Original suggestion.");
+        recommendation.setEditedText("Edited by the analyst.");
+        recommendation.setStatus(RecommendationStatus.APPROVED);
+        recommendations.save(recommendation);
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts.length()").value(1))
+                .andExpect(jsonPath("$.alerts[0].recommendation").value("Edited by the analyst."));
+    }
+
+    @Test
+    void aPendingOrWithheldSuggestionOfAnyArticleInTheEventIsNeverShown() throws Exception {
+        String email = "alerts-event-hidden@example.com";
+        Portfolio portfolio = portfolio(email);
+        hold(portfolio, nvidia, "40");
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        NewsArticle lead = recentArticle(tsmc, "lead", now.minus(Duration.ofHours(2)));
+        NewsArticle other = recentArticle(tsmc, "other", now.minus(Duration.ofHours(30)));
+        event(lead, Severity.HIGH, Confidence.HIGH);
+        event(other, Severity.LOW, Confidence.HIGH);
+        alert(portfolio, lead, "40", AlertStatus.NEW);
+        alert(portfolio, other, "40", AlertStatus.NEW);
+        Recommendation recommendation = recommendations.save(new Recommendation(other.getId(), "Pending suggestion."));
+
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
+
+        recommendation.setStatus(RecommendationStatus.WITHHELD);
+        recommendations.save(recommendation);
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(jsonPath("$.alerts[0].recommendation").value(nullValue()));
+    }
+
+    private NewsArticle recentArticle(Company company, String name, Instant publishedAt) {
+        return articles.save(new NewsArticle(company.getId(), "https://example.com/" + name + "/" + UUID.randomUUID(),
+                "Set by the test: " + name, "Reuters", publishedAt));
+    }
+
     private Portfolio portfolio(String email) {
         return portfolios.save(new Portfolio(logins.user(email).getId(), "Alerts Test"));
     }
