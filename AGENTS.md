@@ -323,6 +323,15 @@ file in the demo. Then they open the pull request.
 - A portfolio manager's screen shows only what they act on. Analyst detail stays on the Analyst Desk.
 - Recommendations are research support, never investment advice: no buy, sell or hold, and no price targets.
 
+## Sprint 4 Shared Rules
+
+- All Sprint 4 table changes are in `V4__sprint_4_tables.sql`. No individual story adds another migration.
+- `past_relationships` holds the relationships of a company's older annual reports, and is read only by the SEC Filing
+  Timeline. The graph, alerts, the review queue and the news check keep reading `relationships`.
+- Ask TrueSight answers only from TrueSight's own data.
+- The briefing uses OpenPDF and nothing else.
+- The daily news endpoint is the one `/api/` address protected by a scheduler token instead of a login.
+
 ## Definition of Done
 
 A story is done when all of these are true:

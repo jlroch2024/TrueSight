@@ -101,6 +101,10 @@ public class Relationship {
     @Column(name = "second_checked_at")
     private Instant secondCheckedAt;
 
+    /** When the evidence was last read for its highlights. Null: not yet, or the evidence changed since. */
+    @Column(name = "highlighted_at")
+    private Instant highlightedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -182,6 +186,9 @@ public class Relationship {
     public void setSecondCheck(SecondCheckVerdict secondCheck) { this.secondCheck = secondCheck; }
     public void setSecondCheckReason(String secondCheckReason) { this.secondCheckReason = secondCheckReason; }
     public void setSecondCheckedAt(Instant secondCheckedAt) { this.secondCheckedAt = secondCheckedAt; }
+
+    public Instant getHighlightedAt() { return highlightedAt; }
+    public void setHighlightedAt(Instant highlightedAt) { this.highlightedAt = highlightedAt; }
 
     public Instant getCreatedAt() {
         return createdAt;

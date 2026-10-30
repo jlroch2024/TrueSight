@@ -2,6 +2,8 @@ package com.truesight.company;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,6 +37,17 @@ public class Company {
 
     @Column(name = "news_checked_at")
     private Instant newsCheckedAt;
+
+    /**
+     * How far reading this company's own annual report has got, for a company that is not read as a holding. Null:
+     * never asked for.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "report_status", length = 20)
+    private ReportStatus reportStatus;
+
+    @Column(name = "report_status_reason", length = 500)
+    private String reportStatusReason;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -81,6 +94,11 @@ public class Company {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public ReportStatus getReportStatus() { return reportStatus; }
+    public void setReportStatus(ReportStatus reportStatus) { this.reportStatus = reportStatus; }
+    public String getReportStatusReason() { return reportStatusReason; }
+    public void setReportStatusReason(String reportStatusReason) { this.reportStatusReason = reportStatusReason; }
 
     public Instant getNewsCheckedAt() { return newsCheckedAt; }
     public void setNewsCheckedAt(Instant newsCheckedAt) { this.newsCheckedAt = newsCheckedAt; }
