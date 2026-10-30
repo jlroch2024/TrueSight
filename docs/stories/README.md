@@ -105,6 +105,8 @@ To refresh them after stories change in Jira, export every issue from Jira as a 
 | [TS-219 Readable Supplier and Customer Counts](TS-219-Readable-Supplier-and-Customer-Counts.md) | Story | Portfolios | 2 | To Do |
 | [TS-220 The Right Logo for Every Company](TS-220-The-Right-Logo-for-Every-Company.md) | Story | Supply Chain Map | 3 | To Do |
 | [TS-221 Alerts From SEC 8-K Filings](TS-221-Alerts-From-SEC-8-K-Filings.md) | Story | News and Alerts | 8 | To Do |
+| [TS-222 Grow the Graph as Results Arrive](TS-222-Grow-the-Graph-as-Results-Arrive.md) | Story | Supply Chain Map | 3 | To Do |
+| [TS-223 Shorter Waits for Analyse and Check News](TS-223-Shorter-Waits-for-Analyse-and-Check-News.md) | Story | Running TrueSight | 5 | To Do |
 
 ## Epics
 
