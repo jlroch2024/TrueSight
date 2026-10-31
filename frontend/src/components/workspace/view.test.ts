@@ -4,7 +4,18 @@ import { describe, expect, it } from 'vitest';
 import type { ReachedHolding } from '../../api/alerts';
 import { sampleAlert, tsmcSuppliesNvidia } from '../../test/sampleAlerts';
 import { TSMC } from '../../test/sampleNews';
-import { alertKey, byUrgency, companyIdOfNode, exposureOf, offGraphId, scenarioExposure, scenarioFocus, spotlightOf } from './view';
+import type { Holding } from '../../api/portfolios';
+import {
+  alertKey,
+  byUrgency,
+  byWeight,
+  companyIdOfNode,
+  exposureOf,
+  offGraphId,
+  scenarioExposure,
+  scenarioFocus,
+  spotlightOf,
+} from './view';
 
 const view = {
   nodeIdByHolding: new Map([
@@ -74,6 +85,54 @@ describe('offGraphId', () => {
   it('givesAHoldingNotOnTheGraphAnIdNoGraphNodeHas', () => {
     expect(offGraphId(7)).toBe('holding-7');
     expect(offGraphId(7)).not.toMatch(/^\d+$/);
+  });
+});
+
+describe('byWeight', () => {
+  const holding = (ticker: string, weight: number | null): Holding => ({
+    id: ticker.charCodeAt(0),
+    ticker,
+    weight,
+    companyName: null,
+    companyDisplayName: null,
+    status: 'WAITING',
+    statusReason: null,
+    reportType: null,
+    reportDate: null,
+    reportLink: null,
+    lastAnalysed: null,
+  });
+  const tickers = (holdings: Holding[]) => holdings.map((found) => found.ticker);
+
+  it('listsTheLargestWeightFirst', () => {
+    const sorted = byWeight([holding('B', 2), holding('A', 18.5), holding('C', 8)]);
+
+    expect(sorted.map((found) => found.weight)).toEqual([18.5, 8, 2]);
+  });
+
+  it('listsHoldingsOfTheSameWeightInTickerOrder', () => {
+    expect(tickers(byWeight([holding('MSFT', 10), holding('AAPL', 10), holding('NVDA', 30)]))).toEqual([
+      'NVDA',
+      'AAPL',
+      'MSFT',
+    ]);
+  });
+
+  it('listsHoldingsWithoutAWeightAfterEveryWeightedOneInTickerOrder', () => {
+    expect(tickers(byWeight([holding('ZZZ', null), holding('B', 0), holding('AAA', null), holding('C', 5)]))).toEqual([
+      'C',
+      'B',
+      'AAA',
+      'ZZZ',
+    ]);
+  });
+
+  it('doesNotChangeTheOrderItWasGiven', () => {
+    const given = [holding('B', 1), holding('A', 2)];
+
+    byWeight(given);
+
+    expect(tickers(given)).toEqual(['B', 'A']);
   });
 });
 
