@@ -12,12 +12,13 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** The only class that talks to sec.gov. Requests are paced and identify the TrueSight client. */
 @Component
@@ -28,7 +29,12 @@ public class SecClient {
     private final RestClient client;
     private final ObjectMapper mapper;
     private final long intervalMillis;
-    private final Map<String, SecCompany> tickerCache = new ConcurrentHashMap<>();
+    private static final Duration TICKER_LIST_LIFETIME = Duration.ofDays(1);
+    private final Clock clock;
+    private final Object tickerListLock = new Object();
+    // The whole SEC ticker list, by upper-case ticker. Replaced as a whole, so readers need no lock.
+    private volatile Map<String, SecCompany> tickerList;
+    private volatile Instant tickerListLoadedAt = Instant.MIN;
     private long nextRequestAt;
 
     @Autowired
@@ -39,6 +45,11 @@ public class SecClient {
     }
 
     SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond) {
+        this(client, mapper, requestsPerSecond, Clock.systemUTC());
+    }
+
+    SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond, Clock clock) {
+        this.clock = clock;
         this.client = client;
         this.mapper = mapper;
         int allowedRate = Math.min(10, Math.max(1, requestsPerSecond));
@@ -54,22 +65,43 @@ public class SecClient {
                 .build();
     }
 
+    /**
+     * The SEC's company for a ticker, or null if it lists none. The SEC's whole ticker list is downloaded when first
+     * needed and again once it is more than a day old, never once for each ticker asked about.
+     */
     public SecCompany companyForTicker(String ticker) {
-        String key = ticker.toUpperCase(Locale.ROOT);
-        SecCompany cached = tickerCache.get(key);
-        if (cached != null) return cached;
-        JsonNode all = getJson(TICKERS_URL);
-        Iterator<JsonNode> rows = all.iterator();
-        while (rows.hasNext()) {
-            JsonNode row = rows.next();
-            if (key.equals(row.path("ticker").asText().toUpperCase(Locale.ROOT))) {
-                String cik = String.format("%010d", row.path("cik_str").asLong());
-                SecCompany company = new SecCompany(row.path("title").asText(), cik, ticker.toUpperCase(Locale.ROOT));
-                tickerCache.put(key, company);
-                return company;
+        return tickers().get(ticker.toUpperCase(Locale.ROOT));
+    }
+
+    private Map<String, SecCompany> tickers() {
+        Map<String, SecCompany> current = tickerList;
+        if (current != null && isFresh()) return current;
+        synchronized (tickerListLock) {
+            if (tickerList != null && isFresh()) return tickerList; // another caller loaded it while this one waited
+            try {
+                tickerList = readTickers(getJson(TICKERS_URL));
+                tickerListLoadedAt = clock.instant();
+            } catch (SecAccessException exception) {
+                if (tickerList == null) throw exception;
+                // An old list is better than none: try the SEC again with the next ticker asked about.
             }
+            return tickerList;
         }
-        return null;
+    }
+
+    private boolean isFresh() {
+        return tickerListLoadedAt.isAfter(clock.instant().minus(TICKER_LIST_LIFETIME));
+    }
+
+    private static Map<String, SecCompany> readTickers(JsonNode all) {
+        Map<String, SecCompany> byTicker = new HashMap<>();
+        for (JsonNode row : all) {
+            String ticker = row.path("ticker").asText().toUpperCase(Locale.ROOT);
+            if (ticker.isEmpty()) continue;
+            String cik = String.format("%010d", row.path("cik_str").asLong());
+            byTicker.putIfAbsent(ticker, new SecCompany(row.path("title").asText(), cik, ticker));
+        }
+        return Map.copyOf(byTicker);
     }
 
     /** Returns the first 10-K or 20-F in the recent filings list, as specified by this story. */

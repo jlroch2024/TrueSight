@@ -435,6 +435,27 @@ class SecondCheckIT {
                 .andExpect(status().isAccepted());
     }
 
+    /**
+     * The second check runs after the holding is Done, so waits for it: until Gemini has been asked, and then until
+     * the verdicts are saved (or, when it was made to fail, for a moment, to be sure nothing is saved).
+     */
+    private void awaitSecondCheck() throws InterruptedException {
+        for (int attempt = 0; attempt < 400 && !secondCheckAsked(); attempt++) {
+            Thread.sleep(25);
+        }
+        assertThat(secondCheckAsked()).isTrue();
+        for (int attempt = 0; attempt < 40; attempt++) {
+            List<Relationship> saved = nvidiaRelationships();
+            if (!saved.isEmpty() && saved.stream().allMatch(relationship -> relationship.getSecondCheck() != null)) return;
+            Thread.sleep(25);
+        }
+    }
+
+    private boolean secondCheckAsked() {
+        return org.mockito.Mockito.mockingDetails(gemini).getInvocations().stream()
+                .anyMatch(invocation -> invocation.getMethod().getName().equals("generateSecondCheck"));
+    }
+
     /** Waits for the background pass to leave nothing without a second check. */
     private void awaitNothingPending() throws InterruptedException {
         for (int attempt = 0; attempt < 800 && !pass.pendingReportIds().isEmpty(); attempt++) {
@@ -452,6 +473,7 @@ class SecondCheckIT {
                 .andExpect(status().isAccepted());
         for (int attempt = 0; attempt < 400; attempt++) {
             if (holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus() == expected) {
+                awaitSecondCheck();
                 return portfolio;
             }
             Thread.sleep(25);

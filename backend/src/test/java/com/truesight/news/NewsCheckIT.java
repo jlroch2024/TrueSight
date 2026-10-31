@@ -20,6 +20,7 @@ import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,10 +29,15 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -114,12 +120,87 @@ class NewsCheckIT {
         verify(news, never()).search("Samsung Electronics");
         assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(nvidia.getId())).isNotEmpty();
         assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(tsmc.getId())).isNotEmpty();
-        verify(steps).run(portfolio.getId());
+        verify(steps, times(2)).run(portfolio.getId()); // after the holdings' round, and after the suppliers'
         mockMvc.perform(get("/api/portfolios").header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].newsStatus").value("IDLE"))
                 .andExpect(jsonPath("$[0].newsStatusReason").isEmpty())
                 .andExpect(jsonPath("$[0].newsCheckedAt").isNotEmpty());
+    }
+
+    @Test
+    void theHoldingsNewsIsFetchedAndJudgedBeforeTheSuppliersNewsIsFetched() throws Exception {
+        String email = "news-rounds-order@example.com";
+        Company nvidia = cleanCompany("NVIDIA Corporation", NVIDIA_CIK, "NVDA");
+        Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
+        Portfolio portfolio = analysedPortfolio(email, nvidia);
+        supplies(nvidia, tsmc, "10-K", "rw-order");
+        CountDownLatch supplierBeingSearched = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        when(news.search("Taiwan Semiconductor Manufacturing")).thenAnswer(invocation -> {
+            supplierBeingSearched.countDown();
+            if (!release.await(10, TimeUnit.SECONDS)) throw new AssertionError("The search was never released.");
+            return sample;
+        });
+
+        try {
+            checkNews(portfolio, email);
+            assertThat(supplierBeingSearched.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // The supplier's search is still waiting: the holding's news is saved and the steps (judging the
+            // headlines, building alerts) have run once already.
+            assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(nvidia.getId())).isNotEmpty();
+            verify(steps, times(1)).run(portfolio.getId());
+            assertThat(portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatus())
+                    .isEqualTo(NewsStatus.CHECKING);
+
+            release.countDown();
+            awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+            verify(steps, times(2)).run(portfolio.getId());
+            InOrder order = inOrder(news);
+            order.verify(news).search("NVIDIA");
+            order.verify(news).search("Taiwan Semiconductor Manufacturing");
+        } finally {
+            release.countDown();
+            reports.deleteByCompanyId(nvidia.getId()); // and its relationships with it
+        }
+    }
+
+    @Test
+    void aSuppliersSupplierIsNotAskedAgainWithinSixHoursButAHoldingAndADirectSupplierAreAfterOne() throws Exception {
+        String email = "news-rounds-windows@example.com";
+        Company nvidia = cleanCompany("NVIDIA Corporation", NVIDIA_CIK, "NVDA");
+        Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
+        Company zeiss = cleanCompany("Carl Zeiss SMT Rounds Test " + UUID.randomUUID(), null, null);
+        Portfolio portfolio = analysedPortfolio(email, nvidia);
+        supplies(nvidia, tsmc, "10-K", "rw-win1");
+        supplies(tsmc, zeiss, "20-F", "rw-win2");
+        try {
+            // Two hours ago: a holding and a direct supplier are due, a supplier's supplier is not.
+            Instant twoHoursAgo = Instant.now().minus(Duration.ofHours(2)).truncatedTo(ChronoUnit.MILLIS);
+            checkedAt(twoHoursAgo, nvidia, tsmc, zeiss);
+            Instant before = Instant.now();
+
+            checkNews(portfolio, email);
+            awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+            assertThat(companies.findById(nvidia.getId()).orElseThrow().getNewsCheckedAt()).isAfter(before);
+            assertThat(companies.findById(tsmc.getId()).orElseThrow().getNewsCheckedAt()).isAfter(before);
+            assertThat(companies.findById(zeiss.getId()).orElseThrow().getNewsCheckedAt()).isEqualTo(twoHoursAgo);
+
+            // Seven hours ago, it is due too.
+            Instant sevenHoursAgo = Instant.now().minus(Duration.ofHours(7)).truncatedTo(ChronoUnit.MILLIS);
+            checkedAt(sevenHoursAgo, zeiss);
+            Instant beforeSecond = Instant.now();
+
+            checkNews(portfolio, email);
+            awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+            assertThat(companies.findById(zeiss.getId()).orElseThrow().getNewsCheckedAt()).isAfter(beforeSecond);
+        } finally {
+            reports.deleteByCompanyId(nvidia.getId());
+            reports.deleteByCompanyId(tsmc.getId());
+        }
     }
 
     @Test
@@ -252,6 +333,24 @@ class NewsCheckIT {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Portfolio not found."));
         verify(news, never()).search(anyString());
+    }
+
+    /** {@code supplier} supplies {@code customer}, by a report of the customer's own. */
+    private void supplies(Company customer, Company supplier, String form, String accessionPrefix) {
+        reports.deleteByCompanyId(customer.getId());
+        Report report = reports.saveAndFlush(new Report(customer.getId(), form,
+                accessionPrefix + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
+                LocalDate.parse("2026-02-25"), "https://www.sec.gov/Archives/" + UUID.randomUUID(), "text"));
+        relationships.save(new Relationship(report.getId(), customer.getId(), supplier.getId(),
+                RelationshipType.SUPPLIER, "semiconductor wafers", EVIDENCE));
+    }
+
+    private void checkedAt(Instant checkedAt, Company... checked) {
+        for (Company company : checked) {
+            Company fresh = companies.findById(company.getId()).orElseThrow();
+            fresh.setNewsCheckedAt(checkedAt);
+            companies.saveAndFlush(fresh);
+        }
     }
 
     private Company cleanCompany(String name, String cik, String ticker) {

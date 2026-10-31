@@ -31,9 +31,15 @@ class NewsAssessorTest {
         GeminiClient gemini = mock(GeminiClient.class);
         AiCallLog calls = mock(AiCallLog.class);
 
-        List<NewsArticle> sample = new GoogleNewsParser().parse(Examples.googleNewsTsmc()).stream()
-                .map(item -> new NewsArticle(1L, item.url(), item.title(), item.source(), item.publishedAt()))
-                .toList();
+        List<NewsItem> items = new GoogleNewsParser().parse(Examples.googleNewsTsmc());
+        List<NewsArticle> sample = new java.util.ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            NewsItem item = items.get(i);
+            NewsArticle article = new NewsArticle(1L, item.url(), item.title(), item.source(), item.publishedAt());
+            // Saved articles have ids, and each article is claimed by its id.
+            org.springframework.test.util.ReflectionTestUtils.setField(article, "id", i + 1L);
+            sample.add(article);
+        }
         when(newsCheck.companiesFor(1L))
                 .thenReturn(List.of(new NewsCheckService.NewsCompany(1L, "Taiwan Semiconductor Manufacturing")));
         when(articles.findUnassessedByCompanyIdIn(anyCollection())).thenReturn(sample);

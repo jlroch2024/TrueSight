@@ -140,6 +140,19 @@ public class AnalysisService {
         }
     }
 
+    /**
+     * The latest report of a holding that is Done, or null if the holding is not Done. The second check of its
+     * relationships is asked for by this report.
+     */
+    @Transactional(readOnly = true)
+    public Long reportIdOfDoneHolding(Long holdingId) {
+        return holdings.findById(holdingId)
+                .filter(holding -> holding.getStatus() == HoldingStatus.DONE && holding.getCompanyId() != null)
+                .flatMap(holding -> reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()))
+                .map(Report::getId)
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public String tickerFor(Long holdingId) {
         return holdings.findById(holdingId).map(Holding::getTicker).orElse(holdingId.toString());
