@@ -22,12 +22,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
@@ -218,6 +222,76 @@ class AnnualReportAnalysisIT {
         verify(gemini, times(1)).generate(any(AiRequest.class));
     }
 
+    // ---- TS-179 follow-up: a holding is Done when its relationships are saved; the second check comes after ----
+
+    @Test
+    void aHoldingIsDoneAsSoonAsItsRelationshipsAreSavedBeforeTheSecondCheckAnswers() throws Exception {
+        String email = "annual-report-done-first@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021",
+                "2026-02-25", "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+                TSMC_SENTENCE);
+        stubRecordedNvidiaAnswer();
+        CountDownLatch secondCheckAsked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(invocation -> {
+            secondCheckAsked.countDown();
+            if (!release.await(10, TimeUnit.SECONDS)) throw new AssertionError("The second check was never released.");
+            return answer(secondCheckAgreeingWithTwoClaims());
+        });
+
+        try {
+            mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
+                    .header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
+            assertThat(secondCheckAsked.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // The second check is still waiting for its answer, and the holding is already Done.
+            assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus())
+                    .isEqualTo(HoldingStatus.DONE);
+            Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+            Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+            assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2)
+                    .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNull());
+
+            release.countDown();
+            for (int attempt = 0; attempt < 400 && !relationshipsFor(reportId, nvidiaId).stream()
+                    .allMatch(relationship -> relationship.getSecondCheck() != null); attempt++) {
+                Thread.sleep(25);
+            }
+            assertThat(relationshipsFor(reportId, nvidiaId))
+                    .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void aFailedSecondCheckNeverChangesTheDoneHolding() throws Exception {
+        String email = "annual-report-second-check-fails@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021",
+                "2026-02-25", "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+                TSMC_SENTENCE);
+        stubRecordedNvidiaAnswer();
+        when(gemini.generateSecondCheck(any(AiRequest.class)))
+                .thenThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null));
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
+                .header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
+        verify(gemini, timeout(10_000)).generateSecondCheck(any(AiRequest.class));
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+        Thread.sleep(200); // the failure has been handled by now
+
+        mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(jsonPath("$[0].status").value("DONE"))
+                .andExpect(jsonPath("$[0].statusReason").isEmpty());
+        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+        assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2)
+                .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNull());
+    }
+
     @Test
     void secFailureIsSavedWithTheReason() throws Exception {
         String email = "annual-report-failure@example.com";
@@ -265,6 +339,14 @@ class AnnualReportAnalysisIT {
         mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Analysis is already running for this portfolio."));
+    }
+
+    /** Gemini's response agreeing with the first two claims it is sent. */
+    private static String secondCheckAgreeingWithTwoClaims() {
+        String verdicts = "[{\"index\":1,\"verdict\":\"AGREES\",\"reason\":\"Current supplier.\"},"
+                + "{\"index\":2,\"verdict\":\"AGREES\",\"reason\":\"Current supplier.\"}]";
+        return JsonMapper.builder().build().writeValueAsString(Map.of("candidates", List.of(Map.of(
+                "content", Map.of("parts", List.of(Map.of("text", verdicts)))))));
     }
 
     private Portfolio portfolioWith(String email, String... tickers) {

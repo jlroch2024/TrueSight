@@ -26,7 +26,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -308,6 +311,86 @@ class NewsAssessorIT {
         checkNews(portfolio, "assess-nothing-new@example.com", NewsStatus.IDLE);
 
         verify(gemini, never()).generate(any(AiRequest.class), any());
+    }
+
+    @Test
+    void twoPortfoliosChecksJudgeTheirHeadlinesAtTheSameTimeAndASharedArticleIsJudgedOnce() throws Exception {
+        List<NewsArticle> shared = saveSampleArticles(3); // TSMC's, held by both portfolios
+        Company first = companyDirectory.findOrCreate("Noise First Only " + UUID.randomUUID(), null, null, List.of());
+        Company second = companyDirectory.findOrCreate("Noise Second Only " + UUID.randomUUID(), null, null, List.of());
+        NewsArticle onlyFirst = articles.save(new NewsArticle(first.getId(), "https://example.com/" + UUID.randomUUID(),
+                "First portfolio's own headline", "Example", Instant.now().minusSeconds(60)));
+        NewsArticle onlySecond = articles.save(new NewsArticle(second.getId(), "https://example.com/" + UUID.randomUUID(),
+                "Second portfolio's own headline", "Example", Instant.now().minusSeconds(60)));
+        Portfolio portfolioOne = portfolioHolding("assess-parallel-a@example.com", tsmc, first);
+        Portfolio portfolioTwo = portfolioHolding("assess-parallel-b@example.com", tsmc, second);
+
+        // Gemini answers only when both checks are waiting for it: they judge at the same time, or this times out.
+        CountDownLatch bothAsking = new CountDownLatch(2);
+        AtomicInteger asked = new AtomicInteger();
+        when(gemini.generate(any(AiRequest.class), any())).thenAnswer(invocation -> {
+            AiRequest request = invocation.getArgument(0);
+            asked.incrementAndGet();
+            bothAsking.countDown();
+            if (!bothAsking.await(10, TimeUnit.SECONDS)) {
+                throw new AssertionError("The second check never reached Gemini while the first was waiting.");
+            }
+            return nothingIsAnEvent(request.prompt());
+        });
+
+        startCheck("assess-parallel-a@example.com", portfolioOne);
+        startCheck("assess-parallel-b@example.com", portfolioTwo);
+        awaitIdle(portfolioOne);
+        awaitIdle(portfolioTwo);
+
+        assertThat(asked.get()).isEqualTo(2);
+        List<NewsArticle> everything = new java.util.ArrayList<>(shared);
+        everything.add(onlyFirst);
+        everything.add(onlySecond);
+        assertThat(assessmentsOf(everything)).hasSize(5).extracting(NewsAssessment::getArticleId).doesNotHaveDuplicates();
+        ArgumentCaptor<AiRequest> prompts = ArgumentCaptor.forClass(AiRequest.class);
+        verify(gemini, times(2)).generate(prompts.capture(), any());
+        for (NewsArticle article : shared) {
+            assertThat(prompts.getAllValues().stream().filter(request -> request.prompt().contains(article.getTitle())))
+                    .as("prompts holding \"%s\"", article.getTitle()).hasSize(1);
+        }
+    }
+
+    private Portfolio portfolioHolding(String email, Company... companiesHeld) {
+        Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "Noise Parallel Test"));
+        int number = 0;
+        for (Company company : companiesHeld) {
+            Holding holding = new Holding(portfolio.getId(), "NP" + (++number), new BigDecimal("100"));
+            holding.setCompanyId(company.getId());
+            holding.setStatus(HoldingStatus.DONE);
+            holdings.save(holding);
+        }
+        return portfolio;
+    }
+
+    private void startCheck(String email, Portfolio portfolio) throws Exception {
+        mockMvc.perform(post("/api/portfolios/{id}/news-check", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+    }
+
+    private void awaitIdle(Portfolio portfolio) throws Exception {
+        for (int attempt = 0; attempt < 400; attempt++) {
+            if (portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatus() == NewsStatus.IDLE) return;
+            Thread.sleep(25);
+        }
+        assertThat(portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatus()).isEqualTo(NewsStatus.IDLE);
+    }
+
+    /** An answer calling every numbered headline in {@code prompt} noise. */
+    private static AiAnswer nothingIsAnEvent(String prompt) {
+        long headlines = Pattern.compile("(?m)^\\d+\\. \\[").matcher(prompt).results().count();
+        List<Map<String, Object>> judgements = new java.util.ArrayList<>();
+        for (int index = 1; index <= headlines; index++) {
+            judgements.add(Map.of("index", index, "isEvent", false, "eventType", "", "severity", "",
+                    "confidence", "HIGH", "summary", "", "reason", "Ordinary news."));
+        }
+        return gemini(JSON.writeValueAsString(Map.of("assessments", judgements)));
     }
 
     /** The first {@code count} articles of the saved Google News sample, saved for TSMC in order. */

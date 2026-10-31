@@ -10,9 +10,11 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -24,6 +26,10 @@ import java.util.stream.Collectors;
  * <p>Like relationships, a judgement belongs to the article, not to a portfolio, so it is made once and shared: an
  * article already judged is never sent again. Headlines go in batches of up to {@link #BATCH_SIZE}, numbered from 1,
  * each with the company it was found for. The AI sees only the headline.
+ *
+ * <p>Two checks never wait for each other to <em>send</em> headlines: each article has its own claim, an article
+ * another check is already judging is left to it, and an article is read again once claimed, so it is never judged
+ * twice. After sending its own, a check waits for the articles it left to the other, so its alerts include them.
  *
  * <p>An answer that cannot be read is asked for once more. If Gemini then still fails, this throws
  * {@link GeminiClient.GeminiException}; the articles not yet judged stay that way, and the next news check sends them
@@ -96,8 +102,9 @@ public class NewsAssessor implements NewsCheckStep {
     private final Executor batchExecutor;
     private final NewsAssessmentReader reader = new NewsAssessmentReader();
 
-    // Two portfolios sharing a company could otherwise judge the same article at the same moment.
-    private final Object lock = new Object();
+    // One claim per article being judged, so two portfolios sharing a company never judge the same article twice,
+    // yet never wait for each other's other articles. Completed when the article's judging has ended.
+    private final ConcurrentHashMap<Long, CompletableFuture<Void>> articleLocks = new ConcurrentHashMap<>();
 
     public NewsAssessor(NewsCheckService newsCheck, NewsArticleRepository articles,
                         NewsAssessmentRepository assessments, GeminiClient gemini, AiCallLog calls,
@@ -112,18 +119,45 @@ public class NewsAssessor implements NewsCheckStep {
 
     @Override
     public void run(Long portfolioId) {
-        synchronized (lock) {
-            Map<Long, String> names = newsCheck.companiesFor(portfolioId).stream()
-                    .collect(Collectors.toMap(NewsCheckService.NewsCompany::id, NewsCheckService.NewsCompany::name,
-                            (first, second) -> first));
-            if (names.isEmpty()) return;
+        Map<Long, String> names = newsCheck.companiesFor(portfolioId).stream()
+                .collect(Collectors.toMap(NewsCheckService.NewsCompany::id, NewsCheckService.NewsCompany::name,
+                        (first, second) -> first));
+        if (names.isEmpty()) return;
 
-            List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(names.keySet());
+        // Claim the unjudged articles. One that another check has claimed is skipped: it is being judged already.
+        Map<Long, CompletableFuture<Void>> mine = new LinkedHashMap<>();
+        Map<Long, NewsArticle> claimed = new LinkedHashMap<>();
+        List<CompletableFuture<Void>> others = new ArrayList<>();
+        try {
+            for (NewsArticle article : articles.findUnassessedByCompanyIdIn(names.keySet())) {
+                CompletableFuture<Void> claim = new CompletableFuture<>();
+                CompletableFuture<Void> existing = articleLocks.putIfAbsent(article.getId(), claim);
+                if (existing == null) {
+                    mine.put(article.getId(), claim);
+                    claimed.put(article.getId(), article);
+                } else {
+                    others.add(existing);
+                }
+            }
+            // Read again now the articles are ours: another check may have judged some since the first read.
+            if (!claimed.isEmpty()) {
+                assessments.findByArticleIdIn(List.copyOf(claimed.keySet())).forEach(done -> {
+                    claimed.remove(done.getArticleId());
+                    release(mine, done.getArticleId());
+                });
+            }
+
+            List<NewsArticle> waiting = List.copyOf(claimed.values());
             List<CompletableFuture<Void>> tasks = new ArrayList<>();
             for (int start = 0; start < waiting.size(); start += BATCH_SIZE) {
                 List<NewsArticle> batch = List.copyOf(waiting.subList(start, Math.min(start + BATCH_SIZE, waiting.size())));
-                tasks.add(CompletableFuture.runAsync(
-                        () -> save(batch, ask(prompt(batch, names), batch.size())), batchExecutor));
+                tasks.add(CompletableFuture.runAsync(() -> {
+                    try {
+                        save(batch, ask(prompt(batch, names), batch.size()));
+                    } finally {
+                        batch.forEach(article -> release(mine, article.getId()));
+                    }
+                }, batchExecutor));
             }
             try {
                 CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
@@ -131,6 +165,21 @@ public class NewsAssessor implements NewsCheckStep {
                 if (exception.getCause() instanceof RuntimeException cause) throw cause;
                 throw exception;
             }
+        } finally {
+            // Whatever happened, nothing stays claimed: an article not judged is simply judged by the next check.
+            new ArrayList<>(mine.keySet()).forEach(id -> release(mine, id));
+        }
+        // The articles another check was judging are judged once that check has finished, so the alerts built next
+        // see them. Nothing here waits before this check's own headlines have been sent.
+        others.forEach(CompletableFuture::join);
+    }
+
+    /** Ends this check's claim on an article. Safe to call twice. */
+    private void release(Map<Long, CompletableFuture<Void>> mine, Long articleId) {
+        CompletableFuture<Void> claim = mine.get(articleId);
+        if (claim != null) {
+            articleLocks.remove(articleId, claim);
+            claim.complete(null);
         }
     }
 

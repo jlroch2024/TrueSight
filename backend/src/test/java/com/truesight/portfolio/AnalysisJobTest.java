@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.relationship.SecondCheckPassService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -41,7 +42,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers);
+            AnalysisJob job = new AnalysisJob(analysis, mock(SecondCheckPassService.class), workers);
             Future<?> finished = caller.submit(() -> job.run(List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L)));
 
             assertThat(firstFourStarted.await(3, TimeUnit.SECONDS)).isTrue();
@@ -84,7 +85,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService portfolios = Executors.newFixedThreadPool(2);
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers);
+            AnalysisJob job = new AnalysisJob(analysis, mock(SecondCheckPassService.class), workers);
             Future<?> firstPortfolio = portfolios.submit(() -> job.run(List.of(1L)));
             Future<?> secondPortfolio = portfolios.submit(() -> job.run(List.of(2L)));
 
@@ -120,8 +121,34 @@ class AnalysisJobTest {
 
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers).run(List.of(1L, 2L, 3L));
+            new AnalysisJob(analysis, mock(SecondCheckPassService.class), workers).run(List.of(1L, 2L, 3L));
             assertThat(maximum.get()).isEqualTo(1);
+        } finally {
+            workers.shutdownNow();
+        }
+    }
+
+    @Test
+    void theSecondCheckRunsAfterTheHoldingIsAnalysedAndAFailureOfItIsIgnored() throws Exception {
+        AnalysisService analysis = mock(AnalysisService.class);
+        SecondCheckPassService secondChecks = mock(SecondCheckPassService.class);
+        when(analysis.tickerFor(anyLong())).thenAnswer(call -> "TICKER-" + call.getArgument(0));
+        when(analysis.reportIdOfDoneHolding(1L)).thenReturn(11L);
+        when(analysis.reportIdOfDoneHolding(2L)).thenReturn(22L);
+        when(analysis.reportIdOfDoneHolding(3L)).thenReturn(null); // not Done: nothing to check
+        doAnswer(call -> {
+            throw new IllegalStateException("The second check broke.");
+        }).when(secondChecks).check(11L);
+
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        try {
+            new AnalysisJob(analysis, secondChecks, workers).run(List.of(1L, 2L, 3L));
+
+            org.mockito.InOrder order = org.mockito.Mockito.inOrder(analysis, secondChecks);
+            order.verify(analysis).analyze(1L);
+            order.verify(secondChecks).check(11L);
+            org.mockito.Mockito.verify(secondChecks).check(22L);
+            org.mockito.Mockito.verifyNoMoreInteractions(secondChecks);
         } finally {
             workers.shutdownNow();
         }
