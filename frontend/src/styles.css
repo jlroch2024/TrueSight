@@ -120,8 +120,7 @@ svg.lucide {
 }
 
 /* Badges hold counts only: the text cut's figures, lined up, whose zero is plain. */
-.count,
-.link-count {
+.count {
   font-variant-numeric: tabular-nums;
 }
 
@@ -1544,33 +1543,42 @@ svg.lucide {
   font-weight: 600;
 }
 
-/* A badge of links: even room above, left and below its icon, and room on the right for two digits, so every row's
-   badges are the same width and line up. */
-.link-count {
-  display: inline-flex;
-  min-width: 44px;
-  height: 22px;
-  align-items: center;
-  gap: 4px;
-  padding: 0 8px 0 5px;
-  font-size: var(--t-12);
-  font-weight: 650;
+/* A holding's suppliers and customers on two lines. The top line has the holding name's size and the bottom the
+   ticker's, with no gap, so they sit level with them. The number is bold in its kind's colour; a zero is all faint. */
+.link-lines {
+  display: grid;
+  justify-items: start;
+  white-space: nowrap;
+}
+
+.link-line {
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-.link-word {
-  display: none;
+.link-line:first-child {
+  font-size: var(--t-13);
 }
 
-.link-count.supplier {
-  background: var(--teal-soft);
+.link-line:last-child:not(:first-child) {
+  font-size: var(--t-12);
+}
+
+.link-number {
+  font-weight: 700;
+}
+
+.link-line.supplier .link-number {
+  color: var(--lime);
+}
+
+.link-line.customer .link-number {
   color: var(--teal);
 }
 
-.link-count.customer {
-  margin-left: 2px;
-  background: var(--lime-soft);
-  color: var(--lime);
+.link-line.zero,
+.link-line.zero .link-number {
+  color: var(--faint);
 }
 
 .h-end {
