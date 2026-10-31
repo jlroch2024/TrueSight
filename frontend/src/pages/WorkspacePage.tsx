@@ -29,7 +29,8 @@ import { type AlertFilter, AlertsTab } from '../components/workspace/AlertsTab';
 import { HoldingsTab, LoadingRows } from '../components/workspace/HoldingsTab';
 import { InspectorBody, InspectorKind } from '../components/workspace/Inspector';
 import { ActionsIsland, OpenAlertsBar, PortfolioIsland } from '../components/workspace/TopBar';
-import { type Chosen, alertKey, byUrgency, spotlightOf, useWorkspaceView } from '../components/workspace/view';
+import { useWhatIf } from '../components/workspace/useWhatIf';
+import { type Chosen, alertKey, byUrgency, companyIdOfNode, scenarioFocus, spotlightOf, useWorkspaceView } from '../components/workspace/view';
 import { LivingGraph } from '../graph/LivingGraph';
 import { type WorkspaceTab, paths } from '../paths';
 
@@ -231,12 +232,20 @@ export function WorkspacePage() {
     return () => window.removeEventListener('keydown', key);
   }, [chosen]);
 
-  // A chosen alert lights the company it is about, the holdings it reaches, and every link on the way.
+  // The scenario "what if this company stops?" is asked of the backend while it is open: the Inspector reads the answer
+  // and the graph lights from it.
+  const { scenario, retry: retryScenario } = useWhatIf(
+    portfolioId,
+    chosen?.kind === 'scenario' ? companyIdOfNode(chosen.nodeId) : null,
+  );
+  // A chosen alert lights the company it is about, the holdings it reaches, and every link on the way; an open scenario
+  // lights the stopped company, the holdings it reaches and every path to them. Closing either restores the graph.
   const focus = useMemo(() => {
+    if (chosen?.kind === 'scenario') return scenario.status === 'ready' ? scenarioFocus(scenario.result, view) : null;
     if (chosen?.kind !== 'alert') return null;
     const alert = view.alerts.find((item) => alertKey(item) === chosen.key);
     return alert ? spotlightOf(alert, view) : null;
-  }, [chosen, view]);
+  }, [chosen, scenario, view]);
 
   // ---------- Analysis and news, followed until they finish ----------
 
@@ -752,6 +761,8 @@ export function WorkspacePage() {
                   chosen={chosen}
                   view={view}
                   busyKey={busyKey}
+                  scenario={scenario}
+                  onRetryScenario={retryScenario}
                   onChoose={setChosen}
                   onWeight={saveWeight}
                   onRemove={(holding) => void removeHolding(holding)}

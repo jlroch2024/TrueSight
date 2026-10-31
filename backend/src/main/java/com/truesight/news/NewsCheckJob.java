@@ -30,6 +30,20 @@ public class NewsCheckJob {
 
     @Async
     public void run(Long portfolioId) {
+        check(portfolioId);
+    }
+
+    /** The daily check: every portfolio with an analysed holding, one after another. */
+    @Async
+    public void runDaily() {
+        for (Long portfolioId : service.portfolioIdsWithAnalysedHoldings()) {
+            if (service.startForDaily(portfolioId)) {
+                check(portfolioId);
+            }
+        }
+    }
+
+    private void check(Long portfolioId) {
         try {
             int attempted = 0;
             int succeeded = 0;

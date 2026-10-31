@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { AlertEvent } from '../../api/alerts';
 import type { Severity } from '../../api/news';
+import type { WhatIf } from '../../api/whatIf';
 import type { Holding } from '../../api/portfolios';
 import type { Relationship } from '../../api/relationships';
 import { type Risk, risksFrom } from '../../graph/model';
@@ -19,11 +20,15 @@ import {
   withSharedSummaries,
 } from '../../pages/supplyChain';
 
-/** What is chosen, and shown in the Inspector: a company (by graph node id), a relationship, or an alert. */
+/**
+ * What is chosen, and shown in the Inspector: a company (by graph node id), a relationship, an alert, or the scenario
+ * "what if this company stops?" (by the company's graph node id).
+ */
 export type Chosen =
   | { kind: 'company'; nodeId: string }
   | { kind: 'relationship'; relationshipId: number }
   | { kind: 'alert'; key: string }
+  | { kind: 'scenario'; nodeId: string }
   | null;
 
 /** An alert's own key: the ids of the alerts grouped into its event. */
@@ -145,4 +150,42 @@ export function spotlightOf(alert: AlertEvent, view: Pick<WorkspaceView, 'nodeId
     [reached.relationshipId, reached.secondRelationshipId].filter((id): id is number => id != null),
   );
   return { nodeIds: [...new Set(nodeIds)], relationshipIds: [...new Set(relationshipIds)] };
+}
+
+/**
+ * The company a graph node is, for asking the backend about it. A node on the graph is keyed by its company's id; a
+ * holding not on the graph has an id of its own (offGraphId) and no company the website knows, so none.
+ */
+export function companyIdOfNode(nodeId: string): number | null {
+  return /^\d+$/.test(nodeId) ? Number(nodeId) : null;
+}
+
+/**
+ * How much of the portfolio a stopped company reaches, as the figure to show: a share ("42.5%") when the holdings have
+ * weights, or a count ("3", "of 7 Holdings") when they do not.
+ */
+export function scenarioExposure(result: Pick<WhatIf, 'exposure' | 'weighted' | 'holdingCount'>) {
+  const value = Number(result.exposure.toFixed(1));
+  return result.weighted
+    ? { value, suffix: '%', label: 'of Portfolio' }
+    : { value, suffix: '', label: `of ${result.holdingCount} ${result.holdingCount === 1 ? 'Holding' : 'Holdings'}` };
+}
+
+/**
+ * What the graph lights for a scenario, as it lights a chosen alert: the stopped company, every holding it reaches,
+ * the companies between them, and the links of every path. Everything else fades.
+ */
+export function scenarioFocus(result: WhatIf, view: Pick<WorkspaceView, 'nodes' | 'nodeIdByHolding'>) {
+  const onGraph = new Set(view.nodes.map((node) => node.id));
+  const nodeIds = new Set<string>();
+  const add = (id: string | undefined) => {
+    if (id && onGraph.has(id)) nodeIds.add(id);
+  };
+  add(String(result.company.id));
+  result.holdings.forEach((reached) => add(view.nodeIdByHolding.get(reached.holdingId)));
+  result.links.forEach((link) => {
+    add(String(link.company.id));
+    add(String(link.counterparty.id));
+  });
+  return { nodeIds: [...nodeIds], relationshipIds: [...new Set(result.holdings.flatMap((reached) => reached.path))] };
 }

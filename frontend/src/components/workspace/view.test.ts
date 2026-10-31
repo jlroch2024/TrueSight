@@ -5,7 +5,17 @@ import type { ReachedHolding } from '../../api/alerts';
 import { sampleAlert, tsmcSuppliesNvidia } from '../../test/sampleAlerts';
 import { TSMC } from '../../test/sampleNews';
 import type { Holding } from '../../api/portfolios';
-import { alertKey, byUrgency, byWeight, exposureOf, offGraphId, spotlightOf } from './view';
+import {
+  alertKey,
+  byUrgency,
+  byWeight,
+  companyIdOfNode,
+  exposureOf,
+  offGraphId,
+  scenarioExposure,
+  scenarioFocus,
+  spotlightOf,
+} from './view';
 
 const view = {
   nodeIdByHolding: new Map([
@@ -123,5 +133,78 @@ describe('byWeight', () => {
     byWeight(given);
 
     expect(tickers(given)).toEqual(['B', 'A']);
+  });
+});
+
+describe('companyIdOfNode', () => {
+  it('isTheCompanyIdOfANodeOnTheGraphAndNothingForAHoldingOffTheGraph', () => {
+    expect(companyIdOfNode('11')).toBe(11);
+    expect(companyIdOfNode(offGraphId(7))).toBeNull();
+  });
+});
+
+describe('scenarioExposure', () => {
+  it('isAShareOfThePortfolioWhenTheHoldingsHaveWeightsOrACountOutOfAllTheHoldingsWhenTheyDoNot', () => {
+    expect(scenarioExposure({ exposure: 42.5, weighted: true, holdingCount: 7 })).toEqual({
+      value: 42.5,
+      suffix: '%',
+      label: 'of Portfolio',
+    });
+    expect(scenarioExposure({ exposure: 3, weighted: false, holdingCount: 7 })).toEqual({
+      value: 3,
+      suffix: '',
+      label: 'of 7 Holdings',
+    });
+    expect(scenarioExposure({ exposure: 1, weighted: false, holdingCount: 1 }).label).toBe('of 1 Holding');
+  });
+});
+
+describe('scenarioFocus', () => {
+  const nodes = ['1', '2', '6', '11'].map((id) => ({ id })) as never[];
+  const scenarioView = { nodes, nodeIdByHolding: view.nodeIdByHolding };
+  const company = (id: number) => ({ id, name: `Company ${id}`, displayName: `Company ${id}`, ticker: null });
+  const link = (id: number, companyId: number, counterpartyId: number) =>
+    ({ id, company: company(companyId), counterparty: company(counterpartyId), type: 'SUPPLIER' }) as never;
+  const result = (holdings: { holdingId: number; path: number[] }[], links: never[]) =>
+    ({
+      company: company(11),
+      holdings: holdings.map((reached) => ({ ...reached, ticker: 'X', weight: null, indirect: reached.path.length > 1 })),
+      links,
+      criticalLinks: [],
+      exposure: 0,
+      weighted: false,
+      holdingCount: 0,
+      assumptions: '',
+    }) as never;
+
+  it('lightsTheStoppedCompanyTheHoldingsItReachesAndEveryLinkOfTheirPaths', () => {
+    const focus = scenarioFocus(
+      result([{ holdingId: 1, path: [1] }], [link(1, 1, 11)]),
+      scenarioView,
+    );
+
+    expect(focus.nodeIds.sort()).toEqual(['1', '11']);
+    expect(focus.relationshipIds).toEqual([1]);
+  });
+
+  it('lightsTheCompanyBetweenAndBothLinksOfAHoldingReachedInTwoSteps', () => {
+    // 11 supplies 6 (relationship 14), which supplies 1 (relationship 1).
+    const focus = scenarioFocus(
+      result([{ holdingId: 1, path: [14, 1] }], [link(14, 6, 11), link(1, 1, 6)]),
+      scenarioView,
+    );
+
+    expect(focus.nodeIds.sort()).toEqual(['1', '11', '6']);
+    expect(focus.relationshipIds).toEqual([14, 1]);
+  });
+
+  it('lightsOnlyTheCompanyItselfWhenItIsTheHolding', () => {
+    const focus = scenarioFocus({ ...(result([{ holdingId: 1, path: [] }], []) as object), company: company(1) } as never, scenarioView);
+
+    expect(focus).toEqual({ nodeIds: ['1'], relationshipIds: [] });
+  });
+
+  it('lightsNothingBeyondTheGraphForACompanyReachingNoHolding', () => {
+    expect(scenarioFocus(result([], []), scenarioView)).toEqual({ nodeIds: ['11'], relationshipIds: [] });
   });
 });
