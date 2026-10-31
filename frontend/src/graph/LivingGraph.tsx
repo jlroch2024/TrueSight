@@ -89,6 +89,8 @@ type Props = {
   topBar?: { left: number; right: number };
   // Something of the page's to put first in that band, before the title (the workspace's Open Alerts bar).
   barStart?: ReactNode;
+  // Something of the page's to put last in that band, after the search (the workspace's Load History button).
+  barEnd?: ReactNode;
 };
 
 /** Companies and links to light, by node id and relationship id. */
@@ -236,6 +238,7 @@ export function LivingGraph({
   insets = NO_INSETS,
   topBar,
   barStart,
+  barEnd,
 }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -979,6 +982,7 @@ export function LivingGraph({
 
   const inBar = topBar !== undefined;
   const hasBarStart = barStart !== undefined && barStart !== null;
+  const hasBarEnd = barEnd !== undefined && barEnd !== null;
   // The room is measured as the bars move (a panel opening, the window resized) and as the page's own bar in the row
   // changes width (the Open Alerts bar opening).
   useEffect(() => {
@@ -996,7 +1000,7 @@ export function LivingGraph({
     for (const item of top.children) observer.observe(item);
     measure();
     return () => observer.disconnect();
-  }, [inBar, hasBarStart]);
+  }, [inBar, hasBarStart, hasBarEnd]);
 
   return (
     <>
@@ -1085,6 +1089,7 @@ export function LivingGraph({
               )}
             </AnimatePresence>
           </div>
+          {barEnd}
 
           {!bare && (
             <div className="lg-top-right">

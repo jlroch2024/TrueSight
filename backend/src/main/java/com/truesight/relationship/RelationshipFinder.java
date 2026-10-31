@@ -82,10 +82,11 @@ public class RelationshipFinder {
     private final AiCallRepository aiCalls;
     private final AiCallLog calls;
     private final SecondCheck secondCheck;
+    private final PastRelationshipRepository pastRelationships;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
                               RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls,
-                              SecondCheck secondCheck) {
+                              SecondCheck secondCheck, PastRelationshipRepository pastRelationships) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
@@ -93,6 +94,7 @@ public class RelationshipFinder {
         this.aiCalls = aiCalls;
         this.calls = calls;
         this.secondCheck = secondCheck;
+        this.pastRelationships = pastRelationships;
     }
 
     /**
@@ -121,11 +123,73 @@ public class RelationshipFinder {
                 PROMPT.formatted(company.getName(), report.getForm(), AiRequest.reportMarker(report.getId(), section)));
         Asked asked = ask(request);
 
+        Proof proof = prove(asked.found(), report, company);
+        QuoteChecker checker = proof.checker();
+        List<Relationship> proven = new ArrayList<>();
+        for (Provable found : proof.proven()) {
+            GeminiAnswer.Found item = found.item();
+            Relationship relationship = new Relationship(report.getId(), company.getId(), found.counterparty().getId(),
+                    item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
+                    found.match().evidence());
+            relationship.setQuoteMatch(found.match().recordedShare());
+            if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
+                checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
+                    relationship.setCriticality(item.criticality());
+                    relationship.setCriticalityEvidence(criticalityEvidence);
+                });
+            }
+            proven.add(relationship);
+        }
+        relationships.saveAll(proven);
+        calls.finish(asked.callId(), proven.size(), proof.dropped());
+        // A second AI reads each saved claim with its sentence. It never fails the analysis: if it cannot answer, the
+        // relationships stay saved with no second check, and the analyst-run pass asks again.
+        secondCheck.run(proven, report.getId());
+    }
+
+    /**
+     * Finds the relationships in one of {@code company}'s older annual reports, with the same prompt and the same quote
+     * check as {@link #findIn}, and saves them as past relationships for the SEC Filing Timeline. They get no
+     * criticality and no second check, and the graph, alerts and review queue never see them. Does nothing if the
+     * report has been read for the timeline already, even if it named nothing.
+     *
+     * @throws GeminiClient.GeminiException if the AI fails; its message is the reason to show
+     */
+    @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
+    public void findPast(Report report, Company company) {
+        if (pastRelationships.existsByReportId(report.getId())
+                || aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                report.getId(), AiPurpose.TIMELINE, AiOutcome.ANSWERED)) {
+            return;
+        }
+        String section = ReportSection.forAi(report.getForm(), report.getText());
+        AiRequest request = new AiRequest(AiPurpose.TIMELINE,
+                PROMPT.formatted(company.getName(), report.getForm(), section), report.getId(),
+                PROMPT.formatted(company.getName(), report.getForm(), AiRequest.reportMarker(report.getId(), section)));
+        Asked asked = ask(request);
+
+        Proof proof = prove(asked.found(), report, company);
+        List<PastRelationship> past = proof.proven().stream()
+                .map(found -> new PastRelationship(report.getId(), company.getId(), found.counterparty().getId(),
+                        found.item().relationship(),
+                        found.item().provides().isEmpty() ? null : cut(found.item().provides(), MAX_PROVIDES),
+                        found.match().evidence()))
+                .toList();
+        pastRelationships.saveAll(past);
+        calls.finish(asked.callId(), past.size(), proof.dropped());
+    }
+
+    /**
+     * Checks each quote against the report, and finds or creates each company: the relationships that can be proven.
+     * A quote that is not in the report is dropped (and counted); the company itself and the same relationship twice
+     * are skipped.
+     */
+    private Proof prove(List<GeminiAnswer.Found> found, Report report, Company company) {
         QuoteChecker checker = new QuoteChecker(report.getText());
         Set<String> saved = new HashSet<>();
-        List<Relationship> proven = new ArrayList<>();
+        List<Provable> proven = new ArrayList<>();
         int dropped = 0;
-        for (GeminiAnswer.Found item : asked.found()) {
+        for (GeminiAnswer.Found item : found) {
             Optional<QuoteChecker.QuoteMatch> match = checker.match(item.quote());
             if (match.isEmpty()) {
                 dropped++;
@@ -141,23 +205,16 @@ public class RelationshipFinder {
                     || !saved.add(counterparty.getId() + " " + item.relationship() + " " + match.get().evidence())) {
                 continue; // the company itself, or the same relationship twice
             }
-            Relationship relationship = new Relationship(report.getId(), company.getId(), counterparty.getId(),
-                    item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
-                    match.get().evidence());
-            relationship.setQuoteMatch(match.get().recordedShare());
-            if (item.relationship() == RelationshipType.SUPPLIER && item.criticality() != null) {
-                checker.evidenceFor(item.criticalityQuote()).ifPresent(criticalityEvidence -> {
-                    relationship.setCriticality(item.criticality());
-                    relationship.setCriticalityEvidence(criticalityEvidence);
-                });
-            }
-            proven.add(relationship);
+            proven.add(new Provable(item, counterparty, match.get()));
         }
-        relationships.saveAll(proven);
-        calls.finish(asked.callId(), proven.size(), dropped);
-        // A second AI reads each saved claim with its sentence. It never fails the analysis: if it cannot answer, the
-        // relationships stay saved with no second check, and the analyst-run pass asks again.
-        secondCheck.run(proven, report.getId());
+        return new Proof(proven, dropped, checker);
+    }
+
+    /** A relationship the report proves: what the AI said, the company it is with, and where the quote was found. */
+    private record Provable(GeminiAnswer.Found item, Company counterparty, QuoteChecker.QuoteMatch match) {
+    }
+
+    private record Proof(List<Provable> proven, int dropped, QuoteChecker checker) {
     }
 
     /** What Gemini found, and the record of the call that found it. */

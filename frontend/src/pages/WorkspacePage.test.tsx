@@ -6,7 +6,7 @@
 // in docs/examples/google-news-tsmc.xml (test/sampleAlerts.ts). The graph draws on a <canvas>, which jsdom cannot draw
 // on, so it is replaced with a fake that shows what it was given and has a button per company and per link; what the
 // real graph does with it is tested in src/graph/.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router';
@@ -16,6 +16,7 @@ import { App } from '../App';
 import type { AlertEvent, ReachedHolding } from '../api/alerts';
 import { tokenStore } from '../api/client';
 import type { Holding, Portfolio } from '../api/portfolios';
+import type { History, HistoryEntry, HistoryYear } from '../api/history';
 import type { Relationship } from '../api/relationships';
 import type { WhatIf } from '../api/whatIf';
 import type { GraphFocus } from '../graph/LivingGraph';
@@ -41,6 +42,7 @@ vi.mock('../graph/LivingGraph', () => ({
     bare?: boolean;
     insets?: { top: number; right: number; bottom: number; left: number };
     barStart?: ReactNode;
+    barEnd?: ReactNode;
   }) => (
     <div data-testid="fake-graph">
       {props.barStart}
@@ -57,6 +59,7 @@ vi.mock('../graph/LivingGraph', () => ({
       <span data-testid="alert-dots">
         {[...(props.alertDots ?? [])].map(([nodeId, severity]) => `${nodeId}:${severity}`).sort().join(',')}
       </span>
+      {props.barEnd}
       {props.edges.map((edge) => (
         <button key={edge.id} type="button" onClick={() => props.onEdgeSelect(edge.relationshipId)}>
           {`Link ${edge.relationshipId}`}
@@ -131,6 +134,9 @@ type Backend = {
   found?: AlertEvent[];
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
+  // What the SEC Filing Timeline has read (nothing, unless a test says), and what it is once loading is asked for.
+  history?: History;
+  afterLoadHistory?: History;
   // The answer to "what if this company stops?", by company id, or the status code to fail with.
   whatIf?: (companyId: number) => WhatIf | number;
   sent: { method: string; url: string; body: unknown }[];
@@ -161,6 +167,13 @@ function answer(url: string, init: RequestInit = {}): Response {
       if (backend.found) backend.alerts = backend.found;
     }
     return json([backend.portfolio, { id: 9, name: 'Utilities', createdAt: '', newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: null }]);
+  }
+  if (url === `${base}/history`) {
+    if (method === 'POST') {
+      if (backend.afterLoadHistory) backend.history = backend.afterLoadHistory;
+      return new Response(null, { status: 202 });
+    }
+    return json(backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, years: [] });
   }
   if (url === `${base}/news-check` && method === 'POST') {
     backend.portfolio = { ...backend.portfolio, newsStatus: 'CHECKING' };
@@ -1024,6 +1037,123 @@ describe('the Inspector', () => {
 
 // ---- The graph's marks and logos -------------------------------------------------------------------------------------
 
+// ---- Load History ------------------------------------------------------------------------------------------------
+
+function entry(counterparty: number, type: HistoryEntry['type'], change: HistoryEntry['change'] = 'NEW'): HistoryEntry {
+  return {
+    key: `${NVIDIA.id}-${counterparty}-${type}`,
+    companyId: NVIDIA.id,
+    counterpartyId: counterparty,
+    type,
+    provides: 'wafers',
+    evidence: sample[0]!.evidence,
+    reportUrl: sample[0]!.report.url,
+    filingDate: '2026-02-25',
+    change,
+  };
+}
+
+function year(value: number, relationships: HistoryEntry[] = [], gone: string[] = []): HistoryYear {
+  return { year: value, relationships, gone };
+}
+
+function history(overrides: Partial<History> = {}): History {
+  return { status: 'IDLE', reason: null, progress: null, unread: 0, years: [year(2026)], ...overrides };
+}
+
+/** Waits until the workspace has asked for the history and shown the answer. */
+async function historyRead() {
+  await waitFor(() =>
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toContain(`/api/portfolios/${backend.portfolio.id}/history`),
+  );
+  await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+}
+
+describe('Load History', () => {
+  it('isOfferedWithHowManyEarlierReportsItReads', async () => {
+    backend.history = history({ unread: 6 });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('button', { name: /Load History/ })).toHaveTextContent('Reads 6 Earlier Reports');
+  });
+
+  it('asksTheBackendToReadThemAndShowsHowFarItHasGot', async () => {
+    backend.history = history({ unread: 6 });
+    backend.afterLoadHistory = history({ status: 'READING', progress: { done: 3, total: 6 }, unread: 3 });
+    renderAt();
+    await graph();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Load History/ }));
+
+    expect(backend.sent).toContainEqual({ method: 'POST', url: `/api/portfolios/${backend.portfolio.id}/history`, body: undefined });
+    const reading = await screen.findByText('Reading Earlier Reports');
+    expect(reading.closest('.history-bar')).toHaveTextContent('3 of 6 Read');
+  });
+
+  it('showsWhyReadingFailedAndReadsAgainWhenRetried', async () => {
+    backend.history = history({ status: 'FAILED', reason: 'The SEC could not be reached.', progress: { done: 1, total: 6 }, unread: 5 });
+    backend.afterLoadHistory = history({ status: 'READING', progress: { done: 1, total: 6 }, unread: 5 });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The SEC could not be reached.');
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(backend.sent.filter((request) => request.url.endsWith('/history'))).toHaveLength(1);
+    expect(await screen.findByText('Reading Earlier Reports')).toBeInTheDocument();
+  });
+
+  it('offersAHoldingAddedLaterOnItsOwn', async () => {
+    backend.history = history({ unread: 2, years: [year(2024), year(2025), year(2026)] });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('button', { name: /Load History for 1 New Holding/ })).toHaveTextContent(
+      'Reads 2 Earlier Reports',
+    );
+  });
+
+  it('isNotOfferedOnceEveryHoldingIsRead', async () => {
+    backend.history = history({ unread: 0, years: [year(2024), year(2025), year(2026)] });
+    renderAt();
+    await graph();
+    await historyRead();
+
+    expect(screen.queryByRole('button', { name: /Load History/ })).not.toBeInTheDocument();
+  });
+
+  it('tellsInTheInspectorWhichYearsACompanyWasNamedInAsASupplierAndAsACustomer', async () => {
+    const tsmc = sample[0]!.counterparty.id;
+    backend.history = history({
+      years: [
+        year(2024, [entry(tsmc, 'SUPPLIER')]),
+        year(2025, [entry(tsmc, 'SUPPLIER', 'KEPT'), entry(tsmc, 'CUSTOMER')]),
+        year(2026, [entry(tsmc, 'SUPPLIER', 'KEPT')]),
+      ],
+    });
+    renderAt();
+    await graph();
+    await screen.findByRole('button', { name: `Company ${tsmc}` });
+    await historyRead();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${tsmc}` }));
+
+    const lines = await within(inspector()).findByRole('region', { name: 'History' });
+    expect(lines).toHaveTextContent('Named as a Supplier in 2024, 2025 and 2026');
+    expect(lines).toHaveTextContent('Named as a Customer in 2025');
+  });
+
+  it('saysNothingInTheInspectorOfACompanyTheTimelineNeverNamed', async () => {
+    backend.history = history({ years: [year(2024, [entry(sample[0]!.counterparty.id, 'SUPPLIER')]), year(2026)] });
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${LAM.id}` }));
+
+    expect(within(inspector()).queryByRole('region', { name: 'History' })).not.toBeInTheDocument();
+  });
+});
 // ---- What If It Stops? --------------------------------------------------------------------------------------------
 
 /**
