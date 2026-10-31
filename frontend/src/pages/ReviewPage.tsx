@@ -408,15 +408,11 @@ export function ReviewPage({ onChanged }: { onChanged?: () => void }) {
     };
   }, []);
 
-  const names = useMemo(
-    () =>
-      (all ?? [])
-        .flatMap((item) => [item.relationship.company, item.relationship.counterparty])
-        .filter((company) => !company.ticker)
-        .map((company) => company.name),
+  const companies = useMemo(
+    () => (all ?? []).flatMap((item) => [item.relationship.company, item.relationship.counterparty]),
     [all],
   );
-  const logoSettings = useLogoSettings(names);
+  const logoSettings = useLogoSettings(companies);
 
   // A decided relationship takes its new status in the full list. The shown list and the counts follow from it, so
   // approving an Unreviewed one takes it off the Unreviewed list and adds one to Approved.

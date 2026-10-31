@@ -4,17 +4,23 @@
 // - a logo whose own background is a solid colour (most app-style marks, or AMD's black square once its white border is
 //   trimmed) fills the whole tile, edge to edge, in that colour;
 // - a light logo on a clear background (white lettering) sits on a dark tile, where it can be seen;
+// - a dark logo on a clear background (General Motors' black mark) sits on a white tile, where it can be seen;
 // - any other logo sits on a white tile, at one size whatever margin its image had.
-// A company Logo.dev does not know (it answers "not found"), or every company when there is no token, shows its
-// initials instead (see the renderer).
+// A logo is asked for by ticker only for a US ticker (a home ticker such as Samsung's 005930 is unknown to Logo.dev, or
+// names another company); any other company by its website's domain. When the ticker address answers "not found", the
+// domain is tried; a company found by neither (or every company when there is no token) shows its initials instead
+// (see the renderer).
+import { logoApi } from '../api/logos';
 import type { LiveNode } from './model';
 
 const LOGO_HOST = 'https://img.logo.dev';
 // 128 px, twice over for sharp screens, as PNG so a clear background stays clear; "not found" rather than Logo.dev's
 // own letter, so TrueSight can draw its own.
 const LOGO_OPTIONS = 'size=128&retina=true&format=png&fallback=404';
+// Letters, with an optional dot and class letter (BRK.B).
+const US_TICKER = /^[A-Z]{1,5}(\.[A-Z])?$/;
 
-export type Treatment = 'bleed' | 'light' | 'plain';
+export type Treatment = 'bleed' | 'light' | 'dark' | 'plain';
 /** The part of a logo's image worth drawing, as shares of its width and height (0 to 1). */
 export type Crop = { x: number; y: number; w: number; h: number };
 /** How a logo sits on its tile: the treatment, the tile's colour, and the part of the image to draw. */
@@ -24,11 +30,43 @@ export type Logo =
 
 const WHOLE: Crop = { x: 0, y: 0, w: 1, h: 1 };
 
-/** Where a company's logo is: by ticker, or by its website's domain; null when there is neither, or no token. */
+/** Whether a ticker is a US one, the only kind Logo.dev's ticker address is asked about. */
+export function isUsTicker(ticker: string | null | undefined): boolean {
+  return !!ticker && US_TICKER.test(ticker);
+}
+
+/**
+ * Where a company's logo is: by its US ticker, or else by its website's domain; null when there is neither, or no
+ * token.
+ */
 export function logoSource(node: Pick<LiveNode, 'ticker'>, token: string, domain?: string): string | null {
   if (!token) return null;
-  const path = node.ticker ? `ticker/${encodeURIComponent(node.ticker)}` : domain ? encodeURIComponent(domain) : null;
+  const path = isUsTicker(node.ticker)
+    ? `ticker/${encodeURIComponent(node.ticker!)}`
+    : domain
+      ? encodeURIComponent(domain)
+      : null;
   return path ? `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}` : null;
+}
+
+/**
+ * A company's logo address by its website's domain, asked of the backend: what LogoBook tries when Logo.dev does not
+ * know a US ticker. Null when no domain is known, or it cannot be asked.
+ */
+export function domainSource(name: string, token: string): Promise<string | null> {
+  return logoApi
+    .domains([name])
+    .then((found) => logoSource({ ticker: null }, token, found[name]))
+    .catch(() => null);
+}
+
+/** What LogoBook tries when a company's logo address fails: its domain, for a company asked for by its US ticker. */
+export function domainFallback(
+  node: Pick<LiveNode, 'ticker'>,
+  name: string,
+  token: string,
+): (() => Promise<string | null>) | undefined {
+  return token && isUsTicker(node.ticker) ? () => domainSource(name, token) : undefined;
 }
 
 /** A colour's brightness as the eye sees it, from 0 (black) to 1 (white). */
@@ -47,7 +85,8 @@ function solidAndAlike(corners: Pixel[]): boolean {
 
 /**
  * How a logo should sit on its tile, from its pixels (RGBA, row by row, width × height). Its margin (whatever matches
- * its corners, white or clear) is trimmed off first; then, if what is left is itself a solid block of one colour, or
+ * its corners, white or clear) is trimmed off first; then, if it is a nearly black mark on a clear background, it goes
+ * on a white tile ("dark"); if what is left is itself a solid block of one colour, or
  * the image's own background is a solid colour other than white, it fills the tile on that colour ("bleed"); if what
  * is drawn is nearly white, it needs a dark tile ("light"); otherwise it goes on a white tile ("plain").
  */
@@ -107,6 +146,25 @@ export function treatmentOf(pixels: Uint8ClampedArray, width: number, height: nu
   const trimmed: Crop =
     x2 < 0 ? WHOLE : { x: x1 / width, y: y1 / height, w: (x2 - x1 + 1) / width, h: (y2 - y1 + 1) / height };
 
+  // What is drawn: how bright it is, and how much of it is nearly black.
+  let total = 0;
+  let count = 0;
+  let black = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pixel = at(x, y);
+      if (!isLogo(pixel) || pixel[3] < 128) continue;
+      const brightness = luminance(pixel[0], pixel[1], pixel[2]);
+      total += brightness;
+      count++;
+      if (brightness < 0.15) black++;
+    }
+  }
+  // A nearly black mark on a clear background (General Motors' black frame) goes on a white tile. Checked before the
+  // solid block below, which would take its black frame for a background and fill the tile with black, hiding the
+  // mark. AMD's black square is not one: its white mark is drawn too.
+  if (clear && count > 0 && black >= count * 0.97) return { treatment: 'dark', background: '#ffffff', crop: trimmed };
+
   // What is left is a solid block of its own (AMD's black square on a white border): it fills the tile, in its colour.
   if (x2 >= 0 && x2 - x1 > width * 0.3 && y2 - y1 > height * 0.3) {
     const edge = Math.max(1, Math.round((x2 - x1) * 0.06));
@@ -141,50 +199,57 @@ export function treatmentOf(pixels: Uint8ClampedArray, width: number, height: nu
     return { treatment: 'bleed', background: `rgb(${r}, ${g}, ${b})`, crop: WHOLE };
   }
 
-  // A mark on white or clear: how bright what is drawn is.
-  let total = 0;
-  let count = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const pixel = at(x, y);
-      if (!isLogo(pixel) || pixel[3] < 128) continue;
-      total += luminance(pixel[0], pixel[1], pixel[2]);
-      count++;
-    }
-  }
+  // A mark on white or clear: a nearly white one needs a dark tile.
   if (clear && count > 0 && total / count > 0.86) return { treatment: 'light', background: '#111827', crop: trimmed };
   return { treatment: 'plain', background: '#ffffff', crop: trimmed };
 }
 
 /**
  * Loads logos once each, and keeps them: asked for a company's logo, it answers what it has (loading, missing or
- * ready) and starts loading the first time. onChange is called whenever one arrives, so the graph can redraw.
+ * ready) and starts loading the first time. onChange is called whenever one arrives, so the graph can redraw. When the
+ * address fails, fallback (asked once) may give another address to try, such as the domain's for a ticker Logo.dev does
+ * not know; the logo is kept under the first address either way.
  */
 export class LogoBook {
   private readonly logos = new Map<string, Logo>();
 
   constructor(private readonly onChange: () => void) {}
 
-  get(source: string | null): Logo {
+  get(source: string | null, fallback?: () => Promise<string | null>): Logo {
     if (!source) return { state: 'missing' };
     const known = this.logos.get(source);
     if (known) return known;
     this.logos.set(source, { state: 'loading' });
     if (typeof Image === 'undefined') return { state: 'loading' };
+    this.load(source, source, fallback);
+    return { state: 'loading' };
+  }
+
+  private load(key: string, address: string, fallback?: () => Promise<string | null>) {
     const image = new Image();
     // Logo.dev allows reading its images from a page, which looking at a logo's pixels needs.
     image.crossOrigin = 'anonymous';
     image.decoding = 'async';
     image.onload = () => {
-      this.logos.set(source, { state: 'ready', image, ...this.look(image) });
+      this.logos.set(key, { state: 'ready', image, ...this.look(image) });
       this.onChange();
     };
     image.onerror = () => {
-      this.logos.set(source, { state: 'missing' });
-      this.onChange();
+      if (fallback) {
+        void fallback().then((next) => {
+          if (next && next !== address) this.load(key, next);
+          else this.missing(key);
+        });
+        return;
+      }
+      this.missing(key);
     };
-    image.src = source;
-    return { state: 'loading' };
+    image.src = address;
+  }
+
+  private missing(key: string) {
+    this.logos.set(key, { state: 'missing' });
+    this.onChange();
   }
 
   /** How a loaded logo should sit; a plain white tile when its pixels cannot be read. */
