@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-/** Writes one analyst-reviewed research suggestion for each newly alerted article. */
+/** Writes one analyst-reviewed research suggestion for each newly alerted event. */
 @Component
 @Order(3)
 public class RecommendationWriter implements NewsCheckStep {
@@ -49,7 +49,7 @@ public class RecommendationWriter implements NewsCheckStep {
     private final RelationshipRepository relationships;
     private final GeminiClient gemini;
     private final ObjectMapper mapper;
-    private final ConcurrentHashMap<Long, Object> articleLocks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object> eventLocks = new ConcurrentHashMap<>();
 
     public RecommendationWriter(NewsArticleRepository articles, NewsAssessmentRepository assessments,
                                AlertRepository alerts, RecommendationRepository recommendations,
@@ -73,18 +73,31 @@ public class RecommendationWriter implements NewsCheckStep {
         Map<Long, NewsAssessment> judgment = assessments.findByArticleIdIn(articleIds).stream()
                 .collect(Collectors.toMap(NewsAssessment::getArticleId, item -> item));
         for (NewsArticle article : articles.findAllById(articleIds)) {
-            if (!judgment.containsKey(article.getId())) continue;
-            synchronized (articleLocks.computeIfAbsent(article.getId(), ignored -> new Object())) {
-                if (recommendations.findByArticleId(article.getId()).isPresent()) continue;
+            NewsAssessment assessment = judgment.get(article.getId());
+            if (assessment == null) continue;
+            // One lock per event (company and type), so two news checks at once still write only one suggestion.
+            String eventKey = article.getCompanyId() + ":" + assessment.getEventType();
+            synchronized (eventLocks.computeIfAbsent(eventKey, ignored -> new Object())) {
                 try {
-                    recommendations.save(write(article, judgment.get(article.getId())));
+                    if (eventHasSuggestion(article)) continue;
+                    recommendations.save(write(article, assessment));
                 } catch (RuntimeException failure) {
-                    // Recommendation generation must never fail the news check; absence makes this article eligible next time.
+                    // Recommendation generation must never fail the news check; absence makes this event eligible next time.
                     log.warn("Could not write a recommendation for article {}. It will be retried on the next news check.",
                             article.getId(), failure);
                 }
             }
         }
+    }
+
+    /** Whether any saved article of this article's event, across all portfolios, already has a suggestion. */
+    private boolean eventHasSuggestion(NewsArticle article) {
+        List<NewsArticle> companyArticles = articles.findByCompanyIdOrderByPublishedAtDesc(article.getCompanyId());
+        List<NewsAssessment> companyAssessments = assessments.findByArticleIdIn(
+                companyArticles.stream().map(NewsArticle::getId).toList());
+        List<Long> eventArticleIds = NewsEvents.articleIdsOfEventContaining(article.getId(), companyArticles,
+                companyAssessments);
+        return !recommendations.findByArticleIdIn(eventArticleIds).isEmpty();
     }
 
     private Recommendation write(NewsArticle article, NewsAssessment assessment) {

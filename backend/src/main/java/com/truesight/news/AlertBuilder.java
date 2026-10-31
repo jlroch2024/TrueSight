@@ -6,15 +6,12 @@ import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
-import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,10 +23,9 @@ import java.util.stream.Stream;
  * See What a News Event Affects: the second news-check step. For each article the AI judged a real event, it finds
  * the portfolio's holdings the event reaches, and saves one {@link Alert} listing them.
  *
- * <p>An event about company E reaches holding H when H is E itself, or when a relationship that is not Rejected joins
- * them one step along the graph, whichever report it came from and whichever way it points: E supplies H, E buys from
- * H, H supplies E, or H buys from E. If several relationships join the same pair, the Approved one is kept, then the
- * lowest id.
+ * <p>Which holdings an event reaches is {@link Reach}'s rule, with {@link Reach.Direction#EITHER_WAY}: an event about
+ * company E reaches holding H when H is E itself, or when a relationship that is not Rejected joins them one step along
+ * the graph, whichever report it came from and whichever way it points, or when E supplies a company that supplies H.
  *
  * <p>The alert's exposure is the total weight of the holdings reached (12.5 means 12.5%). A holding with no weight
  * counts as 0; if no holding in the portfolio has a weight, exposure is the number of holdings reached instead.
@@ -43,14 +39,6 @@ import java.util.stream.Stream;
 @Component
 @Order(2)
 public class AlertBuilder implements NewsCheckStep {
-
-    /** Approved first, then the lowest id: the relationship kept when several join the same holding and company. */
-    private static final Comparator<Relationship> PREFERRED = Comparator
-            .comparing((Relationship relationship) -> relationship.getReviewStatus() != ReviewStatus.APPROVED)
-            .thenComparing(Relationship::getId);
-    private static final Comparator<PathCandidate> PREFERRED_PATH = Comparator
-            .comparing(PathCandidate::first, PREFERRED)
-            .thenComparing(PathCandidate::second, PREFERRED);
 
     private final NewsCheckService newsCheck;
     private final PortfolioRepository portfolios;
@@ -132,62 +120,12 @@ public class AlertBuilder implements NewsCheckStep {
         for (NewsArticle article : found) {
             if (!events.contains(article.getId())) continue;
             if (alerts.existsByPortfolioIdAndArticleId(portfolioId, article.getId())) continue;
-            Map<Holding, Path> reached = reached(article.getCompanyId(), held, links);
+            Map<Holding, Reach.Path> reached = Reach.reached(article.getCompanyId(), held, links,
+                    Reach.Direction.EITHER_WAY);
             if (!reached.isEmpty()) {
                 save(portfolioId, article.getId(), reached, exposure(reached.keySet(), held));
             }
         }
-    }
-
-    /**
-     * Each holding an event about {@code eventCompany} reaches, with the relationship that links it, or null when the
-     * event is about the holding itself.
-     */
-    static Map<Holding, Path> reached(Long eventCompany, List<Holding> held, List<Relationship> links) {
-        Map<Holding, Path> reached = new LinkedHashMap<>();
-        for (Holding holding : held) {
-            Long company = holding.getCompanyId();
-            if (company.equals(eventCompany)) {
-                reached.put(holding, new Path(null, null));
-                continue;
-            }
-            links.stream()
-                    .filter(link -> joins(link, company, eventCompany))
-                    .min(PREFERRED)
-                    .ifPresent(link -> reached.put(holding, new Path(link.getId(), null)));
-        }
-        for (Holding holding : held) {
-            if (reached.containsKey(holding)) continue;
-            Long company = holding.getCompanyId();
-            links.stream()
-                    .filter(second -> supplies(second, supplierOf(second), company))
-                    .flatMap(second -> links.stream()
-                            .filter(first -> supplies(first, eventCompany, supplierOf(second)))
-                            .map(first -> new PathCandidate(first, second)))
-                    .min(PREFERRED_PATH)
-                    .ifPresent(path -> reached.put(holding,
-                            new Path(path.first().getId(), path.second().getId())));
-        }
-        return reached;
-    }
-
-    /** True when the relationship joins these two companies, from either one's report, whichever way it points. */
-    private static boolean joins(Relationship link, Long first, Long second) {
-        return (link.getCompanyId().equals(first) && link.getCounterpartyId().equals(second))
-                || (link.getCompanyId().equals(second) && link.getCounterpartyId().equals(first));
-    }
-
-    /** True when this relationship says {@code supplier} supplies {@code customer}. */
-    private static boolean supplies(Relationship link, Long supplier, Long customer) {
-        return supplierOf(link).equals(supplier) && customerOf(link).equals(customer);
-    }
-
-    private static Long supplierOf(Relationship link) {
-        return link.getType() == RelationshipType.SUPPLIER ? link.getCounterpartyId() : link.getCompanyId();
-    }
-
-    private static Long customerOf(Relationship link) {
-        return link.getType() == RelationshipType.SUPPLIER ? link.getCompanyId() : link.getCounterpartyId();
     }
 
     /** The total weight of the holdings reached, or how many there are when no holding in the portfolio has one. */
@@ -205,7 +143,7 @@ public class AlertBuilder implements NewsCheckStep {
     }
 
     /** Saves the alert and its holdings together, so an alert never exists without the holdings it reaches. */
-    private void save(Long portfolioId, Long articleId, Map<Holding, Path> reached, BigDecimal exposure) {
+    private void save(Long portfolioId, Long articleId, Map<Holding, Reach.Path> reached, BigDecimal exposure) {
         transaction.executeWithoutResult(status -> {
             Alert alert = alerts.save(new Alert(portfolioId, articleId, exposure));
             reached.forEach((holding, path) -> {
@@ -214,11 +152,5 @@ public class AlertBuilder implements NewsCheckStep {
                 alertHoldings.save(found);
             });
         });
-    }
-
-    record Path(Long relationshipId, Long secondRelationshipId) {
-    }
-
-    private record PathCandidate(Relationship first, Relationship second) {
     }
 }

@@ -2,13 +2,15 @@
 // relationship or an alert each has its own view (InspectorCompany, InspectorRelationship, InspectorAlert); changing
 // what is chosen slides the new view in.
 import { AnimatePresence, motion } from 'motion/react';
-import { FileText, Link2, Waypoints } from 'lucide-react';
+import { FileText, Link2, Octagon, Waypoints } from 'lucide-react';
 import type { AlertEvent } from '../../api/alerts';
 import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
 import { AlertView } from './InspectorAlert';
 import { CompanyView } from './InspectorCompany';
 import { RelationshipView } from './InspectorRelationship';
+import { ScenarioView } from './InspectorScenario';
+import type { Scenario } from './useWhatIf';
 import type { Chosen, WorkspaceView } from './view';
 
 type Props = {
@@ -16,6 +18,9 @@ type Props = {
   view: WorkspaceView;
   // The alert whose change is being saved.
   busyKey: string | null;
+  // What happens if the chosen company stops, while the scenario is open.
+  scenario: Scenario;
+  onRetryScenario: () => void;
   onChoose: (chosen: Chosen) => void;
   onWeight: (holding: Holding, weight: string) => Promise<string | null>;
   onRemove: (holding: Holding) => void;
@@ -25,8 +30,15 @@ type Props = {
   history: History | null;
 };
 
-export function InspectorBody({ chosen, view, busyKey, history, onChoose, onWeight, onRemove, onClose, onRestore }: Props) {
-  const key = chosen.kind === 'company' ? chosen.nodeId : chosen.kind === 'relationship' ? `r${chosen.relationshipId}` : chosen.key;
+export function InspectorBody({ chosen, view, busyKey, history, scenario, onRetryScenario, onChoose, onWeight, onRemove, onClose, onRestore }: Props) {
+  const key =
+    chosen.kind === 'company'
+      ? chosen.nodeId
+      : chosen.kind === 'relationship'
+        ? `r${chosen.relationshipId}`
+        : chosen.kind === 'scenario'
+          ? `s${chosen.nodeId}`
+          : chosen.key;
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
@@ -40,6 +52,9 @@ export function InspectorBody({ chosen, view, busyKey, history, onChoose, onWeig
           <CompanyView view={view} nodeId={chosen.nodeId} history={history} onChoose={onChoose} onWeight={onWeight} onRemove={onRemove} />
         )}
         {chosen.kind === 'relationship' && <RelationshipView view={view} relationshipId={chosen.relationshipId} onChoose={onChoose} />}
+        {chosen.kind === 'scenario' && (
+          <ScenarioView view={view} nodeId={chosen.nodeId} scenario={scenario} onRetry={onRetryScenario} onChoose={onChoose} />
+        )}
         {chosen.kind === 'alert' && (
           <AlertView
             view={view}
@@ -59,6 +74,7 @@ const KIND = {
   company: { icon: FileText, label: 'Company' },
   relationship: { icon: Link2, label: 'Relationship' },
   alert: { icon: Waypoints, label: 'Alert' },
+  scenario: { icon: Octagon, label: 'Scenario' },
 } as const;
 
 /** What kind of thing the Inspector shows, for its head and its reopening tab. */

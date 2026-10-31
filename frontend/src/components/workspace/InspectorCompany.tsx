@@ -2,7 +2,7 @@
 // customers and open alerts), a holding's actions (Show Report, Edit Weight, Remove) and facts (status, annual report,
 // last analysed), its open alerts, and its suppliers and customers, each a button that chooses that relationship.
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, CircleDashed, Clock, FileText, Package, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowRight, CircleDashed, Clock, FileText, Octagon, Package, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
 import { type CSSProperties, type FormEvent, type ReactNode, useState } from 'react';
 import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
@@ -12,7 +12,7 @@ import { Count } from '../Count';
 import { EventMark, SeverityBars } from '../EventMark';
 import { Tile } from '../Tile';
 import { State } from './status';
-import { type Chosen, type WorkspaceView, alertKey, joinYears, namedIn } from './view';
+import { type Chosen, type WorkspaceView, alertKey, companyIdOfNode, joinYears, namedIn } from './view';
 
 /** A strip of big figures: what the eye should take in first. */
 export function Stats({ children }: { children: ReactNode }) {
@@ -107,6 +107,16 @@ export function CompanyView({
       </Stats>
 
       {holding && <HoldingActions holding={holding} onWeight={onWeight} onRemove={onRemove} />}
+
+      {/* For any company, held or not: which holdings would be hit if it stopped supplying. */}
+      {companyIdOfNode(nodeId) !== null && (
+        <div className="actions one-line">
+          <button type="button" className="btn small" onClick={() => onChoose({ kind: 'scenario', nodeId })}>
+            <Octagon size={15} />
+            What If It Stops?
+          </button>
+        </div>
+      )}
 
       {holding && (
         <div className="facts">

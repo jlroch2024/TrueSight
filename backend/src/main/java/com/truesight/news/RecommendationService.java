@@ -26,7 +26,24 @@ public class RecommendationService {
     @Transactional(readOnly = true)
     public List<RecommendationResponse> pending() {
         return recommendations.findByStatusOrderByCreatedAtAsc(RecommendationStatus.PENDING).stream()
+                .filter(found -> !hasOlderSuggestionInEvent(found))
                 .map(this::response).toList();
+    }
+
+    /** Suggestions saved twice for one event before TS-214 stay in the table; only the oldest is listed. */
+    private boolean hasOlderSuggestionInEvent(Recommendation recommendation) {
+        NewsArticle article = articles.findById(recommendation.getArticleId()).orElse(null);
+        if (article == null) return false;
+        List<NewsArticle> companyArticles = articles.findByCompanyIdOrderByPublishedAtDesc(article.getCompanyId());
+        List<NewsAssessment> companyAssessments = assessments.findByArticleIdIn(
+                companyArticles.stream().map(NewsArticle::getId).toList());
+        List<Long> eventArticleIds = NewsEvents.articleIdsOfEventContaining(article.getId(), companyArticles,
+                companyAssessments);
+        return recommendations.findByArticleIdIn(eventArticleIds).stream()
+                .filter(other -> !other.getId().equals(recommendation.getId()))
+                .anyMatch(other -> other.getCreatedAt().isBefore(recommendation.getCreatedAt())
+                        || (other.getCreatedAt().equals(recommendation.getCreatedAt())
+                        && other.getId() < recommendation.getId()));
     }
 
     @Transactional
