@@ -198,5 +198,4 @@ export function scenarioFocus(result: WhatIf, view: Pick<WorkspaceView, 'nodes' 
     add(String(link.counterparty.id));
   });
   return { nodeIds: [...nodeIds], relationshipIds: [...new Set(result.holdings.flatMap((reached) => reached.path))] };
-  }
 }
