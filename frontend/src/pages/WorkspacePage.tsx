@@ -204,7 +204,7 @@ export function WorkspacePage() {
   // ---------- What the graph, the drawer and the Inspector show ----------
 
   const view = useWorkspaceView(holdings ?? [], relationships ?? [], alertsResponse?.alerts ?? [], alertsResponse?.weighted ?? true);
-  const logoSettings = useLogoSettings(useMemo(() => view.nodes.filter((node) => !node.ticker).map((node) => node.name), [view.nodes]));
+  const logoSettings = useLogoSettings(view.nodes);
   const loaded = holdings !== undefined && relationships !== undefined && !!portfolio;
   const worst = useMemo(() => [...view.open].sort(byUrgency)[0] ?? null, [view.open]);
   const analysed = view.holdings.filter((holding) => holding.status === 'DONE').length;

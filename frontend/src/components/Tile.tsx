@@ -1,9 +1,10 @@
 // A company's tile, drawn by the graph's own drawing, so a company looks the same in every list, in the Inspector and on
 // the Analyst Desk as it does on the graph. Its logo comes from Logo.dev, as the graph's do: a screen that shows tiles
-// puts the Logo.dev token and the domains of companies without a ticker in <LogoSettingsContext> (see useLogoSettings).
+// puts the Logo.dev token and the domains of companies without a US ticker in <LogoSettingsContext> (see
+// useLogoSettings).
 import { type CSSProperties, createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Severity } from '../api/news';
-import { LogoBook, logoSource } from '../graph/logos';
+import { LogoBook, domainFallback, logoSource } from '../graph/logos';
 import { hueOf, initialsOf } from '../graph/model';
 import { drawTileMark } from '../graph/render';
 
@@ -72,7 +73,7 @@ export function Tile({
     drawTileMark(
       context,
       { isHolding: holding, hue: hueOf(name), initials: initialsOf(name) },
-      book.get(source),
+      book.get(source, domainFallback({ ticker }, name, token)),
       whole / 2,
       whole / 2,
       tileSide(size, holding),

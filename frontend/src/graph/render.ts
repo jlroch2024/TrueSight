@@ -20,7 +20,7 @@
 import type { Severity } from '../api/news';
 import type { Camera } from './camera';
 import { ARROW_GAP, HOLDING_ARROW_GAP, arrowEnds, leaveTile } from './geometry';
-import { type Logo, logoSource, type LogoBook } from './logos';
+import { type Logo, domainFallback, logoSource, type LogoBook } from './logos';
 import { type LiveNode, ALERT_COLOUR, LABEL_GAP, TITLE_LINE } from './model';
 import type { Scene } from './scene';
 import { easeOutBack, easeOutCubic, labelScale } from './scene';
@@ -604,7 +604,7 @@ function drawTile(context: CanvasRenderingContext2D, node: LiveNode, logo: Logo,
 
   // A hairline edge: dark on a light face, light on a dark one.
   boxPath(context, x, y, size - 0.5, cut);
-  const light = logo.state === 'ready' && logo.treatment === 'plain';
+  const light = logo.state === 'ready' && (logo.treatment === 'plain' || logo.treatment === 'dark');
   context.strokeStyle = light ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.16)';
   context.lineWidth = 1;
   context.stroke();
@@ -774,7 +774,10 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
     // Drawn whole, then veiled when outside the focus (below): fading each layer instead would let a logo's own white
     // background show through the tile's, as a brighter square.
     context.globalAlpha = Math.min(1, look.appear * 2);
-    const logo = logos.get(logoSource(node, logoToken, logoDomains[node.sourceName]));
+    const logo = logos.get(
+      logoSource(node, logoToken, logoDomains[node.sourceName]),
+      domainFallback(node, node.sourceName, logoToken),
+    );
 
     // Lifted off the page: a soft shadow under the tile.
     context.save();
