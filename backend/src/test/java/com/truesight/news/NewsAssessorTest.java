@@ -35,7 +35,7 @@ class NewsAssessorTest {
                 .map(item -> new NewsArticle(1L, item.url(), item.title(), item.source(), item.publishedAt()))
                 .toList();
         when(newsCheck.companiesFor(1L))
-                .thenReturn(List.of(new NewsCheckService.NewsCompany(1L, "Taiwan Semiconductor Manufacturing")));
+                .thenReturn(List.of(new NewsCheckService.NewsCompany(1L, "Taiwan Semiconductor Manufacturing", null)));
         when(articles.findUnassessedByCompanyIdIn(anyCollection())).thenReturn(sample);
 
         AtomicInteger running = new AtomicInteger();

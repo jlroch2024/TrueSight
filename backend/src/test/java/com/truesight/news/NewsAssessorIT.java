@@ -13,6 +13,7 @@ import com.truesight.portfolio.NewsStatus;
 import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.report.SecClient;
 import com.truesight.support.Examples;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
@@ -71,6 +72,8 @@ class NewsAssessorIT {
     @Autowired NewsAssessmentRepository assessments;
 
     @MockitoBean NewsClient news;
+    // A news check also reads each company's 8-Ks: never from the real SEC in a test.
+    @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
 
     private Company tsmc;

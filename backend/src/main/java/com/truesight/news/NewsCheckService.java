@@ -108,7 +108,7 @@ public class NewsCheckService {
                 .map(NewsCheckService::supplierId)
                 .forEach(companyIds::add);
         return companies.findAllById(companyIds).stream()
-                .map(company -> new NewsCompany(company.getId(), company.getName()))
+                .map(company -> new NewsCompany(company.getId(), company.getName(), company.getCik()))
                 .toList();
     }
 
@@ -128,6 +128,12 @@ public class NewsCheckService {
                 .map(Company::getNewsCheckedAt)
                 .filter(checkedAt -> checkedAt.isAfter(now.minus(Duration.ofHours(1))))
                 .isPresent();
+    }
+
+    /** Whether an article with this address is already saved for the company. */
+    @Transactional(readOnly = true)
+    public boolean isSaved(Long companyId, String url) {
+        return articles.existsByCompanyIdAndUrl(companyId, url);
     }
 
     @Transactional
@@ -159,6 +165,7 @@ public class NewsCheckService {
         });
     }
 
-    public record NewsCompany(Long id, String name) {
+    /** A company a news check covers. cik is its SEC number, or null when it has none. */
+    public record NewsCompany(Long id, String name, String cik) {
     }
 }

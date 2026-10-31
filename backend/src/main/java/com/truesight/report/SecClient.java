@@ -13,8 +13,13 @@ import org.springframework.web.client.ResourceAccessException;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,11 +89,44 @@ public class SecClient {
             String date = recent.path("filingDate").path(i).asText();
             String document = recent.path("primaryDocument").path(i).asText();
             if (accession.isBlank() || date.isBlank() || document.isBlank()) continue;
-            String url = "https://www.sec.gov/Archives/edgar/data/%s/%s/%s".formatted(
-                    Long.parseLong(cik), accession.replace("-", ""), document);
-            return new SecFiling(form, accession, LocalDate.parse(date), url);
+            return new SecFiling(form, accession, LocalDate.parse(date), filingUrl(cik, accession, document));
         }
         return null;
+    }
+
+    /** Every 8-K in the recent filings list, newest first as the SEC lists them. Amendments (8-K/A) are skipped. */
+    public List<SecCurrentReport> recentCurrentReports(String cik) {
+        return currentReportsIn(cik, getJson(SUBMISSIONS_URL.formatted(cik)));
+    }
+
+    /** The 8-Ks in a submissions response, as {@link #recentCurrentReports} reads them. */
+    public static List<SecCurrentReport> currentReportsIn(String cik, JsonNode submissions) {
+        JsonNode recent = submissions.path("filings").path("recent");
+        JsonNode forms = recent.path("form");
+        List<SecCurrentReport> found = new ArrayList<>();
+        for (int i = 0; i < forms.size(); i++) {
+            if (!forms.get(i).asText().equals("8-K")) continue;
+            String accession = recent.path("accessionNumber").path(i).asText();
+            String accepted = recent.path("acceptanceDateTime").path(i).asText();
+            String document = recent.path("primaryDocument").path(i).asText();
+            if (accession.isBlank() || accepted.isBlank() || document.isBlank()) continue;
+            List<String> items = Arrays.stream(recent.path("items").path(i).asText().split(","))
+                    .map(String::trim)
+                    .filter(item -> !item.isEmpty())
+                    .toList();
+            try {
+                found.add(new SecCurrentReport(accession, items, Instant.parse(accepted),
+                        filingUrl(cik, accession, document)));
+            } catch (DateTimeParseException unreadableTime) {
+                // A filing whose acceptance time cannot be read cannot be placed in the last 7 days: it is left out.
+            }
+        }
+        return found;
+    }
+
+    private static String filingUrl(String cik, String accession, String document) {
+        return "https://www.sec.gov/Archives/edgar/data/%s/%s/%s".formatted(
+                Long.parseLong(cik), accession.replace("-", ""), document);
     }
 
     public String download(String url) {
@@ -137,6 +175,8 @@ public class SecClient {
 
     public record SecCompany(String name, String cik, String ticker) { }
     public record SecFiling(String form, String accessionNumber, LocalDate filingDate, String url) { }
+    /** An 8-K: the items it reports (such as "1.05"), when the SEC accepted it, and the filing's address. */
+    public record SecCurrentReport(String accessionNumber, List<String> items, Instant acceptedAt, String url) { }
 
     public static class SecAccessException extends RuntimeException {
         public SecAccessException(String message, Throwable cause) { super(message, cause); }
