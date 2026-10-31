@@ -1,5 +1,7 @@
 package com.truesight.news;
 
+import com.truesight.ai.AiPurpose;
+import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
@@ -9,13 +11,16 @@ import com.truesight.portfolio.HoldingStatus;
 import com.truesight.portfolio.NewsStatus;
 import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
+import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
+import com.truesight.report.SecClient;
 import com.truesight.support.Examples;
+import com.truesight.support.FakeAi;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,15 +28,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -48,6 +59,15 @@ class NewsCheckIT {
     private static final String NVIDIA_CIK = "0001045810";
     private static final String TSMC_CIK = "0001046179";
     private static final String REPORT_ACCESSION = "0001045810-26-000021";
+    // Clorox's real 8-Ks, from docs/examples/sec-submissions-clorox.json.
+    private static final String CLOROX = "The Clorox Company";
+    private static final String CLOROX_CIK = "0000021076";
+    // 14 August 2023, Item 8.01: unauthorized activity on its IT systems.
+    private static final String CLOROX_CYBER_ATTACK = "0001206774-23-000969";
+    private static final String CLOROX_CYBER_ATTACK_URL =
+            "https://www.sec.gov/Archives/edgar/data/21076/000120677423000969/clx4231381-8k.htm";
+    // 29 October 2026, Items 5.02, 7.01 and 9.01: none of the nine.
+    private static final String CLOROX_NONE_OF_THE_NINE = "0001206774-26-000586";
     private static final String EVIDENCE = "We utilize foundries, such as Taiwan Semiconductor Manufacturing "
             + "Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor "
             + "wafers.";
@@ -61,15 +81,20 @@ class NewsCheckIT {
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
     @Autowired NewsArticleRepository articles;
+    @Autowired NewsAssessmentRepository assessments;
+
+    @Autowired List<NewsCheckStep> realSteps;
 
     @MockitoBean NewsClient news;
+    @MockitoBean SecClient sec;
+    @MockitoBean GeminiClient gemini;
     @MockitoBean NewsCheckStepRunner steps;
 
     private List<NewsItem> sample;
 
     @BeforeEach
     void returnTheSavedGoogleNewsSample() {
-        reset(news, steps);
+        reset(news, sec, gemini, steps);
         sample = movedToNow(new GoogleNewsParser().parse(Examples.googleNewsTsmc()));
         when(news.search(anyString())).thenReturn(sample);
     }
@@ -252,6 +277,190 @@ class NewsCheckIT {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Portfolio not found."));
         verify(news, never()).search(anyString());
+    }
+
+    @Test
+    void aNewsCheckSavesARecentEightKReportingOneOfTheNineItemsWithItsOwnWordsAsTheHeadline() throws Exception {
+        String email = "news-8k-saved@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        List<SecClient.SecCurrentReport> filings = cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK);
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(filings);
+        when(sec.download(CLOROX_CYBER_ATTACK_URL)).thenReturn(Examples.sec8kClorox());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        List<NewsArticle> eightKs = eightKsOf(clorox);
+        assertThat(eightKs).singleElement().satisfies(article -> {
+            assertThat(article.getUrl()).isEqualTo(CLOROX_CYBER_ATTACK_URL);
+            assertThat(article.getSource()).isEqualTo("SEC 8-K");
+            assertThat(article.getPublishedAt()).isEqualTo(acceptedAt(filings, CLOROX_CYBER_ATTACK));
+            assertThat(article.getTitle()).startsWith("The Clorox Company, Item 8.01: The Clorox Company (the "
+                    + "“Company” or “Clorox”) has identified unauthorized activity on some of its Information "
+                    + "Technology (IT) systems.");
+            String opening = article.getTitle().substring("The Clorox Company, Item 8.01: ".length());
+            assertThat(opening).hasSizeLessThanOrEqualTo(300);
+        });
+        // Its Google News is saved beside it.
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(clorox.getId())).hasSizeGreaterThan(1);
+        verify(sec, times(1)).download(anyString());
+    }
+
+    @Test
+    void anEightKThatCannotBeDownloadedIsSavedWithTheItemsNameAsItsHeadline() throws Exception {
+        String email = "news-8k-download-failed@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK));
+        when(sec.download(CLOROX_CYBER_ATTACK_URL)).thenThrow(new SecClient.SecAccessException(
+                "The SEC returned HTTP 503 for a request.", null));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        assertThat(eightKsOf(clorox)).singleElement()
+                .satisfies(article -> assertThat(article.getTitle())
+                        .isEqualTo("The Clorox Company Files an 8-K: Other Events"));
+    }
+
+    @Test
+    void anEightKReportingNoneOfTheNineItemsIsNeverDownloadedSavedOrJudged() throws Exception {
+        String email = "news-8k-not-read@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        // Its newest 8-K reports Items 5.02, 7.01 and 9.01 only; the one before it is months older.
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(cloroxFilingsWithTheNewest(CLOROX_NONE_OF_THE_NINE));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        verify(sec, never()).download(anyString());
+        assertThat(eightKsOf(clorox)).isEmpty();
+    }
+
+    @Test
+    void aSavedEightKIsNotDownloadedAgainAndACompanyCheckedWithinAnHourIsNotAskedAgain() throws Exception {
+        String email = "news-8k-once@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK));
+        when(sec.download(CLOROX_CYBER_ATTACK_URL)).thenReturn(Examples.sec8kClorox());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+        verify(sec, times(1)).recentCurrentReports(CLOROX_CIK);
+
+        clorox = companies.findById(clorox.getId()).orElseThrow();
+        clorox.setNewsCheckedAt(null);
+        companies.saveAndFlush(clorox);
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        verify(sec, times(2)).recentCurrentReports(CLOROX_CIK);
+        verify(sec, times(1)).download(CLOROX_CYBER_ATTACK_URL);
+        assertThat(eightKsOf(clorox)).hasSize(1);
+    }
+
+    @Test
+    void aSavedEightKIsJudgedByFilterOutNoiseAndBecomesAnAlertThatOpensTheFiling() throws Exception {
+        String email = "news-8k-alert@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        when(news.search(anyString())).thenReturn(List.of());
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK));
+        when(sec.download(CLOROX_CYBER_ATTACK_URL)).thenReturn(Examples.sec8kClorox());
+        // Filter Out Noise gets Gemini's real answer for this headline (number 1 in it: an event). A recommendation
+        // is not part of this story: it fails, which never fails the news check.
+        when(gemini.generate(any(AiRequest.class), any())).thenAnswer(call -> {
+            if (call.<AiRequest>getArgument(0).purpose() == AiPurpose.JUDGE_NEWS) {
+                return FakeAi.answer(Examples.gemini8kAssessment());
+            }
+            throw new GeminiClient.GeminiException("Not part of this test.", null);
+        });
+        doAnswer(call -> {
+            new NewsCheckStepRunner(realSteps).run(call.getArgument(0));
+            return null;
+        }).when(steps).run(anyLong());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        NewsArticle eightK = eightKsOf(clorox).getFirst();
+        assertThat(assessments.findByArticleIdIn(List.of(eightK.getId()))).singleElement().satisfies(assessment -> {
+            assertThat(assessment.isEvent()).isTrue();
+            assertThat(assessment.getEventType()).isEqualTo(EventType.CYBER_ATTACK);
+        });
+        mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts", hasSize(1)))
+                .andExpect(jsonPath("$.alerts[0].headline.article.title").value(eightK.getTitle()))
+                .andExpect(jsonPath("$.alerts[0].headline.article.source").value("SEC 8-K"))
+                .andExpect(jsonPath("$.alerts[0].headline.article.url").value(CLOROX_CYBER_ATTACK_URL));
+    }
+
+    @Test
+    void aCompanyWithoutAnSecNumberIsCheckedOnGoogleNewsOnly() throws Exception {
+        String email = "news-8k-no-cik@example.com";
+        Company samsung = cleanCompany("Samsung Electronics Co., Ltd.", null, null);
+        Portfolio portfolio = analysedPortfolio(email, samsung);
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        verify(news).search("Samsung Electronics");
+        verify(sec, never()).recentCurrentReports(anyString());
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(samsung.getId())).isNotEmpty();
+    }
+
+    @Test
+    void whenTheSecCannotBeReachedTheCompanysGoogleNewsIsStillSavedAndTheCheckFinishes() throws Exception {
+        String email = "news-8k-sec-down@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenThrow(new SecClient.SecAccessException(
+                "The SEC could not be reached. Check the network connection and try again later.", null));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(clorox.getId())).isNotEmpty();
+        assertThat(eightKsOf(clorox)).isEmpty();
+        assertThat(portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatusReason()).isNull();
+        verify(steps).run(portfolio.getId());
+    }
+
+    /**
+     * Clorox's 8-Ks from the saved submissions list, every acceptance time moved forward by the same amount so the
+     * one named was accepted 30 minutes ago (newer than any saved Google News headline). The items, addresses and the
+     * gaps between filings stay as the SEC sent them; filings after it are now in the future, so none is read.
+     */
+    private static List<SecClient.SecCurrentReport> cloroxFilingsWithTheNewest(String accession) {
+        List<SecClient.SecCurrentReport> saved = SecClient.currentReportsIn(CLOROX_CIK,
+                JsonMapper.builder().build().readTree(Examples.secSubmissionsClorox()));
+        Instant anchor = saved.stream().filter(filing -> filing.accessionNumber().equals(accession))
+                .findFirst().orElseThrow().acceptedAt();
+        // In whole seconds, as the SEC gives them (and as the database keeps them).
+        Duration shift = Duration.between(anchor,
+                Instant.now().truncatedTo(ChronoUnit.SECONDS).minus(Duration.ofMinutes(30)));
+        return saved.stream()
+                .map(filing -> new SecClient.SecCurrentReport(filing.accessionNumber(), filing.items(),
+                        filing.acceptedAt().plus(shift), filing.url()))
+                .toList();
+    }
+
+    private static Instant acceptedAt(List<SecClient.SecCurrentReport> filings, String accession) {
+        return filings.stream().filter(filing -> filing.accessionNumber().equals(accession))
+                .findFirst().orElseThrow().acceptedAt();
+    }
+
+    private List<NewsArticle> eightKsOf(Company company) {
+        return articles.findByCompanyIdOrderByPublishedAtDesc(company.getId()).stream()
+                .filter(article -> "SEC 8-K".equals(article.getSource()))
+                .toList();
     }
 
     private Company cleanCompany(String name, String cik, String ticker) {

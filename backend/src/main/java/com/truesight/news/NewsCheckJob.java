@@ -1,6 +1,7 @@
 package com.truesight.news;
 
 import com.truesight.relationship.GeminiClient;
+import com.truesight.report.SecClient;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -13,18 +14,23 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Collects news away from the request thread, one shared company at a time. */
+/**
+ * Collects news away from the request thread, one shared company at a time: its Google News headlines and, for a
+ * company with an SEC number, its 8-Ks (see {@link CurrentReports}).
+ */
 @Component
 public class NewsCheckJob {
 
     private final NewsCheckService service;
     private final NewsClient news;
+    private final SecClient sec;
     private final NewsCheckStepRunner steps;
     private final ConcurrentHashMap<Long, Object> companyLocks = new ConcurrentHashMap<>();
 
-    public NewsCheckJob(NewsCheckService service, NewsClient news, NewsCheckStepRunner steps) {
+    public NewsCheckJob(NewsCheckService service, NewsClient news, SecClient sec, NewsCheckStepRunner steps) {
         this.service = service;
         this.news = news;
+        this.sec = sec;
         this.steps = steps;
     }
 
@@ -55,7 +61,9 @@ public class NewsCheckJob {
                     attempted++;
                     String searchName = NewsSearchName.of(company.name());
                     try {
-                        List<NewsItem> recent = newestRecentItems(news.search(searchName), now);
+                        List<NewsItem> found = new ArrayList<>(news.search(searchName));
+                        found.addAll(currentReports(company, now));
+                        List<NewsItem> recent = newestRecentItems(found, now);
                         service.save(company.id(), recent, now);
                         succeeded++;
                     } catch (NewsClient.NewsAccessException ignored) {
@@ -102,5 +110,38 @@ public class NewsCheckJob {
                 .filter(item -> urls.add(item.url()))
                 .limit(10)
                 .toList();
+    }
+
+    /**
+     * A company's 8-Ks that report one of the nine items, as articles: by the same rules as news (the last 7 days,
+     * newest first, at most 10), and only those not already saved, so none is downloaded twice. None for a company
+     * without an SEC number, or when the SEC cannot be reached: its Google News is still saved, and its 8-Ks are read
+     * on its next check.
+     */
+    private List<NewsItem> currentReports(NewsCheckService.NewsCompany company, Instant now) {
+        if (company.cik() == null || company.cik().isBlank()) return List.of();
+        List<SecClient.SecCurrentReport> filings;
+        try {
+            filings = sec.recentCurrentReports(company.cik());
+        } catch (SecClient.SecAccessException exception) {
+            return List.of();
+        }
+        Instant oldest = now.minus(Duration.ofDays(7));
+        return CurrentReports.kept(filings).stream()
+                .filter(filing -> !filing.acceptedAt().isBefore(oldest) && !filing.acceptedAt().isAfter(now))
+                .sorted(Comparator.comparing(SecClient.SecCurrentReport::acceptedAt).reversed())
+                .limit(10)
+                .filter(filing -> !service.isSaved(company.id(), filing.url()))
+                .map(filing -> CurrentReports.newsItem(company.name(), filing, download(filing.url())))
+                .toList();
+    }
+
+    /** The filing's document, or null when it cannot be downloaded: its headline is then the item's name. */
+    private String download(String url) {
+        try {
+            return sec.download(url);
+        } catch (SecClient.SecAccessException exception) {
+            return null;
+        }
     }
 }

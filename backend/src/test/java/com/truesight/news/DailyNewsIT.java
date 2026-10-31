@@ -9,6 +9,7 @@ import com.truesight.portfolio.HoldingStatus;
 import com.truesight.portfolio.NewsStatus;
 import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
+import com.truesight.report.SecClient;
 import com.truesight.support.Examples;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
@@ -49,6 +50,8 @@ class DailyNewsIT {
     @Autowired NewsArticleRepository articles;
 
     @MockitoBean NewsClient news;
+    // A news check also reads each company's 8-Ks: never from the real SEC in a test.
+    @MockitoBean SecClient sec;
     @MockitoBean NewsCheckStepRunner steps;
 
     @BeforeEach

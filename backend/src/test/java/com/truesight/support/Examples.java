@@ -84,6 +84,40 @@ public final class Examples {
         return read("news-labels.csv");
     }
 
+    /**
+     * Clorox's real SEC submissions list (CIK 0000021076), trimmed to its {@code filings.recent} arrays: its 8-Ks
+     * include ones reporting Item 8.01 and ones reporting none of the nine items a news check reads.
+     */
+    public static String secSubmissionsClorox() {
+        return read("sec-submissions-clorox.json");
+    }
+
+    /** Clorox's real 8-K of 14 August 2023 (Item 8.01): it found unauthorized activity on its IT systems. */
+    public static String sec8kClorox() {
+        return read("sec-8k-clorox-2023-08-14.htm");
+    }
+
+    /**
+     * Clorox's real 8-K of 22 January 2026 (Items 7.01 and 8.01): it agreed to buy GOJO. Its Item 7.01 mentions
+     * "Item 8.01 below" before Item 8.01's own heading.
+     */
+    public static String sec8kCloroxGojo() {
+        return read("sec-8k-clorox-2026-01-22.htm");
+    }
+
+    /** AITX's real 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release, Exhibit 99.1. */
+    public static String sec8kAitx() {
+        return read("sec-8k-aitx-2026-10-30.htm");
+    }
+
+    /**
+     * Gemini's real, unchanged answer to Filter Out Noise's prompt for the headlines built from {@link #sec8kClorox()}
+     * (1, an event), {@link #sec8kCloroxGojo()} (2) and {@link #sec8kAitx()} (3).
+     */
+    public static String gemini8kAssessment() {
+        return read("gemini-8k-assessment.json");
+    }
+
     /** docs/examples/README.md, which states how often Gemini agreed with {@link #newsLabels()}. */
     public static String readme() {
         return read("README.md");

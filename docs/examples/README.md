@@ -16,6 +16,11 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
 | `gemini-recommendation.json` | Gemini's real answer text and response identifiers for the NVIDIA shipment theft headline below | Get a Recommendation tests, so tests never call Gemini |
 | `news-labels.csv` | The team's own event-or-noise label for each of those 20 headlines, made by hand before looking at Gemini's answer | Filter Out Noise, to measure how often Gemini is right |
+| `sec-submissions-clorox.json` | Clorox's real SEC submissions list, trimmed to its `filings.recent` arrays (see below) | Alerts From SEC 8-K Filings: `SecClientTest`, `CurrentReportsTest`, `NewsCheckIT` |
+| `sec-8k-clorox-2023-08-14.htm` | Clorox's real, unchanged 8-K of 14 August 2023 (Item 8.01): it found unauthorized activity on its IT systems | Alerts From SEC 8-K Filings: the headline from an 8-K's own words |
+| `sec-8k-clorox-2026-01-22.htm` | Clorox's real, unchanged 8-K of 22 January 2026 (Items 7.01 and 8.01): it agreed to buy GOJO. Its Item 7.01 mentions "Item 8.01 below" | Alerts From SEC 8-K Filings: the headline starts at the item's own heading |
+| `sec-8k-aitx-2026-10-30.htm` | Artificial Intelligence Technology Solutions' real, unchanged 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release (Exhibit 99.1) | Alerts From SEC 8-K Filings: the fall-back headline |
+| `gemini-8k-assessment.json` | Gemini's full, unchanged API response to Filter Out Noise's prompt for the three headlines built from those 8-Ks | Alerts From SEC 8-K Filings, so tests never call Gemini |
 
 ## Where It Came From
 
@@ -87,6 +92,40 @@ HEADLINES:
 18. [Taiwan Semiconductor Manufacturing] Prediction: $5,000 Invested in Taiwan Semiconductor Could Be Worth This Much by 2030 - Yahoo Finance
 19. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Vs. ASML: If I Had to Choose One For the Next 5 Years, It’s This One - Yahoo Finance
 20. [Taiwan Semiconductor Manufacturing] Taiwan Semiconductor Manufacturing Could Have Big News on Oct. 15 - The Globe and Mail
+```
+
+## The SEC 8-K Filings
+
+Fetched from the SEC on 31 October 2026, with TrueSight's `User-Agent`. The 8-K documents are saved byte for byte.
+`sec-submissions-clorox.json` is `https://data.sec.gov/submissions/CIK0000021076.json` with every field outside
+`filings.recent` removed; the `filings.recent` arrays (1,002 filings, back to 4 January 2017) are unchanged. The
+exhibit-only 8-K was found with the SEC's full-text search, filtered to 8-K.
+
+| Company | CIK | Filing | Accession number | Items | Accepted by the SEC |
+|---|---|---|---|---|---|
+| The Clorox Company | 0000021076 | `sec-8k-clorox-2023-08-14.htm` (`clx4231381-8k.htm`) | 0001206774-23-000969 | 8.01, 9.01 | 2023-08-14T21:29:29Z |
+| The Clorox Company | 0000021076 | `sec-8k-clorox-2026-01-22.htm` (`clx4585201-8k.htm`) | 0001206774-26-000048 | 7.01, 8.01, 9.01 | 2026-01-22T21:11:47Z |
+| Artificial Intelligence Technology Solutions Inc. | 0001498148 | `sec-8k-aitx-2026-10-30.htm` (`form8k.htm`) | 0001062993-26-005615 | 8.01, 9.01 | 2026-10-30T10:01:48Z |
+
+In the submissions list, Clorox's 8-K 0001206774-26-000586 (accepted 2026-10-29, Items 5.02, 7.01, 9.01) reports none
+of the nine items a news check reads, so it is never downloaded.
+
+## The Gemini 8-K Assessment
+
+`gemini-8k-assessment.json` is the complete, unchanged Gemini API response saved on 31 October 2026, to Filter Out
+Noise's prompt (`NewsAssessor.PROMPT`, word for word as in the code) sent by hand once, at temperature 0 with
+`NewsAssessor.NEWS_SCHEMA`, for the three headlines `CurrentReports` builds from the 8-Ks above.
+
+- **Model:** `gemini-3.8-flash`, response ID `epjlatvkLL3g694P6ITL4AI`
+- **Usage:** 526 input tokens, 160 output tokens; the API finished normally
+- **Result:** 1 is an event (`CYBER_ATTACK`, `MEDIUM` severity, `HIGH` confidence); 2 and 3 are noise
+
+The headlines as sent:
+
+```
+1. [The Clorox] The Clorox Company, Item 8.01: The Clorox Company (the “Company” or “Clorox”) has identified unauthorized activity on some of its Information Technology (IT) systems. After becoming aware of the activity, the Company began taking steps to stop and remediate the activity, including taking certain systems offline. The Company is…
+2. [The Clorox] The Clorox Company, Item 8.01: On January 22, 2026, Clorox announced that it had entered into a membership interest purchase agreement, by and among Clorox, GOJO Industries Holdings, Inc. (“Parent”), GOJO and the shareholders of Parent, pursuant to which Clorox has agreed to purchase all of the issued and outstanding membership…
+3. [Artificial Intelligence Technology Solutions] Artificial Intelligence Technology Solutions Inc. Files an 8-K: Other Events
 ```
 
 ## How Often Gemini Is Right
