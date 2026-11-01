@@ -46,7 +46,7 @@ function renderRow(status: HoldingStatus, suppliers: number, customers: number) 
 }
 
 function weighted(ticker: string, id: number, weight: number | null): Holding {
-  return { ...holding('WAITING'), id, ticker, weight };
+  return { ...holding('WAITING'), id, ticker, weight, companyName: null, companyDisplayName: null };
 }
 
 // The drawer as the workspace draws it: the holdings go through useWorkspaceView, which puts them in order.
