@@ -60,8 +60,9 @@ export function LoadHistory({
   }
 
   if (history.unread === 0) return null;
-  // Some years already read means these are holdings added since: offer them on their own.
-  const added = history.years.length > 1 ? Math.ceil(history.unread / 2) : 0;
+  // If only some of the holdings have reports left to read, the others are done: these are the holdings added since, or
+  // left unfinished, and are offered on their own. The backend counts them (a holding half read counts once).
+  const added = history.unreadHoldings < history.holdingCount ? history.unreadHoldings : 0;
   return (
     <button type="button" className="history-bar glass ticks" onClick={onLoad}>
       <HistoryIcon size={16} />

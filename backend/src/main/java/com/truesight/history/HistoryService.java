@@ -72,13 +72,16 @@ public class HistoryService {
         Map<Long, List<ReportInfo>> byCompany = reads.reportsByCompany(companyIds);
 
         int unread = 0;
+        int unreadHoldings = 0;
         List<ReportInfo> shown = new ArrayList<>();
         Set<Long> latestIds = new LinkedHashSet<>();
         Set<Long> earlierIds = new LinkedHashSet<>();
         for (Long companyId : companyIds) {
             List<ReportInfo> saved = byCompany.getOrDefault(companyId, List.of());
             if (saved.isEmpty()) continue;
-            unread += reads.unread(companyId, saved);
+            int left = reads.unread(companyId, saved);
+            unread += left;
+            if (left > 0) unreadHoldings++;
             shown.add(saved.get(0));
             latestIds.add(saved.get(0).getId());
             HistoryReads.earlier(saved).stream().filter(report -> reads.isRead(report.getId())).forEach(report -> {
@@ -107,7 +110,7 @@ public class HistoryService {
         HistoryProgress.State state = progress.of(portfolioId);
         return new HistoryResponse(state.status(), state.reason(),
                 state.status() == HistoryStatus.IDLE ? null : new HistoryResponse.Progress(state.done(), state.total()),
-                unread, HistoryTimeline.years(sources));
+                unread, unreadHoldings, companyIds.size(), HistoryTimeline.years(sources));
     }
 
     private int unreadOf(Long portfolioId) {

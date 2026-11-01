@@ -1058,7 +1058,7 @@ function year(value: number, relationships: HistoryEntry[] = [], gone: string[] 
 }
 
 function history(overrides: Partial<History> = {}): History {
-  return { status: 'IDLE', reason: null, progress: null, unread: 0, years: [year(2026)], ...overrides };
+  return { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 3, years: [year(2026)], ...overrides };
 }
 
 /** Waits until the workspace has asked for the history and shown the answer. */
@@ -1071,7 +1071,7 @@ async function historyRead() {
 
 describe('Load History', () => {
   it('isOfferedWithHowManyEarlierReportsItReads', async () => {
-    backend.history = history({ unread: 6 });
+    backend.history = history({ unread: 6, unreadHoldings: 3 });
     renderAt();
     await graph();
 
@@ -1079,7 +1079,7 @@ describe('Load History', () => {
   });
 
   it('asksTheBackendToReadThemAndShowsHowFarItHasGot', async () => {
-    backend.history = history({ unread: 6 });
+    backend.history = history({ unread: 6, unreadHoldings: 3 });
     backend.afterLoadHistory = history({ status: 'READING', progress: { done: 3, total: 6 }, unread: 3 });
     renderAt();
     await graph();
@@ -1105,7 +1105,7 @@ describe('Load History', () => {
   });
 
   it('offersAHoldingAddedLaterOnItsOwn', async () => {
-    backend.history = history({ unread: 2, years: [year(2024), year(2025), year(2026)] });
+    backend.history = history({ unread: 2, unreadHoldings: 1, years: [year(2024), year(2025), year(2026)] });
     renderAt();
     await graph();
 
@@ -1114,8 +1114,29 @@ describe('Load History', () => {
     );
   });
 
+  it('countsTheHoldingsWithReportsLeftNotTheReportsDividedByTwo', async () => {
+    // Two holdings each left with one report unread, after a failure: 2 reports, but 2 holdings.
+    backend.history = history({ unread: 2, unreadHoldings: 2, holdingCount: 4, years: [year(2024), year(2025), year(2026)] });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('button', { name: /Load History for 2 New Holdings/ })).toHaveTextContent(
+      'Reads 2 Earlier Reports',
+    );
+  });
+
+  it('offersPlainLoadHistoryWhenEveryHoldingStillHasReportsToRead', async () => {
+    backend.history = history({ unread: 5, unreadHoldings: 3, holdingCount: 3, years: [year(2026)] });
+    renderAt();
+    await graph();
+
+    const button = await screen.findByRole('button', { name: /Load History/ });
+    expect(button).toHaveTextContent('Reads 5 Earlier Reports');
+    expect(button).not.toHaveTextContent('New Holding');
+  });
+
   it('isNotOfferedOnceEveryHoldingIsRead', async () => {
-    backend.history = history({ unread: 0, years: [year(2024), year(2025), year(2026)] });
+    backend.history = history({ unread: 0, unreadHoldings: 0, years: [year(2024), year(2025), year(2026)] });
     renderAt();
     await graph();
     await historyRead();

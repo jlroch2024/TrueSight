@@ -9,10 +9,13 @@ import java.util.List;
  * Where reading a portfolio's earlier annual reports has got, and how its suppliers and customers changed year by year.
  *
  * <p>{@code progress} is how many earlier reports have been read out of how many are being read, and is null when
- * nothing is being read. {@code unread} is how many earlier reports are still to read. {@code years} runs from the
- * year of the earliest report read to the year of the latest; "Today" is the current graph, shown by the website.
+ * nothing is being read. {@code unread} is how many earlier reports are still to read, in {@code unreadHoldings} of the
+ * {@code holdingCount} holdings that have been analysed (a holding with some still to read counts once, however many).
+ * {@code years} runs from the year of the earliest report read to the year of the latest; "Today" is the current graph,
+ * shown by the website.
  */
-public record HistoryResponse(HistoryStatus status, String reason, Progress progress, int unread, List<Year> years) {
+public record HistoryResponse(HistoryStatus status, String reason, Progress progress, int unread, int unreadHoldings,
+                              int holdingCount, List<Year> years) {
 
     public record Progress(int done, int total) {
     }

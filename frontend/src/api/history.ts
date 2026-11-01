@@ -25,13 +25,16 @@ export type HistoryEntry = {
 export type HistoryYear = { year: number; relationships: HistoryEntry[]; gone: string[] };
 
 // progress is how many earlier reports are read out of how many are being read (null when nothing is). unread is how
-// many earlier reports are still to read. years runs from the earliest report's year to the latest's: "Today" is the
-// current graph.
+// many earlier reports are still to read, in unreadHoldings of the holdingCount holdings that have been analysed (a
+// holding with some left counts once, however many). years runs from the earliest report's year to the latest's:
+// "Today" is the current graph.
 export type History = {
   status: HistoryStatus;
   reason: string | null;
   progress: { done: number; total: number } | null;
   unread: number;
+  unreadHoldings: number;
+  holdingCount: number;
   years: HistoryYear[];
 };
 

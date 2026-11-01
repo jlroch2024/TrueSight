@@ -7,6 +7,17 @@ import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
+import com.truesight.news.AlertBuilder;
+import com.truesight.news.AlertRepository;
+import com.truesight.news.Confidence;
+import com.truesight.news.EventType;
+import com.truesight.news.GoogleNewsParser;
+import com.truesight.news.NewsArticle;
+import com.truesight.news.NewsArticleRepository;
+import com.truesight.news.NewsAssessment;
+import com.truesight.news.NewsAssessmentRepository;
+import com.truesight.news.NewsItem;
+import com.truesight.news.Severity;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
@@ -14,9 +25,12 @@ import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.GeminiAnswer;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.PastRelationship;
 import com.truesight.relationship.PastRelationshipRepository;
+import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
@@ -84,6 +98,12 @@ class HistoryIT {
     @Autowired AiCallLog aiCalls;
     @Autowired GeminiAnswer answers;
     @Autowired HistoryReader reader;
+    @Autowired HistoryReads reads;
+    @Autowired RelationshipFinder finder;
+    @Autowired AlertBuilder alertBuilder;
+    @Autowired NewsArticleRepository articles;
+    @Autowired NewsAssessmentRepository assessments;
+    @Autowired AlertRepository alerts;
     @Autowired HistoryProgress progress;
     @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
@@ -135,6 +155,8 @@ class HistoryIT {
         history().andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IDLE"))
                 .andExpect(jsonPath("$.unread").value(0))
+                .andExpect(jsonPath("$.unreadHoldings").value(0))
+                .andExpect(jsonPath("$.holdingCount").value(1))
                 .andExpect(jsonPath("$.years", hasSize(3)))
                 .andExpect(jsonPath("$.years[0].year").value(2024))
                 .andExpect(jsonPath("$.years[1].year").value(2025))
@@ -238,6 +260,154 @@ class HistoryIT {
         // The latest report stays the company's latest everywhere else.
         assertThat(reports.findFirstByCompanyIdOrderByFilingDateDesc(company.getId()).orElseThrow().getId())
                 .isEqualTo(latest.getId());
+    }
+
+    // ---- a company named two ways is one company ---------------------------------------------------------------------
+
+    @Test
+    void aCompanyNamedDifferentlyAcrossYearsIsOneCompanyInTheHistory() throws Exception {
+        // AMD's real answer names its customer "OpenAI OpCo, LLC" (common name "OpenAI"); the latest report's
+        // relationship was saved as plain "OpenAI". The older year must find the same company, so it is Kept.
+        stubGemini(Examples.geminiAmd());
+        Company company = directory.findOrCreate("History Names " + UUID.randomUUID(), cik(), null, List.of());
+        Company openAi = directory.findOrCreate("OpenAI", null, null, List.of());
+        GeminiAnswer.Found named = answers.read(Examples.geminiAmd()).stream()
+                .filter(found -> found.company().equals("OpenAI OpCo, LLC")).findFirst().orElseThrow();
+        Report latest = reports.save(new Report(company.getId(), "10-K", accession(), LocalDate.parse("2026-02-04"),
+                "https://www.sec.gov/latest/names", "Set by the test: the latest report's text is not read."));
+        Report older = reports.save(new Report(company.getId(), "10-K", accession(), LocalDate.parse("2025-02-05"),
+                "https://www.sec.gov/older/names", Examples.amd10K()));
+        relationships.save(new Relationship(latest.getId(), company.getId(), openAi.getId(), named.relationship(),
+                named.provides(), named.quote()));
+        when(sec.annualFilings(eq(company.getCik()), anyInt())).thenReturn(List.of(filing(latest), filing(older)));
+        holding("AMD", company);
+
+        load();
+
+        PastRelationship found = pastRelationships.findByReportIdOrderByIdAsc(older.getId()).stream()
+                .filter(past -> past.getCounterpartyId().equals(openAi.getId())).findFirst().orElseThrow();
+        assertThat(found.getType()).isEqualTo(RelationshipType.CUSTOMER);
+        String key = company.getId() + "-" + openAi.getId() + "-CUSTOMER";
+        history().andExpect(jsonPath("$.years", hasSize(2)))
+                .andExpect(jsonPath("$.years[0].relationships[?(@.key == '" + key + "')].change").value("NEW"))
+                .andExpect(jsonPath("$.years[1].relationships[?(@.key == '" + key + "')].change").value("KEPT"))
+                // Everything else AMD named is gone in the later year, but not OpenAI.
+                .andExpect(jsonPath("$.years[1].gone", hasSize(distinctKeys(older) - 1)))
+                .andExpect(jsonPath("$.years[1].gone[?(@ == '" + key + "')]", hasSize(0)));
+    }
+
+    // ---- older relationships stay in the history ---------------------------------------------------------------------
+
+    @Test
+    void olderRelationshipsNeverReachTheGraphTheReviewQueueAlertsOrTheSimulator() throws Exception {
+        Filed filed = company("Reach-" + UUID.randomUUID());
+        holding("AAA", filed.company());
+        load();
+        // The latest report names the first supplier of Gemini's answer, which the older reports name too, along
+        // with the rest. The second is named only in the older reports.
+        List<GeminiAnswer.Found> named = answers.read(Examples.geminiNvidia());
+        Company inLatest = companyNamed(named.get(0));
+        Company onlyOlder = companyNamed(named.get(1));
+        assertThat(pastRelationships.findByReportIdOrderByIdAsc(filed.older1().getId()))
+                .extracting(PastRelationship::getCounterpartyId).contains(inLatest.getId(), onlyOlder.getId());
+
+        // The graph: only the latest report's relationship.
+        mockMvc.perform(get("/api/portfolios/{id}/relationships", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.counterparty.id == " + onlyOlder.getId() + ")]", hasSize(0)));
+
+        // The review queue: nothing from the older reports (matched by their unique addresses).
+        mockMvc.perform(get("/api/reviews").header("Authorization", logins.analystBearer("history-analyst@example.com")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.relationship.report.url == '" + filed.older1().getUrl() + "')]", hasSize(0)))
+                .andExpect(jsonPath("$[?(@.relationship.report.url == '" + filed.older2().getUrl() + "')]", hasSize(0)));
+
+        // Alerts: an event at the company named only in older reports reaches nothing; one at the latest's does.
+        NewsArticle olderEvent = event(onlyOlder);
+        NewsArticle latestEvent = event(inLatest);
+        alertBuilder.run(portfolio.getId());
+        assertThat(alerts.findByPortfolioIdAndArticleId(portfolio.getId(), olderEvent.getId())).isEmpty();
+        assertThat(alerts.findByPortfolioIdAndArticleId(portfolio.getId(), latestEvent.getId())).isPresent();
+
+        // The simulator: the company named only in older reports reaches no holding; the other reaches the holding.
+        mockMvc.perform(get("/api/portfolios/{id}/what-if", portfolio.getId())
+                        .param("companyId", String.valueOf(onlyOlder.getId()))
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.holdings", hasSize(0)));
+        mockMvc.perform(get("/api/portfolios/{id}/what-if", portfolio.getId())
+                        .param("companyId", String.valueOf(inLatest.getId()))
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(jsonPath("$.holdings", hasSize(1)));
+    }
+
+    // ---- what is still to read is counted from what is saved ---------------------------------------------------------
+
+    @Test
+    void aHoldingWithOnlyOneEarlierReportIsNotOfferedAgainEvenAfterTheBackendRestarts() throws Exception {
+        Company company = directory.findOrCreate("History One Earlier " + UUID.randomUUID(), cik(), null, List.of());
+        Report latest = reports.save(new Report(company.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
+                "https://www.sec.gov/latest/one", "Set by the test: the latest report's text is not read."));
+        holding("AAA", company);
+        String accession = accession();
+        // The SEC has the latest and only one earlier report.
+        when(sec.annualFilings(eq(company.getCik()), anyInt())).thenReturn(List.of(filing(latest),
+                new SecClient.SecFiling("10-K", accession, LocalDate.parse("2025-02-26"), "https://www.sec.gov/older/one")));
+        when(sec.download("https://www.sec.gov/older/one"))
+                .thenReturn("<html><body><p>Only for checking it is saved and read.</p></body></html>");
+        history().andExpect(jsonPath("$.unread").value(2));
+
+        load();
+
+        history().andExpect(jsonPath("$.unread").value(0)).andExpect(jsonPath("$.unreadHoldings").value(0));
+        // A restart forgets what the SEC said, but the saved earlier report is still there to count.
+        reads.forgetAvailability();
+        history().andExpect(jsonPath("$.unread").value(0)).andExpect(jsonPath("$.unreadHoldings").value(0));
+        load();
+        verify(gemini, times(1)).generate(any(AiRequest.class));
+    }
+
+    @Test
+    void unreadHoldingsCountsHoldingsNotReports() throws Exception {
+        Filed first = company("A");
+        Filed second = company("B");
+        Filed third = company("C");
+        holding("AAA", first.company());
+        holding("BBB", second.company());
+        holding("CCC", third.company());
+        // Read one earlier report of each of two holdings, as a failed load would leave them: one report still to
+        // read for each of them, so 2 reports and 2 holdings (reports / 2 would say one holding).
+        finder.findPast(first.older1(), first.company());
+        finder.findPast(second.older1(), second.company());
+
+        history().andExpect(jsonPath("$.unread").value(4))        // 1 + 1 + 2
+                .andExpect(jsonPath("$.unreadHoldings").value(3))
+                .andExpect(jsonPath("$.holdingCount").value(3));
+        finder.findPast(third.older1(), third.company());
+        finder.findPast(third.older2(), third.company());
+        history().andExpect(jsonPath("$.unread").value(2))
+                .andExpect(jsonPath("$.unreadHoldings").value(2))
+                .andExpect(jsonPath("$.holdingCount").value(3));
+    }
+
+    // ---- helpers for the above ----------------------------------------------------------------------------------------
+
+    /** The company the finder files a relationship's counterparty under. */
+    private Company companyNamed(GeminiAnswer.Found found) {
+        return directory.findOrCreate(found.commonName().isEmpty() ? found.company() : found.commonName(), null,
+                CompanyDirectory.cleanTicker(found.ticker()), List.of(found.company(), found.alsoKnownAs()));
+    }
+
+    /** A news article about this company, assessed as a real event. */
+    private NewsArticle event(Company company) {
+        NewsItem item = new GoogleNewsParser().parse(Examples.googleNewsTsmc()).getFirst();
+        NewsArticle article = articles.save(new NewsArticle(company.getId(), item.url() + "#" + UUID.randomUUID(),
+                item.title(), item.source(), item.publishedAt()));
+        assessments.save(new NewsAssessment(article.getId(), true, EventType.PRODUCTION_STOP, Severity.HIGH,
+                Confidence.HIGH, "Set by the test.", "Set by the test: an event."));
+        return article;
     }
 
     // ---- failing and refusing ----------------------------------------------------------------------------------------

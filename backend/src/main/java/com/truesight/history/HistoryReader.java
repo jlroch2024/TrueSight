@@ -16,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -99,10 +101,23 @@ public class HistoryReader {
                     .toList();
             reads.available(companyId, earlier.size());
 
+            // Download every report not saved yet before saving any, so the reports saved are always all there are:
+            // that is what lets a company's earlier reports be counted from what is saved (see HistoryReads.expected).
+            Map<SecClient.SecFiling, String> downloaded = new LinkedHashMap<>();
             for (SecClient.SecFiling filing : earlier) {
-                Report report = reports.findByAccessionNumber(filing.accessionNumber()).orElseGet(() -> reports.save(
-                        new Report(companyId, filing.form(), filing.accessionNumber(), filing.filingDate(),
-                                filing.url(), ReportTextExtractor.extract(sec.download(filing.url())))));
+                if (reports.findByAccessionNumber(filing.accessionNumber()).isEmpty()) {
+                    downloaded.put(filing, ReportTextExtractor.extract(sec.download(filing.url())));
+                }
+            }
+            List<Report> toRead = new ArrayList<>();
+            for (SecClient.SecFiling filing : earlier) {
+                String text = downloaded.get(filing);
+                toRead.add(text == null
+                        ? reports.findByAccessionNumber(filing.accessionNumber()).orElseThrow()
+                        : reports.save(new Report(companyId, filing.form(), filing.accessionNumber(),
+                                filing.filingDate(), filing.url(), text)));
+            }
+            for (Report report : toRead) {
                 if (reads.isRead(report.getId())) continue;
                 finder.findPast(report, company);
                 progress.advance(portfolioId);
