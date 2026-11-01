@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -104,8 +105,71 @@ class RecommendationWriterIT {
         verify(gemini, times(2)).generate(any(com.truesight.ai.AiRequest.class), any());
     }
 
+    @Test
+    void threeArticlesAboutOneEventAskGeminiOnceAndSaveOneSuggestion() {
+        Portfolio portfolio = portfolio();
+        Company company = company();
+        Instant now = Instant.now();
+        List<NewsArticle> eventArticles = List.of(
+                alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofHours(1))),
+                alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofHours(30))),
+                alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofHours(60))));
+
+        writer.run(portfolio.getId());
+
+        verify(gemini, times(1)).generate(any(AiRequest.class), any());
+        assertThat(recommendations.findByArticleIdIn(eventArticles.stream().map(NewsArticle::getId).toList()))
+                .hasSize(1);
+    }
+
+    @Test
+    void aLaterArticleOfAnEventAlreadyHavingASuggestionGetsNoneAndGeminiIsNotAskedAgain() {
+        Portfolio portfolio = portfolio();
+        Company company = company();
+        Instant now = Instant.now();
+        alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofHours(30)));
+        writer.run(portfolio.getId());
+        NewsArticle later = alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofHours(1)));
+
+        writer.run(portfolio.getId());
+
+        verify(gemini, times(1)).generate(any(AiRequest.class), any());
+        assertThat(recommendations.findByArticleId(later.getId())).isEmpty();
+    }
+
+    @Test
+    void twoArticlesPublishedFiveDaysApartAreTwoEventsWithOneSuggestionEach() {
+        Portfolio portfolio = portfolio();
+        Company company = company();
+        Instant now = Instant.now();
+        NewsArticle first = alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofDays(6)));
+        NewsArticle second = alerted(portfolio, company, EventType.CYBER_ATTACK, now.minus(Duration.ofDays(1)));
+
+        writer.run(portfolio.getId());
+
+        verify(gemini, times(2)).generate(any(AiRequest.class), any());
+        assertThat(recommendations.findByArticleId(first.getId())).isPresent();
+        assertThat(recommendations.findByArticleId(second.getId())).isPresent();
+    }
+
+    private Company company() {
+        String id = UUID.randomUUID().toString().replace("-", "");
+        return companyDirectory.findOrCreate("Event Test " + id, String.format("%010d", Math.abs(id.hashCode())),
+                null, List.of());
+    }
+
+
+    private NewsArticle alerted(Portfolio portfolio, Company company, EventType type, Instant publishedAt) {
+        NewsArticle article = articles.save(new NewsArticle(company.getId(), "https://example.com/" + UUID.randomUUID(),
+                "Set by the test: event article", null, publishedAt));
+        assessments.save(new NewsAssessment(article.getId(), true, type, Severity.MEDIUM, Confidence.HIGH,
+                "Set by the test.", "Set by the test."));
+        alerts.save(new Alert(portfolio.getId(), article.getId(), BigDecimal.TEN));
+        return article;
+    }
+
     private Event event() {
-        Company company = companyDirectory.findOrCreate("NVIDIA Corporation", "0001045810", "NVDA", List.of("NVIDIA"));
+        Company company = company();
         NewsArticle article = articles.save(new NewsArticle(company.getId(), "https://example.com/" + UUID.randomUUID(),
                 "GPUs from stolen $470,000 Nvidia RTX 5090 shipment at Brazil airport appear for sale online, "
                         + "identified by serial numbers — three employees identified by police helped steal equipment",

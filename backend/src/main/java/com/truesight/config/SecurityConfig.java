@@ -66,7 +66,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rules -> rules
-                        .requestMatchers("/api/health", "/api/auth/signup", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/health", "/api/auth/signup", "/api/auth/login",
+                                "/api/news-checks/daily").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .oauth2ResourceServer(tokens -> tokens

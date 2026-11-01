@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Holding, HoldingStatus } from '../../api/portfolios';
-import { HoldingRow } from './HoldingsTab';
+import { HoldingRow, HoldingsTab } from './HoldingsTab';
+import { useWorkspaceView } from './view';
 
 function holding(status: HoldingStatus): Holding {
   return {
@@ -43,6 +44,42 @@ function renderRow(status: HoldingStatus, suppliers: number, customers: number) 
     />,
   );
 }
+
+function weighted(ticker: string, id: number, weight: number | null): Holding {
+  return { ...holding('WAITING'), id, ticker, weight };
+}
+
+// The drawer as the workspace draws it: the holdings go through useWorkspaceView, which puts them in order.
+function Drawer({ holdings }: { holdings: Holding[] }) {
+  const view = useWorkspaceView(holdings, [], [], true);
+  return (
+    <HoldingsTab
+      view={view}
+      chosenNode={null}
+      worst={null}
+      onWorst={vi.fn()}
+      onPeek={vi.fn()}
+      onChoose={vi.fn()}
+      onAdd={vi.fn()}
+      onUpload={vi.fn()}
+      uploading={false}
+    />
+  );
+}
+
+const order = () => screen.getAllByRole('listitem').map((item) => item.getAttribute('aria-label'));
+
+describe('the holdings tab', () => {
+  it('movesAHoldingToItsNewPlaceStraightAwayWhenItsWeightChanges', () => {
+    const before = [weighted('AAA', 1, 5), weighted('BBB', 2, 20), weighted('CCC', 3, 10)];
+    const { rerender } = render(<Drawer holdings={before} />);
+    expect(order()).toEqual(['BBB (BBB)', 'CCC (CCC)', 'AAA (AAA)']);
+
+    rerender(<Drawer holdings={[weighted('AAA', 1, 50), weighted('BBB', 2, 20), weighted('CCC', 3, 10)]} />);
+
+    expect(order()).toEqual(['AAA (AAA)', 'BBB (BBB)', 'CCC (CCC)']);
+  });
+});
 
 describe('a holding row', () => {
   it('showsSuppliersAboveCustomersWithTheNumberInTheColourOfItsKind', () => {

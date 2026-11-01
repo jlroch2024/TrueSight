@@ -1,6 +1,8 @@
 package com.truesight.portfolio;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +16,11 @@ public interface HoldingRepository extends JpaRepository<Holding, Long> {
     List<Holding> findByPortfolioIdOrderByTickerAsc(Long portfolioId);
 
     List<Holding> findByPortfolioIdAndStatusOrderByTickerAsc(Long portfolioId, HoldingStatus status);
+
+    /** The portfolios that hold at least one analysed company, oldest first. */
+    @Query("select distinct holding.portfolioId from Holding holding "
+            + "where holding.status = :status and holding.companyId is not null order by holding.portfolioId")
+    List<Long> findPortfolioIdsWithStatus(@Param("status") HoldingStatus status);
 
     /** One holding, only if it is in this portfolio. */
     Optional<Holding> findByIdAndPortfolioId(Long id, Long portfolioId);

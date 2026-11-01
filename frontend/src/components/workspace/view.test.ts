@@ -4,7 +4,18 @@ import { describe, expect, it } from 'vitest';
 import type { ReachedHolding } from '../../api/alerts';
 import { sampleAlert, tsmcSuppliesNvidia } from '../../test/sampleAlerts';
 import { TSMC } from '../../test/sampleNews';
-import { alertKey, byUrgency, exposureOf, offGraphId, spotlightOf } from './view';
+import type { Holding } from '../../api/portfolios';
+import {
+  alertKey,
+  byUrgency,
+  byWeight,
+  companyIdOfNode,
+  exposureOf,
+  offGraphId,
+  scenarioExposure,
+  scenarioFocus,
+  spotlightOf,
+} from './view';
 
 const view = {
   nodeIdByHolding: new Map([
@@ -74,5 +85,128 @@ describe('offGraphId', () => {
   it('givesAHoldingNotOnTheGraphAnIdNoGraphNodeHas', () => {
     expect(offGraphId(7)).toBe('holding-7');
     expect(offGraphId(7)).not.toMatch(/^\d+$/);
+  });
+});
+
+describe('byWeight', () => {
+  // Every holding gets an id of its own, even when two tickers start with the same letter.
+  let nextId = 1;
+  const holding = (ticker: string, weight: number | null): Holding => ({
+    id: nextId++,
+    ticker,
+    weight,
+    companyName: null,
+    companyDisplayName: null,
+    status: 'WAITING',
+    statusReason: null,
+    reportType: null,
+    reportDate: null,
+    reportLink: null,
+    lastAnalysed: null,
+  });
+  const tickers = (holdings: Holding[]) => holdings.map((found) => found.ticker);
+
+  it('listsTheLargestWeightFirst', () => {
+    const sorted = byWeight([holding('B', 2), holding('A', 18.5), holding('C', 8)]);
+
+    expect(sorted.map((found) => found.weight)).toEqual([18.5, 8, 2]);
+  });
+
+  it('listsHoldingsOfTheSameWeightInTickerOrder', () => {
+    expect(tickers(byWeight([holding('MSFT', 10), holding('AAPL', 10), holding('NVDA', 30)]))).toEqual([
+      'NVDA',
+      'AAPL',
+      'MSFT',
+    ]);
+  });
+
+  it('listsHoldingsWithoutAWeightAfterEveryWeightedOneInTickerOrder', () => {
+    expect(tickers(byWeight([holding('ZZZ', null), holding('B', 0), holding('AAA', null), holding('C', 5)]))).toEqual([
+      'C',
+      'B',
+      'AAA',
+      'ZZZ',
+    ]);
+  });
+
+  it('doesNotChangeTheOrderItWasGiven', () => {
+    const given = [holding('B', 1), holding('A', 2)];
+
+    byWeight(given);
+
+    expect(tickers(given)).toEqual(['B', 'A']);
+  });
+});
+
+describe('companyIdOfNode', () => {
+  it('isTheCompanyIdOfANodeOnTheGraphAndNothingForAHoldingOffTheGraph', () => {
+    expect(companyIdOfNode('11')).toBe(11);
+    expect(companyIdOfNode(offGraphId(7))).toBeNull();
+  });
+});
+
+describe('scenarioExposure', () => {
+  it('isAShareOfThePortfolioWhenTheHoldingsHaveWeightsOrACountOutOfAllTheHoldingsWhenTheyDoNot', () => {
+    expect(scenarioExposure({ exposure: 42.5, weighted: true, holdingCount: 7 })).toEqual({
+      value: 42.5,
+      suffix: '%',
+      label: 'of Portfolio',
+    });
+    expect(scenarioExposure({ exposure: 3, weighted: false, holdingCount: 7 })).toEqual({
+      value: 3,
+      suffix: '',
+      label: 'of 7 Holdings',
+    });
+    expect(scenarioExposure({ exposure: 1, weighted: false, holdingCount: 1 }).label).toBe('of 1 Holding');
+  });
+});
+
+describe('scenarioFocus', () => {
+  const nodes = ['1', '2', '6', '11'].map((id) => ({ id })) as never[];
+  const scenarioView = { nodes, nodeIdByHolding: view.nodeIdByHolding };
+  const company = (id: number) => ({ id, name: `Company ${id}`, displayName: `Company ${id}`, ticker: null });
+  const link = (id: number, companyId: number, counterpartyId: number) =>
+    ({ id, company: company(companyId), counterparty: company(counterpartyId), type: 'SUPPLIER' }) as never;
+  const result = (holdings: { holdingId: number; path: number[] }[], links: never[]) =>
+    ({
+      company: company(11),
+      holdings: holdings.map((reached) => ({ ...reached, ticker: 'X', weight: null, indirect: reached.path.length > 1 })),
+      links,
+      criticalLinks: [],
+      exposure: 0,
+      weighted: false,
+      holdingCount: 0,
+      assumptions: '',
+    }) as never;
+
+  it('lightsTheStoppedCompanyTheHoldingsItReachesAndEveryLinkOfTheirPaths', () => {
+    const focus = scenarioFocus(
+      result([{ holdingId: 1, path: [1] }], [link(1, 1, 11)]),
+      scenarioView,
+    );
+
+    expect(focus.nodeIds.sort()).toEqual(['1', '11']);
+    expect(focus.relationshipIds).toEqual([1]);
+  });
+
+  it('lightsTheCompanyBetweenAndBothLinksOfAHoldingReachedInTwoSteps', () => {
+    // 11 supplies 6 (relationship 14), which supplies 1 (relationship 1).
+    const focus = scenarioFocus(
+      result([{ holdingId: 1, path: [14, 1] }], [link(14, 6, 11), link(1, 1, 6)]),
+      scenarioView,
+    );
+
+    expect(focus.nodeIds.sort()).toEqual(['1', '11', '6']);
+    expect(focus.relationshipIds).toEqual([14, 1]);
+  });
+
+  it('lightsOnlyTheCompanyItselfWhenItIsTheHolding', () => {
+    const focus = scenarioFocus({ ...(result([{ holdingId: 1, path: [] }], []) as object), company: company(1) } as never, scenarioView);
+
+    expect(focus).toEqual({ nodeIds: ['1'], relationshipIds: [] });
+  });
+
+  it('lightsNothingBeyondTheGraphForACompanyReachingNoHolding', () => {
+    expect(scenarioFocus(result([], []), scenarioView)).toEqual({ nodeIds: ['11'], relationshipIds: [] });
   });
 });

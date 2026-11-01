@@ -17,10 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +35,6 @@ public class AlertService {
     private static final String PORTFOLIO_NOT_FOUND = "Portfolio not found.";
     private static final String ALERT_NOT_FOUND = "Alert not found.";
     private static final String OPEN_OR_DISMISSED = "An alert is either open or dismissed.";
-    private static final Duration EVENT_WINDOW = Duration.ofDays(3);
 
     private final PortfolioRepository portfolios;
     private final AlertRepository alerts;
@@ -72,8 +68,8 @@ public class AlertService {
         List<AlertRow> rows = alerts.findOrdered(portfolioId);
         List<Holding> portfolioHoldings = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId);
         PageData data = loadPageData(rows, portfolioHoldings);
-        List<AlertEventResponse> allEvents = group(rows).stream()
-                .map(event -> eventResponse(event.rows(), data))
+        List<AlertEventResponse> allEvents = NewsEvents.group(rows, AlertRow::article, AlertRow::assessment).stream()
+                .map(event -> eventResponse(event, data))
                 .sorted(EVENT_ORDER)
                 .toList();
         List<AlertEventResponse> visible = allEvents.stream()
@@ -188,10 +184,13 @@ public class AlertService {
         List<AlertEventResponse.Source> sources = ordered.stream()
                 .map(row -> source(row.article()))
                 .toList();
-        String recommendation = java.util.Optional.ofNullable(data.recommendationByArticle().get(lead.article().getId()))
+        // The event's suggestion may belong to any of its articles, not only the lead.
+        String recommendation = ordered.stream()
+                .map(row -> data.recommendationByArticle().get(row.article().getId()))
+                .filter(Objects::nonNull)
                 .filter(found -> found.getStatus() == RecommendationStatus.APPROVED)
                 .map(found -> found.getEditedText() == null ? found.getText() : found.getEditedText())
-                .orElse(null);
+                .findFirst().orElse(null);
         return new AlertEventResponse(alertIds, openOrDismissed(lead.alert().getStatus()), exposure,
 
                 new AlertEventResponse.Headline(article(lead.article(), data), assessment(lead.assessment())), sources,
@@ -215,32 +214,6 @@ public class AlertService {
                 new AlertResponse.Assessment(row.assessment().getEventType(), row.assessment().getSeverity(),
                         row.assessment().getConfidence(), row.assessment().getSummary(), row.assessment().getReason()),
                 reached);
-    }
-
-    /** Groups chronologically, anchoring each three-day window at its earliest article. */
-    private List<EventGroup> group(List<AlertRow> rows) {
-        Map<GroupKey, List<AlertRow>> byEvent = new HashMap<>();
-        for (AlertRow row : rows) {
-            GroupKey key = new GroupKey(row.article().getCompanyId(), row.assessment().getEventType());
-            byEvent.computeIfAbsent(key, ignored -> new ArrayList<>()).add(row);
-        }
-        List<EventGroup> events = new ArrayList<>();
-        for (List<AlertRow> candidates : byEvent.values()) {
-            List<AlertRow> chronological = candidates.stream()
-                    .sorted(Comparator.comparing(row -> row.article().getPublishedAt()))
-                    .toList();
-            List<AlertRow> current = new ArrayList<>();
-            for (AlertRow row : chronological) {
-                if (!current.isEmpty() && Duration.between(current.getFirst().article().getPublishedAt(),
-                        row.article().getPublishedAt()).compareTo(EVENT_WINDOW) > 0) {
-                    events.add(new EventGroup(List.copyOf(current)));
-                    current.clear();
-                }
-                current.add(row);
-            }
-            if (!current.isEmpty()) events.add(new EventGroup(List.copyOf(current)));
-        }
-        return events;
     }
 
     private ReachedPath eventReachedPath(AlertHolding found, PageData data) {
@@ -365,12 +338,6 @@ public class AlertService {
     private void requirePortfolio(Long portfolioId) {
         portfolios.findByIdAndUserId(portfolioId, currentUser.id())
                 .orElseThrow(() -> ApiException.notFound(PORTFOLIO_NOT_FOUND));
-    }
-
-    private record GroupKey(Long companyId, EventType eventType) {
-    }
-
-    private record EventGroup(List<AlertRow> rows) {
     }
 
     private record HoldingRelationshipKey(Long holdingId, Long relationshipId, Long secondRelationshipId) {

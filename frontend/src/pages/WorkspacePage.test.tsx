@@ -17,6 +17,7 @@ import type { AlertEvent, ReachedHolding } from '../api/alerts';
 import { tokenStore } from '../api/client';
 import type { Holding, Portfolio } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
+import type { WhatIf } from '../api/whatIf';
 import type { GraphFocus } from '../graph/LivingGraph';
 import { showInReportUrl } from '../format';
 import { sampleAlert, tsmcSuppliesNvidia } from '../test/sampleAlerts';
@@ -130,6 +131,8 @@ type Backend = {
   found?: AlertEvent[];
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
+  // The answer to "what if this company stops?", by company id, or the status code to fail with.
+  whatIf?: (companyId: number) => WhatIf | number;
   sent: { method: string; url: string; body: unknown }[];
 };
 
@@ -215,6 +218,11 @@ function answer(url: string, init: RequestInit = {}): Response {
   }
   if (url.startsWith(`${base}/alerts`)) {
     return json({ weighted: backend.weighted, holdingCount: backend.holdings.length, alerts: backend.alerts });
+  }
+  if (url.startsWith(`${base}/what-if`)) {
+    const answered = backend.whatIf?.(Number(new URL(url, 'http://localhost').searchParams.get('companyId')));
+    if (typeof answered === 'number') return json({ message: 'The scenario could not be worked out.' }, answered);
+    return answered ? json(answered) : json({ message: 'Company not found.' }, 404);
   }
   if (url.startsWith('/api/portfolios/')) return json({ message: 'Portfolio not found.' }, 404);
   return json([]);
@@ -1015,6 +1023,156 @@ describe('the Inspector', () => {
 });
 
 // ---- The graph's marks and logos -------------------------------------------------------------------------------------
+
+// ---- What If It Stops? --------------------------------------------------------------------------------------------
+
+/**
+ * TSMC stopping, over the real sample: it supplies NVIDIA (relationship 1) and AMD (relationship 3). Lam Research
+ * supplies TSMC (relationship 14), so it is not reached: it would only lose a customer.
+ */
+function tsmcStops(overrides: Partial<WhatIf> = {}): WhatIf {
+  const tsmc = sample[0]!.counterparty;
+  return {
+    company: tsmc,
+    holdings: [
+      { holdingId: 2, ticker: 'AMD', weight: 10, indirect: false, path: [3] },
+      { holdingId: 1, ticker: 'NVDA', weight: 18, indirect: false, path: [1] },
+    ],
+    exposure: 28,
+    weighted: true,
+    holdingCount: 3,
+    criticalLinks: [],
+    links: [sample[0]!, sample[2]!],
+    assumptions: `Assumes ${tsmc.displayName} stops supplying entirely. Uses relationships from the latest annual reports; rejected ones are left out. Weights from your CSV.`,
+    ...overrides,
+  };
+}
+
+async function openTsmcScenario() {
+  await graph();
+  await userEvent.click(screen.getByRole('button', { name: `Company ${sample[0]!.counterparty.id}` }));
+  await userEvent.click(within(inspector()).getByRole('button', { name: 'What If It Stops?' }));
+}
+
+describe('What If It Stops?', () => {
+  it('isOfferedForAnyCompanyNotOnlyAHolding', async () => {
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${sample[0]!.counterparty.id}` }));
+    expect(within(inspector()).getByText('Not Held')).toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: 'What If It Stops?' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
+    expect(within(inspector()).getByRole('button', { name: 'What If It Stops?' })).toBeInTheDocument();
+  });
+
+  it('listsEveryHoldingItReachesWithItsPathAndNotOneThatOnlySuppliesTheCompany', async () => {
+    backend.whatIf = () => tsmcStops();
+    renderAt();
+    await openTsmcScenario();
+
+    const reached = await within(inspector()).findByRole('region', { name: 'Holdings Reached' });
+    expect(reached).toHaveTextContent('AMD');
+    expect(reached).toHaveTextContent('NVDA');
+    expect(reached).not.toHaveTextContent('LRCX');
+    expect(reached).toHaveTextContent('Taiwan Semiconductor Manufacturing');
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toContain(
+      `/api/portfolios/7/what-if?companyId=${sample[0]!.counterparty.id}`,
+    );
+  });
+
+  it('showsTheExposureAsTheReachedHoldingsWeightOrACountWithoutWeights', async () => {
+    backend.whatIf = () => tsmcStops();
+    const { unmount } = renderAt();
+    await openTsmcScenario();
+    expect(await within(inspector()).findByText('28%')).toBeInTheDocument();
+    expect(within(inspector()).getByText('of Portfolio')).toBeInTheDocument();
+    unmount();
+
+    backend.whatIf = () => tsmcStops({ exposure: 2, weighted: false, holdingCount: 7 });
+    renderAt();
+    await openTsmcScenario();
+    expect(await within(inspector()).findByText('of 7 Holdings')).toBeInTheDocument();
+  });
+
+  it('flagsSoleAndSingleSourceLinksWithTheirSentencesAndOpensTheReportAtThatSentence', async () => {
+    const source = sample[0]!;
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    backend.whatIf = () =>
+      tsmcStops({ criticalLinks: [{ ...source, criticality: 'SOLE_SOURCE', criticalityEvidence: source.evidence }] });
+    renderAt();
+    await openTsmcScenario();
+
+    const critical = await within(inspector()).findByRole('region', { name: 'Sole and Single Sources' });
+    expect(critical).toHaveTextContent('Sole Source');
+    expect(critical).toHaveTextContent(source.evidence);
+    await userEvent.click(within(critical).getByRole('button', { name: /in Report$/ }));
+    expect(open).toHaveBeenCalledWith(showInReportUrl(source.report.url, source.evidence), '_blank', 'noopener,noreferrer');
+  });
+
+  it('showsEachLinksReviewStatusAndConfidence', async () => {
+    backend.whatIf = () => tsmcStops({ links: [{ ...sample[0]!, reviewStatus: 'APPROVED' }, sample[2]!] });
+    renderAt();
+    await openTsmcScenario();
+
+    const links = await within(inspector()).findByRole('region', { name: 'Links on the Paths' });
+    expect(within(links).getAllByText(/Confidence$/)).toHaveLength(2);
+    expect(within(links).getByText(/Approved/)).toBeInTheDocument();
+    expect(within(links).getByText(/Not Yet Reviewed/)).toBeInTheDocument();
+  });
+
+  it('lightsTheStoppedCompanyAndEveryPathAndRestoresTheGraphWhenTheScenarioIsClosed', async () => {
+    backend.whatIf = () => tsmcStops();
+    renderAt();
+    await openTsmcScenario();
+
+    await waitFor(() => expect(screen.getByTestId('focus-nodes')).toHaveTextContent(/^1,11,2$/));
+    expect(screen.getByTestId('focus-links')).toHaveTextContent(/^1,3$/);
+
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Close Scenario' }));
+
+    expect(screen.getByTestId('focus-nodes')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('focus-links')).toBeEmptyDOMElement();
+    expect(within(inspector()).getByRole('heading', { name: sample[0]!.counterparty.displayName })).toBeInTheDocument();
+  });
+
+  it('restoresTheGraphWhenTheInspectorIsClosed', async () => {
+    backend.whatIf = () => tsmcStops();
+    renderAt();
+    await openTsmcScenario();
+    await waitFor(() => expect(screen.getByTestId('focus-links')).toHaveTextContent('1,3'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close the Inspector' }));
+
+    expect(screen.getByTestId('focus-links')).toBeEmptyDOMElement();
+  });
+
+  it('writesTheAssumptionsOnEveryResultAndSaysWhenNoHoldingDependsOnTheCompany', async () => {
+    const tsmc = sample[0]!.counterparty;
+    backend.whatIf = () => tsmcStops({ holdings: [], exposure: 0, links: [] });
+    renderAt();
+    await openTsmcScenario();
+
+    expect(await within(inspector()).findByText(`No holding in this portfolio depends on ${tsmc.displayName}.`)).toBeInTheDocument();
+    expect(within(inspector()).getByLabelText('Assumptions')).toHaveTextContent(
+      `Assumes ${tsmc.displayName} stops supplying entirely.`,
+    );
+    expect(within(inspector()).getByLabelText('Assumptions')).toHaveTextContent('Weights from your CSV.');
+  });
+
+  it('showsWhyAScenarioFailedAndRetriesIt', async () => {
+    let answers = 0;
+    backend.whatIf = () => (answers++ === 0 ? 500 : tsmcStops());
+    renderAt();
+    await openTsmcScenario();
+
+    expect(await within(inspector()).findByRole('alert')).toHaveTextContent('The scenario could not be worked out.');
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Retry' }));
+
+    expect(await within(inspector()).findByRole('region', { name: 'Holdings Reached' })).toBeInTheDocument();
+  });
+});
 
 describe('the graph', () => {
   it('marksEveryLinkAnOpenAlertRunsThroughAndEachCompanysMostSevereOpenAlert', async () => {
