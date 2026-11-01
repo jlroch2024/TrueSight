@@ -89,8 +89,10 @@ describe('offGraphId', () => {
 });
 
 describe('byWeight', () => {
+  // Every holding gets an id of its own, even when two tickers start with the same letter.
+  let nextId = 1;
   const holding = (ticker: string, weight: number | null): Holding => ({
-    id: ticker.charCodeAt(0),
+    id: nextId++,
     ticker,
     weight,
     companyName: null,
