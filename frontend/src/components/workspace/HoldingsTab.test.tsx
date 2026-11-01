@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Holding, HoldingStatus } from '../../api/portfolios';
 import { HoldingRow } from './HoldingsTab';
@@ -19,13 +20,20 @@ function holding(status: HoldingStatus): Holding {
   };
 }
 
+type Links = ComponentProps<typeof HoldingRow>['links'];
+
+// Only the counts matter to the row, so each connection is an empty stand-in.
+function linksOf(suppliers: number, customers: number): Links {
+  const connection = {} as NonNullable<Links>['suppliers'][number];
+  return { suppliers: new Array(suppliers).fill(connection), customers: new Array(customers).fill(connection) };
+}
+
 function renderRow(status: HoldingStatus, suppliers: number, customers: number) {
-  const links = { suppliers: new Array(suppliers).fill({}), customers: new Array(customers).fill({}) };
   return render(
     <HoldingRow
       holding={holding(status)}
       beacon={null}
-      links={links as never}
+      links={linksOf(suppliers, customers)}
       share={0.2}
       current={false}
       index={0}

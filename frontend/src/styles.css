@@ -1576,6 +1576,7 @@ svg.lucide {
   color: var(--teal);
 }
 
+.link-line.faint,
 .link-line.zero,
 .link-line.zero .link-number {
   color: var(--faint);
