@@ -38,7 +38,7 @@ import {
   estimateWidth,
   eventLabel,
 } from './model';
-import { restoreSettled, settleForView } from './physics';
+import { type GraphShape, TALL_LABEL_ROOM, TALL_SHAPE, WIDE_SHAPE, applyShape, restoreSettled, settleForView } from './physics';
 import {
   FONT,
   INK,
@@ -89,6 +89,8 @@ type Props = {
   topBar?: { left: number; right: number };
   // Something of the page's to put first in that band, before the title (the workspace's Open Alerts bar).
   barStart?: ReactNode;
+  // Shown on a screen taller than it is wide (a phone): the graph spreads down rather than across, to fill it.
+  tall?: boolean;
 };
 
 /** Companies and links to light, by node id and relationship id. */
@@ -111,12 +113,16 @@ const MAP_WIDTH = 193;
 const MAP_HEIGHT = 123;
 // How warm the physics may still be when the view fits around companies on their way somewhere new.
 const NEARLY_SETTLED = 0.12;
+// How much the companies are stirred when the page changes to or from its tall layout.
+const LAYOUT_CHANGE_ENERGY = 0.6;
 // How much room above the pointer the card needs; nearer the top, it goes below instead.
 const TIP_ROOM = 96;
 // One step of the zoom buttons and keys.
 const ZOOM_STEP = 1.35;
 // The room a fit leaves for the controls along the top and the key along the bottom.
-const FIT_ROOM = { top: 70, right: 40, bottom: 104, left: 40 };
+const FIT_ROOM = { top: 48, right: 48, bottom: 48, left: 48 };
+// The same on a tall view (a phone), where the graph's own bars take the top and bottom of what is clear.
+const TALL_FIT_ROOM = { top: 60, right: 14, bottom: 60, left: 14 };
 const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 // How long the view takes to follow a panel opening or closing, so what was in the middle stays there: the pace the
 // page's panels move at, on the same smooth step (easeInOut), so the view and the panels move as one.
@@ -127,8 +133,16 @@ const FOCUS_MAX_ZOOM = 1.15;
 const FOCUS_MIN_ZOOM = 0.45;
 // Narrower than this between the page's panels, the minimap and the hint step aside so the key stays readable.
 const NARROW_BELOW = 640;
+// How long the key and minimap take to fade out and back in as they fold (livingGraph.css has the same times).
+const FOLD_OUT_MS = 140;
+const FOLD_IN_MS = 260;
 // In a page's top bar, the title and the open search are each this wide (livingGraph.css, .lg-in-bar).
 const BAR_ITEM = 240;
+// The least width the title and the page's own bar keep their words at, and the search as a square. With less room between
+// the page's bars, they fold to squares of their marks alone.
+const BAR_TITLE_LEAST = 88;
+const BAR_START_LEAST = 92;
+const BAR_SQUARE = 52;
 const EMPTY: Record<string, string> = {};
 const NO_RISKS = new Map<number, Risk>();
 const NO_DOTS = new Map<string, Severity>();
@@ -174,6 +188,54 @@ function KeyMark({
       style={{ width: size, height: size, color: colour }}
     />
   );
+}
+
+/**
+ * Whether the graph's controls are folded for the room they have. Folding or unfolding (the key to its button, the minimap
+ * away), they fade out, change while they cannot be seen, and fade back in, as the workspace does when it changes layout.
+ * The first measure, and a change the page has already hidden, take effect at once.
+ */
+function useFolding(initial: boolean, still: boolean) {
+  const [narrow, setNarrow] = useState(initial);
+  const [folding, setFolding] = useState<'out' | 'in' | null>(null);
+  const fold = useRef({ wanted: initial, shown: initial, measured: false, timer: undefined as number | undefined });
+  useEffect(
+    () => () => {
+      window.clearTimeout(fold.current.timer);
+      fold.current.timer = undefined;
+    },
+    [],
+  );
+  const askNarrow = useCallback(
+    (next: boolean, atOnce = false) => {
+      const state = fold.current;
+      state.wanted = next;
+      const first = !state.measured;
+      state.measured = true;
+      if (atOnce || first || still) {
+        window.clearTimeout(state.timer);
+        state.timer = undefined;
+        state.shown = next;
+        setNarrow(next);
+        setFolding(null);
+        return;
+      }
+      if (state.timer !== undefined || next === state.shown) return;
+      setFolding('out');
+      state.timer = window.setTimeout(() => {
+        state.shown = state.wanted;
+        setNarrow(state.wanted);
+        setFolding('in');
+        state.timer = window.setTimeout(() => {
+          state.timer = undefined;
+          setFolding(null);
+          if (state.wanted !== state.shown) askNarrow(state.wanted);
+        }, FOLD_IN_MS);
+      }, FOLD_OUT_MS);
+    },
+    [still],
+  );
+  return { narrow, folding, askNarrow };
 }
 
 function reducesMotion(): boolean {
@@ -236,6 +298,7 @@ export function LivingGraph({
   insets = NO_INSETS,
   topBar,
   barStart,
+  tall = false,
 }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -246,6 +309,8 @@ export function LivingGraph({
   // The scene last shown, and for which layout: a new graph for the same portfolio carries on from it (Scene.carryFrom).
   const shownRef = useRef<{ scene: Scene; layoutKey: string | undefined } | null>(null);
   const rigRef = useRef<CameraRig | null>(null);
+  // The shape the graph settled into, kept by every graph carried on from it, so nothing pulls it out of shape.
+  const shapeRef = useRef<GraphShape>(tall ? TALL_SHAPE : WIDE_SHAPE);
   const viewChosenRef = useRef(false);
   // Set when the companies are on their way somewhere new (Reset Layout): the view fits around them once
   // they have nearly arrived.
@@ -263,17 +328,21 @@ export function LivingGraph({
   const [searching, setSearching] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const [touched, setTouched] = useState(false);
-  const [narrow, setNarrow] = useState(false);
+  // Narrow between the page's panels, or on a screen shaped for the tall layout, where the controls always fold.
+  const { narrow, folding, askNarrow } = useFolding(tall, still);
   // In a page's top bar, too little room between the page's bars for the title and the whole search: the search
   // folds to an icon until it is used.
   const topRef = useRef<HTMLDivElement | null>(null);
   const [crowded, setCrowded] = useState(false);
+  const [tight, setTight] = useState(false);
   // Narrow, the key folds to a button; pointed at or pressed, it opens.
   const [keyOpen, setKeyOpen] = useState(false);
 
   // Read by the long-lived handlers, so changing them does not rebuild the graph.
-  const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets });
-  latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets };
+  const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall });
+  latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall };
+  // The room to keep around the graph when fitting it in view, clear of what covers it.
+  const fitRoom = () => around(latest.current.tall ? TALL_FIT_ROOM : FIT_ROOM, latest.current.insets);
   const redrawRef = useRef(() => {});
   const logos = useMemo(() => new LogoBook(() => redrawRef.current()), []);
 
@@ -299,6 +368,7 @@ export function LivingGraph({
       positions,
       placed,
       labelRoom: scene.graph.nodes[0]?.labelRoom ?? 1,
+      shape: shapeRef.current,
       ...(viewChosenRef.current ? { zoom: rig.camera.k, pan: { x: rig.camera.x, y: rig.camera.y } } : {}),
     });
   }, []);
@@ -307,8 +377,7 @@ export function LivingGraph({
     const scene = sceneRef.current;
     const rig = rigRef.current;
     if (!scene || !rig) return;
-    const room = around(FIT_ROOM, latest.current.insets);
-    const target = fitCamera(boundsAround(scene, scene.graph.nodes), rig.width, rig.height, room);
+    const target = fitCamera(boundsAround(scene, scene.graph.nodes), rig.width, rig.height, fitRoom());
     if (instant) rig.jump(target);
     else rig.flyTo(target);
   }, []);
@@ -349,6 +418,7 @@ export function LivingGraph({
     const scene = new Scene(graph, still);
     let rig: CameraRig;
     if (carried) {
+      applyShape(scene.physics, shapeRef.current);
       scene.carryFrom(carried);
       restoreSettled(scene.physics, carried.graph.nodes[0]?.labelRoom ?? 1);
       // Newcomers find their place among the rest; a gap left by a company taken away closes gently.
@@ -373,11 +443,19 @@ export function LivingGraph({
           node.anchorY = point.y;
         }
       }
-      if (complete) restoreSettled(scene.physics, saved.labelRoom ?? 1);
+      if (complete) {
+        shapeRef.current = saved.shape ?? shapeRef.current;
+        applyShape(scene.physics, shapeRef.current);
+        restoreSettled(scene.physics, saved.labelRoom ?? 1);
+      }
       // Settled for the view it opens in: every label with room at that zoom, every link clear of other companies.
       else {
-        const room = around(FIT_ROOM, latest.current.insets);
-        settleForView(scene.physics, (bounds) => fitCamera(bounds, width, height, room).k);
+        const room = fitRoom();
+        shapeRef.current = settleForView(scene.physics, (bounds) => fitCamera(bounds, width, height, room).k, {
+          mostLabelRoom: latest.current.tall ? TALL_LABEL_ROOM : undefined,
+          shape: latest.current.tall ? TALL_SHAPE : WIDE_SHAPE,
+          aspect: Math.max(1, width - room.left - room.right) / Math.max(1, height - room.top - room.bottom),
+        });
       }
       rig = new CameraRig(still);
       rig.setSize(width, height);
@@ -386,7 +464,7 @@ export function LivingGraph({
         rig.jump({ k: saved.zoom, x: saved.pan.x, y: saved.pan.y });
         viewChosenRef.current = true;
       } else {
-        rig.jump(fitCamera(boundsAround(scene, graph.nodes), width, height, around(FIT_ROOM, latest.current.insets)));
+        rig.jump(fitCamera(boundsAround(scene, graph.nodes), width, height, fitRoom()));
         viewChosenRef.current = false;
       }
     }
@@ -419,10 +497,9 @@ export function LivingGraph({
       canvas.style.height = `${size.height}px`;
       rig.setSize(size.width, size.height);
       const covered = latest.current.insets;
-      setNarrow(size.width - covered.left - covered.right < NARROW_BELOW);
+      askNarrow(latest.current.tall || size.width - covered.left - covered.right < NARROW_BELOW);
       if (!viewChosenRef.current) {
-        const room = around(FIT_ROOM, latest.current.insets);
-        const target = fitCamera(boundsAround(scene, graph.nodes), size.width, size.height, room);
+        const target = fitCamera(boundsAround(scene, graph.nodes), size.width, size.height, fitRoom());
         if (glide && !still) rig.flyTo(target);
         else rig.jump(target);
       }
@@ -616,6 +693,7 @@ export function LivingGraph({
   // A panel opens or closes over the graph: the view glides by half the change, so what was in the middle of the clear
   // part stays in the middle of it. A view the user never moved simply fits again.
   const shownInsets = useRef(insets);
+  const foldedForTall = useRef(tall);
   useEffect(() => {
     const rig = rigRef.current;
     const before = shownInsets.current;
@@ -623,7 +701,9 @@ export function LivingGraph({
     if (!rig) return;
     const dx = (insets.left - before.left - (insets.right - before.right)) / 2;
     const dy = (insets.top - before.top - (insets.bottom - before.bottom)) / 2;
-    setNarrow(rig.width - insets.left - insets.right < NARROW_BELOW);
+    // Changing to or from the tall layout, the page is already fading everything.
+    askNarrow(tall || rig.width - insets.left - insets.right < NARROW_BELOW, foldedForTall.current !== tall);
+    foldedForTall.current = tall;
     if (dx === 0 && dy === 0) return;
     // A flight already under way was aimed with these insets (the panel opened because something was chosen), so it
     // is left to land where it was going.
@@ -635,7 +715,25 @@ export function LivingGraph({
       else rig.flyTo(target, INSET_GLIDE_MS);
     }
     redrawRef.current();
-  }, [insets, still]);
+  }, [insets, still, tall]);
+
+  // The page changed to or from its tall layout: the companies glide into the new shape, and the view fits around them.
+  const wasTall = useRef(tall);
+  useEffect(() => {
+    if (wasTall.current === tall) return;
+    wasTall.current = tall;
+    const scene = sceneRef.current;
+    if (!scene) return;
+    shapeRef.current = tall ? TALL_SHAPE : WIDE_SHAPE;
+    applyShape(scene.physics, shapeRef.current);
+    if (tall) for (const node of scene.graph.nodes) node.labelRoom = Math.min(node.labelRoom, TALL_LABEL_ROOM);
+    // It is the same graph carrying on, under the name its layout is now remembered by.
+    if (shownRef.current) shownRef.current.layoutKey = latest.current.layoutKey;
+    viewChosenRef.current = false;
+    fitWhenSettledRef.current = true;
+    scene.physics.alpha(LAYOUT_CHANGE_ENERGY);
+    redrawRef.current();
+  }, [tall]);
 
   // Pointer: point, press, drag a company, pan the background, click, double-click.
   useEffect(() => {
@@ -990,6 +1088,7 @@ export function LivingGraph({
       const start = items.filter((item) => !item.classList.contains('lg-title') && !item.classList.contains('lg-search'));
       const needed = start.reduce((sum, item) => sum + item.offsetWidth, 0) + BAR_ITEM * 2 + gap * (start.length + 1);
       setCrowded(top.clientWidth < needed);
+      setTight(top.clientWidth < BAR_TITLE_LEAST + gap + BAR_SQUARE + start.length * (BAR_START_LEAST + gap));
     };
     const observer = new ResizeObserver(measure);
     observer.observe(top);
@@ -1003,7 +1102,8 @@ export function LivingGraph({
       {full && <div className="lg-backdrop" aria-hidden="true" onClick={() => setFull(false)} />}
       <div
         ref={rootRef}
-        className={`${bare ? 'lg-root lg-bare' : `lg-root lg-cut lg-mark${full ? ' lg-full' : ''}`}${narrow ? ' lg-narrow' : ''}${topBar ? ' lg-in-bar' : ''}${topBar && crowded ? ' lg-bar-crowded' : ''}`}
+        className={`${bare ? 'lg-root lg-bare' : `lg-root lg-cut lg-mark${full ? ' lg-full' : ''}`}${narrow ? ' lg-narrow' : ''}${topBar ? ' lg-in-bar' : ''}${topBar && crowded ? ' lg-bar-crowded' : ''}${topBar && tight ? ' lg-bar-tight' : ''}`}
+        data-folding={folding ?? undefined}
         onKeyDown={graphKeys}
         style={
           {
@@ -1019,7 +1119,7 @@ export function LivingGraph({
 
         <div ref={topRef} className="lg-top">
           {barStart}
-          <div className="lg-glass lg-title lg-mark">
+          <div className="lg-glass lg-title lg-mark" title={`Supply Chain · ${counts}`}>
             <span className="lg-pulse" aria-hidden="true" />
             <span className="lg-title-text">
               <span className="lg-title-name">Supply Chain</span>
@@ -1126,7 +1226,9 @@ export function LivingGraph({
             className={`lg-glass lg-key lg-mark${narrow ? ' lg-key-pop' : ''}`}
             initial={narrow ? { opacity: 0, y: 10, scale: 0.97 } : false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.97 }}
+            // Only the key opened from its button leaves gently. The full key folding away goes at once, or it would hold the
+            // button above its place until it had gone.
+            exit={narrow ? { opacity: 0, y: 10, scale: 0.97 } : undefined}
             transition={{ type: 'spring', stiffness: 420, damping: 34 }}
           >
             {graph.chains.length > 0 && (
@@ -1135,7 +1237,7 @@ export function LivingGraph({
                 className="lg-chains"
                 aria-label="Each holding's chain"
                 // Three to a row, so the first three chains sit on top and the next three beneath them.
-                style={{ gridTemplateColumns: `repeat(${Math.min(3, graph.chains.length) || 1}, auto)` }}
+                style={{ '--lg-chain-columns': Math.min(3, graph.chains.length) || 1 } as CSSProperties}
               >
                 <li
                   ref={chainPlate.plate}
@@ -1217,6 +1319,18 @@ export function LivingGraph({
           </AnimatePresence>
           </div>
 
+        <AnimatePresence>
+          {!touched && graph.nodes.length > 0 && (
+            <motion.p
+              className="lg-hint"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 1.6, duration: 0.5 } }}
+              exit={{ opacity: 0, y: 8, transition: { duration: 0.25 } }}
+            >
+              Drag Companies · Scroll to Zoom · Click an Arrow for Its Evidence · Press / to Search
+            </motion.p>
+          )}
+        </AnimatePresence>
           <div className="lg-bottom-right">
             <div className="lg-glass lg-minimap lg-mark">
               <canvas
@@ -1274,19 +1388,6 @@ export function LivingGraph({
             </div>
           </div>
         </div>
-
-        <AnimatePresence>
-          {!touched && graph.nodes.length > 0 && (
-            <motion.p
-              className="lg-hint"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0, transition: { delay: 1.6, duration: 0.5 } }}
-              exit={{ opacity: 0, y: 8, transition: { duration: 0.25 } }}
-            >
-              Drag Companies · Scroll to Zoom · Click an Arrow for Its Evidence · Press / to Search
-            </motion.p>
-          )}
-        </AnimatePresence>
 
         <AnimatePresence>
           {full && (selectedEdge || selectedNode) && (

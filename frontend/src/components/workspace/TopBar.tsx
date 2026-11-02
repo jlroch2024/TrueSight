@@ -1,10 +1,13 @@
 // The workspace's top bar: islands floating over the graph. Left: the brand and the portfolio menu (its name, and under
 // it a ring that fills as holdings are analysed), as wide as the drawer under it. After it, in the graph's own row: the
 // Open Alerts bar, in the most severe open alert's colour, then the graph's title and search. Right: Upload CSV, Check
-// News, Analyse, Analyst Desk (analysts only) and the account; the Inspector takes this island's width.
+// News, Analyse and the account, as wide as the Inspector under it, whoever is logged in (styles.css); an analyst's
+// Analyst Desk is a bar of its own, just before it. On a phone the left
+// island is the whole bar: the brand's mark, the portfolio menu, the Open Alerts pill, Analyst Desk and the account. The
+// actions move into the sheets.
 import { AnimatePresence, motion } from 'motion/react';
 import { BriefcaseBusiness, Check, ChevronDown, FolderCog, LoaderCircle, Radar, ScanSearch, ShieldCheck, Upload } from 'lucide-react';
-import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Severity } from '../../api/news';
 import type { Portfolio } from '../../api/portfolios';
@@ -26,6 +29,7 @@ export function PortfolioIsland({
   analysed,
   total,
   analysing,
+  phone,
 }: {
   portfolioId: string;
   // undefined while loading.
@@ -34,6 +38,8 @@ export function PortfolioIsland({
   analysed: number;
   total: number;
   analysing: boolean;
+  // On a phone: what the end of the bar shows.
+  phone?: { openAlerts: number; severity: Severity | null; onAlerts: () => void };
 }) {
   const [open, setOpen] = useState(false);
   const [managing, setManaging] = useState(false);
@@ -45,8 +51,8 @@ export function PortfolioIsland({
 
   return (
     <header className="island left glass ticks">
-      <Brand />
-      <span className="island-divider" />
+      <Brand name={!phone} />
+      {!phone && <span className="island-divider" />}
       <div ref={ref} className="picker-holder">
         <button
           ref={picker}
@@ -76,7 +82,7 @@ export function PortfolioIsland({
           </span>
           <ChevronDown size={16} className="muted chevron" />
         </button>
-        <Popover anchor={ref} open={open} align="left" label="Your Portfolios" reachBar>
+        <Popover anchor={ref} open={open} align="left" label="Your Portfolios" reachBar={!phone} fitAnchor={!!phone}>
           <div className="pop-head">Your Portfolios</div>
           {(portfolios ?? []).map((item, index) => {
             const current = String(item.id) === portfolioId;
@@ -120,6 +126,25 @@ export function PortfolioIsland({
         </Popover>
       </div>
 
+      {phone && (
+        <span className="island-end">
+          {phone.openAlerts > 0 && (
+            <button
+              type="button"
+              className="alert-pill compact"
+              data-severity={phone.severity ?? 'HIGH'}
+              aria-label={plural(phone.openAlerts, 'Open Alert', 'Open Alerts')}
+              onClick={phone.onAlerts}
+            >
+              <span className="pulse-dot" />
+              {phone.openAlerts}
+            </button>
+          )}
+          <AnalystDeskButton portfolioId={portfolioId} />
+          <AccountMenu />
+        </span>
+      )}
+
       {/* Kept while it leaves, so it closes as smoothly as it opens. */}
       <AnimatePresence>
         {managing && (
@@ -157,21 +182,22 @@ export function OpenAlertsBar({
         <motion.span
           key="alerts"
           className="alert-bar-holder"
-          // The 12px gap after it closes with it (a negative margin cancels it), so nothing snaps when it goes.
-          initial={{ width: 0, marginRight: -12, opacity: 0 }}
-          animate={{ width: 'auto', marginRight: 0, opacity: 1 }}
-          exit={{ width: 0, marginRight: -12, opacity: 0 }}
+          // The 12px gap after it closes with it (a negative margin cancels it), so nothing snaps when it goes. Short of
+          // room, it gives way down to the least that still reads.
+          initial={{ width: 0, minWidth: 0, marginRight: -12, opacity: 0 }}
+          animate={{ width: 'auto', minWidth: 92, marginRight: 0, opacity: 1 }}
+          exit={{ width: 0, minWidth: 0, marginRight: -12, opacity: 0 }}
           transition={PANEL_MOVE}
         >
           <button
             type="button"
             className="alert-bar glass ticks"
             data-severity={severity ?? 'HIGH'}
-            title={checkedAt ? `News Checked ${formatAge(checkedAt)}` : undefined}
+            title={[plural(count, 'Open Alert', 'Open Alerts'), checkedAt && `News Checked ${formatAge(checkedAt)}`].filter(Boolean).join(' · ')}
             onClick={onOpen}
           >
             <span className="pulse-dot" />
-            {plural(count, 'Open Alert', 'Open Alerts')}
+            <span className="alert-bar-text">{plural(count, 'Open Alert', 'Open Alerts')}</span>
           </button>
         </motion.span>
       )}
@@ -180,7 +206,6 @@ export function OpenAlertsBar({
 }
 
 export function ActionsIsland({
-  portfolioId,
   analysing,
   starting,
   checking,
@@ -189,9 +214,7 @@ export function ActionsIsland({
   onUpload,
   onCheck,
   onAnalyse,
-  islandRef,
 }: {
-  portfolioId: string;
   analysing: boolean;
   starting: boolean;
   checking: boolean;
@@ -200,14 +223,10 @@ export function ActionsIsland({
   onUpload: () => void;
   onCheck: () => void;
   onAnalyse: () => void;
-  // The island itself, so the page can make the Inspector as wide.
-  islandRef?: Ref<HTMLDivElement>;
 }) {
-  const { me } = useAccount();
-  const navigate = useNavigate();
   const busy = analysing || starting;
   return (
-    <div ref={islandRef} className="island right glass ticks">
+    <div className="island right glass ticks">
       <button type="button" className="btn quiet" disabled={uploading} aria-label="Upload CSV" title="Upload CSV" onClick={onUpload}>
         <Swap
           on={uploading}
@@ -236,21 +255,6 @@ export function ActionsIsland({
           idle={<><ScanSearch size={16} />Analyse</>}
         />
       </button>
-      {me?.role === 'ANALYST' && (
-        <>
-          <span className="island-divider tight" />
-          <button
-            type="button"
-            className="btn quiet lime-ink"
-            aria-label="Analyst Desk"
-            title="Analyst Desk"
-            onClick={() => navigate(paths.review, { state: { fromPortfolio: portfolioId } })}
-          >
-            <ShieldCheck size={16} />
-            <span className="btn-word">Analyst Desk</span>
-          </button>
-        </>
-      )}
       <span className="island-divider tight" />
       <AccountMenu />
     </div>
@@ -258,10 +262,36 @@ export function ActionsIsland({
 }
 
 /**
+ * Analyst Desk, for analysts only. On a computer it is a bar of its own, just before the right island, so that island and
+ * the Inspector under it are the same width for everyone; in the phone's one bar, an icon.
+ */
+export function AnalystDeskButton({ portfolioId, bar = false }: { portfolioId: string; bar?: boolean }) {
+  const { me } = useAccount();
+  const navigate = useNavigate();
+  if (me?.role !== 'ANALYST') return null;
+  const open = () => navigate(paths.review, { state: { fromPortfolio: portfolioId } });
+  if (bar) {
+    return (
+      <div className="island desk-bar glass ticks">
+        <button type="button" className="btn quiet lime-ink" aria-label="Analyst Desk" title="Analyst Desk" onClick={open}>
+          <ShieldCheck size={16} />
+          <span className="btn-word">Analyst Desk</span>
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="icon-btn lime-ink" aria-label="Analyst Desk" title="Analyst Desk" onClick={open}>
+      <ShieldCheck size={18} />
+    </button>
+  );
+}
+
+/**
  * A button's icon and words while it works and while it waits (Analysing, Analyse), laid in one place: the button keeps
  * the longer one's width, so the island beside it never jumps, and one fades into the other.
  */
-function Swap({ on, busy, idle }: { on: boolean; busy: ReactNode; idle: ReactNode }) {
+export function Swap({ on, busy, idle }: { on: boolean; busy: ReactNode; idle: ReactNode }) {
   return (
     <span className="btn-swap" data-on={on}>
       <span className="btn-swap-face busy" aria-hidden={!on}>{busy}</span>

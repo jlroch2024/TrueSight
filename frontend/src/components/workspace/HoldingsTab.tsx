@@ -160,7 +160,6 @@ export function HoldingsTab({
             Shared Suppliers and Customers
             <span className="count amber">{shared.length}</span>
           </div>
-          <p className="section-note">Companies you do not hold that several of your holdings depend on.</p>
           <div className="h-list">
             {shared.map((company) => (
               <button
