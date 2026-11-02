@@ -22,6 +22,7 @@ import {
   neighbourhood,
 } from './model';
 import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView } from './physics';
+import { Scene } from './scene';
 import { fitCamera } from './camera';
 import { lineCrosses } from '../pages/supplyChain';
 import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
@@ -278,6 +279,67 @@ describe('the living graph physics', () => {
       expect({ x: node.x, y: node.y }).toEqual(left.get(node.id));
       expect(node.labelRoom).toBe(1.4);
     }
+  });
+
+  describe('carried on to new data', () => {
+    // A scene of the graph, moving: every company with a speed of its own, and the physics at this warmth.
+    function moving(graph: ReturnType<typeof sampleGraph>, alpha: number) {
+      const scene = new Scene(graph, false);
+      scene.graph.nodes.forEach((node, index) => {
+        node.vx = index + 1;
+        node.vy = -(index + 1);
+      });
+      scene.physics.alpha(alpha);
+      return scene;
+    }
+    function carried(before: Scene, graph: ReturnType<typeof sampleGraph>) {
+      const after = new Scene(graph, false);
+      after.carryFrom(before);
+      return after;
+    }
+    /** The sample graph without its last company and that company's links. */
+    function withoutLast() {
+      const graph = sampleGraph();
+      const gone = graph.nodes[graph.nodes.length - 1]!.id;
+      return {
+        ...graph,
+        nodes: graph.nodes.filter((node) => node.id !== gone),
+        edges: graph.edges.filter((edge) => edge.source.id !== gone && edge.target.id !== gone),
+      };
+    }
+
+    it('keeps each company moving at its speed, and the warmth, when nobody came or went', () => {
+      const before = moving(sampleGraph(), 0.07);
+
+      const after = carried(before, sampleGraph());
+
+      expect(after.physics.alpha()).toBe(0.07);
+      for (const node of after.graph.nodes) {
+        const was = before.nodeById(node.id)!;
+        expect({ vx: node.vx, vy: node.vy }).toEqual({ vx: was.vx, vy: was.vy });
+      }
+    });
+
+    it('adds no energy to a graph at rest when nobody came or went', () => {
+      expect(carried(moving(sampleGraph(), 0), sampleGraph()).physics.alpha()).toBe(0);
+    });
+
+    it('adds energy for a newcomer, which starts still, without changing the speed of the companies already moving', () => {
+      const before = moving(withoutLast(), 0.01);
+
+      const after = carried(before, sampleGraph());
+
+      expect(after.physics.alpha()).toBe(0.3);
+      for (const node of after.graph.nodes) {
+        const was = before.nodeById(node.id);
+        expect(node.vx).toBe(was ? was.vx : 0);
+      }
+    });
+
+    it('adds a little energy when a company leaves, and never cools a warmer graph', () => {
+      expect(carried(moving(sampleGraph(), 0.01), withoutLast()).physics.alpha()).toBe(0.12);
+      expect(carried(moving(sampleGraph(), 0.5), withoutLast()).physics.alpha()).toBe(0.5);
+    });
   });
 
   it('holds a company the user placed where they put it, once the web settles around it', () => {

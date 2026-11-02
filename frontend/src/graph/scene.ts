@@ -18,7 +18,7 @@ import {
   labelZoom,
   neighbourhood,
 } from './model';
-import { createPhysics } from './physics';
+import { carryOnPhysics, createPhysics } from './physics';
 
 type Point = { x: number; y: number };
 type Box = { x1: number; y1: number; x2: number; y2: number; id: string };
@@ -124,7 +124,7 @@ export class Scene {
 
   /**
    * Carries on from the graph shown before, as the page's data changes (a holding analysed, weighted again, added or
-   * removed), instead of opening again: what is still there keeps its place, look and float; a new company grows in
+   * removed), instead of opening again: what is still there keeps its place, speed, look and float; a new company grows in
    * beside the companies it is linked to, and its arrows draw themselves to it; what is gone shrinks and fades where it
    * was; a new size or colour is eased into. The opening, if it was still under way, finishes as it would have.
    */
@@ -148,8 +148,10 @@ export class Scene {
       if (old) {
         node.x = old.x;
         node.y = old.y;
-        node.vx = 0;
-        node.vy = 0;
+        node.vx = old.vx;
+        node.vy = old.vy;
+        node.fx = old.fx;
+        node.fy = old.fy;
         node.anchorX = old.anchorX;
         node.anchorY = old.anchorY;
         node.labelRoom = old.labelRoom;
@@ -211,6 +213,13 @@ export class Scene {
     }
     for (const edge of leavingEdges) this.edgeLook.set(edge.id, { ...previous.edgeLook.get(edge.id)! });
     this.departing = { nodes: leavingNodes, edges: leavingEdges };
+
+    // Whatever was moving keeps moving, and a company held by the pointer stays held.
+    this.draggedNode = previous.draggedNode && staying.has(previous.draggedNode) ? previous.draggedNode : null;
+    carryOnPhysics(this.physics, previous.physics, {
+      arrived: newcomers > 0,
+      left: previous.graph.nodes.some((node) => !staying.has(node.id)),
+    });
   }
 
   /** Every company drawn this frame: those leaving the graph, then the graph's own. */
