@@ -20,6 +20,9 @@ const HOLDING_ROOM = 1.3;
 const SOFT_COLLISION = 0.12;
 // How thick the medium the companies move through is: once settled, they glide and come to rest, never bounce.
 const SETTLED_DRAG = 0.6;
+// The warmth a graph carried on to new data is raised to when a company arrives, and when one leaves (see carryOnPhysics).
+const ARRIVAL_ENERGY = 0.3;
+const LEAVING_ENERGY = 0.12;
 // How far a link keeps from any company it does not join, and how firmly it is kept there.
 const LINK_CLEARANCE = 14;
 const CLEAR_LINKS = 0.5;
@@ -281,6 +284,22 @@ export function restoreSettled(physics: Simulation<LiveNode, Link>, labelRoom: n
     node.vy = 0;
   }
   physics.alpha(0);
+  goLive(physics);
+}
+
+/**
+ * Takes over from the physics of the graph on screen, as the page's data changes: the warmth carries on, and a drag
+ * under way keeps heating it. Only a change in who is there adds energy, a little when a company arrives, less when one
+ * leaves; it never cools what is already moving.
+ */
+export function carryOnPhysics(
+  physics: Simulation<LiveNode, Link>,
+  previous: Simulation<LiveNode, Link>,
+  change: { arrived: boolean; left: boolean },
+) {
+  const energy = change.arrived ? ARRIVAL_ENERGY : change.left ? LEAVING_ENERGY : 0;
+  physics.alpha(Math.max(previous.alpha(), energy));
+  physics.alphaTarget(previous.alphaTarget());
   goLive(physics);
 }
 
