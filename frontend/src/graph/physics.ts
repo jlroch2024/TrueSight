@@ -28,12 +28,29 @@ const LINK_CLEARANCE = 14;
 const CLEAR_LINKS = 0.5;
 // The most extra room a label is given for the zoom the graph opens at (so a huge graph does not spread without end).
 const MOST_LABEL_ROOM = 2.4;
+// A view taller than it is wide (a phone): the most extra room a label is given. Labels without room there simply wait
+// for a closer look, which leaves the whole graph readable at a closer zoom.
+export const TALL_LABEL_ROOM = 1.25;
+// Settling a graph to fill its view (see settleForView): how close its shape must come to the view's, how many rounds it
+// is given, and how far the pulls may go, so a graph that cannot take the shape is never crushed.
+const FILL_NEAR_ENOUGH = 1.06;
+const FILL_ROUNDS = 5;
+const FILL_TICKS = 180;
+const WEAKEST_PULL = 0.008;
+const STRONGEST_PULL = 0.5;
 // The room kept around every company's tile and label.
 export const BREATHING_ROOM = 22;
 // How long the physics runs out of sight before the graph first shows.
 const SETTLE_TICKS = 420;
 
 type Link = { source: LiveNode; target: LiveNode; id: string };
+
+/** What gives a graph its shape: how close the chain's columns are (a share of FLOW_GAP), and the pulls across and down. */
+export type GraphShape = { flow: number; across: number; down: number };
+
+export const WIDE_SHAPE: GraphShape = { flow: 1, across: ACROSS, down: DOWN };
+/** For a view taller than it is wide: suppliers still lean left of their customers, but the companies spread down. */
+export const TALL_SHAPE: GraphShape = { flow: 0.35, across: 0.14, down: 0.06 };
 
 /**
  * Holds each company the user has placed (anchorX, anchorY) near where it was put: drawn back towards it like a soft
@@ -186,6 +203,38 @@ export function createPhysics(nodes: LiveNode[], edges: LiveEdge[]): Simulation<
     .force('down', forceY<LiveNode>(0).strength(DOWN));
 }
 
+/** Gives the physics a shape to pull the graph into. */
+export function applyShape(physics: Simulation<LiveNode, Link>, shape: GraphShape) {
+  const ranks = physics.nodes().map((node) => node.rank);
+  const middleRank = ranks.length ? (Math.min(...ranks) + Math.max(...ranks)) / 2 : 0;
+  physics
+    .force('across', forceX<LiveNode>((node) => (node.rank - middleRank) * FLOW_GAP * shape.flow).strength(shape.across))
+    .force('down', forceY<LiveNode>(0).strength(shape.down));
+}
+
+/**
+ * Brings the settled graph to the shape of its view (width over height), so that fitted it fills the view both ways: a
+ * graph too wide is pulled in across and let out down, and the other way round, a few rounds, as each changes the next.
+ * The shape it ends on stays in the physics, so the graph keeps it when it is touched. Returns that shape.
+ */
+function fillShape(physics: Simulation<LiveNode, Link>, start: GraphShape, aspect: number): GraphShape {
+  const nodes = physics.nodes();
+  const pull = (value: number) => Math.min(STRONGEST_PULL, Math.max(WEAKEST_PULL, value));
+  let shape = start;
+  for (let round = 0; round < FILL_ROUNDS; round++) {
+    const bounds = boundsOf(nodes);
+    const off = (bounds.x2 - bounds.x1) / Math.max(1, bounds.y2 - bounds.y1) / aspect;
+    if (Math.max(off, 1 / off) <= FILL_NEAR_ENOUGH) break;
+    const step = Math.sqrt(off);
+    shape = { ...shape, across: pull(shape.across * step), down: pull(shape.down / step) };
+    applyShape(physics, shape);
+    physics.alpha(0.5);
+    for (let i = 0; i < FILL_TICKS; i++) physics.tick();
+    physics.alpha(0);
+  }
+  return shape;
+}
+
 /** Runs the physics out of sight until the graph has settled, so it opens still and in place. */
 export function settle(physics: Simulation<LiveNode, Link>, ticks = SETTLE_TICKS) {
   physics.alpha(1);
@@ -197,27 +246,31 @@ export function settle(physics: Simulation<LiveNode, Link>, ticks = SETTLE_TICKS
  * Settles the graph for the view it opens in, so the first look needs nothing changed: labels are drawn at a size the
  * eye can read whatever the zoom, so once settled, each company's label is given the room it will take at the zoom the
  * view will fit the graph at (zoomFor, from the graph's bounds), and the graph settles again around that; a few rounds,
- * as the room changes the zoom a little each time.
+ * as the room changes the zoom a little each time. Given the view's shape (aspect, width over height), the graph then
+ * takes that shape too, and the shape it took is returned.
  */
 export function settleForView(
   physics: Simulation<LiveNode, Link>,
   zoomFor: (bounds: { x1: number; y1: number; x2: number; y2: number }) => number,
-  rounds = 3,
-) {
+  { rounds = 3, mostLabelRoom = MOST_LABEL_ROOM, shape = WIDE_SHAPE, aspect }: { rounds?: number; mostLabelRoom?: number; shape?: GraphShape; aspect?: number } = {},
+): GraphShape {
   const nodes = physics.nodes();
+  applyShape(physics, shape);
   for (const node of nodes) node.labelRoom = 1;
   settle(physics);
   for (let round = 0; round < rounds; round++) {
     const k = zoomFor(boundsOf(nodes));
-    const room = Math.min(MOST_LABEL_ROOM, Math.max(1, labelScale(k) / k));
+    const room = Math.min(mostLabelRoom, Math.max(1, labelScale(k) / k));
     if (nodes.every((node) => Math.abs(node.labelRoom - room) < 0.02)) break;
     for (const node of nodes) node.labelRoom = room;
     physics.alpha(0.6);
     for (let i = 0; i < 240; i++) physics.tick();
     physics.alpha(0);
   }
+  const settled = aspect === undefined ? shape : fillShape(physics, shape, aspect);
   clearLinks(nodes, (physics.force('clear') as unknown as { edges: LiveEdge[] }).edges ?? []);
   goLive(physics);
+  return settled;
 }
 
 /**

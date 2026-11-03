@@ -292,6 +292,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   tokenStore.clear();
+  window.innerWidth = 1440;
 });
 
 // ---- 1. The workspace ---------------------------------------------------------------------------------------------
@@ -320,7 +321,7 @@ describe('the workspace', () => {
     await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
 
     expect(within(inspector()).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
-    expect(insets().right).toBe(444);
+    expect(insets().right).toBe(512);
   });
 
   it('letsGoOfTheChoiceWhenTheGraphsBackgroundIsClicked', async () => {
@@ -1073,7 +1074,7 @@ describe('the Inspector', () => {
 
 // ---- The graph's marks and logos -------------------------------------------------------------------------------------
 
-// ---- What If It Stops? --------------------------------------------------------------------------------------------
+// ---- Simulate Disruption -------------------------------------------------------------------------------------------
 
 /**
  * TSMC stopping, over the real sample: it supplies NVIDIA (relationship 1) and AMD (relationship 3). Lam Research
@@ -1100,20 +1101,20 @@ function tsmcStops(overrides: Partial<WhatIf> = {}): WhatIf {
 async function openTsmcScenario() {
   await graph();
   await userEvent.click(screen.getByRole('button', { name: `Company ${sample[0]!.counterparty.id}` }));
-  await userEvent.click(within(inspector()).getByRole('button', { name: 'What If It Stops?' }));
+  await userEvent.click(within(inspector()).getByRole('button', { name: 'Simulate Disruption' }));
 }
 
-describe('What If It Stops?', () => {
+describe('Simulate Disruption', () => {
   it('isOfferedForAnyCompanyNotOnlyAHolding', async () => {
     renderAt();
     await graph();
 
     await userEvent.click(screen.getByRole('button', { name: `Company ${sample[0]!.counterparty.id}` }));
     expect(within(inspector()).getByText('Not Held')).toBeInTheDocument();
-    expect(within(inspector()).getByRole('button', { name: 'What If It Stops?' })).toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: 'Simulate Disruption' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
-    expect(within(inspector()).getByRole('button', { name: 'What If It Stops?' })).toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: 'Simulate Disruption' })).toBeInTheDocument();
   });
 
   it('listsEveryHoldingItReachesWithItsPathAndNotOneThatOnlySuppliesTheCompany', async () => {
@@ -1317,7 +1318,253 @@ describe('the old addresses', () => {
   });
 });
 
-// ---- 7. No sidebar, and the Analyst Desk for analysts only ----------------------------------------------------------
+// ---- 7. On a phone ------------------------------------------------------------------------------------------------
+
+describe('the Inspector', () => {
+  it.each(['PORTFOLIO_MANAGER', 'ANALYST'] as const)('isTheSameWidthForA %s', async (role) => {
+    backend.me = { ...backend.me, role };
+    renderAt();
+    const shown = await graph();
+
+    await userEvent.click(within(shown).getAllByRole('button', { name: /^Company / })[0]!);
+
+    expect(inspector()).toHaveStyle({ width: '488px' });
+    expect(insets().right).toBe(512);
+  });
+});
+
+describe('on a phone', () => {
+  const dock = () => within(screen.getByRole('tablist', { name: 'Workspace' }));
+  const press = (name: string | RegExp) => userEvent.click(dock().getByRole('tab', { name }));
+  const sheet = (name: string) => screen.getByRole('region', { name });
+  const openSheets = () => screen.queryAllByRole('region').filter((region) => region.classList.contains('sheet'));
+  // A sheet leaves on the panels' own curve, so the one before it can still be on its way out for a moment.
+  const onlySheetIs = (name: string) =>
+    waitFor(() => expect(openSheets().map((region) => region.getAttribute('aria-label'))).toEqual([name]));
+  const backOnTheGraph = () => waitFor(() => expect(openSheets()).toEqual([]));
+
+  beforeEach(() => {
+    window.innerWidth = 375;
+  });
+
+  it('showsTheGraphAndTheTabBarWithOneSheetAtATimeAndNoDrawerOrInspector', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(dock().getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Holdings', 'Alerts', 'Graph', 'Details']);
+    expect(dock().getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
+    expect(openSheets()).toEqual([]);
+    expect(screen.queryByRole('complementary', { name: 'Portfolio' })).not.toBeInTheDocument();
+
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    expect(dock().getByRole('tab', { name: 'Holdings' })).toHaveAttribute('aria-selected', 'true');
+    await press('Alerts');
+    await onlySheetIs('Alerts');
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  });
+
+  it('keepsTheOpenSheetOutOfTheAddress', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press('Alerts');
+    await onlySheetIs('Alerts');
+
+    expect(screen.getByRole('status', { name: 'Address' })).toHaveTextContent('/portfolios/7');
+    expect(screen.getByRole('status', { name: 'Address' })).not.toHaveTextContent('tab=');
+  });
+
+  it('opensOnTheAlertsSheetFromAnAddressThatAsksForAlerts', async () => {
+    renderAt('/portfolios/7?tab=alerts');
+    await screen.findByTestId('fake-graph');
+
+    await onlySheetIs('Alerts');
+  });
+
+  it('goesBackToTheGraphWhenTheOpenTabIsPressedAgain', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    await press('Holdings');
+
+    await backOnTheGraph();
+    expect(dock().getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('keepsDetailsUnavailableUntilSomethingHasBeenChosen', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(dock().getByRole('tab', { name: 'Details' })).toBeDisabled();
+  });
+
+  it('opensDetailsOnACompanyChosenInTheHoldingsSheetAndAgainOnTheLastChoice', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    await userEvent.click(within(sheet('Holdings')).getByRole('listitem', { name: new RegExp(NVIDIA.ticker!) }));
+
+    await onlySheetIs('Inspector');
+    expect(dock().getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(sheet('Inspector')).getByRole('heading', { name: NVIDIA.displayName })).toBeInTheDocument();
+
+    // Closed, then opened from the tab bar: on what it last showed.
+    await userEvent.click(within(sheet('Inspector')).getByRole('button', { name: 'Close the Inspector' }));
+    await backOnTheGraph();
+    await press('Details');
+
+    await onlySheetIs('Inspector');
+    expect(within(sheet('Inspector')).getByRole('heading', { name: NVIDIA.displayName })).toBeInTheDocument();
+  });
+
+  it('opensDetailsOnAnAlertChosenInTheAlertsSheetAndLightsItOnTheGraph', async () => {
+    const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [alert];
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press(/^Alerts/);
+    await onlySheetIs('Alerts');
+    await userEvent.click(within(sheet('Alerts')).getAllByRole('button', { name: alert.headline.article.title })[0]!);
+
+    await onlySheetIs('Inspector');
+    expect(within(sheet('Inspector')).getByText('Alert')).toBeInTheDocument();
+    expect(screen.getByTestId('focus-nodes')).not.toHaveTextContent(/^$/);
+  });
+
+  it('showsARelationshipChosenInDetailsThereAndGoesBackToItFromTheTab', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    await userEvent.click(within(sheet('Holdings')).getByRole('listitem', { name: new RegExp(NVIDIA.ticker!) }));
+    await onlySheetIs('Inspector');
+
+    const link = sheet('Inspector').querySelector<HTMLElement>('.link-row')!;
+    await userEvent.click(link);
+
+    await waitFor(() => expect(sheet('Inspector')).toHaveTextContent('Relationship'));
+    await press('Details');
+    await backOnTheGraph();
+    await press('Details');
+    await onlySheetIs('Inspector');
+    expect(sheet('Inspector')).toHaveTextContent('Relationship');
+  });
+
+  it('leavesATapOnTheGraphOnTheGraphAndDetailsOpensOnIt', async () => {
+    renderAt();
+    const graphShown = await screen.findByTestId('fake-graph');
+
+    await userEvent.click(within(graphShown).getAllByRole('button', { name: /^Company / })[0]!);
+
+    expect(openSheets()).toEqual([]);
+    await press('Details');
+    await onlySheetIs('Inspector');
+    expect(within(sheet('Inspector')).getByText('Company')).toBeInTheDocument();
+  });
+
+  it('goesBackToTheGraphWhenWhatDetailsShowsIsTakenAway', async () => {
+    const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [alert];
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press(/^Alerts/);
+    await onlySheetIs('Alerts');
+    await userEvent.click(within(sheet('Alerts')).getAllByRole('button', { name: alert.headline.article.title })[0]!);
+    await onlySheetIs('Inspector');
+
+    await userEvent.click(within(sheet('Inspector')).getByRole('button', { name: 'Close Alert' }));
+
+    await backOnTheGraph();
+  });
+
+  it('reachesUploadCsvAndAnalyseOnTheHoldingsSheet', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+
+    await userEvent.click(within(sheet('Holdings')).getByRole('button', { name: /Analyse/ }));
+    expect(sentTo('POST', '/api/portfolios/7/analysis')).toHaveLength(1);
+
+    await userEvent.click(within(sheet('Holdings')).getByRole('button', { name: 'Upload CSV' }));
+    expect(await screen.findByRole('dialog', { name: 'Upload a Portfolio CSV' })).toBeInTheDocument();
+  });
+
+  it('reachesCheckNewsOnTheAlertsSheet', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press('Alerts');
+    await onlySheetIs('Alerts');
+
+    await userEvent.click(within(sheet('Alerts')).getAllByRole('button', { name: 'Check News' })[0]!);
+
+    expect(sentTo('POST', '/api/portfolios/7/news-check')).toHaveLength(1);
+  });
+
+  it('keepsTheBrandTheMenuAndTheOpenAlertsPillInTheTopBarAndThePillOpensTheAlertsSheet', async () => {
+    backend.alerts = [sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] })];
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(screen.getByRole('button', { name: 'Portfolio: Semiconductors' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Account/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Upload CSV' })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: '1 Open Alert' }));
+
+    await onlySheetIs('Alerts');
+  });
+
+  it('hasNoTabBarWhenThePortfolioIsNotFound', async () => {
+    renderAt('/portfolios/404');
+
+    await screen.findByRole('heading', { name: 'Portfolio Not Found' });
+    expect(screen.queryByRole('tablist', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('becomesTheComputerLayoutWhenTheWindowWidens', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    window.innerWidth = 1440;
+    window.dispatchEvent(new Event('resize'));
+
+    await screen.findByRole('complementary', { name: 'Portfolio' });
+    expect(screen.queryByRole('tablist', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('usesThePhoneLayoutForAnyWindowTooNarrowForTheTopBarsPieces', async () => {
+    window.innerWidth = 1159;
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(screen.getByRole('tablist', { name: 'Workspace' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Portfolio' })).not.toBeInTheDocument();
+  });
+
+  it('fadesEveryPanelOutChangesLayoutWhileTheyCannotBeSeenAndFadesThemBackIn', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    const { container } = renderAt();
+    await screen.findByTestId('fake-graph');
+    const workspace = container.querySelector('.ws')!;
+
+    window.innerWidth = 1440;
+    window.dispatchEvent(new Event('resize'));
+
+    await waitFor(() => expect(workspace).toHaveAttribute('data-switching', 'out'));
+    expect(screen.getByRole('tablist', { name: 'Workspace' })).toBeInTheDocument();
+    await waitFor(() => expect(workspace).toHaveAttribute('data-switching', 'in'));
+    expect(screen.queryByRole('tablist', { name: 'Workspace' })).not.toBeInTheDocument();
+    await waitFor(() => expect(workspace).not.toHaveAttribute('data-switching'));
+  });
+});
+
+// ---- 8. No sidebar, and the Analyst Desk for analysts only ----------------------------------------------------------
 
 describe('the top bar', () => {
   it('offersNoSidebarOfPortfolioPages', async () => {

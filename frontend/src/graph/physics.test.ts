@@ -21,7 +21,7 @@ import {
   initialsOf,
   neighbourhood,
 } from './model';
-import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView } from './physics';
+import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView, TALL_SHAPE, applyShape } from './physics';
 import { Scene } from './scene';
 import { fitCamera } from './camera';
 import { lineCrosses } from '../pages/supplyChain';
@@ -279,6 +279,36 @@ describe('the living graph physics', () => {
       expect({ x: node.x, y: node.y }).toEqual(left.get(node.id));
       expect(node.labelRoom).toBe(1.4);
     }
+  });
+
+  it('spreads the graph down rather than across for a tall view, keeping suppliers left of their customers on the whole', () => {
+    const { graph } = settled();
+    const wide = boundsOf(graph.nodes);
+
+    const again = sampleGraph();
+    const physics = createPhysics(again.nodes, again.edges);
+    applyShape(physics, TALL_SHAPE);
+    settle(physics);
+    const tall = boundsOf(again.nodes);
+
+    expect((tall.x2 - tall.x1) / (tall.y2 - tall.y1)).toBeLessThan((wide.x2 - wide.x1) / (wide.y2 - wide.y1));
+    expect(tall.x2 - tall.x1).toBeLessThan(wide.x2 - wide.x1);
+    const leaning = again.edges.filter((edge) => edge.source.x < edge.target.x).length;
+    expect(leaning).toBeGreaterThan(again.edges.length / 2);
+  });
+
+  it.each([
+    ['a phone', 0.72],
+    ['a computer', 1.45],
+  ])('settles into the shape of the view on %s, so that fitted it fills the view both ways', (_view, aspect) => {
+    const graph = sampleGraph();
+    const physics = createPhysics(graph.nodes, graph.edges);
+
+    settleForView(physics, () => 0.5, { aspect });
+
+    const bounds = boundsOf(graph.nodes);
+    const shape = (bounds.x2 - bounds.x1) / (bounds.y2 - bounds.y1);
+    expect(Math.max(shape / aspect, aspect / shape)).toBeLessThan(1.2);
   });
 
   describe('carried on to new data', () => {

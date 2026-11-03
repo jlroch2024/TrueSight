@@ -1,6 +1,7 @@
 // How confident TrueSight is about a relationship, as the backend works it out: a tag ("High Confidence"), and the
 // reasons behind it, each with its effect. The website only shows it; it never works a confidence out itself.
 import type { Confidence, ConfidenceEffect, ConfidenceLevel } from '../api/relationships';
+import { Confidence as ConfidenceSquares } from './EventMark';
 
 const LEVEL_LABELS: Record<ConfidenceLevel, string> = {
   HIGH: 'High Confidence',
@@ -16,7 +17,11 @@ const EFFECT_LABELS: Record<ConfidenceEffect, string> = {
 
 export function ConfidenceTag({ confidence }: { confidence: Confidence }) {
   return (
-    <span className={`chip confidence-tag confidence-${confidence.level.toLowerCase()}`}>
+    <span
+      className={`chip confidence-tag confidence-${confidence.level.toLowerCase()}`}
+      title="How Sure TrueSight Is That This Link Is Real"
+    >
+      <ConfidenceSquares level={confidence.level} />
       {LEVEL_LABELS[confidence.level]}
     </span>
   );

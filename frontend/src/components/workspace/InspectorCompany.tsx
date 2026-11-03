@@ -106,7 +106,7 @@ export function CompanyView({
         <div className="actions one-line">
           <button type="button" className="btn small" onClick={() => onChoose({ kind: 'scenario', nodeId })}>
             <Octagon size={15} />
-            What If It Stops?
+            Simulate Disruption
           </button>
         </div>
       )}

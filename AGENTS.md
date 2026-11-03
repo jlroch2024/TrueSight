@@ -171,7 +171,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   |---|---|---|
   | Top bar, left | The brand, the portfolio menu (its name and analysis ring), the Open Alerts pill | `components/workspace/TopBar.tsx` (`PortfolioIsland`) |
   | Top bar, middle | The graph's own title (with how many companies and links) and search, centred between the islands. The Sprint 4 timeline (SEC Filing Timeline) decides how it shares this place | `LivingGraph`'s `topBar` |
-  | Top bar, right | The portfolio's actions (Upload CSV, Check News, Analyse), Analyst Desk for analysts, the account | `TopBar.tsx` (`ActionsIsland`) |
+  | Top bar, right | The portfolio's actions (Upload CSV, Check News, Analyse) and the account, in a bar as wide as the Inspector (488px) for every role; before it, Analyst Desk's own bar for analysts | `TopBar.tsx` (`ActionsIsland`, `AnalystDeskButton`) |
   | Left drawer, Holdings tab | One row per holding, Add Holding, the shared suppliers and customers | `components/workspace/HoldingsTab.tsx` |
   | Left drawer, Alerts tab | The alerts, with Open, Closed and All | `components/workspace/AlertsTab.tsx` |
   | Inspector, right | Detail of what is chosen: a company, a relationship or an alert | `components/workspace/Inspector*.tsx` |
@@ -220,7 +220,9 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   - **Log In and Sign Up** are the same card, told apart by their accent: teal for Log In, lime for Sign Up. Their
     fields' labels and warnings are in capitals of the same font (`text-transform: uppercase`, 11 px): the one
     exception to Title Case.
-  - **Phones:** the workspace keeps its computer layout below 760px until One Workspace on a Phone (Sprint 4).
+  - **Phones and narrow windows:** below 1160px the workspace is one sheet at a time over the graph, chosen from a tab bar
+    (`components/workspace/PhoneDock.tsx`): Holdings, Alerts, Graph and Details. The sheets are the drawer's tabs and the
+    Inspector, not new screens; Upload CSV and Analyse sit on the Holdings sheet, Check News on the Alerts sheet.
 - **No new libraries** unless the story names one. No styling frameworks.
 - **No browser-default controls.** Use `Select`, `Checkbox` and `RadioGroup` from `src/components/`, never a native
   `<select>`, checkbox or radio button.

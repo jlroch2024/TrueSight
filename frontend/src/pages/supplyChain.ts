@@ -617,6 +617,7 @@ export type SavedLayout = {
   // placed by the user. And the room labels were given when the graph settled, so it can be put back exactly.
   placed?: string[];
   labelRoom?: number;
+  shape?: { flow: number; across: number; down: number };
 };
 
 /** The saved layout under this key, or null when there is none, it cannot be read, or the browser's storage is off. */

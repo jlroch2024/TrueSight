@@ -4,7 +4,7 @@
 // it stalls in the disruption's colour, every segment pulsing together.
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { Severity } from '../api/news';
-import { drawArrow, drawChevron } from '../graph/render';
+import { drawArrow, drawChevron, drawRiskMark } from '../graph/render';
 import { prefersStill } from './motion';
 
 // Every link on the page is drawn by one loop, each frame, as the graph draws its own; a link out of sight is skipped.
@@ -16,10 +16,14 @@ const linkTick = (now: number) => {
 };
 // How far the waves of light travel each millisecond: the graph's own pace (Scene's FLOW_SPEED).
 const FLOW_SPEED = 0.06;
+// A disruption's mark on a link: half its width, and how slowly its light breathes.
+const RISK_MARK_HALF = 7;
+const RISK_BREATH_MS = 620;
 
 /**
  * colour is a #rrggbb colour, as the graph's are; risk is the severity of a disruption running through the link. Its
- * canvas reaches beyond its line (see .flow canvas), so the glow fades out rather than being cut off.
+ * canvas reaches beyond its line (see .flow canvas), so the glow fades out rather than being cut off. A link with a
+ * disruption also carries its mark, as on the graph.
  */
 export function FlowLink({ colour, risk = null }: { colour: string; risk?: Severity | null }) {
   const canvas = useRef<HTMLCanvasElement | null>(null);
@@ -73,6 +77,11 @@ export function FlowLink({ colour, risk = null }: { colour: string; risk?: Sever
         dpr,
       });
       if (chevron) drawChevron(context, chevron, 1);
+      // A disruption's mark on the link, breathing as it does on the graph.
+      if (look.current.risk) {
+        const breath = still ? 0.3 : (Math.sin(now / RISK_BREATH_MS) + 1) / 2;
+        drawRiskMark(context, width / 2, y, look.current.risk, breath, dpr, RISK_MARK_HALF);
+      }
     };
     linksDrawn.add(draw);
     if (!linkLoop) linkLoop = requestAnimationFrame(linkTick);

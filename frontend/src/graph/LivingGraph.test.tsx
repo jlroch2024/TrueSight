@@ -72,6 +72,48 @@ describe('LivingGraph', () => {
     expect(sized.mock.calls.length).toBe(before);
   });
 
+  it('folds its controls on the tall layout however wide the screen, and when it changes to it', () => {
+    const view = drawGraph();
+    const root = view.container.querySelector('.lg-root')!;
+    expect(root).not.toHaveClass('lg-narrow');
+
+    view.rerender(<LivingGraph nodes={nodes} edges={edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" tall />);
+
+    expect(root).toHaveClass('lg-narrow');
+  });
+
+  it('fades its key and minimap out, folds them while they cannot be seen, and fades them back in', async () => {
+    const view = drawGraph();
+    const root = view.container.querySelector('.lg-root')!;
+    expect(root).not.toHaveClass('lg-narrow');
+
+    // A panel opening over the graph leaves it too little room.
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" insets={{ top: 0, right: 300, bottom: 0, left: 0 }} />,
+    );
+
+    expect(root).toHaveAttribute('data-folding', 'out');
+    expect(root).not.toHaveClass('lg-narrow');
+    await waitFor(() => expect(root).toHaveAttribute('data-folding', 'in'));
+    expect(root).toHaveClass('lg-narrow');
+    await waitFor(() => expect(root).not.toHaveAttribute('data-folding'));
+  });
+
+  it('folds its title and the bar before it to squares of their marks when there is too little room for their words', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const room = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(200);
+    const tight = drawGraph({ bare: true, topBar: { left: 0, right: 0 }, barStart: <button type="button">5 Open Alerts</button> });
+    const root = tight.container.querySelector('.lg-root');
+    expect(root).toHaveClass('lg-bar-tight');
+    expect(screen.getByText('Supply Chain').closest('.lg-title')).toHaveAttribute('title', expect.stringContaining('Companies'));
+    tight.unmount();
+
+    room.mockReturnValue(300);
+    const roomy = drawGraph({ bare: true, topBar: { left: 0, right: 0 }, barStart: <button type="button">5 Open Alerts</button> });
+    expect(roomy.container.querySelector('.lg-root')).not.toHaveClass('lg-bar-tight');
+    vi.unstubAllGlobals();
+  });
+
   it('keeps the same scene when rendered again with equal but new companies and links', () => {
     const view = drawGraph();
     vi.mocked(buildLiveGraph).mockClear();
