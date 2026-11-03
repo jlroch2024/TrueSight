@@ -8,6 +8,9 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns. Every one was found by AI, by reading its company's whole report, and is `UNREVIEWED`: `source` is `"AI"`, `foundBy` is `"REPORT"`, `reviewStatus` is `"UNREVIEWED"`, and `reviewedAt` and `reviewNote` are `null`. Each company's `displayName` is what the backend's `CompanyDisplayNames` makes of its `name` with no report to read, which `CompanyDisplayNamesTest` checks. Each relationship's `confidence` is what `RelationshipConfidence` gives an unreviewed relationship with no recorded quote match and no second check (Medium), which `RelationshipConfidenceTest` checks | See the Supply Chain as a Graph, until the real endpoint exists; Review AI Findings; Spell Each Company as Its Own Report Does; See How Confident TrueSight Is |
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
+| `gemini-nvidia-second-check.json` | Gemini's real, unchanged answers to the second check's judge, one for each of the 7 relationships in `gemini-nvidia.json`, keyed by company | Second AI Checks the First, in tests, so tests never call Gemini |
+| `second-check-judge.json` | 62 claims labelled by hand from real annual reports, with the passage and Gemini's real reading of each. See below | The Second Check as a Real Judge |
+| `measure_second_check.py` | Sends every claim in `second-check-judge.json` to Gemini, saves the answers there, and prints the score | Run by hand after changing the judge's prompt |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `sec-submissions-nvidia.json` | NVIDIA's filing list from the SEC, unchanged, in the shape the SEC sends it | SEC Filing Timeline, in tests |
 | `apple-10k.txt` | Apple's 10-K filed 2026-11-03 (https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm), through `ReportTextExtractor`, one paragraph per line. Its Item headings have non-breaking spaces | Read the Right Part of Every Report, in tests |
@@ -533,3 +536,33 @@ not how often it finds every relationship.
 `company` is the company whose report it came from. `type` says which way round: `SUPPLIER` means the counterparty
 supplies the company; `CUSTOMER` means the counterparty buys from it. On the graph, the arrow always points from the
 supplier to the customer. `ticker` is `null` for companies without a US stock listing.
+
+## The second check's judge
+
+`second-check-judge.json` measures whether the second check's judge is any good, on real filings. Each claim says who
+wrote the report, which filing it is, the other company, whether it is claimed as a supplier or a customer, the sentence,
+and the passage around it, cut as `SecondCheck.passage` cuts it (the text was taken from the SEC's HTML filings on 3
+November 2026). `label` is what a person decided on reading the passage: `true` means it should be accepted, `false` that
+it should be doubted, and `null` that it is a judgement call that is not scored. Labels were written by the AI that built
+the judge and still need checking by the team.
+
+- **`design` (39 claims):** written while the prompt was being designed, from KLA, NVIDIA, TSMC, AMD, Broadcom, Cirrus
+  Logic, Lam Research, Qualcomm, Sony, STMicroelectronics, Tesla and ASML.
+- **`fresh` (23 claims):** from Skyworks, Micron, Bristol-Myers Squibb and Ford, labelled before any judge read them.
+- **False claims** are real sentences with a claim they do not support: competitors, a non-binding plan, joint ventures,
+  investments, a lawsuit, a merger, and real relationships claimed in the wrong direction.
+
+| Run on 3 November 2026 with `gemini-3.8-flash` | True links accepted | False links caught |
+|---|---|---|
+| Judge, `design` | 17 of 17 | 22 of 22 |
+| Judge, `fresh` | 6 of 6 | 15 of 15 |
+| The check it replaced (one sentence, no writer, one call), `design` | 13 of 17 | 22 of 22 |
+| The check it replaced, `fresh` | 6 of 6 | 15 of 15 |
+
+**What this does not show.** The set is small, and the `fresh` claims turned out to be easy: the old check scored fully on
+them too. No claim is about a relationship the report says has genuinely ended, because none was found in these filings.
+The judge does not check what is provided, only who supplies whom: ASML's "TSMC Supplier" award reads as a real link even
+though the first AI's description of what is sold is wrong.
+
+`SecondCheckTest` fails when `SecondCheck.PROMPT` changes without being measured again. To measure, from the repository
+root: `python docs/examples/measure_second_check.py`.

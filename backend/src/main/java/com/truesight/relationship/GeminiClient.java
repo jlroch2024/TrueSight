@@ -19,6 +19,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -84,17 +85,14 @@ public class GeminiClient {
                     "required", List.of("company", "criticality", "criticalityQuote"),
                     "propertyOrdering", List.of("company", "criticality", "criticalityQuote")));
 
-    /** One verdict per numbered claim of the second check, matched to its claim by index. */
+    /** What the second check reads in one passage, and why. */
     private static final Map<String, Object> SECOND_CHECK_SCHEMA = Map.of(
-            "type", "ARRAY",
-            "items", Map.of(
-                    "type", "OBJECT",
-                    "properties", Map.of(
-                            "index", Map.of("type", "INTEGER"),
-                            "verdict", Map.of("type", "STRING", "enum", List.of("AGREES", "DOUBTS")),
-                            "reason", Map.of("type", "STRING")),
-                    "required", List.of("index", "verdict", "reason"),
-                    "propertyOrdering", List.of("index", "verdict", "reason")));
+            "type", "OBJECT",
+            "properties", Map.of(
+                    "reading", Map.of("type", "STRING", "enum",
+                            Arrays.stream(SecondCheckReading.values()).map(Enum::name).toList()),
+                    "reason", Map.of("type", "STRING")),
+            "required", List.of("reading", "reason"));
 
     /** For each numbered quote, the phrases in it that matter, each with its kind. */
     private static final Map<String, Object> HIGHLIGHT_SCHEMA = Map.of(
@@ -155,7 +153,7 @@ public class GeminiClient {
         return generate(request, COMMON_NAMES_SCHEMA);
     }
 
-    /** Asks for a verdict, Agrees or Doubts with a reason, on each numbered claim of the second check. */
+    /** Asks what one passage shows about a company, with a reason, for the second check. */
     public AiAnswer generateSecondCheck(AiRequest request) {
         return generate(request, SECOND_CHECK_SCHEMA);
     }

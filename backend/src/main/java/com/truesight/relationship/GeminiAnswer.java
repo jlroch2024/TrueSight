@@ -49,8 +49,8 @@ public class GeminiAnswer {
     /** A criticality answer matched to an already-known counterparty. */
     public record CriticalityFound(String company, Criticality criticality, String quote) { }
 
-    /** One verdict of the second check, for the claim numbered {@code index} (from 1). */
-    public record SecondCheckFound(int index, SecondCheckVerdict verdict, String reason) { }
+    /** What the second check read in a passage, and its one sentence about why. */
+    public record SecondCheckFound(SecondCheckReading reading, String reason) { }
 
     /** One phrase the AI picked out of a numbered quote. {@code kind} is null when it is none of the four. */
     public record HighlightFound(int index, String text, HighlightKind kind) { }
@@ -154,26 +154,19 @@ public class GeminiAnswer {
     }
 
     /**
-     * Reads the second check's answer: a JSON list of {@code { index, verdict, reason }}. An answer that is not a list
-     * throws {@link UnreadableAnswerException}. An item with no whole-number index, or a verdict other than AGREES or
-     * DOUBTS, is left out, so its claim stays unchecked for the pass to ask about again.
+     * Reads the second check's answer: {@code { reading, reason }}. Anything else, or a reading it was not offered,
+     * throws {@link UnreadableAnswerException}, so the relationship stays unchecked for the pass to ask about again.
      */
-    public List<SecondCheckFound> readSecondChecks(String response) {
-        JsonNode list;
+    public SecondCheckFound readSecondCheck(String response) {
+        JsonNode item;
         try {
-            list = mapper.readTree(answerText(response));
+            item = mapper.readTree(answerText(response));
         } catch (JacksonException exception) {
             throw new UnreadableAnswerException();
         }
-        if (list == null || !list.isArray()) throw new UnreadableAnswerException();
-        List<SecondCheckFound> found = new ArrayList<>();
-        for (JsonNode item : list) {
-            JsonNode index = item.path("index");
-            SecondCheckVerdict verdict = verdict(text(item, "verdict"));
-            if (!index.isIntegralNumber() || verdict == null) continue;
-            found.add(new SecondCheckFound(index.asInt(), verdict, text(item, "reason")));
-        }
-        return found;
+        SecondCheckReading reading = item == null ? null : reading(text(item, "reading"));
+        if (reading == null) throw new UnreadableAnswerException();
+        return new SecondCheckFound(reading, text(item, "reason"));
     }
 
     /**
@@ -246,16 +239,16 @@ public class GeminiAnswer {
         };
     }
 
-    /** Gemini's answer was not the JSON list that was asked for. */
+    /** Gemini's answer was not the JSON that was asked for. */
     public static class UnreadableAnswerException extends RuntimeException {
         public UnreadableAnswerException() {
-            super("The AI's answer was not the JSON list that was asked for.");
+            super("The AI's answer was not the JSON that was asked for.");
         }
     }
 
-    private static SecondCheckVerdict verdict(String value) {
+    private static SecondCheckReading reading(String value) {
         try {
-            return value.isEmpty() ? null : SecondCheckVerdict.valueOf(value.toUpperCase(Locale.ROOT));
+            return value.isEmpty() ? null : SecondCheckReading.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
             return null;
         }

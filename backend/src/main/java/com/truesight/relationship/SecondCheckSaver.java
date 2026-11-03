@@ -26,4 +26,10 @@ public class SecondCheckSaver {
             }
         }
     }
+
+    /** Forgets the verdicts no analyst has decided on, so the next pass judges them again. */
+    @Transactional
+    public void forgetUnreviewed() {
+        relationships.forgetUnreviewedSecondChecks();
+    }
 }
