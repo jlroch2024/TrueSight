@@ -20,6 +20,34 @@ public final class Examples {
         return read("nvidia-10k.txt");
     }
 
+    /**
+     * The SEC's submissions response for NVIDIA (CIK 0001045810), unchanged: the list of its filings, from which a
+     * company's annual reports are found.
+     */
+    public static String secSubmissionsNvidia() {
+        return read("sec-submissions-nvidia.json");
+    }
+
+    /** NVIDIA's 10-K filed in 2025, the one before {@link #nvidia10K()}, as plain text, one paragraph per line. */
+    public static String nvidia10KOlder() {
+        return read("nvidia-10k-older.txt");
+    }
+
+    /** Gemini's real, unchanged answer to the relationship prompt for {@link #nvidia10KOlder()}. */
+    public static String geminiNvidiaOlder() {
+        return read("gemini-nvidia-older.json");
+    }
+
+    /** NVIDIA's 10-K filed in 2024, the one before {@link #nvidia10KOlder()}, as plain text, one paragraph per line. */
+    public static String nvidia10KOldest() {
+        return read("nvidia-10k-oldest.txt");
+    }
+
+    /** Gemini's real, unchanged answer to the relationship prompt for {@link #nvidia10KOldest()}. */
+    public static String geminiNvidiaOldest() {
+        return read("gemini-nvidia-oldest.json");
+    }
+
     /** AMD's latest 10-K as plain text, one paragraph per line. It names a customer, "OpenAI OpCo, LLC". */
     public static String amd10K() {
         return read("amd-10k.txt");

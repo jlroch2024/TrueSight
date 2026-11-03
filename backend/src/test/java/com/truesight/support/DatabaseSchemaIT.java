@@ -34,6 +34,7 @@ class DatabaseSchemaIT {
         assertThat(applied).contains("2");
         assertThat(applied).contains("3");
         assertThat(applied).contains("4");
+        assertThat(applied).contains("5");
     }
 
     @Test

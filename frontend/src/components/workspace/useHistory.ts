@@ -12,7 +12,12 @@ export type HistoryState =
   | { status: 'error'; message: string }
   | { status: 'ready'; history: History };
 
-export function useHistory(portfolioId: string | undefined) {
+/**
+ * {@code analysed} is how many of the portfolio's holdings are analysed. Only analysed holdings have earlier reports to
+ * read, so the history is asked for again whenever that changes (an analysis finishing, a holding added or removed),
+ * without blanking what is shown meanwhile.
+ */
+export function useHistory(portfolioId: string | undefined, analysed: number) {
   const [state, setState] = useState<HistoryState>({ status: 'loading' });
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
@@ -26,10 +31,14 @@ export function useHistory(portfolioId: string | undefined) {
     }
   }, [portfolioId]);
 
+  // A different portfolio: nothing is known about it yet.
   useEffect(() => {
     setState({ status: 'loading' });
+  }, [portfolioId]);
+
+  useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, analysed]);
 
   const reading = state.status === 'ready' && state.history.status === 'READING';
   useEffect(() => {

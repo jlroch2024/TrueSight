@@ -90,7 +90,7 @@ export function WorkspacePage() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [chosen, setChosen] = useState<Chosen>(null);
   // The SEC Filing Timeline: earlier annual reports, read on request, and the years they cover.
-  const timeline = useHistory(portfolioId);
+  const timeline = useHistory(portfolioId, (holdings ?? []).filter((holding) => holding.status === 'DONE').length);
   // The last thing the Inspector showed, so a closed Inspector can be opened again where it was.
   const [lastChosen, setLastChosen] = useState<Chosen>(null);
   const [peek, setPeek] = useState<string | null>(null);

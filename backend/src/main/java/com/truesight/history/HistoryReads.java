@@ -3,6 +3,7 @@ package com.truesight.history;
 import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
+import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.PastRelationshipRepository;
 import com.truesight.report.ReportInfo;
 import com.truesight.report.ReportRepository;
@@ -14,7 +15,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * What of a company's earlier annual reports has been read and what is still to read. A holding's two previous reports
@@ -30,13 +30,14 @@ class HistoryReads {
     private final ReportRepository reports;
     private final PastRelationshipRepository pastRelationships;
     private final AiCallRepository aiCalls;
-    /** How many earlier reports the SEC has for a company that has none saved, once asked. Lost on a restart. */
-    private final Map<Long, Integer> available = new ConcurrentHashMap<>();
+    private final CompanyRepository companies;
 
-    HistoryReads(ReportRepository reports, PastRelationshipRepository pastRelationships, AiCallRepository aiCalls) {
+    HistoryReads(ReportRepository reports, PastRelationshipRepository pastRelationships, AiCallRepository aiCalls,
+                 CompanyRepository companies) {
         this.reports = reports;
         this.pastRelationships = pastRelationships;
         this.aiCalls = aiCalls;
+        this.companies = companies;
     }
 
     /** Each company's saved reports, newest first. */
@@ -64,35 +65,20 @@ class HistoryReads {
     }
 
     /**
-     * How many earlier reports this company is known to have, which is how many of them are to be read.
-     *
-     * <p>It is worked out from saved data wherever it can be. Earlier reports are saved all together, after every one
-     * has downloaded (see HistoryReader), so a company with one or two earlier reports saved has exactly those: the SEC
-     * had that many. A company with none saved is unknown: it has either never been loaded or has no earlier report,
-     * and nothing saved says which, so it counts as two until a load has asked the SEC (remembered until the backend
-     * restarts).
+     * How many earlier reports this company has to read: the ones saved, if any (they are saved all together, after
+     * every one has downloaded, so those are all there are), otherwise how many the SEC had when last asked, which is
+     * kept on the company so a restart does not forget it, otherwise two, until the SEC has been asked.
      */
     int expected(Long companyId, List<ReportInfo> newestFirst) {
         int saved = Math.min(EARLIER, earlier(newestFirst).size());
-        return saved > 0 ? saved : Math.min(EARLIER, available.getOrDefault(companyId, EARLIER));
+        if (saved > 0) return saved;
+        Integer asked = companies.findEarlierReportsById(companyId);
+        return asked == null ? EARLIER : Math.min(EARLIER, asked);
     }
 
     /** How many of the company's earlier reports are still to read. */
     int unread(Long companyId, List<ReportInfo> newestFirst) {
         long read = earlier(newestFirst).stream().limit(EARLIER).filter(report -> isRead(report.getId())).count();
         return (int) Math.max(0, expected(companyId, newestFirst) - read);
-    }
-
-    /**
-     * Remembers how many earlier reports the SEC has for this company, for a company with none saved. Only that case
-     * needs it: a company with earlier reports saved is counted from them.
-     */
-    void available(Long companyId, int count) {
-        available.put(companyId, count);
-    }
-
-    /** Forgets what the SEC said, as a restart of the backend does. */
-    void forgetAvailability() {
-        available.clear();
     }
 }

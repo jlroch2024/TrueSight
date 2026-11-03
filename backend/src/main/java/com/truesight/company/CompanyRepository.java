@@ -8,6 +8,11 @@ import java.util.Optional;
 /** Reads and saves companies. */
 public interface CompanyRepository extends JpaRepository<Company, Long> {
 
+    /** How many earlier annual reports the SEC had for this company when last asked, or null if never asked. */
+    @org.springframework.data.jpa.repository.Query("select c.earlierReports from Company c where c.id = :id")
+    Integer findEarlierReportsById(@org.springframework.data.repository.query.Param("id") Long id);
+
+
     Optional<Company> findByCik(String cik);
 
     /** The companies with this stock ticker, ignoring capitals. A ticker is not unique: it may be wrong, or reused. */

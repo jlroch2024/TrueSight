@@ -49,6 +49,13 @@ public class Company {
     @Column(name = "report_status_reason", length = 500)
     private String reportStatusReason;
 
+    /**
+     * How many earlier annual reports (up to two) the SEC had when this company's history was last loaded. Null: not
+     * asked yet. Lets a company the SEC has fewer than two for stop being offered, even after a restart.
+     */
+    @Column(name = "earlier_reports")
+    private Integer earlierReports;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -98,6 +105,8 @@ public class Company {
     public ReportStatus getReportStatus() { return reportStatus; }
     public void setReportStatus(ReportStatus reportStatus) { this.reportStatus = reportStatus; }
     public String getReportStatusReason() { return reportStatusReason; }
+    public Integer getEarlierReports() { return earlierReports; }
+    public void setEarlierReports(Integer earlierReports) { this.earlierReports = earlierReports; }
     public void setReportStatusReason(String reportStatusReason) { this.reportStatusReason = reportStatusReason; }
 
     public Instant getNewsCheckedAt() { return newsCheckedAt; }

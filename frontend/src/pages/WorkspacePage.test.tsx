@@ -137,6 +137,8 @@ type Backend = {
   // What the SEC Filing Timeline has read (nothing, unless a test says), and what it is once loading is asked for.
   history?: History;
   afterLoadHistory?: History;
+  // What the history is once every holding is analysed.
+  historyAfterAnalysis?: History;
   // The answer to "what if this company stops?", by company id, or the status code to fail with.
   whatIf?: (companyId: number) => WhatIf | number;
   sent: { method: string; url: string; body: unknown }[];
@@ -173,7 +175,12 @@ function answer(url: string, init: RequestInit = {}): Response {
       if (backend.afterLoadHistory) backend.history = backend.afterLoadHistory;
       return new Response(null, { status: 202 });
     }
-    return json(backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, years: [] });
+    if (backend.historyAfterAnalysis && backend.holdings.every((holding) => holding.status === 'DONE')) {
+      return json(backend.historyAfterAnalysis);
+    }
+    return json(
+      backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 0, years: [] },
+    );
   }
   if (url === `${base}/news-check` && method === 'POST') {
     backend.portfolio = { ...backend.portfolio, newsStatus: 'CHECKING' };
@@ -1070,6 +1077,23 @@ async function historyRead() {
 }
 
 describe('Load History', () => {
+  it('offersLoadHistoryAsSoonAsTheAnalysisHasFinishedWithoutReloadingThePage', async () => {
+    backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
+    backend.analysed = (holding) => ({ ...holding, status: 'DONE' });
+    // Nothing is analysed when the workspace opens, so there is nothing to read yet.
+    backend.history = history({ unread: 0, unreadHoldings: 0, holdingCount: 0 });
+    backend.historyAfterAnalysis = history({ unread: 4, unreadHoldings: 2, holdingCount: 2 });
+    renderAt();
+    await graph();
+    await historyRead();
+    expect(screen.queryByRole('button', { name: /Load History/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Analyse' }));
+
+    const offer = await screen.findByRole('button', { name: /Load History/ }, { timeout: 4000 });
+    expect(offer).toHaveTextContent('Reads 4 Earlier Reports');
+  });
+
   it('isOfferedWithHowManyEarlierReportsItReads', async () => {
     backend.history = history({ unread: 6, unreadHoldings: 3 });
     renderAt();

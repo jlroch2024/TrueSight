@@ -62,11 +62,12 @@ class Sprint4MigrationIT {
                     connection.setSchema(schema);
                     try (Statement statement = connection.createStatement()) {
                         try (ResultSet company = statement.executeQuery("SELECT name, report_status, "
-                                + "report_status_reason FROM companies WHERE id = " + companyId)) {
+                                + "report_status_reason, earlier_reports FROM companies WHERE id = " + companyId)) {
                             assertThat(company.next()).isTrue();
                             assertThat(company.getString("name")).isEqualTo("Existing Company");
                             assertThat(company.getString("report_status")).isNull();
                             assertThat(company.getString("report_status_reason")).isNull();
+                            assertThat(company.getObject("earlier_reports")).isNull();
                         }
                         try (ResultSet relationship = statement.executeQuery("SELECT review_status, evidence, "
                                 + "highlighted_at FROM relationships WHERE id = " + relationshipId)) {

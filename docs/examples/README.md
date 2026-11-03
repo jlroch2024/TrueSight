@@ -9,6 +9,11 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
+| `sec-submissions-nvidia.json` | NVIDIA's filing list from the SEC, unchanged, in the shape the SEC sends it | SEC Filing Timeline, in tests |
+| `nvidia-10k-older.txt` | The plain text of NVIDIA's 10-K filed 2025-02-26 (the one before `nvidia-10k.txt`), one paragraph per line | SEC Filing Timeline, in tests |
+| `gemini-nvidia-older.json` | One real, unchanged Gemini answer for that 10-K to the relationship prompt: 7 relationships, each with a quote | SEC Filing Timeline, in tests, so tests never call Gemini |
+| `nvidia-10k-oldest.txt` | The plain text of NVIDIA's 10-K filed 2024-02-21 (the one before `nvidia-10k-older.txt`), one paragraph per line | SEC Filing Timeline, in tests |
+| `gemini-nvidia-oldest.json` | One real, unchanged Gemini answer for that 10-K to the relationship prompt: 7 relationships, each with a quote | SEC Filing Timeline, in tests, so tests never call Gemini |
 | `amd-10k.txt` | The plain text of AMD's latest 10-K, one paragraph per line | Name Companies the Way People Know Them, in tests |
 | `gemini-amd.json` | One real, unchanged Gemini answer for that 10-K to the relationship prompt that also asks for each company's common name and ticker: 8 relationships, each with a quote | Name Companies the Way People Know Them, in tests, so tests never call Gemini |
 | `gemini-common-names.json` | One real, unchanged Gemini answer to the common-names pass's prompt, for the 13 company names found in `gemini-nvidia.json` and `gemini-amd.json` | Name Companies the Way People Know Them, in tests, so tests never call Gemini |
@@ -166,6 +171,34 @@ the prompt, the saved answer still works for testing how answers are read and ch
 criticality-enabled relationship prompt and `gemini-3.8-flash`, at temperature 0. The report names no supplier as a
 sole or single source, so all seven criticality values and quotes are empty. It used 30,670 input tokens and 579 output
 tokens (35,887 total, including 4,638 thinking tokens).
+
+## The SEC Filing List
+
+`sec-submissions-nvidia.json` is the SEC's response to https://data.sec.gov/submissions/CIK0001045810.json, saved
+exactly as it arrived on <SEC DATE>, downloaded with `curl` and a User-Agent naming the team. Its `filings.recent`
+lists NVIDIA's filings, newest first. NVIDIA's 10-Ks in it include the three used in tests: 0001045810-26-000021
+(filed 2026-02-25), 0001045810-25-000023 (2025-02-26) and 0001045810-24-000029 (2024-02-21).
+
+## The Older NVIDIA 10-Ks
+
+`nvidia-10k-older.txt` is the plain text of NVIDIA's 10-K filed 2025-02-26 (accession 0001045810-25-000023,
+https://www.sec.gov/Archives/edgar/data/1045810/000104581025000023/nvda-20250126.htm), for the fiscal year ended 26
+January 2025. `nvidia-10k-oldest.txt` is the same for the 10-K filed 2024-02-21 (accession 0001045810-24-000029,
+https://www.sec.gov/Archives/edgar/data/1045810/000104581024000029/nvda-20240128.htm), for the fiscal year ended 28
+January 2024. Both were saved on <DATE> from the reports that Load History downloaded and stored (`reports.text`), one
+paragraph per line like `nvidia-10k.txt`.
+
+## The Older NVIDIA Answers
+
+`gemini-nvidia-older.json` and `gemini-nvidia-oldest.json` are Gemini's full responses, saved exactly as they arrived
+(as the AI call record stores them, `ai_calls.response`), when Load History read each report on <DATE>.
+
+- **Model:** `gemini-3.8-flash`, at temperature 0.
+- **Sent:** the report's section (<A> characters for the 2025 report, <B> for the 2024 one) with the relationship
+  prompt shown under "The AMD Answer", filled in with NVIDIA's name and the form.
+- **Found:** 7 relationships for each report, and all 7 had their quote in the report (none dropped).
+- **Used:** 31,233 tokens in, 597 out (3,816 thinking, 35,646 total) for the 2025 report; 29,582 in, 612 out (4,016
+  thinking, 34,210 total) for the 2024 report.
 
 ## The AMD 10-K
 
