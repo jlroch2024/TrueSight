@@ -155,14 +155,18 @@ export function WorkspacePage() {
 
   // The alerts, closed ones included (the Closed and All filters need them). Not essential to the rest: if they cannot
   // be loaded, the Alerts tab says so and offers Retry.
+  // While news is checked these are read again and again: only the latest question's answer counts, and a change the
+  // user makes outdates any answer on its way (alertsAsked), so a closed alert does not come back for a moment.
+  const alertsAsked = useRef(0);
   const loadAlerts = useCallback(async () => {
+    const asked = ++alertsAsked.current;
     try {
       const answer = await alertApi.list(portfolioId, true);
-      if (shownPortfolio.current !== portfolioId) return;
+      if (shownPortfolio.current !== portfolioId || asked !== alertsAsked.current) return;
       setAlertsResponse(answer);
       setAlertsError(null);
     } catch (e) {
-      if (shownPortfolio.current === portfolioId) setAlertsError(messageOf(e));
+      if (shownPortfolio.current === portfolioId && asked === alertsAsked.current) setAlertsError(messageOf(e));
     }
   }, [portfolioId]);
   useEffect(() => {
@@ -192,10 +196,14 @@ export function WorkspacePage() {
     }
   }, [portfolioId, toast]);
 
+  // Holdings can finish close together: only the latest question's answer counts, or an earlier one arriving last would
+  // take companies back off the graph.
+  const relationshipsAsked = useRef(0);
   const loadRelationships = useCallback(async () => {
+    const asked = ++relationshipsAsked.current;
     try {
       const answer = await relationshipApi.list(portfolioId);
-      if (shownPortfolio.current === portfolioId) setRelationships(answer);
+      if (shownPortfolio.current === portfolioId && asked === relationshipsAsked.current) setRelationships(answer);
     } catch (e) {
       if (shownPortfolio.current === portfolioId) toast(messageOf(e), { error: true });
     }
@@ -249,8 +257,15 @@ export function WorkspacePage() {
 
   // ---------- Analysis and news, followed until they finish ----------
 
-  // While a holding is analysed, look again every moment; when the last one finishes, its suppliers and customers join
-  // the graph.
+  // While a holding is analysed, look again every moment. Each holding that turns Done brings its suppliers and customers
+  // on to the graph straight away; the last one, below, says the analysis has finished.
+  const doneBefore = useRef(analysed);
+  useEffect(() => {
+    const rose = analysed > doneBefore.current;
+    doneBefore.current = analysed;
+    if (rose && analysing) void loadRelationships();
+  }, [analysed, analysing, loadRelationships]);
+
   const wasAnalysing = useRef(false);
   useEffect(() => {
     if (analysing) {
@@ -265,7 +280,8 @@ export function WorkspacePage() {
     }
   }, [analysing, loadHoldings, loadRelationships, toast, analysed]);
 
-  // While news is checked, look at the portfolio again every moment; when it finishes, load its alerts.
+  // While news is checked, look at the portfolio and its alerts again every moment, so new alerts show as they are found;
+  // when it finishes, say what it found.
   const wasChecking = useRef(false);
   useEffect(() => {
     if (checking) {
@@ -275,6 +291,7 @@ export function WorkspacePage() {
           .list()
           .then(setPortfolios)
           .catch((e: unknown) => toast(messageOf(e), { error: true }));
+        void loadAlerts();
       }, NEWS_POLL_MS);
       return () => window.clearInterval(timer);
     }
@@ -284,6 +301,7 @@ export function WorkspacePage() {
         toast(portfolio.newsStatusReason ?? 'News could not be checked.', { error: true });
         return;
       }
+      alertsAsked.current += 1;
       void alertApi
         .list(portfolioId, true)
         .then((found) => {
@@ -294,7 +312,7 @@ export function WorkspacePage() {
         })
         .catch((e: unknown) => setAlertsError(messageOf(e)));
     }
-  }, [checking, portfolio, portfolioId, toast]);
+  }, [checking, portfolio, portfolioId, toast, loadAlerts]);
 
   // ---------- What the buttons do ----------
 
@@ -433,6 +451,7 @@ export function WorkspacePage() {
     setBusyKey(key);
     try {
       const updated = await alertApi.setEventStatus(portfolioId, alert.alertIds, status);
+      alertsAsked.current += 1;
       setAlertsResponse((current) =>
         current && {
           ...current,

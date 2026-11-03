@@ -129,6 +129,8 @@ type Backend = {
   portfoliosFail?: number;
   // What a news check finds, once it has run.
   found?: AlertEvent[];
+  // A news check that goes on running, however often the portfolio is listed.
+  stillChecking?: boolean;
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
   // The answer to "what if this company stops?", by company id, or the status code to fail with.
@@ -156,7 +158,7 @@ function answer(url: string, init: RequestInit = {}): Response {
   if (url === '/api/portfolios') {
     if (backend.portfoliosFail) return json({ message: 'The server is restarting.' }, backend.portfoliosFail);
     // A check runs on the backend: listed again, it has finished.
-    if (backend.portfolio.newsStatus === 'CHECKING') {
+    if (backend.portfolio.newsStatus === 'CHECKING' && !backend.stillChecking) {
       backend.portfolio = { ...backend.portfolio, newsStatus: 'IDLE', newsCheckedAt: new Date().toISOString() };
       if (backend.found) backend.alerts = backend.found;
     }
@@ -583,6 +585,38 @@ describe('Analyse', () => {
     expect(relationshipReads()).toBe(before + 1);
   });
 
+  it('addsAHoldingsSuppliersAndCustomersToTheGraphWithinOneCheckOfItTurningDoneWhileOthersAreStillAnalysing', async () => {
+    const nvidiaLinks = sample.filter((relationship) => relationship.company.id === NVIDIA.id);
+    const amdLinks = sample.filter((relationship) => relationship.company.id === AMD.id);
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2, { status: 'ANALYSING' }), held(LAM, 6, { status: 'ANALYSING' })];
+    backend.relationships = nvidiaLinks;
+    renderAt();
+    await graph();
+    const before = Number(screen.getByTestId('node-count').textContent);
+
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2), held(LAM, 6, { status: 'ANALYSING' })];
+    backend.relationships = [...nvidiaLinks, ...amdLinks];
+
+    // One check, 1.5 s, and the moment it takes the answers to come back.
+    await waitFor(() => expect(Number(screen.getByTestId('node-count').textContent)).toBeGreaterThan(before), { timeout: 2000 });
+    expect(screen.getByRole('button', { name: 'Portfolio: Semiconductors' })).toHaveTextContent('Analysing · 2 of 3 Done');
+  });
+
+  it('readsTheSuppliersAndCustomersAgainOnlyWhenAnotherHoldingIsDone', async () => {
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2, { status: 'ANALYSING' }), held(LAM, 6, { status: 'ANALYSING' })];
+    renderAt();
+    await graph();
+    const relationshipReads = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/portfolios/7/relationships').length;
+    const holdingReads = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/portfolios/7/holdings').length;
+    await waitFor(() => expect(relationshipReads()).toBeGreaterThan(0));
+    const before = relationshipReads();
+    const checks = holdingReads();
+
+    await waitFor(() => expect(holdingReads()).toBeGreaterThan(checks), { timeout: 2000 });
+
+    expect(relationshipReads()).toBe(before);
+  });
+
   it('offersAnalyseWhenThePortfolioHasHoldingsButNoSuppliersOrCustomersYet', async () => {
     backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
     backend.relationships = [];
@@ -607,6 +641,21 @@ describe('Check News', () => {
     await waitFor(() => expect(toast()).toHaveTextContent('News Checked · 1 Open Alert'), { timeout: 4000 });
     expect(within(drawer()).getByRole('listitem', { name: backend.found[0]!.headline.article.title })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '1 Open Alert' })).toBeInTheDocument();
+  });
+
+  it('showsNewAlertsInTheAlertsTabAndTheOpenAlertsCountWhileTheCheckIsStillRunning', async () => {
+    backend.stillChecking = true;
+    renderAt('/portfolios/7?tab=alerts');
+    await graph();
+    await userEvent.click(screen.getByRole('button', { name: 'Check News' }));
+    await screen.findByRole('button', { name: 'Checking News' });
+
+    const found = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [found];
+
+    expect(await within(drawer()).findByRole('listitem', { name: found.headline.article.title }, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1 Open Alert' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Checking News' })).toBeDisabled();
   });
 
   it('saysWhyNewsCouldNotBeChecked', async () => {

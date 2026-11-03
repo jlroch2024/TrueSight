@@ -277,7 +277,10 @@ export function LivingGraph({
   const redrawRef = useRef(() => {});
   const logos = useMemo(() => new LogoBook(() => redrawRef.current()), []);
 
-  const graph = useMemo(() => buildLiveGraph(nodes, edges, measurer()), [nodes, edges]);
+  // Rebuilt only when what is drawn changes, not whenever the page works its view out afresh: every check of a running
+  // analysis hands over new arrays, usually with the same companies and links in them.
+  const drawn = JSON.stringify([nodes, edges]);
+  const graph = useMemo(() => buildLiveGraph(nodes, edges, measurer()), [drawn]);
 
   const remember = useCallback(() => {
     const scene = sceneRef.current;
@@ -350,11 +353,6 @@ export function LivingGraph({
     let rig: CameraRig;
     if (carried) {
       scene.carryFrom(carried);
-      restoreSettled(scene.physics, carried.graph.nodes[0]?.labelRoom ?? 1);
-      // Newcomers find their place among the rest; a gap left by a company taken away closes gently.
-      const arrived = graph.nodes.some((node) => !carried.nodeById(node.id));
-      const left = carried.graph.nodes.some((node) => !scene.nodeById(node.id));
-      if (arrived || left) scene.physics.alpha(arrived ? 0.3 : 0.12);
       rig = rigRef.current!;
     } else {
       // What the user did to this portfolio's graph earlier in the tab: companies they placed, and the view.
@@ -420,7 +418,8 @@ export function LivingGraph({
       rig.setSize(size.width, size.height);
       const covered = latest.current.insets;
       setNarrow(size.width - covered.left - covered.right < NARROW_BELOW);
-      if (!viewChosenRef.current) {
+      // While a company is dragged the view waits, or the company would slide out from under the pointer.
+      if (!viewChosenRef.current && !(glide && scene.draggedNode)) {
         const room = around(FIT_ROOM, latest.current.insets);
         const target = fitCamera(boundsAround(scene, graph.nodes), size.width, size.height, room);
         if (glide && !still) rig.flyTo(target);
@@ -520,10 +519,11 @@ export function LivingGraph({
   }, [alertDots, graph]);
 
   // What the page has chosen: lit, and flown to. A graph carried on keeps the view where it is, unless the choice changed.
-  const flownTo = useRef<{ node: string | null; edge: number | null; focus: string | null }>({
+  const flownTo = useRef<{ node: string | null; edge: number | null; focus: string | null; focusScene: Scene | null }>({
     node: null,
     edge: null,
     focus: null,
+    focusScene: null,
   });
   useEffect(() => {
     const scene = sceneRef.current;
@@ -588,8 +588,10 @@ export function LivingGraph({
     scene.focusSet = { nodeIds, edgeIds };
     const lit = scene.graph.nodes.filter((node) => nodeIds.has(node.id));
     const key = [...nodeIds].sort().join() + '|' + [...edgeIds].sort().join();
-    const changed = !scene.carried || flownTo.current.focus !== key;
+    // The page sends a new but equal focus whenever it works its view out afresh: that is no reason to fly again.
+    const changed = flownTo.current.focus !== key || (!scene.carried && flownTo.current.focusScene !== scene);
     flownTo.current.focus = key;
+    flownTo.current.focusScene = scene;
     if (lit.length > 0 && changed) {
       const covered = latest.current.insets;
       const box = boundsAround(scene, lit);
@@ -737,6 +739,8 @@ export function LivingGraph({
         if (event.buttons === 0) point(screen);
         return;
       }
+      // The graph may have carried on to new data since the press: the same company, in a new object.
+      if (press.node) press.node = scene.nodeById(press.node.id) ?? null;
       const moved = Math.hypot(screen.x - press.start.x, screen.y - press.start.y);
       if (!press.dragging && !press.panning && moved > DRAG_START) {
         pointerRef.current = null;
