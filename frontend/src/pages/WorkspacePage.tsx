@@ -11,24 +11,29 @@
 //
 // Choosing an alert spotlights it on the graph: the rest dims, and the event's company, the holdings it reaches and the
 // links between them stay lit, while the camera frames them. The bottom middle is kept for the Sprint 4 chat.
-import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'motion/react';
-import { Bell, Check, ChevronsLeft, ChevronsRight, LoaderCircle, Network, Plus, ScanSearch, TriangleAlert, Upload, X } from 'lucide-react';
+//
+// Below 1160px wide the same panels become one sheet at a time over the graph, chosen from a tab bar (PhoneDock.tsx): any
+// narrower and the top bar's pieces no longer fit between the drawer and the actions.
+import { AnimatePresence, MotionGlobalConfig, animate, motion, useMotionValue, useTransform } from 'motion/react';
+import { Bell, Check, ChevronsLeft, ChevronsRight, LoaderCircle, Network, Plus, Radar, ScanSearch, TriangleAlert, Upload, X } from 'lucide-react';
 import { type ChangeEvent, type DragEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { type AlertEvent, type AlertStatus, type AlertsResponse, alertApi } from '../api/alerts';
 import { ApiError, api } from '../api/client';
 import { type Holding, type Portfolio, holdingApi, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
+import { useAccount } from '../components/account';
 import { AccountMenu } from '../components/AccountMenu';
 import { useConfirm } from '../components/ConfirmDialog';
-import { PANEL_MOVE, PANEL_SPRING, plural } from '../components/motion';
+import { PANEL_MOVE, PANEL_SPRING, plural, prefersStill } from '../components/motion';
 import { Segmented } from '../components/Segmented';
 import { LogoSettingsContext, Tile } from '../components/Tile';
 import { useLogoSettings } from '../components/useLogoSettings';
 import { type AlertFilter, AlertsTab } from '../components/workspace/AlertsTab';
 import { HoldingsTab, LoadingRows } from '../components/workspace/HoldingsTab';
 import { InspectorBody, InspectorKind } from '../components/workspace/Inspector';
-import { ActionsIsland, OpenAlertsBar, PortfolioIsland } from '../components/workspace/TopBar';
+import { PHONE_TABS, type PhoneTab, PhoneDock } from '../components/workspace/PhoneDock';
+import { ActionsIsland, AnalystDeskButton, OpenAlertsBar, PortfolioIsland, Swap } from '../components/workspace/TopBar';
 import { LoadHistory } from '../components/workspace/LoadHistory';
 import { useHistory } from '../components/workspace/useHistory';
 import { useWhatIf } from '../components/workspace/useWhatIf';
@@ -43,7 +48,13 @@ const GAP = 12;
 const BAR = 52;
 const DRAWER = 380;
 const RAIL = 60;
-const INSPECTOR = 420;
+const INSPECTOR = 488;
+// Below this width the workspace is one sheet at a time, with a tab bar this tall.
+const COMPACT_BELOW = 1160;
+const DOCK = 64;
+// How long the panels take to fade out and in when the window crosses that width (styles.css has the same times).
+const SWITCH_OUT_MS = 140;
+const SWITCH_IN_MS = 260;
 // How often a running analysis and a news check are looked at again.
 const ANALYSIS_POLL_MS = 1500;
 const NEWS_POLL_MS = 2000;
@@ -68,6 +79,59 @@ function parseWeight(text: string): number | null | undefined {
 
 const byTicker = (a: Holding, b: Holding) => a.ticker.localeCompare(b.ticker);
 
+/**
+ * Whether the window is narrow enough for the workspace to be one sheet at a time. Crossing that width, every panel moves
+ * the same way: all fade out, the layout changes while they cannot be seen, with nothing sliding to its new place, and all
+ * fade back in. switching says which part is under way (styles.css). A browser's own cross-fade would not do: it stops
+ * the moment the window changes size again, which it does all the way through a resize.
+ */
+function useCompact() {
+  const [compact, setCompact] = useState(() => window.innerWidth < COMPACT_BELOW);
+  const [switching, setSwitching] = useState<'out' | 'in' | null>(null);
+  const shown = useRef(compact);
+  useEffect(() => {
+    let timer: number | undefined;
+    let busy = false;
+    let restoreMotion = () => {};
+    const check = () => {
+      const wanted = window.innerWidth < COMPACT_BELOW;
+      if (busy || wanted === shown.current) return;
+      if (prefersStill()) {
+        shown.current = wanted;
+        setCompact(wanted);
+        return;
+      }
+      busy = true;
+      setSwitching('out');
+      timer = window.setTimeout(() => {
+        // Wherever the window has got to by now.
+        shown.current = window.innerWidth < COMPACT_BELOW;
+        const skipped = MotionGlobalConfig.skipAnimations;
+        restoreMotion = () => {
+          MotionGlobalConfig.skipAnimations = skipped;
+          restoreMotion = () => {};
+        };
+        MotionGlobalConfig.skipAnimations = true;
+        setCompact(shown.current);
+        setSwitching('in');
+        timer = window.setTimeout(() => {
+          restoreMotion();
+          setSwitching(null);
+          busy = false;
+          check();
+        }, SWITCH_IN_MS);
+      }, SWITCH_OUT_MS);
+    };
+    window.addEventListener('resize', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.clearTimeout(timer);
+      restoreMotion();
+    };
+  }, []);
+  return { compact, switching };
+}
+
 export function WorkspacePage() {
   const { portfolioId = '' } = useParams();
   const navigate = useNavigate();
@@ -87,6 +151,10 @@ export function WorkspacePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
+  const { compact, switching } = useCompact();
+  const { me } = useAccount();
+  // On a phone, the sheet open over the graph. An address saying ?tab=alerts opens on it, as it opens the drawer on it.
+  const [phoneTab, setPhoneTab] = useState<PhoneTab>(tab === 'alerts' ? 'alerts' : 'graph');
   const [leftOpen, setLeftOpen] = useState(true);
   const [chosen, setChosen] = useState<Chosen>(null);
   // The SEC Filing Timeline: earlier annual reports, read on request, and the years they cover.
@@ -103,9 +171,6 @@ export function WorkspacePage() {
   const [startingCheck, setStartingCheck] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
-  // The right island's width, which the Inspector takes, so the two line up.
-  const [inspectorWidth, setInspectorWidth] = useState(INSPECTOR);
-  const actionsIsland = useRef<HTMLDivElement | null>(null);
   const inspectorBody = useRef<HTMLDivElement | null>(null);
   const { confirm, dialog } = useConfirm();
 
@@ -159,14 +224,18 @@ export function WorkspacePage() {
 
   // The alerts, closed ones included (the Closed and All filters need them). Not essential to the rest: if they cannot
   // be loaded, the Alerts tab says so and offers Retry.
+  // While news is checked these are read again and again: only the latest question's answer counts, and a change the
+  // user makes outdates any answer on its way (alertsAsked), so a closed alert does not come back for a moment.
+  const alertsAsked = useRef(0);
   const loadAlerts = useCallback(async () => {
+    const asked = ++alertsAsked.current;
     try {
       const answer = await alertApi.list(portfolioId, true);
-      if (shownPortfolio.current !== portfolioId) return;
+      if (shownPortfolio.current !== portfolioId || asked !== alertsAsked.current) return;
       setAlertsResponse(answer);
       setAlertsError(null);
     } catch (e) {
-      if (shownPortfolio.current === portfolioId) setAlertsError(messageOf(e));
+      if (shownPortfolio.current === portfolioId && asked === alertsAsked.current) setAlertsError(messageOf(e));
     }
   }, [portfolioId]);
   useEffect(() => {
@@ -196,10 +265,14 @@ export function WorkspacePage() {
     }
   }, [portfolioId, toast]);
 
+  // Holdings can finish close together: only the latest question's answer counts, or an earlier one arriving last would
+  // take companies back off the graph.
+  const relationshipsAsked = useRef(0);
   const loadRelationships = useCallback(async () => {
+    const asked = ++relationshipsAsked.current;
     try {
       const answer = await relationshipApi.list(portfolioId);
-      if (shownPortfolio.current === portfolioId) setRelationships(answer);
+      if (shownPortfolio.current === portfolioId && asked === relationshipsAsked.current) setRelationships(answer);
     } catch (e) {
       if (shownPortfolio.current === portfolioId) toast(messageOf(e), { error: true });
     }
@@ -223,7 +296,17 @@ export function WorkspacePage() {
     inspectorBody.current?.scrollTo?.({ top: 0 });
   }, [chosen]);
   // Changing tab, what is chosen or the drawer lets go of any preview from a list.
-  useEffect(() => setPeek(null), [tab, chosen, leftOpen]);
+  useEffect(() => setPeek(null), [tab, phoneTab, chosen, leftOpen]);
+  // With nothing left for Details to show (closed, an alert closed, a holding removed), it goes back to the graph, in the
+  // same moment: the sheet leaves still showing what it showed, as it does when its tab is pressed again.
+  const shownPhoneTab: PhoneTab = phoneTab === 'details' && !chosen ? 'graph' : phoneTab;
+  const lastPhoneTab = useRef(shownPhoneTab);
+  const phoneDirection = useRef(1);
+  if (lastPhoneTab.current !== shownPhoneTab) {
+    phoneDirection.current = PHONE_TABS.indexOf(shownPhoneTab) >= PHONE_TABS.indexOf(lastPhoneTab.current) ? 1 : -1;
+    lastPhoneTab.current = shownPhoneTab;
+  }
+  useEffect(() => setPhoneTab(shownPhoneTab), [shownPhoneTab]);
 
   // Escape closes the Inspector, unless a menu or a window is open (Escape is theirs then).
   useEffect(() => {
@@ -253,8 +336,15 @@ export function WorkspacePage() {
 
   // ---------- Analysis and news, followed until they finish ----------
 
-  // While a holding is analysed, look again every moment; when the last one finishes, its suppliers and customers join
-  // the graph.
+  // While a holding is analysed, look again every moment. Each holding that turns Done brings its suppliers and customers
+  // on to the graph straight away; the last one, below, says the analysis has finished.
+  const doneBefore = useRef(analysed);
+  useEffect(() => {
+    const rose = analysed > doneBefore.current;
+    doneBefore.current = analysed;
+    if (rose && analysing) void loadRelationships();
+  }, [analysed, analysing, loadRelationships]);
+
   const wasAnalysing = useRef(false);
   useEffect(() => {
     if (analysing) {
@@ -269,7 +359,8 @@ export function WorkspacePage() {
     }
   }, [analysing, loadHoldings, loadRelationships, toast, analysed]);
 
-  // While news is checked, look at the portfolio again every moment; when it finishes, load its alerts.
+  // While news is checked, look at the portfolio and its alerts again every moment, so new alerts show as they are found;
+  // when it finishes, say what it found.
   const wasChecking = useRef(false);
   useEffect(() => {
     if (checking) {
@@ -279,6 +370,7 @@ export function WorkspacePage() {
           .list()
           .then(setPortfolios)
           .catch((e: unknown) => toast(messageOf(e), { error: true }));
+        void loadAlerts();
       }, NEWS_POLL_MS);
       return () => window.clearInterval(timer);
     }
@@ -288,6 +380,7 @@ export function WorkspacePage() {
         toast(portfolio.newsStatusReason ?? 'News could not be checked.', { error: true });
         return;
       }
+      alertsAsked.current += 1;
       void alertApi
         .list(portfolioId, true)
         .then((found) => {
@@ -298,7 +391,7 @@ export function WorkspacePage() {
         })
         .catch((e: unknown) => setAlertsError(messageOf(e)));
     }
-  }, [checking, portfolio, portfolioId, toast]);
+  }, [checking, portfolio, portfolioId, toast, loadAlerts]);
 
   // ---------- What the buttons do ----------
 
@@ -335,6 +428,23 @@ export function WorkspacePage() {
   }
 
   async function upload(file: File) {
+
+    const inspectorContent = chosen && (
+      <InspectorBody
+        chosen={chosen}
+        view={view}
+        busyKey={busyKey}
+        history={timeline.state.status === 'ready' ? timeline.state.history : null}
+        scenario={scenario}
+        onRetryScenario={retryScenario}
+        onChoose={setChosen}
+        onWeight={saveWeight}
+        onRemove={(holding) => void removeHolding(holding)}
+        onClose={(alert) => void setAlertStatus(alert, 'DISMISSED')}
+        onRestore={(alert) => void setAlertStatus(alert, 'NEW')}
+      />
+    );
+
     if (!portfolio) return;
     if (view.holdings.length > 0) {
       const confirmed = await confirm({
@@ -437,6 +547,7 @@ export function WorkspacePage() {
     setBusyKey(key);
     try {
       const updated = await alertApi.setEventStatus(portfolioId, alert.alertIds, status);
+      alertsAsked.current += 1;
       setAlertsResponse((current) =>
         current && {
           ...current,
@@ -457,8 +568,24 @@ export function WorkspacePage() {
   }
 
   function openAlertsTab() {
+    if (compact) {
+      setPhoneTab('alerts');
+      return;
+    }
     setTab('alerts');
     setLeftOpen(true);
+  }
+
+  // Choosing something from a list. On a phone the lists are sheets, so Details takes over and shows it.
+  function choose(next: NonNullable<Chosen>) {
+    setChosen(next);
+    if (compact) setPhoneTab('details');
+  }
+
+  // A tab pressed. Pressed again, it goes back to the graph. Details opens again on what it last showed.
+  function pressTab(pressed: PhoneTab) {
+    if (pressed === 'details' && !chosen && lastChosen) setChosen(lastChosen);
+    setPhoneTab(shownPhoneTab === pressed ? 'graph' : pressed);
   }
 
   // ---------- The drawer, folding into its rail as one piece ----------
@@ -475,38 +602,32 @@ export function WorkspacePage() {
   const railOpacity = useTransform(drawerWidth, [RAIL + 20, RAIL + 140], [1, 0]);
   const railX = useTransform(drawerWidth, [RAIL, RAIL + 140], [0, 14]);
 
-  useEffect(() => {
-    const island = actionsIsland.current;
-    if (!island || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => setInspectorWidth(Math.round(island.offsetWidth) || INSPECTOR));
-    observer.observe(island);
-    return () => observer.disconnect();
-  }, [loaded]);
-
-  const inspectorOpen = chosen !== null && loaded;
+  const inspectorOpen = chosen !== null && loaded && !compact;
   // Each side keeps the page's 12px gap from what covers it (or from the screen's edge), so the graph's own controls sit
   // on these lines and every gap on the screen is the same.
-  const insets = {
-    top: GAP * 2 + BAR,
-    right: inspectorOpen ? GAP * 2 + inspectorWidth : GAP,
-    bottom: GAP,
-    left: loaded ? GAP * 2 + (leftOpen ? DRAWER : RAIL) : GAP,
-  };
-  const chooseCompany = (nodeId: string) => setChosen({ kind: 'company', nodeId });
+  const insets = compact
+    ? { top: GAP * 2 + BAR, right: GAP, bottom: GAP * 2 + DOCK, left: GAP }
+    : {
+        top: GAP * 2 + BAR,
+        right: inspectorOpen ? GAP * 2 + INSPECTOR : GAP,
+        bottom: GAP,
+        left: loaded ? GAP * 2 + (leftOpen ? DRAWER : RAIL) : GAP,
+      };
+  const chooseCompany = (nodeId: string) => choose({ kind: 'company', nodeId });
   const openCount = view.open.length;
   const tabDirection = tab === 'alerts' ? 1 : -1;
 
-  const drawerContent = !loaded || !portfolio ? (
+  const drawerContent = (shown: WorkspaceTab) => !loaded || !portfolio ? (
     <LoadingRows />
-  ) : tab === 'holdings' ? (
+  ) : shown === 'holdings' ? (
     <HoldingsTab
       view={view}
       chosenNode={chosen?.kind === 'company' ? chosen.nodeId : null}
       worst={worst}
       onWorst={() => {
         if (!worst) return;
-        openAlertsTab();
-        setChosen({ kind: 'alert', key: alertKey(worst) });
+        if (!compact) openAlertsTab();
+        choose({ kind: 'alert', key: alertKey(worst) });
       }}
       onPeek={setPeek}
       onChoose={chooseCompany}
@@ -531,33 +652,55 @@ export function WorkspacePage() {
       busyKey={busyKey}
       checking={checking}
       onFilter={setFilter}
-      onChoose={(alert) => setChosen({ kind: 'alert', key: alertKey(alert) })}
+      onChoose={(alert) => choose({ kind: 'alert', key: alertKey(alert) })}
       onClose={(alert) => void setAlertStatus(alert, 'DISMISSED')}
       onRestore={(alert) => void setAlertStatus(alert, 'NEW')}
       onCheck={() => void checkNews()}
     />
   );
 
+  const inspectorContent = chosen && (
+    <InspectorBody
+      chosen={chosen}
+      view={view}
+      busyKey={busyKey}
+      history={timeline.state.status === 'ready' ? timeline.state.history : null}
+      scenario={scenario}
+      onRetryScenario={retryScenario}
+      onChoose={setChosen}
+      onWeight={saveWeight}
+      onRemove={(holding) => void removeHolding(holding)}
+      onClose={(alert) => void setAlertStatus(alert, 'DISMISSED')}
+      onRestore={(alert) => void setAlertStatus(alert, 'NEW')}
+    />
+  );
+  const sheetOpen = compact && shownPhoneTab !== 'graph';
+  const showPanels = !loadError && portfolio !== null;
+
   return (
     <LogoSettingsContext.Provider value={logoSettings}>
-      <div className="ws">
+      <div className={`ws${compact ? ' compact' : ''}${sheetOpen ? ' sheet-open' : ''}`} data-switching={switching ?? undefined} data-analyst={me?.role === 'ANALYST' ? '' : undefined}>
         <div className="ws-graph">
           {loaded && view.nodes.length > 0 && (
             <LivingGraph
               nodes={view.nodes}
               edges={view.edges}
               bare
+              tall={compact}
               insets={insets}
               // The Open Alerts bar, the title and search follow the left island (as wide as the drawer), and stop short
               // of the right one (as wide as the Inspector).
-              topBar={{ left: GAP * 2 + DRAWER, right: GAP * 2 + inspectorWidth }}
+              // On a phone the top bar is taken: they sit under it, and the Open Alerts pill is in it.
+              topBar={compact ? undefined : { left: GAP * 2 + DRAWER, right: GAP * 2 + INSPECTOR }}
               barStart={
-                <OpenAlertsBar
-                  count={openCount}
-                  severity={worst?.headline.assessment.severity ?? null}
-                  checkedAt={portfolio?.newsCheckedAt ?? null}
-                  onOpen={openAlertsTab}
-                />
+                compact ? undefined : (
+                  <OpenAlertsBar
+                    count={openCount}
+                    severity={worst?.headline.assessment.severity ?? null}
+                    checkedAt={portfolio?.newsCheckedAt ?? null}
+                    onOpen={openAlertsTab}
+                  />
+                )
               }
               barEnd={
                 <LoadHistory
@@ -576,7 +719,8 @@ export function WorkspacePage() {
               selectedRelationshipId={chosen?.kind === 'relationship' ? chosen.relationshipId : null}
               logoToken={logoSettings.token}
               logoDomains={logoSettings.domains}
-              layoutKey={`truesight.graph.${portfolioId}`}
+              // A phone's graph has a shape of its own (see tall), so each size of screen remembers its own.
+              layoutKey={`truesight.graph.${portfolioId}${compact ? '.phone' : ''}`}
               risks={view.risks}
               alertDots={view.alertDots}
             />
@@ -599,8 +743,11 @@ export function WorkspacePage() {
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setTab('holdings');
-                  setLeftOpen(true);
+                  if (compact) setPhoneTab('holdings');
+                  else {
+                    setTab('holdings');
+                    setLeftOpen(true);
+                  }
                   window.setTimeout(() => document.getElementById('new-ticker')?.focus(), 0);
                 }}
               >
@@ -628,10 +775,10 @@ export function WorkspacePage() {
           analysed={analysed}
           total={view.holdings.length}
           analysing={analysing}
+          phone={compact ? { openAlerts: openCount, severity: worst?.headline.assessment.severity ?? null, onAlerts: openAlertsTab } : undefined}
         />
-        {loaded ? (
+        {compact ? null : loaded ? (
           <ActionsIsland
-            portfolioId={portfolioId}
             analysing={analysing}
             starting={starting}
             checking={checking || startingCheck}
@@ -640,13 +787,13 @@ export function WorkspacePage() {
             onUpload={openUpload}
             onCheck={() => void checkNews()}
             onAnalyse={() => void startAnalysis()}
-            islandRef={actionsIsland}
           />
         ) : (
           <div className="island right glass ticks">
             <AccountMenu />
           </div>
         )}
+        {!compact && <AnalystDeskButton portfolioId={portfolioId} bar />}
         <input
           ref={uploadInput}
           id="upload-csv"
@@ -659,7 +806,7 @@ export function WorkspacePage() {
         />
 
         {/* ---------- The drawer, and the Inspector ---------- */}
-        {!loadError && portfolio !== null && (
+        {!compact && showPanels && (
           <motion.aside className={`drawer glass ticks${leftOpen ? '' : ' folded'}`} aria-label="Portfolio" style={{ width: drawerWidth }}>
             <motion.div
               className="drawer-rail"
@@ -743,7 +890,7 @@ export function WorkspacePage() {
                     animate="shown"
                     exit="leave"
                   >
-                    {drawerContent}
+                    {drawerContent(tab)}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -757,10 +904,11 @@ export function WorkspacePage() {
               key="inspector"
               className="inspector glass ticks"
               aria-label="Inspector"
-              style={{ width: inspectorWidth }}
-              initial={{ x: inspectorWidth + GAP + 24 }}
+              style={{ width: INSPECTOR }}
+              // Exactly as far as the graph's controls move with it (its width and a gap), so the two stay side by side.
+              initial={{ x: INSPECTOR + GAP }}
               animate={{ x: 0 }}
-              exit={{ x: inspectorWidth + GAP + 24 }}
+              exit={{ x: INSPECTOR + GAP }}
               transition={PANEL_MOVE}
             >
               <div className="insp-head">
@@ -770,19 +918,7 @@ export function WorkspacePage() {
                 </button>
               </div>
               <div ref={inspectorBody} className="insp-body">
-                <InspectorBody
-                  chosen={chosen}
-                  view={view}
-                  busyKey={busyKey}
-                  history={timeline.state.status === 'ready' ? timeline.state.history : null}
-                  scenario={scenario}
-                  onRetryScenario={retryScenario}
-                  onChoose={setChosen}
-                  onWeight={saveWeight}
-                  onRemove={(holding) => void removeHolding(holding)}
-                  onClose={(alert) => void setAlertStatus(alert, 'DISMISSED')}
-                  onRestore={(alert) => void setAlertStatus(alert, 'NEW')}
-                />
+                {inspectorContent}
               </div>
             </motion.aside>
           )}
@@ -790,7 +926,7 @@ export function WorkspacePage() {
 
         {/* A closed Inspector leaves a tab at the edge, to open it again where it was. */}
         <AnimatePresence>
-          {loaded && !chosen && lastChosen && (
+          {!compact && loaded && !chosen && lastChosen && (
             <motion.button
               key="reopen"
               type="button"
@@ -809,6 +945,89 @@ export function WorkspacePage() {
             </motion.button>
           )}
         </AnimatePresence>
+
+        {/* ---------- On a phone: one sheet at a time, from the tab bar ---------- */}
+        {compact && showPanels && (
+          <>
+            <AnimatePresence initial={false} custom={phoneDirection.current}>
+              {sheetOpen && (
+                <motion.section
+                  key={shownPhoneTab}
+                  className="sheet glass ticks"
+                  // Where there is room, a sheet stays on its own side of the graph, as the panels do on a computer.
+                  data-side={shownPhoneTab === 'details' ? 'right' : 'left'}
+                  aria-label={shownPhoneTab === 'details' ? 'Inspector' : shownPhoneTab === 'alerts' ? 'Alerts' : 'Holdings'}
+                  custom={phoneDirection.current}
+                  variants={{
+                    enter: (direction: number) => ({ opacity: 0, x: `${direction * 22}%` }),
+                    shown: { opacity: 1, x: '0%' },
+                    leave: (direction: number) => ({ opacity: 0, x: `${direction * -22}%` }),
+                  }}
+                  initial="enter"
+                  animate="shown"
+                  exit="leave"
+                  transition={PANEL_MOVE}
+                >
+                  {shownPhoneTab === 'details' ? (
+                    chosen && (
+                      <>
+                        <div className="insp-head">
+                          <InspectorKind chosen={chosen} />
+                          <button type="button" className="icon-btn" aria-label="Close the Inspector" title="Close" onClick={() => setChosen(null)}>
+                            <X size={17} />
+                          </button>
+                        </div>
+                        <div ref={inspectorBody} className="insp-body">{inspectorContent}</div>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      {loaded && (
+                        <div className="drawer-head sheet-actions">
+                          {shownPhoneTab === 'holdings' ? (
+                            <>
+                              <button type="button" className="btn small" disabled={uploading} onClick={openUpload}>
+                                <Upload size={15} /> Upload CSV
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn small primary${analysing || starting ? ' busy' : ''}`}
+                                disabled={analysing || starting || view.holdings.length === 0}
+                                onClick={() => void startAnalysis()}
+                              >
+                                <Swap
+                                  on={analysing || starting}
+                                  busy={<><LoaderCircle size={15} className="spin" />Analysing</>}
+                                  idle={<><ScanSearch size={15} />Analyse</>}
+                                />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn small"
+                              disabled={checking || startingCheck || view.holdings.length === 0}
+                              aria-label={checking || startingCheck ? 'Checking News' : 'Check News'}
+                              onClick={() => void checkNews()}
+                            >
+                              <Swap
+                                on={checking || startingCheck}
+                                busy={<><LoaderCircle size={15} className="spin" />Checking News</>}
+                                idle={<><Radar size={15} />Check News</>}
+                              />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className="drawer-body">{drawerContent(shownPhoneTab === 'alerts' ? 'alerts' : 'holdings')}</div>
+                    </>
+                  )}
+                </motion.section>
+              )}
+            </AnimatePresence>
+            <PhoneDock open={shownPhoneTab} openAlerts={openCount} hasDetails={!!(chosen || lastChosen)} onPress={pressTab} />
+          </>
+        )}
 
         {/* ---------- Toasts and the upload window ---------- */}
         <div className="toasts" style={{ left: `calc(50% + ${(insets.left - insets.right) / 2}px)` }} aria-live="polite">

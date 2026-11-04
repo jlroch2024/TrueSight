@@ -9,6 +9,9 @@ import { afterEach, vi } from 'vitest';
 // ends up, and what leaves is gone straight away.
 MotionGlobalConfig.skipAnimations = true;
 
+// A computer's window, wide enough for the workspace's full layout (jsdom's own 1024 is under its phone layout's width).
+window.innerWidth = 1440;
+
 afterEach(() => {
   cleanup();
   localStorage.clear();

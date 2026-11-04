@@ -8,7 +8,13 @@ import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Relationship } from '../api/relationships';
 import { buildGraphElements, sharedCompanies, withSharedSummaries } from '../pages/supplyChain';
 import { LivingGraph } from './LivingGraph';
-import { ALERT_COLOUR } from './model';
+import { ALERT_COLOUR, buildLiveGraph } from './model';
+
+// The real thing, watched: how often it runs says how often the graph was rebuilt.
+vi.mock('./model', async (original) => {
+  const actual = await original<typeof import('./model')>();
+  return { ...actual, buildLiveGraph: vi.fn(actual.buildLiveGraph) };
+});
 
 const relationships = sampleRelationshipsJson as Relationship[];
 const { nodes, edges } = buildGraphElements(relationships, []);
@@ -64,6 +70,88 @@ describe('LivingGraph', () => {
     );
 
     expect(sized.mock.calls.length).toBe(before);
+  });
+
+  it('folds its controls on the tall layout however wide the screen, and when it changes to it', () => {
+    const view = drawGraph();
+    const root = view.container.querySelector('.lg-root')!;
+    expect(root).not.toHaveClass('lg-narrow');
+
+    view.rerender(<LivingGraph nodes={nodes} edges={edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" tall />);
+
+    expect(root).toHaveClass('lg-narrow');
+  });
+
+  it('fades its key and minimap out, folds them while they cannot be seen, and fades them back in', async () => {
+    const view = drawGraph();
+    const root = view.container.querySelector('.lg-root')!;
+    expect(root).not.toHaveClass('lg-narrow');
+
+    // A panel opening over the graph leaves it too little room.
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" insets={{ top: 0, right: 300, bottom: 0, left: 0 }} />,
+    );
+
+    expect(root).toHaveAttribute('data-folding', 'out');
+    expect(root).not.toHaveClass('lg-narrow');
+    await waitFor(() => expect(root).toHaveAttribute('data-folding', 'in'));
+    expect(root).toHaveClass('lg-narrow');
+    await waitFor(() => expect(root).not.toHaveAttribute('data-folding'));
+  });
+
+  it('folds its title and the bar before it to squares of their marks when there is too little room for their words', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const room = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(200);
+    const tight = drawGraph({ bare: true, topBar: { left: 0, right: 0 }, barStart: <button type="button">5 Open Alerts</button> });
+    const root = tight.container.querySelector('.lg-root');
+    expect(root).toHaveClass('lg-bar-tight');
+    expect(screen.getByText('Supply Chain').closest('.lg-title')).toHaveAttribute('title', expect.stringContaining('Companies'));
+    tight.unmount();
+
+    room.mockReturnValue(300);
+    const roomy = drawGraph({ bare: true, topBar: { left: 0, right: 0 }, barStart: <button type="button">5 Open Alerts</button> });
+    expect(roomy.container.querySelector('.lg-root')).not.toHaveClass('lg-bar-tight');
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the same scene when rendered again with equal but new companies and links', () => {
+    const view = drawGraph();
+    vi.mocked(buildLiveGraph).mockClear();
+
+    view.rerender(
+      <LivingGraph nodes={structuredClone(nodes)} edges={structuredClone(edges)} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+
+    expect(buildLiveGraph).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds when something it draws has changed', () => {
+    const view = drawGraph();
+    vi.mocked(buildLiveGraph).mockClear();
+
+    const [first, ...rest] = edges;
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={[{ ...first!, reviewStatus: 'APPROVED', criticality: 'SOLE_SOURCE' }, ...rest]} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+
+    expect(buildLiveGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fly back to what is lit when the page sends the same focus again', async () => {
+    const focus = { nodeIds: [nodes[0]!.id], relationshipIds: [edges[0]!.relationshipId] };
+    const view = drawGraph({ focus });
+    const shown = () => Number(screen.getByText(/^\d+%$/).textContent!.replace('%', ''));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom Out' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom Out' }));
+    await waitFor(() => expect(shown()).toBeLessThan(100));
+    const chosen = shown();
+
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={edges} focus={structuredClone(focus)} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 250)));
+
+    expect(shown()).toBeLessThanOrEqual(chosen);
   });
 
   it('folds its search to an icon when the top bar of a page leaves too little room for it', () => {

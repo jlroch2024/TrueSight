@@ -1,4 +1,4 @@
-// The Inspector's scenario view, "What If It Stops?": a company stopping its supply, and what that would reach in the
+// The Inspector's scenario view, the Supply Disruption Scenario: a company stopping its supply, and what that would reach in the
 // portfolio. A strip of big figures (how much of the portfolio, how many holdings), each holding reached with its path
 // drawn as the graph draws links, every link on those paths with its review status and confidence, the ones the report
 // calls a sole or single source with their sentences, and the assumptions the answer rests on. The graph lights the
@@ -14,6 +14,7 @@ import { Count } from '../Count';
 import { FlowLink } from '../FlowLink';
 import { Tile } from '../Tile';
 import { Stat, Stats } from './InspectorCompany';
+import { ReachKind } from './status';
 import { LoadingRows } from './HoldingsTab';
 import type { Scenario } from './useWhatIf';
 import { type Chosen, type WorkspaceView, scenarioExposure } from './view';
@@ -54,7 +55,7 @@ export function ScenarioView({
           <h2 title={name}>{displayName}</h2>
           <div className="chips">
             {ticker && <span className="chip strong">{ticker}</span>}
-            <span className="chip">What If It Stops?</span>
+            <span className="chip">Supply Disruption Scenario</span>
           </div>
         </div>
       </div>
@@ -99,7 +100,7 @@ function Result({ result, view, onChoose }: { result: WhatIf; view: WorkspaceVie
       {reached === 0 && <p className="prose">No holding in this portfolio depends on {result.company.displayName}.</p>}
 
       {reached > 0 && (
-        <section className="insp-section" aria-label="Holdings Reached">
+        <section className="insp-section" aria-label="Holdings Reached" style={{ '--tone': 'var(--high)' } as CSSProperties}>
           <h3>
             <span className="h3-mark alarm" />
             Holdings Reached <span className="count alarm">{reached}</span>
@@ -200,9 +201,7 @@ function ReachedRow({
           <i />
           {item.ticker}
         </span>
-        <span className={`reach-kind${item.indirect ? ' indirect' : ''}`}>
-          {links.length === 0 ? 'Itself' : item.indirect ? 'Indirect' : 'Direct'}
-        </span>
+        <ReachKind indirect={item.indirect} itself={links.length === 0} />
       </span>
       <span className="path-steps">
         {companies.map((company, index) => {
@@ -210,7 +209,7 @@ function ReachedRow({
           return (
             <span key={`${company.id}-${index}`} className={`path-step${index > 0 ? ' linked' : ''}`}>
               {index > 0 && <FlowLink colour={chain ?? NEUTRAL_EDGE} />}
-              <Tile name={look.name} ticker={look.ticker} size={30} holding={look.holding} colour={look.colour} />
+              <Tile name={look.name} ticker={look.ticker} size={36} holding={look.holding} colour={look.colour} />
             </span>
           );
         })}
@@ -218,7 +217,6 @@ function ReachedRow({
       <span className="path-text">
         {companies.map((company, index) => (
           <span key={`${company.id}-${index}`}>
-            {index > 0 && <ChevronRight size={12} className="path-sep" />}
             <b>{company.displayName}</b>
           </span>
         ))}
@@ -236,34 +234,32 @@ function PathLink({ link, view, onChoose }: { link: Relationship; view: Workspac
   const onGraph = view.relationships.some((relationship) => relationship.id === link.id);
   const body = (
     <>
-      <span className="row-text">
-        <span className="h-name">
-          {supplier.displayName} <ChevronRight size={12} className="path-sep" /> {customer.displayName}
-        </span>
-        <span className="h-sub">
-          {link.provides && <>{titleCase(link.provides)} · </>}
+      <span className="h-name">
+        {supplier.displayName} <ChevronRight size={12} className="path-sep" /> {customer.displayName}
+      </span>
+      {link.provides && <span className="h-sub">{titleCase(link.provides)}</span>}
+      <span className="link-labels">
+        <ConfidenceTag confidence={link.confidence} />
+        <span className="path-unreviewed">
           {link.reviewStatus === 'APPROVED' ? (
             <>
-              <ShieldCheck size={12} className="approved-mark" aria-hidden="true" /> Approved
+              <ShieldCheck size={13} className="approved-mark" aria-hidden="true" /> Approved
             </>
           ) : (
             <>
-              <CircleDashed size={12} aria-hidden="true" /> Not Yet Reviewed
+              <CircleDashed size={13} aria-hidden="true" /> Not Yet Reviewed
             </>
           )}
-          {link.criticality && <span className="chip amber">{SOURCE_LABELS[link.criticality]}</span>}
         </span>
-      </span>
-      <span className="row-end">
-        <ConfidenceTag confidence={link.confidence} />
+        {link.criticality && <span className="chip amber">{SOURCE_LABELS[link.criticality]}</span>}
       </span>
     </>
   );
   return onGraph ? (
-    <button type="button" className="link-row" onClick={() => onChoose({ kind: 'relationship', relationshipId: link.id })}>
+    <button type="button" className="link-row stacked" onClick={() => onChoose({ kind: 'relationship', relationshipId: link.id })}>
       {body}
     </button>
   ) : (
-    <div className="link-row">{body}</div>
+    <div className="link-row stacked">{body}</div>
   );
 }

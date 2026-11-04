@@ -92,7 +92,8 @@ describe('room', () => {
     expect(rules(styles).find(({ selector }) => selector === '.btn-swap-face')?.body).toMatch(/justify-content:\s*center;/);
   });
 
-  it('foldsTheWorkspacesQuieterActionsToIconsBelow1440PixelsWide', () => {
-    expect(styles).toMatch(/@media \(max-width: 1439\.98px\) \{\s*\.ws \.island\.right \.btn\.quiet \{[^}]*width: 36px;[\s\S]*?\.ws \.island\.right \.btn-word \{\s*display: none;/);
+  it('keepsTheWorkspacesRightBarAsWideAsTheInspectorWithAnAnalystsDeskABarOfItsOwn', () => {
+    expect(styles).toMatch(/\.ws \.island\.right \{\s*width: var\(--inspector\);/);
+    expect(styles).toMatch(/\.desk-bar \{[^}]*right: calc\(var\(--gap\) \* 2 \+ var\(--inspector\)\);/);
   });
 });

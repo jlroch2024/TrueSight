@@ -21,7 +21,8 @@ import {
   initialsOf,
   neighbourhood,
 } from './model';
-import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView } from './physics';
+import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView, TALL_SHAPE, applyShape } from './physics';
+import { Scene } from './scene';
 import { fitCamera } from './camera';
 import { lineCrosses } from '../pages/supplyChain';
 import { UNREVIEWED_CONFIDENCE } from '../test/sampleConfidence';
@@ -278,6 +279,97 @@ describe('the living graph physics', () => {
       expect({ x: node.x, y: node.y }).toEqual(left.get(node.id));
       expect(node.labelRoom).toBe(1.4);
     }
+  });
+
+  it('spreads the graph down rather than across for a tall view, keeping suppliers left of their customers on the whole', () => {
+    const { graph } = settled();
+    const wide = boundsOf(graph.nodes);
+
+    const again = sampleGraph();
+    const physics = createPhysics(again.nodes, again.edges);
+    applyShape(physics, TALL_SHAPE);
+    settle(physics);
+    const tall = boundsOf(again.nodes);
+
+    expect((tall.x2 - tall.x1) / (tall.y2 - tall.y1)).toBeLessThan((wide.x2 - wide.x1) / (wide.y2 - wide.y1));
+    expect(tall.x2 - tall.x1).toBeLessThan(wide.x2 - wide.x1);
+    const leaning = again.edges.filter((edge) => edge.source.x < edge.target.x).length;
+    expect(leaning).toBeGreaterThan(again.edges.length / 2);
+  });
+
+  it.each([
+    ['a phone', 0.72],
+    ['a computer', 1.45],
+  ])('settles into the shape of the view on %s, so that fitted it fills the view both ways', (_view, aspect) => {
+    const graph = sampleGraph();
+    const physics = createPhysics(graph.nodes, graph.edges);
+
+    settleForView(physics, () => 0.5, { aspect });
+
+    const bounds = boundsOf(graph.nodes);
+    const shape = (bounds.x2 - bounds.x1) / (bounds.y2 - bounds.y1);
+    expect(Math.max(shape / aspect, aspect / shape)).toBeLessThan(1.2);
+  });
+
+  describe('carried on to new data', () => {
+    // A scene of the graph, moving: every company with a speed of its own, and the physics at this warmth.
+    function moving(graph: ReturnType<typeof sampleGraph>, alpha: number) {
+      const scene = new Scene(graph, false);
+      scene.graph.nodes.forEach((node, index) => {
+        node.vx = index + 1;
+        node.vy = -(index + 1);
+      });
+      scene.physics.alpha(alpha);
+      return scene;
+    }
+    function carried(before: Scene, graph: ReturnType<typeof sampleGraph>) {
+      const after = new Scene(graph, false);
+      after.carryFrom(before);
+      return after;
+    }
+    /** The sample graph without its last company and that company's links. */
+    function withoutLast() {
+      const graph = sampleGraph();
+      const gone = graph.nodes[graph.nodes.length - 1]!.id;
+      return {
+        ...graph,
+        nodes: graph.nodes.filter((node) => node.id !== gone),
+        edges: graph.edges.filter((edge) => edge.source.id !== gone && edge.target.id !== gone),
+      };
+    }
+
+    it('keeps each company moving at its speed, and the warmth, when nobody came or went', () => {
+      const before = moving(sampleGraph(), 0.07);
+
+      const after = carried(before, sampleGraph());
+
+      expect(after.physics.alpha()).toBe(0.07);
+      for (const node of after.graph.nodes) {
+        const was = before.nodeById(node.id)!;
+        expect({ vx: node.vx, vy: node.vy }).toEqual({ vx: was.vx, vy: was.vy });
+      }
+    });
+
+    it('adds no energy to a graph at rest when nobody came or went', () => {
+      expect(carried(moving(sampleGraph(), 0), sampleGraph()).physics.alpha()).toBe(0);
+    });
+
+    it('adds energy for a newcomer, which starts still, without changing the speed of the companies already moving', () => {
+      const before = moving(withoutLast(), 0.01);
+
+      const after = carried(before, sampleGraph());
+
+      expect(after.physics.alpha()).toBe(0.3);
+      for (const node of after.graph.nodes) {
+        const was = before.nodeById(node.id);
+        expect(node.vx).toBe(was ? was.vx : 0);
+      }
+    });
+
+    it('adds a little energy when a company leaves, and never cools a warmer graph', () => {
+      expect(carried(moving(sampleGraph(), 0.01), withoutLast()).physics.alpha()).toBe(0.12);
+      expect(carried(moving(sampleGraph(), 0.5), withoutLast()).physics.alpha()).toBe(0.5);
+    });
   });
 
   it('holds a company the user placed where they put it, once the web settles around it', () => {
