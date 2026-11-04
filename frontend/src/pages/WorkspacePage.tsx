@@ -429,22 +429,6 @@ export function WorkspacePage() {
 
   async function upload(file: File) {
 
-    const inspectorContent = chosen && (
-      <InspectorBody
-        chosen={chosen}
-        view={view}
-        busyKey={busyKey}
-        history={timeline.state.status === 'ready' ? timeline.state.history : null}
-        scenario={scenario}
-        onRetryScenario={retryScenario}
-        onChoose={setChosen}
-        onWeight={saveWeight}
-        onRemove={(holding) => void removeHolding(holding)}
-        onClose={(alert) => void setAlertStatus(alert, 'DISMISSED')}
-        onRestore={(alert) => void setAlertStatus(alert, 'NEW')}
-      />
-    );
-
     if (!portfolio) return;
     if (view.holdings.length > 0) {
       const confirmed = await confirm({
