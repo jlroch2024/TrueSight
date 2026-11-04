@@ -39,8 +39,9 @@ Docker Desktop must be running.
 | Database | `docker compose up -d`, then `docker compose ps` should say `healthy` | repository root |
 | Backend | `./mvnw spring-boot:run` (Windows without Git Bash: `mvnw.cmd spring-boot:run`) | `backend/` |
 | Website | `npm install`, then `npm run dev`, then open http://localhost:5173 | `frontend/` |
-| Backend tests | `./mvnw verify` (quick tests, then tests against a real database) | `backend/` |
+| Backend tests and coverage | `./mvnw verify` (quick tests, then tests against a real database; coverage report in `target/site/jacoco/index.html`) | `backend/` |
 | Website tests and build | `npm test`, then `npm run build` | `frontend/` |
+| Website coverage | `npm run coverage` (report in `coverage/index.html`) | `frontend/` |
 
 The Swagger page is at http://localhost:8080/swagger-ui.html while the backend runs. Settings and keys go in `.env` in
 the repository root: copy `.env.example`.
@@ -241,6 +242,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   days"), move the sample's dates relative to now in the test, keeping the gaps between them, as `NewsCheckIT` does.
   Otherwise the test passes on the day it is written and fails a week later.
 - Never delete, skip or weaken a test to make it pass.
+- Coverage stays at 50% of lines or more on each side; `./mvnw verify` and `npm run coverage` fail below it. Open the HTML report to see which lines no test runs.
 
 ## Git and Pull Requests
 
