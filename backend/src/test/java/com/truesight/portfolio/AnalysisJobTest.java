@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.relationship.SecondCheckPassService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -17,6 +18,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AnalysisJobTest {
+
+    /** These tests are about running holdings side by side; a mock has no report to second-check. */
+    private final SecondCheckPassService secondChecks = mock(SecondCheckPassService.class);
 
     @Test
     void analyzesManyHoldingsConcurrentlyUpToTheExecutorLimit() throws Exception {
@@ -41,7 +45,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers);
+            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers);
             Future<?> finished = caller.submit(() -> job.run(List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L)));
 
             assertThat(firstFourStarted.await(3, TimeUnit.SECONDS)).isTrue();
@@ -84,7 +88,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService portfolios = Executors.newFixedThreadPool(2);
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers);
+            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers);
             Future<?> firstPortfolio = portfolios.submit(() -> job.run(List.of(1L)));
             Future<?> secondPortfolio = portfolios.submit(() -> job.run(List.of(2L)));
 
@@ -120,7 +124,7 @@ class AnalysisJobTest {
 
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers).run(List.of(1L, 2L, 3L));
+            new AnalysisJob(analysis, secondChecks, workers).run(List.of(1L, 2L, 3L));
             assertThat(maximum.get()).isEqualTo(1);
         } finally {
             workers.shutdownNow();

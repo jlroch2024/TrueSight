@@ -33,7 +33,8 @@ import java.util.Set;
  *       they cannot be quote-checked.</li>
  * </ol>
  *
- * <p>Once they are saved, {@link SecondCheck} has a second AI agree or doubt each one.
+ * <p>The second check ({@link SecondCheck}, a second AI agreeing or doubting each one) is not made here: AnalysisJob
+ * makes it once the holding is Done, so it never holds the holding up.
  *
  * <p>Reports are public, so a report that already has relationships or a completed relationship-finding answer is
  * never sent to the AI again, whichever portfolio asks.
@@ -81,18 +82,15 @@ public class RelationshipFinder {
     private final RelationshipRepository relationships;
     private final AiCallRepository aiCalls;
     private final AiCallLog calls;
-    private final SecondCheck secondCheck;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
-                              RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls,
-                              SecondCheck secondCheck) {
+                              RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
         this.relationships = relationships;
         this.aiCalls = aiCalls;
         this.calls = calls;
-        this.secondCheck = secondCheck;
     }
 
     /**
@@ -155,9 +153,8 @@ public class RelationshipFinder {
         }
         relationships.saveAll(proven);
         calls.finish(asked.callId(), proven.size(), dropped);
-        // A second AI reads each saved claim with its sentence. It never fails the analysis: if it cannot answer, the
-        // relationships stay saved with no second check, and the analyst-run pass asks again.
-        secondCheck.run(proven, report.getId());
+        // The second check is not made here: it would hold the holding's transaction, and so its Done, until the second
+        // AI answered. AnalysisJob runs it once the holding is Done.
     }
 
     /** What Gemini found, and the record of the call that found it. */
