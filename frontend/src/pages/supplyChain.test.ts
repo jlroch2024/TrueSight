@@ -190,6 +190,7 @@ function relationship(
     evidence: 'Evidence sentence.',
     source: 'AI',
     confidence: UNREVIEWED_CONFIDENCE,
+    highlights: [],
     criticality: null,
     criticalityEvidence: null,
     report: { form: '10-K', filingDate: '2026-01-01', url: 'https://www.sec.gov/example' },

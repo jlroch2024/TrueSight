@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.relationship.HighlightJob;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -15,11 +16,14 @@ public class AnalysisJob {
 
     private final AnalysisService analysis;
     private final Executor analysisExecutor;
+    private final HighlightJob highlights;
     private final ConcurrentHashMap<String, Object> companyLocks = new ConcurrentHashMap<>();
 
-    public AnalysisJob(AnalysisService analysis, @Qualifier("analysisExecutor") Executor analysisExecutor) {
+    public AnalysisJob(AnalysisService analysis, @Qualifier("analysisExecutor") Executor analysisExecutor,
+                       HighlightJob highlights) {
         this.analysis = analysis;
         this.analysisExecutor = analysisExecutor;
+        this.highlights = highlights;
     }
 
     @Async
@@ -35,5 +39,7 @@ public class AnalysisJob {
         synchronized (companyLocks.computeIfAbsent(ticker, ignored -> new Object())) {
             analysis.analyze(holdingId);
         }
+        // Started here, once the holding's relationships are saved, so the job can see them.
+        highlights.run();
     }
 }

@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "[{\"index\":1,\"highlights\":[{\"text\":\"Taiwan Semiconductor Manufacturing Company Limited\",\"kind\":\"COMPANY\"},{\"text\":\"TSMC\",\"kind\":\"COMPANY\"},{\"text\":\"Samsung Electronics Co., Ltd.\",\"kind\":\"COMPANY\"},{\"text\":\"Samsung\",\"kind\":\"COMPANY\"},{\"text\":\"semiconductor wafers\",\"kind\":\"SUPPLIED\"}]},{\"index\":2,\"highlights\":[{\"text\":\"memory\",\"kind\":\"SUPPLIED\"},{\"text\":\"SK Hynix Inc.\",\"kind\":\"COMPANY\"},{\"text\":\"Micron Technology, Inc.\",\"kind\":\"COMPANY\"},{\"text\":\"Samsung\",\"kind\":\"COMPANY\"}]},{\"index\":3,\"highlights\":[{\"text\":\"Taiwan Semiconductor Manufacturing Company Limited\",\"kind\":\"COMPANY\"},{\"text\":\"TSMC\",\"kind\":\"COMPANY\"},{\"text\":\"all\",\"kind\":\"RELIANCE\"},{\"text\":\"wafers for microprocessor and GPU products\",\"kind\":\"SUPPLIED\"},{\"text\":\"primarily\",\"kind\":\"RELIANCE\"},{\"text\":\"GLOBALFOUNDRIES Inc.\",\"kind\":\"COMPANY\"},{\"text\":\"GF\",\"kind\":\"COMPANY\"},{\"text\":\"wafers for microprocessor and GPU products\",\"kind\":\"SUPPLIED\"}]},{\"index\":4,\"highlights\":[{\"text\":\"October 2025\",\"kind\":\"FIGURE\"},{\"text\":\"OpenAI OpCo, LLC\",\"kind\":\"COMPANY\"},{\"text\":\"OpenAI\",\"kind\":\"COMPANY\"},{\"text\":\"6 gigawatts\",\"kind\":\"FIGURE\"},{\"text\":\"AMD GPUs\",\"kind\":\"SUPPLIED\"},{\"text\":\"AMD Instinct MI450 series products\",\"kind\":\"SUPPLIED\"}]},{\"index\":5,\"highlights\":[{\"text\":\"Manufacturing Services\",\"kind\":\"SUPPLIED\"},{\"text\":\"Sanmina\",\"kind\":\"COMPANY\"},{\"text\":\"five years\",\"kind\":\"FIGURE\"}]}]",
+            "thoughtSignature": "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"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 440,
+    "candidatesTokenCount": 328,
+    "totalTokenCount": 1545,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 440
+      }
+    ],
+    "thoughtsTokenCount": 777,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "ZHjsaoLoDPyLjuMPsdiI0A8"
+}

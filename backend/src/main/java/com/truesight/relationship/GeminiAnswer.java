@@ -46,6 +46,9 @@ public class GeminiAnswer {
     /** One verdict of the second check, for the claim numbered {@code index} (from 1). */
     public record SecondCheckFound(int index, SecondCheckVerdict verdict, String reason) { }
 
+    /** One phrase the AI picked out of a numbered quote. {@code kind} is null when it is none of the four. */
+    public record HighlightFound(int index, String text, HighlightKind kind) { }
+
     public List<Found> read(String response) {
         JsonNode list;
         try {
@@ -141,6 +144,30 @@ public class GeminiAnswer {
         return found;
     }
 
+    /**
+     * Reads the highlights' answer: a JSON list of {@code { index, highlights: [{ text, kind }] }}, one flat list of
+     * phrases in the order given. An answer that is not a list throws {@link UnreadableAnswerException}. An item with no
+     * whole-number index is left out.
+     */
+    public List<HighlightFound> readHighlights(String response) {
+        JsonNode list;
+        try {
+            list = mapper.readTree(answerText(response));
+        } catch (JacksonException exception) {
+            throw new UnreadableAnswerException();
+        }
+        if (list == null || !list.isArray()) throw new UnreadableAnswerException();
+        List<HighlightFound> found = new ArrayList<>();
+        for (JsonNode item : list) {
+            JsonNode index = item.path("index");
+            if (!index.isIntegralNumber()) continue;
+            for (JsonNode phrase : item.path("highlights")) {
+                found.add(new HighlightFound(index.asInt(), text(phrase, "text"), highlightKind(text(phrase, "kind"))));
+            }
+        }
+        return found;
+    }
+
     /** Joins the text of the answer's parts, skipping Gemini's "thought" parts. */
     private String answerText(String response) {
         if (response == null || response.isBlank()) {
@@ -173,6 +200,16 @@ public class GeminiAnswer {
         return switch (value.toUpperCase(Locale.ROOT)) {
             case "SUPPLIER" -> RelationshipType.SUPPLIER;
             case "CUSTOMER" -> RelationshipType.CUSTOMER;
+            default -> null;
+        };
+    }
+
+    private static HighlightKind highlightKind(String value) {
+        return switch (value.toUpperCase(Locale.ROOT)) {
+            case "COMPANY" -> HighlightKind.COMPANY;
+            case "SUPPLIED" -> HighlightKind.SUPPLIED;
+            case "RELIANCE" -> HighlightKind.RELIANCE;
+            case "FIGURE" -> HighlightKind.FIGURE;
             default -> null;
         };
     }

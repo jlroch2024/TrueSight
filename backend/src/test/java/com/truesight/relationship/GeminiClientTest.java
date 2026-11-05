@@ -137,6 +137,27 @@ class GeminiClientTest {
     }
 
     @Test
+    void theHighlightsAskForAnIndexAndEachPhrasesTextAndOneOfTheFourKinds() {
+        String phrase = "$.generationConfig.responseSchema.items.properties.highlights.items.properties";
+        server.expect(requestTo(URL))
+                .andExpect(jsonPath("$.contents[0].parts[0].text").value("The quotes."))
+                .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.type").value("ARRAY"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.index.type").value("INTEGER"))
+                .andExpect(jsonPath(phrase + ".text.type").value("STRING"))
+                .andExpect(jsonPath(phrase + ".kind.enum[0]").value("COMPANY"))
+                .andExpect(jsonPath(phrase + ".kind.enum[1]").value("SUPPLIED"))
+                .andExpect(jsonPath(phrase + ".kind.enum[2]").value("RELIANCE"))
+                .andExpect(jsonPath(phrase + ".kind.enum[3]").value("FIGURE"))
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+
+        AiAnswer answer = client("test-key").generateHighlights(AiRequest.of(AiPurpose.HIGHLIGHT, "The quotes."));
+
+        assertThat(answer.text()).isEqualTo("{\"ok\":true}");
+        server.verify();
+    }
+
+    @Test
     void acceptsACallerProvidedResponseSchema() {
         Map<String, Object> schema = Map.of("type", "ARRAY", "items", Map.of("type", "STRING"));
         server.expect(requestTo(URL))
