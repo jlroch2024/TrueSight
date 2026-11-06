@@ -26,6 +26,7 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
       source: 'AI',
       confidence: UNREVIEWED_CONFIDENCE,
+      highlights: [],
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
       reviewStatus: 'UNREVIEWED',
       criticality: null,
@@ -40,6 +41,7 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
     usedByPortfolios: 1,
     secondCheck: null,
     secondCheckReason: null,
+    highlights: [],
     ...overrides,
   };
 }
@@ -140,6 +142,22 @@ describe('Review page', () => {
     expect(screen.getByText(sentence)).toBeInTheDocument();
     expect(screen.getByText('10-K, Filed Feb 25, 2026')).toBeInTheDocument();
     expect(screen.getByText('Used by 3 Portfolios')).toBeInTheDocument();
+  });
+
+  it('shows the highlights the API sends on every claim, with the key, and a claim with none plain', async () => {
+    const start = sentence.indexOf('TSMC');
+    fakeBackend(() => [item(1, { highlights: [{ kind: 'COMPANY', start, end: start + 'TSMC'.length }] }), item(2)]);
+    const { container } = renderPage();
+
+    await screen.findByText('Evidence 2.');
+    const marks = container.querySelectorAll('blockquote mark');
+    expect(marks).toHaveLength(1);
+    expect(marks[0]).toHaveTextContent('TSMC');
+    expect(marks[0]).toHaveClass('company');
+    // The Analyst Desk has no portfolio, so companies stay in the stylesheet's teal.
+    expect(marks[0]!.closest<HTMLElement>('.highlighted-quote')!.style.getPropertyValue('--quote-company')).toBe('');
+    expect(screen.getAllByLabelText('Highlight Key')).toHaveLength(1);
+    expect(screen.getByText('Evidence 2.').querySelector('mark')).toBeNull();
   });
 
   it('reads the filing date like "Feb 25, 2026", never as the raw "2026-02-25"', async () => {

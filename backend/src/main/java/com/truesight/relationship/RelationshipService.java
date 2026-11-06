@@ -32,18 +32,21 @@ public class RelationshipService {
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
     private final RelationshipRepository relationships;
+    private final RelationshipHighlightRepository highlights;
     private final CompanyRepository companies;
     private final ReportRepository reports;
     private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
 
     public RelationshipService(PortfolioRepository portfolios, HoldingRepository holdings,
-                               RelationshipRepository relationships, CompanyRepository companies,
-                               ReportRepository reports, CompanyDisplayNames displayNames,
+                               RelationshipRepository relationships, RelationshipHighlightRepository highlights,
+                               CompanyRepository companies, ReportRepository reports,
+                               CompanyDisplayNames displayNames,
                                CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
+        this.highlights = highlights;
         this.companies = companies;
         this.reports = reports;
         this.displayNames = displayNames;
@@ -67,7 +70,7 @@ public class RelationshipService {
         return toResponses(found);
     }
 
-    /** Turns relationships into what the website sees, looking up their companies and reports in one go each. */
+    /** Turns relationships into what the website sees, looking up their companies, reports and highlights in one go each. */
     @Transactional(readOnly = true)
     public List<RelationshipResponse> toResponses(List<Relationship> found) {
         Set<Long> companyIds = new HashSet<>();
@@ -79,6 +82,11 @@ public class RelationshipService {
                 .collect(Collectors.toMap(Company::getId, Function.identity()));
         Map<Long, Report> reportById = reports.findAllById(found.stream().map(Relationship::getReportId).toList())
                 .stream().collect(Collectors.toMap(Report::getId, Function.identity()));
+        Map<Long, List<RelationshipResponse.Highlight>> highlightsById = highlights
+                .findByRelationshipIdInOrderByRelationshipIdAscStartAtAsc(found.stream().map(Relationship::getId).toList())
+                .stream().collect(Collectors.groupingBy(RelationshipHighlight::getRelationshipId, Collectors.mapping(
+                        h -> new RelationshipResponse.Highlight(h.getKind(), h.getStartAt(), h.getEndAt()),
+                        Collectors.toList())));
 
         return found.stream().map(r -> {
             Report report = reportById.get(r.getReportId());
@@ -96,7 +104,8 @@ public class RelationshipService {
                     r.getReviewStatus(),
                     r.getReviewedAt(),
                     r.getReviewNote(),
-                    RelationshipConfidence.of(r));
+                    RelationshipConfidence.of(r),
+                    highlightsById.getOrDefault(r.getId(), List.of()));
         }).toList();
     }
 

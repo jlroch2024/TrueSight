@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.relationship.HighlightJob;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -41,7 +43,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers);
+            AnalysisJob job = new AnalysisJob(analysis, workers, mock(HighlightJob.class));
             Future<?> finished = caller.submit(() -> job.run(List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L)));
 
             assertThat(firstFourStarted.await(3, TimeUnit.SECONDS)).isTrue();
@@ -84,7 +86,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService portfolios = Executors.newFixedThreadPool(2);
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers);
+            AnalysisJob job = new AnalysisJob(analysis, workers, mock(HighlightJob.class));
             Future<?> firstPortfolio = portfolios.submit(() -> job.run(List.of(1L)));
             Future<?> secondPortfolio = portfolios.submit(() -> job.run(List.of(2L)));
 
@@ -120,8 +122,25 @@ class AnalysisJobTest {
 
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers).run(List.of(1L, 2L, 3L));
+            new AnalysisJob(analysis, workers, mock(HighlightJob.class)).run(List.of(1L, 2L, 3L));
             assertThat(maximum.get()).isEqualTo(1);
+        } finally {
+            workers.shutdownNow();
+        }
+    }
+
+    @Test
+    void startsTheHighlightsPassOnceAHoldingsRelationshipsAreSaved() {
+        AnalysisService analysis = mock(AnalysisService.class);
+        when(analysis.tickerFor(anyLong())).thenReturn("NVDA");
+        HighlightJob highlights = mock(HighlightJob.class);
+        ExecutorService workers = Executors.newSingleThreadExecutor();
+        try {
+            new AnalysisJob(analysis, workers, highlights).run(List.of(1L));
+
+            var order = inOrder(analysis, highlights);
+            order.verify(analysis).analyze(1L);
+            order.verify(highlights).run();
         } finally {
             workers.shutdownNow();
         }
