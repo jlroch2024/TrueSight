@@ -1,12 +1,23 @@
 // The workspace's top bar: islands floating over the graph. Left: the brand and the portfolio menu (its name, and under
 // it a ring that fills as holdings are analysed), as wide as the drawer under it. After it, in the graph's own row: the
 // Open Alerts bar, in the most severe open alert's colour, then the graph's title and search. Right: Upload CSV, Check
-// News, Analyse and the account, as wide as the Inspector under it, whoever is logged in (styles.css); an analyst's
+// News, Analyse, Download Briefing (an icon alone, to fit) and the account, as wide as the Inspector under it, whoever is logged in (styles.css); an analyst's
 // Analyst Desk is a bar of its own, just before it. On a phone the left
 // island is the whole bar: the brand's mark, the portfolio menu, the Open Alerts pill, Analyst Desk and the account. The
 // actions move into the sheets.
 import { AnimatePresence, motion } from 'motion/react';
-import { BriefcaseBusiness, Check, ChevronDown, FolderCog, LoaderCircle, Radar, ScanSearch, ShieldCheck, Upload } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  Check,
+  ChevronDown,
+  FileDown,
+  FolderCog,
+  LoaderCircle,
+  Radar,
+  ScanSearch,
+  ShieldCheck,
+  Upload,
+} from 'lucide-react';
 import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Severity } from '../../api/news';
@@ -210,19 +221,24 @@ export function ActionsIsland({
   starting,
   checking,
   uploading,
+  downloading,
   hasHoldings,
   onUpload,
   onCheck,
   onAnalyse,
+  onBriefing,
 }: {
   analysing: boolean;
   starting: boolean;
   checking: boolean;
   uploading: boolean;
+  // The briefing is being made.
+  downloading: boolean;
   hasHoldings: boolean;
   onUpload: () => void;
   onCheck: () => void;
   onAnalyse: () => void;
+  onBriefing: () => void;
 }) {
   const busy = analysing || starting;
   return (
@@ -254,6 +270,16 @@ export function ActionsIsland({
           busy={<><LoaderCircle size={16} className="spin" />Analysing</>}
           idle={<><ScanSearch size={16} />Analyse</>}
         />
+      </button>
+      <button
+        type="button"
+        className="icon-btn"
+        disabled={downloading || !hasHoldings}
+        aria-label={downloading ? 'Making the Briefing' : 'Download Briefing'}
+        title={downloading ? 'Making the Briefing' : 'Download Briefing'}
+        onClick={onBriefing}
+      >
+        {downloading ? <LoaderCircle size={17} className="spin" /> : <FileDown size={17} />}
       </button>
       <span className="island-divider tight" />
       <AccountMenu />

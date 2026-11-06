@@ -3,11 +3,12 @@
 // is the real component.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import type { Relationship } from '../api/relationships';
 import { buildGraphElements, sharedCompanies, withSharedSummaries } from '../pages/supplyChain';
-import { LivingGraph } from './LivingGraph';
+import { type GraphHandle, LivingGraph } from './LivingGraph';
 import { ALERT_COLOUR, buildLiveGraph } from './model';
 
 // The real thing, watched: how often it runs says how often the graph was rebuilt.
@@ -309,5 +310,64 @@ describe('LivingGraph', () => {
     });
 
     await waitFor(() => expect(hint).not.toBeInTheDocument());
+  });
+});
+
+describe('the picture of the graph for the briefing', () => {
+  // A drawing surface that accepts every call, for drawing a frame that is never looked at.
+  function anyContext(): CanvasRenderingContext2D {
+    const make = (): unknown =>
+      new Proxy(function () {}, {
+        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : make()),
+        apply: () => make(),
+        set: () => true,
+      });
+    return make() as CanvasRenderingContext2D;
+  }
+
+  it('gives nothing where the browser cannot draw', () => {
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
+  });
+
+  it('draws the screen once more at twice its size and hands back a PNG', () => {
+    const sizes: [number, number][] = [];
+    const context = anyContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      sizes.push([this.width, this.height]);
+      return context as never;
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,PICTURE');
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    const picture = handle.current!.snapshot();
+
+    expect(picture).toBe('data:image/png;base64,PICTURE');
+    // The graph is 800 by 500 on screen, so the picture is 1600 by 1000.
+    expect(sizes).toContainEqual([1600, 1000]);
+    expect(sizes).not.toContainEqual([3200, 2000]);
+  });
+
+  it('gives nothing when the browser cannot read the canvas back', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(anyContext() as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:,');
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
+  });
+
+  it('gives nothing when reading the canvas is refused', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(anyContext() as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => {
+      throw new DOMException('Tainted canvases may not be exported.', 'SecurityError');
+    });
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
   });
 });

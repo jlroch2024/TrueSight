@@ -84,6 +84,47 @@ describe('api', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv');
   });
 
+  it('sends what it is given with a download, so a download can ask with a POST', async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('%PDF', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:pdf');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    await apiDownload('/portfolios/7/briefing', 'Briefing.pdf', { method: 'POST', body: JSON.stringify({ graphPng: 'x' }) });
+
+    const [address, init] = fetch.mock.calls[0];
+    expect(address).toBe('/api/portfolios/7/briefing');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBe('{"graphPng":"x"}');
+    expect((init.headers as Headers).get('Content-Type')).toBe('application/json');
+  });
+
+  it('saves a download under the name the backend asks for, or the given name when it asks for none', async () => {
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:pdf');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const saved: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.download);
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('%PDF', { headers: { 'Content-Disposition': 'attachment; filename="Tech-Briefing-2026-11-06.pdf"' } }),
+      ),
+    );
+    await apiDownload('/portfolios/7/briefing', 'Briefing.pdf');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('%PDF')));
+    await apiDownload('/portfolios/7/briefing', 'Briefing.pdf');
+
+    expect(saved).toEqual(['Tech-Briefing-2026-11-06.pdf', 'Briefing.pdf']);
+  });
+
   it('turns a refused download into the same ApiError', async () => {
     fakeFetch(403, { message: 'Only analysts can do this.' });
 

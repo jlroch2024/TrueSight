@@ -1,5 +1,5 @@
 // The calls for the user's portfolios. Every page that needs portfolios uses these, so the addresses are written once.
-import { api } from './client';
+import { api, apiDownload } from './client';
 
 export type NewsStatus = 'IDLE' | 'CHECKING' | 'FAILED';
 
@@ -19,6 +19,10 @@ export const portfolioApi = {
     api<Portfolio>(`/portfolios/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   remove: (id: number) => api(`/portfolios/${id}`, { method: 'DELETE' }),
   newsCheck: (id: number | string) => api<void>(`/portfolios/${id}/news-check`, { method: 'POST' }),
+  // Saves the portfolio's briefing PDF under the name the backend gives it. graphPng is the graph as it is on screen
+  // (LivingGraph's snapshot), or null when the portfolio has no graph.
+  briefing: (id: number | string, graphPng: string | null) =>
+    apiDownload(`/portfolios/${id}/briefing`, 'Briefing.pdf', { method: 'POST', body: JSON.stringify({ graphPng }) }),
 };
 
 // Sent in the browser after a portfolio is created, renamed or deleted, so everything showing portfolio names (the
