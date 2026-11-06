@@ -54,6 +54,8 @@ function sampleHoldings(): Holding[] {
     reportDate: '2026-01-01',
     reportLink: 'https://www.sec.gov/example',
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
   })) as Holding[];
 }
 

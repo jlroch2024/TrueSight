@@ -12,6 +12,10 @@ import java.time.LocalDate;
  * {@link com.truesight.company.CompanyDisplayNames}). {@code reportType} is the form, e.g. "10-K"; {@code reportLink}
  * opens it on the SEC website.
  * {@code lastAnalysed} is the saved report's creation time and is present only when the holding is Done.
+ *
+ * <p>{@code suppliersRead} and {@code suppliersToRead} are for the whole portfolio, the same on every holding: how many
+ * of the holdings' suppliers' own annual reports are read, of how many are to be read. All are read when the two are
+ * equal.
  */
 public record HoldingResponse(
         Long id,
@@ -24,5 +28,7 @@ public record HoldingResponse(
         String reportType,
         LocalDate reportDate,
         String reportLink,
-        Instant lastAnalysed) {
+        Instant lastAnalysed,
+        int suppliersRead,
+        int suppliersToRead) {
 }

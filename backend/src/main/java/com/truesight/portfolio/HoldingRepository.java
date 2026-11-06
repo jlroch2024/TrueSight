@@ -30,5 +30,8 @@ public interface HoldingRepository extends JpaRepository<Holding, Long> {
 
     long countByPortfolioId(Long portfolioId);
 
+    /** Whether any portfolio holds this company. */
+    boolean existsByCompanyId(Long companyId);
+
     void deleteByPortfolioId(Long portfolioId);
 }

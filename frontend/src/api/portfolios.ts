@@ -53,6 +53,10 @@ export type Holding = {
   reportDate: string | null;
   reportLink: string | null;
   lastAnalysed: string | null;
+  // For the whole portfolio, the same on every holding: how many of the holdings' suppliers' own annual reports are
+  // read, of how many are to be read. All are read when the two are equal.
+  suppliersRead: number;
+  suppliersToRead: number;
 };
 
 export const holdingApi = {

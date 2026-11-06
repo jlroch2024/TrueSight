@@ -1,6 +1,7 @@
 // The drawer's Holdings tab: the most serious open alert first, then one row per holding (its tile, with its chain
 // colour ring and alert beacon, its name, ticker, supplier and customer counts or its status, and its weight with a
-// meter), Add Holding, and the companies several holdings depend on. Choosing a row shows the company in the
+// meter), Add Holding, and the companies several holdings depend on. While the holdings' suppliers' own reports are
+// read, a line under the holdings count says how far it has got. Choosing a row shows the company in the
 // Inspector; pointing at one lights it on the graph.
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, Check, Inbox, LoaderCircle, Plus, Upload } from 'lucide-react';
@@ -66,6 +67,9 @@ export function HoldingsTab({
   const tickerWidth = Math.ceil(Math.max(30, ...holdings.map((holding) => tickerTextWidth(holding.ticker)))) + 4;
   const failed = holdings.some((holding) => holding.status === 'FAILED');
   const openCount = view.open.length;
+  // The same on every holding: for the whole portfolio.
+  const suppliersRead = holdings[0]?.suppliersRead ?? 0;
+  const suppliersToRead = holdings[0]?.suppliersToRead ?? 0;
 
   if (holdings.length === 0) {
     return (
@@ -116,6 +120,11 @@ export function HoldingsTab({
           {adding ? 'Close' : 'Add Holding'}
         </button>
       </div>
+      {suppliersRead < suppliersToRead && (
+        <p className="section-note num" role="status">
+          Reading Suppliers' Reports, {suppliersRead} of {suppliersToRead}
+        </p>
+      )}
       <AnimatePresence initial={false}>
         {adding && (
           <motion.div
