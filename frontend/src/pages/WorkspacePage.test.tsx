@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import { App } from '../App';
 import type { AlertEvent, ReachedHolding } from '../api/alerts';
+import type { AskAnswer } from '../api/ask';
 import { tokenStore } from '../api/client';
 import type { Holding, Portfolio } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
@@ -131,6 +132,8 @@ type Backend = {
   found?: AlertEvent[];
   // A news check that goes on running, however often the portfolio is listed.
   stillChecking?: boolean;
+  // The answer to a question asked of Ask TrueSight, or the status and message to fail with.
+  ask?: (question: string, history: unknown[]) => AskAnswer | { status: number; message: string };
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
   // The answer to "what if this company stops?", by company id, or the status code to fail with.
@@ -163,6 +166,11 @@ function answer(url: string, init: RequestInit = {}): Response {
       if (backend.found) backend.alerts = backend.found;
     }
     return json([backend.portfolio, { id: 9, name: 'Utilities', createdAt: '', newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: null }]);
+  }
+  if (url === `${base}/questions` && method === 'POST') {
+    const reply = backend.ask?.(body.question, body.history);
+    if (!reply) return json({ message: 'The AI could not be reached. Try again later.' }, 502);
+    return 'status' in reply ? json({ message: reply.message }, reply.status) : json(reply);
   }
   if (url === `${base}/news-check` && method === 'POST') {
     backend.portfolio = { ...backend.portfolio, newsStatus: 'CHECKING' };
@@ -310,7 +318,8 @@ describe('the workspace', () => {
     expect(within(drawer()).getByRole('tab', { name: 'Alerts' })).toHaveAttribute('aria-selected', 'false');
     // The graph is the ground, edge to edge, told how much of each side the panels cover.
     expect(screen.getByTestId('bare')).toHaveTextContent('true');
-    expect(insets()).toEqual({ top: 76, right: 12, bottom: 12, left: 404 });
+    // The bottom keeps the room Ask TrueSight's bar takes: 12 around it and 52 for it.
+    expect(insets()).toEqual({ top: 76, right: 12, bottom: 76, left: 404 });
   });
 
   it('opensTheInspectorOnlyOnceSomethingIsChosenAndTheGraphKeepsClearOfIt', async () => {
@@ -626,6 +635,180 @@ describe('Analyse', () => {
     expect(await screen.findByRole('heading', { name: 'No Supply Chain Yet' })).toBeInTheDocument();
     expect(screen.queryByTestId('fake-graph')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Analyse' })).toHaveLength(2);
+  });
+});
+
+describe('Ask TrueSight', () => {
+  /** What the backend answers every question with. */
+  function answering(reply: AskAnswer) {
+    backend.ask = () => reply;
+  }
+  const bar = () => screen.getByRole('region', { name: 'Ask TrueSight' });
+  async function ask(question: string) {
+    await userEvent.type(within(bar()).getByLabelText('Ask TrueSight'), question);
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Ask' }));
+  }
+
+  it('sitsAlongTheBottomBetweenTheDrawerAndTheInspectorOnceThePortfolioHasLoaded', async () => {
+    renderAt();
+    await graph();
+
+    expect(bar()).toBeInTheDocument();
+    expect(bar().style.left).toBe('404px');
+    expect(bar().style.right).toBe('12px');
+    await userEvent.click(await screen.findByRole('button', { name: `Company ${NVIDIA.id}` }));
+    // It makes way for the Inspector as the graph does.
+    expect(bar().style.right).toBe('512px');
+  });
+
+  it('asksTheQuestionForThePortfolioInTheAddressAndShowsTheAnswerAboveTheBox', async () => {
+    answering({ answer: 'Taiwan Semiconductor Manufacturing supplies NVIDIA (unreviewed).', sources: [] });
+    renderAt();
+    await graph();
+
+    await ask('Who supplies NVIDIA?');
+
+    expect(await within(bar()).findByText('Taiwan Semiconductor Manufacturing supplies NVIDIA (unreviewed).')).toBeInTheDocument();
+    expect(within(bar()).getByText('Who supplies NVIDIA?')).toBeInTheDocument();
+    expect(sentTo('POST', '/api/portfolios/7/questions')[0]!.body).toEqual({ question: 'Who supplies NVIDIA?', history: [] });
+    // The box is ready for the next question.
+    expect(within(bar()).getByLabelText('Ask TrueSight')).toHaveValue('');
+  });
+
+  it('startsFromAQuestionItSuggestsWhileNothingHasBeenAsked', async () => {
+    answering({ answer: 'Two of them do.', sources: [] });
+    renderAt();
+    await graph();
+
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Which Holdings Share a Supplier' }));
+
+    expect(await within(bar()).findByText('Two of them do.')).toBeInTheDocument();
+    expect(sentTo('POST', '/api/portfolios/7/questions')[0]!.body).toMatchObject({ question: 'Which of my holdings share a supplier?' });
+    // Once a question has been asked there is nothing more to suggest.
+    expect(within(bar()).queryByRole('button', { name: 'Which Holdings Share a Supplier' })).not.toBeInTheDocument();
+  });
+
+  it('sendsTheLastQuestionsAndAnswersBackForContext', async () => {
+    answering({ answer: 'An answer (unreviewed).', sources: [] });
+    renderAt();
+    await graph();
+
+    await ask('First?');
+    await within(bar()).findByText('An answer (unreviewed).');
+    await ask('Second?');
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/questions')).toHaveLength(2));
+
+    expect(sentTo('POST', '/api/portfolios/7/questions')[1]!.body).toEqual({
+      question: 'Second?',
+      history: [{ question: 'First?', answer: 'An answer (unreviewed).' }],
+    });
+  });
+
+  it('opensARelationshipSourceInTheInspector', async () => {
+    answering({ answer: 'It is unreviewed.', sources: [{ kind: 'RELATIONSHIP', id: 1, label: 'TSMC supplies NVIDIA' }] });
+    renderAt();
+    await graph();
+    await ask('Who supplies NVIDIA?');
+
+    await userEvent.click(await within(bar()).findByRole('button', { name: 'TSMC supplies NVIDIA' }));
+
+    expect(inspector()).toBeInTheDocument();
+    expect(screen.getByTestId('selected-relationship')).toHaveTextContent('1');
+  });
+
+  it('opensAHoldingSourceAsItsCompanyOnTheGraph', async () => {
+    answering({ answer: 'NVIDIA is 18% of the portfolio.', sources: [{ kind: 'HOLDING', id: 1, label: 'NVIDIA (NVDA)' }] });
+    renderAt();
+    await graph();
+    await ask('How big is NVIDIA?');
+
+    await userEvent.click(await within(bar()).findByRole('button', { name: 'NVIDIA (NVDA)' }));
+
+    expect(inspector()).toBeInTheDocument();
+    expect(screen.getByTestId('selected-node')).toHaveTextContent(String(NVIDIA.id));
+  });
+
+  it('opensAnAlertSourceAsTheEventThatHoldsThatAlert', async () => {
+    const alert = { ...sampleAlert({ id: 21, holdings: [tsmcSuppliesNvidia(1, 1)] }), alertIds: [21, 22] };
+    backend.alerts = [alert];
+    answering({ answer: 'One alert is open.', sources: [{ kind: 'ALERT', id: 22, label: 'Open alert' }] });
+    renderAt();
+    await graph();
+    await ask('Which alerts are open?');
+
+    await userEvent.click(await within(bar()).findByRole('button', { name: 'Open alert' }));
+
+    expect(within(inspector()).getByRole('heading', { name: alert.headline.article.title })).toBeInTheDocument();
+  });
+
+  it('showsASourceThatIsGoneButCannotOpenIt', async () => {
+    answering({ answer: 'It is unreviewed.', sources: [{ kind: 'RELATIONSHIP', id: 9999, label: 'A link that is gone' }] });
+    renderAt();
+    await graph();
+    await ask('Who?');
+
+    const source = await within(bar()).findByRole('button', { name: 'A link that is gone' });
+
+    expect(source).toBeDisabled();
+    expect(source).toHaveAttribute('title', 'No Longer Available');
+  });
+
+  it('showsWhyAQuestionFailedAndAsksItAgainWithRetry', async () => {
+    backend.ask = () => ({ status: 502, message: 'The AI could not be reached. Try again later.' });
+    renderAt();
+    await graph();
+    await ask('Who supplies NVIDIA?');
+
+    expect(await within(bar()).findByRole('alert')).toHaveTextContent('The AI could not be reached. Try again later.');
+    answering({ answer: 'Now it works (unreviewed).', sources: [] });
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Retry' }));
+
+    expect(await within(bar()).findByText('Now it works (unreviewed).')).toBeInTheDocument();
+    expect(within(bar()).queryByRole('alert')).not.toBeInTheDocument();
+    expect(sentTo('POST', '/api/portfolios/7/questions')).toHaveLength(2);
+  });
+
+  it('keepsTheInspectorOpenWhenEscapeIsPressedInTheBox', async () => {
+    answering({ answer: 'It is unreviewed.', sources: [] });
+    renderAt();
+    await graph();
+    await ask('Who?');
+    await within(bar()).findByText('It is unreviewed.');
+    await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
+    expect(inspector()).toBeInTheDocument();
+
+    await userEvent.type(within(bar()).getByLabelText('Ask TrueSight'), '{Escape}');
+
+    // Escape closed the conversation, not the Inspector behind it.
+    expect(inspector()).toBeInTheDocument();
+    expect(within(bar()).queryByRole('log')).not.toBeInTheDocument();
+  });
+
+  it('liftsTheToastsAboveTheBar', async () => {
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Analyse' }));
+
+    await waitFor(() => expect(document.querySelector('.toasts')).toBeInTheDocument());
+    expect((document.querySelector('.toasts') as HTMLElement).style.bottom).toBe('88px');
+  });
+
+  it('isNotOnAPhone', async () => {
+    window.innerWidth = 375;
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(screen.queryByRole('region', { name: 'Ask TrueSight' })).not.toBeInTheDocument();
+  });
+
+  it('isNotThereWhileThePortfolioIsStillLoading', async () => {
+    backend.portfoliosFail = 500;
+    renderAt();
+
+    await screen.findByText('The server is restarting.');
+
+    expect(screen.queryByRole('region', { name: 'Ask TrueSight' })).not.toBeInTheDocument();
   });
 });
 

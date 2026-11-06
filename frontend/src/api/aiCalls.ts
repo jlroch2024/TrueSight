@@ -7,6 +7,7 @@ export type AiPurpose =
   | 'RECOMMEND'
   | 'CRITICALITY'
   | 'COMMON_NAMES'
+  | 'ASK'
   | 'HIGHLIGHT';
 export type AiOutcome = 'ANSWERED' | 'UNREADABLE' | 'FAILED';
 
@@ -50,6 +51,7 @@ export const PURPOSE_LABELS: Record<AiPurpose, string> = {
   RECOMMEND: 'Recommending',
   CRITICALITY: 'Criticality',
   COMMON_NAMES: 'Common Names',
+  ASK: 'Asking',
   HIGHLIGHT: 'Highlights',
 };
 
