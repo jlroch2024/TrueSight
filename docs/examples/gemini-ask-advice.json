@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"answer\": \"TrueSight offers research support, not investment advice, so it cannot say what to trade.\",\n  \"sourceIds\": []\n}",
+            "thoughtSignature": "EusECugEAWkUfRPFtfDLcDLxzHZpNRa3eTI4JLHCSUsX7RW8f+tHV4FP5F+xydAsaV/08ET/cJ/MVcpbe7gPNi+G7js3p1pS485NnFRgjolhXjXLnxmA+xQurQeueMnioVSfPEmB4slDGV0Of/Y1Cls/Fq6/BDTszUA9hxHq6tDgprs+SbWR1PZ+6tymGJXeIKh/u70KsTGZ2MMTv56Gpqm32smp8Cb3szXrGUoJfNinrKAbhoGeWbb3kiCur5FVTT1EPt0iSlJmX05UdmDfJHuAlSVmA9qFkBIGAS8+Fu9lexI9QzQYTcHlKGEpbC/TCOnWErukP5aDxb2uBT4ceqGxEfHSv885EGdn0NpNObEl5PrQ5iNSS6wrLPYqoz5eWw76wAyS9SlTK7Ioihbg8pkIQ1ui2gNHPdN7iHwVdqKfIM6ZMxm31OA1tU80eJR7wwI0B6f3iPysDFRHZosGqUGSx8bRY/lQO+Xmw7mnhGXC3Q1C+h/H/R6sXj+kWLqYvlbb7Vl+jgMF3M/l3YEVT8Kncm6Z4WcJznc9Lzn7t1AdJJ8+et9HJlXHE3spUGQk8un79RgLlEI+9J/VMYvY6MMpWP8CXe12HhBCRs0CF8hfcjeuvsM7EG+CYszN7bf/UB7pek/pISTz4Z7ky37G5CoQrJBIfXbW0mTh1cm2Uhe+cTfNvCjpRNdFfwWWZHzf54YdHWzG6VAzR2YYK9R0qtJGwL1/fKaMX3fflBWiBq1G0WCg2rt27ILy1Hdr3owkjgsvnRhwbk5c5GusBQEpTtEaVMDNpatsLkrlatgzhGo5AVwihxjdKLx1+igU5A=="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 2431,
+    "candidatesTokenCount": 34,
+    "totalTokenCount": 2585,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 2431
+      }
+    ],
+    "thoughtsTokenCount": 120,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "lAvuapqkCqeC694PyOqy-AU"
+}

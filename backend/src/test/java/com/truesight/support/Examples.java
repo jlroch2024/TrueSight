@@ -90,6 +90,26 @@ public final class Examples {
         return read("gemini-recommendation.json");
     }
 
+    /** The sample portfolio: ten holdings, each weighted 10, as {@code ticker,weight} lines. */
+    public static String holdingsCsv() {
+        return read("holdings.csv");
+    }
+
+    /** Gemini's real answer to a question the sample portfolio's data can answer (see the README). */
+    public static String geminiAskAnswerable() {
+        return read("gemini-ask-answerable.json");
+    }
+
+    /** Gemini's real answer to a question the sample portfolio's data cannot answer. */
+    public static String geminiAskUnknown() {
+        return read("gemini-ask-unknown.json");
+    }
+
+    /** Gemini's real answer to a question asking what to buy. */
+    public static String geminiAskAdvice() {
+        return read("gemini-ask-advice.json");
+    }
+
     /** The team's hand labels, event or noise, for the 20 headlines in {@link #geminiNewsAssessment()}. */
     public static String newsLabels() {
         return read("news-labels.csv");
