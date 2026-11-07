@@ -112,12 +112,14 @@ public class NewsCheckService {
                 .toList();
     }
 
-    private static Long supplierId(Relationship relationship) {
+    /** The company that supplies the other in this relationship, whichever company's report it came from. */
+    public static Long supplierId(Relationship relationship) {
         return relationship.getType() == RelationshipType.SUPPLIER
                 ? relationship.getCounterpartyId() : relationship.getCompanyId();
     }
 
-    private static Long customerId(Relationship relationship) {
+    /** The company that buys from the other in this relationship, whichever company's report it came from. */
+    public static Long customerId(Relationship relationship) {
         return relationship.getType() == RelationshipType.SUPPLIER
                 ? relationship.getCompanyId() : relationship.getCounterpartyId();
     }
