@@ -8,6 +8,7 @@ export type AiPurpose =
   | 'CRITICALITY'
   | 'COMMON_NAMES'
   | 'TIMELINE'
+  | 'ASK'
   | 'HIGHLIGHT';
 export type AiOutcome = 'ANSWERED' | 'UNREADABLE' | 'FAILED';
 
@@ -52,6 +53,7 @@ export const PURPOSE_LABELS: Record<AiPurpose, string> = {
   CRITICALITY: 'Criticality',
   COMMON_NAMES: 'Common Names',
   TIMELINE: 'Timeline',
+  ASK: 'Asking',
   HIGHLIGHT: 'Highlights',
 };
 

@@ -123,7 +123,7 @@ public class RecommendationWriter implements NewsCheckStep {
         return recommendation;
     }
 
-    static boolean isInvestmentAdvice(String text) {
+    public static boolean isInvestmentAdvice(String text) {
         return FORBIDDEN.matcher(text).find();
     }
 

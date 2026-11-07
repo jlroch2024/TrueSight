@@ -5149,3 +5149,126 @@ table.quality-table tbody th {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Ask TrueSight: the question bar and the conversation above it, along the bottom of the workspace ----------
+   The wrapper spans what the drawer and the Inspector leave (the page sets its left and right) and glides with them on the
+   panels' curve, as the toasts do; the panel inside is centred in it and grows upward, over the graph. */
+
+.ask {
+  position: absolute;
+  z-index: 10;
+  bottom: var(--gap);
+  height: var(--bar);
+  display: flex;
+  justify-content: center;
+  container-type: inline-size;
+  pointer-events: none;
+  transition:
+    left 0.48s var(--panel-ease),
+    right 0.48s var(--panel-ease);
+}
+
+.ask-panel {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  width: min(720px, 100%);
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+.ask-bar {
+  display: flex;
+  height: var(--bar);
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 0 14px;
+}
+
+.ask-bar label {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--t-12);
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.ask-bar .input {
+  min-width: 0;
+  flex: 1;
+}
+
+.ask-log {
+  display: grid;
+  max-height: min(50vh, 420px);
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.ask-exchange {
+  display: grid;
+  gap: 6px;
+}
+
+.ask-question {
+  max-width: 85%;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--teal-soft);
+  color: var(--text);
+  font-size: var(--t-13);
+  justify-self: end;
+}
+
+.ask-answer {
+  margin: 0;
+  color: var(--soft);
+  font-size: var(--t-14);
+  line-height: 1.5;
+}
+
+.ask-pending {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--t-13);
+}
+
+.ask-failed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ask-failed .error {
+  margin: 0;
+}
+
+.ask-sources {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+  list-style: none;
+}
+
+.ask-source {
+  display: inline-block;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where the panel has little room (the drawer and the Inspector both open on a narrow window), the suggested question gives way. */
+@container (max-width: 560px) {
+  .ask-suggest {
+    display: none;
+  }
+}

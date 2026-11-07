@@ -175,7 +175,7 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   | Left drawer, Holdings tab | One row per holding, Add Holding, the shared suppliers and customers | `components/workspace/HoldingsTab.tsx` |
   | Left drawer, Alerts tab | The alerts, with Open, Closed and All | `components/workspace/AlertsTab.tsx` |
   | Inspector, right | Detail of what is chosen: a company, a relationship or an alert | `components/workspace/Inspector*.tsx` |
-  | Bottom middle | Kept empty for the Sprint 4 chat (Ask TrueSight) | |
+  | Bottom middle | Ask TrueSight: a question box with the answers above it, each answer citing its sources as buttons. Computer layout only | `components/workspace/AskPanel.tsx` |
 
   Alerts go in the drawer's Alerts tab, detail in the Inspector, analyst tools in Analyst Desk tools. Nothing is drawn
   in a kept place until its story builds it: no placeholders or pretend controls. What the graph, the drawer and the
