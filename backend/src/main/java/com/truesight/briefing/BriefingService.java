@@ -12,7 +12,9 @@ import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.Comparator;
@@ -45,15 +47,18 @@ public class BriefingService {
     }
 
     @Transactional(readOnly = true)
-    public Briefing build(Long portfolioId, String graphPng) {
+    public Briefing build(Long portfolioId, String graphPng, String timeZone) {
         Portfolio portfolio = portfolios.findByIdAndUserId(portfolioId, currentUser.id())
                 .orElseThrow(() -> ApiException.notFound("Portfolio not found."));
-        // UTC, the zone the alerts' dates are shown in, so the cover and the alerts never name different days.
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        // The reader's own time zone, the one the website shows alert dates in, so the cover, the alerts and the file
+        // name all name the day the reader is in.
+        ZoneId zone = zoneOf(timeZone);
+        LocalDate today = LocalDate.now(zone);
 
         BriefingData data = new BriefingData(
                 portfolio.getName(),
                 today,
+                zone,
                 decode(graphPng),
                 byWeight(holdings.list(portfolioId)),
                 // Open alerts only, already most severe first, with their reach, exposure and approved next step.
@@ -68,6 +73,18 @@ public class BriefingService {
      * The picture's bytes, or null when there is none or it cannot be read: a bad picture is left out of the briefing
      * rather than stopping it.
      */
+    /** The time zone named (such as {@code Asia/Singapore}), or UTC when none is sent or the name is not one. */
+    static ZoneId zoneOf(String timeZone) {
+        if (timeZone == null || timeZone.isBlank()) {
+            return ZoneOffset.UTC;
+        }
+        try {
+            return ZoneId.of(timeZone.strip());
+        } catch (DateTimeException exception) {
+            return ZoneOffset.UTC;
+        }
+    }
+
     static byte[] decode(String graphPng) {
         if (graphPng == null || graphPng.isBlank()) {
             return null;
