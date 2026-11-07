@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Any business TrueSight knows about: a holding, or a supplier or customer named in a report. One row of the
@@ -48,6 +49,10 @@ public class Company {
 
     @Column(name = "report_status_reason", length = 500)
     private String reportStatusReason;
+
+    /** The server reading this company's own report, or null. */
+    @Column(name = "report_worker_id")
+    private UUID reportWorkerId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -95,6 +100,8 @@ public class Company {
         return createdAt;
     }
 
+    public UUID getReportWorkerId() { return reportWorkerId; }
+    public void setReportWorkerId(UUID reportWorkerId) { this.reportWorkerId = reportWorkerId; }
     public ReportStatus getReportStatus() { return reportStatus; }
     public void setReportStatus(ReportStatus reportStatus) { this.reportStatus = reportStatus; }
     public String getReportStatusReason() { return reportStatusReason; }

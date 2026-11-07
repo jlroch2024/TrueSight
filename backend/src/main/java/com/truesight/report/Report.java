@@ -47,6 +47,10 @@ public class Report {
     @Column(nullable = false)
     private String text;
 
+    /** When the report's dependency figures were read. Null: not yet. A report's figures are read once. */
+    @Column(name = "figures_read_at")
+    private Instant figuresReadAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -96,6 +100,9 @@ public class Report {
     public void setText(String text) {
         this.text = text;
     }
+
+    public Instant getFiguresReadAt() { return figuresReadAt; }
+    public void setFiguresReadAt(Instant figuresReadAt) { this.figuresReadAt = figuresReadAt; }
 
     public Instant getCreatedAt() {
         return createdAt;

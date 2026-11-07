@@ -105,6 +105,11 @@ public class Relationship {
     @Column(name = "highlighted_at")
     private Instant highlightedAt;
 
+    /** REPORT for one found by reading the whole report, NAME_SEARCH for one found by a search for a name. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "found_by", nullable = false, length = 12)
+    private FoundBy foundBy = FoundBy.REPORT;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -186,6 +191,9 @@ public class Relationship {
     public void setSecondCheck(SecondCheckVerdict secondCheck) { this.secondCheck = secondCheck; }
     public void setSecondCheckReason(String secondCheckReason) { this.secondCheckReason = secondCheckReason; }
     public void setSecondCheckedAt(Instant secondCheckedAt) { this.secondCheckedAt = secondCheckedAt; }
+
+    public FoundBy getFoundBy() { return foundBy; }
+    public void setFoundBy(FoundBy foundBy) { this.foundBy = foundBy; }
 
     public Instant getHighlightedAt() { return highlightedAt; }
     public void setHighlightedAt(Instant highlightedAt) { this.highlightedAt = highlightedAt; }

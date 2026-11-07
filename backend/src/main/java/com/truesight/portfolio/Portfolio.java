@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * A named group of holdings, belonging to one user. One row of the {@code portfolios} table.
@@ -40,6 +41,10 @@ public class Portfolio {
     @Column(name = "news_checked_at")
     private Instant newsCheckedAt;
 
+    /** The server checking this portfolio's news, or null. */
+    @Column(name = "news_worker_id")
+    private UUID newsWorkerId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -52,6 +57,9 @@ public class Portfolio {
         this.userId = userId;
         this.name = name;
     }
+
+    public UUID getNewsWorkerId() { return newsWorkerId; }
+    public void setNewsWorkerId(UUID newsWorkerId) { this.newsWorkerId = newsWorkerId; }
 
     public Long getId() {
         return id;

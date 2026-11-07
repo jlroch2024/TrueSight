@@ -12,6 +12,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * A company in a portfolio: its ticker, and optionally its weight. One row of the {@code holdings} table.
@@ -47,6 +48,10 @@ public class Holding {
     @Column(name = "status_reason")
     private String statusReason;
 
+    /** The server analysing this holding, or null. An owner that is no longer a running server has gone. */
+    @Column(name = "worker_id")
+    private UUID workerId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -60,6 +65,9 @@ public class Holding {
         this.ticker = ticker;
         this.weight = weight;
     }
+
+    public UUID getWorkerId() { return workerId; }
+    public void setWorkerId(UUID workerId) { this.workerId = workerId; }
 
     public Long getId() {
         return id;
