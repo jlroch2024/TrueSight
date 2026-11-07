@@ -1,5 +1,6 @@
 // The living graph's camera, geometry, logo looks and label placement: the arithmetic behind what is drawn.
 import { describe, expect, it } from 'vitest';
+import { pixels } from '../test/logoPixels';
 import { CameraRig, FLY_MS, between, clampZoom, easeInOut, fitCamera, toScreen, toWorld } from './camera';
 import { arrowEnds, distanceToSegment, edgeAt, leaveTile, nodeAt } from './geometry';
 import { logoSource, treatmentOf } from './logos';
@@ -170,18 +171,6 @@ describe('the geometry', () => {
     expect(edgeAt(edges, at, { x: 150, y: 30 }, 8)).toBeNull();
   });
 });
-
-// A logo's pixels: every pixel the same colour and opacity, except a centre square of another.
-function pixels(size: number, edge: [number, number, number, number], middle: [number, number, number, number]) {
-  const data = new Uint8ClampedArray(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const inside = x > size / 4 && x < (size * 3) / 4 && y > size / 4 && y < (size * 3) / 4;
-      data.set(inside ? middle : edge, (y * size + x) * 4);
-    }
-  }
-  return data;
-}
 
 describe('how a logo sits on its tile', () => {
   it('fills the tile with a logo that has a solid background of its own', () => {
