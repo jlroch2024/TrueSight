@@ -4599,6 +4599,28 @@ button.source-row:hover {
   height: 100%;
 }
 
+/* Where the bar is crowded, Load History folds to a square of its icon (as Open Alerts folds to its count when the bar
+   is tight), so the graph's title keeps its room first. Its words stay as its tooltip and for screen readers. A failure is never folded. */
+.lg-root.lg-bar-crowded .history-folds {
+  width: 52px;
+  justify-content: center;
+  padding: 0;
+}
+
+.lg-root.lg-bar-crowded .history-folds > .btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0;
+}
+
+.lg-bar-crowded .history-folds .history-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 .history-text {
   display: flex;
   flex-direction: column;

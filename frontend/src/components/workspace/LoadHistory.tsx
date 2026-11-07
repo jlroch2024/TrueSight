@@ -42,12 +42,12 @@ export function LoadHistory({
   const { history } = state;
   if (history.status === 'READING' || starting) {
     const progress = history.progress;
+    const reading = progress ? `Reading Earlier Reports: ${progress.done} of ${progress.total}` : 'Reading Earlier Reports';
+    // Where the bar is crowded, only the spinner shows (styles.css): the words stay as its tooltip.
     return (
-      <span className="history-bar glass ticks" role="status">
+      <span className="history-bar history-folds glass ticks" role="status" title={reading}>
         <LoaderCircle size={16} className="spin" />
-        <span className="history-text">
-          {progress ? `Reading Earlier Reports: ${progress.done} of ${progress.total}` : 'Reading Earlier Reports'}
-        </span>
+        <span className="history-text">{reading}</span>
       </span>
     );
   }
@@ -72,14 +72,18 @@ export function LoadHistory({
   // If only some of the holdings have reports left to read, the others are done: these are the holdings added since, or
   // left unfinished, and are offered on their own. The backend counts them (a holding half read counts once).
   const added = history.unreadHoldings < history.holdingCount ? history.unreadHoldings : 0;
+  const label = added > 0 ? `Load History for ${plural(added, 'New Holding', 'New Holdings')}` : 'Load History';
+  const cost = `Reads ${plural(history.unread, 'Earlier Report', 'Earlier Reports')}`;
+  // Where the bar is crowded, only the icon shows (styles.css), as Open Alerts shows only its count: the words stay as
+  // the button's tooltip and name. A start error is never folded away.
   return (
-    <span className="history-bar glass ticks">
-      <button type="button" className="btn quiet" onClick={onLoad}>
+    <span className={`history-bar glass ticks${startError ? '' : ' history-folds'}`}>
+      <button type="button" className="btn quiet" title={`${label}: ${cost}`} onClick={onLoad}>
         <HistoryIcon size={16} />
         <span className="history-text">
-          {added > 0 ? `Load History for ${plural(added, 'New Holding', 'New Holdings')}` : 'Load History'}
+          {label}
           <span className="history-sub" role={startError ? 'alert' : undefined}>
-            {startError ?? `Reads ${plural(history.unread, 'Earlier Report', 'Earlier Reports')}`}
+            {startError ?? cost}
           </span>
         </span>
       </button>
