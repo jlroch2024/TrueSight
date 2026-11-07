@@ -235,10 +235,10 @@ tokens (35,887 total, including 4,638 thinking tokens).
 ## The SEC Filing List
 
 `sec-submissions-nvidia.json` is the SEC's response to https://data.sec.gov/submissions/CIK0001045810.json, saved
-exactly as it arrived, downloaded with `curl` and a User-Agent naming the team. It was fetched after 13 October 2026
-(the newest filing it lists) and added to the repository on 3 November 2026. Its `filings.recent`
-lists NVIDIA's filings, newest first. NVIDIA's 10-Ks in it include the three used in tests: 0001045810-26-000021
-(filed 2026-02-25), 0001045810-25-000023 (2025-02-26) and 0001045810-24-000029 (2024-02-21).
+exactly as it arrived, downloaded with `curl` and a User-Agent naming the team, and added to the repository on
+3 November 2026. Its `filings.recent` lists NVIDIA's filings, newest first. NVIDIA's 10-Ks in it include the three used
+in tests: 0001045810-26-000021 (filed 2026-02-25), 0001045810-25-000023 (2025-02-26) and 0001045810-24-000029
+(2024-02-21).
 
 ## The Older NVIDIA 10-Ks
 
@@ -246,20 +246,18 @@ lists NVIDIA's filings, newest first. NVIDIA's 10-Ks in it include the three use
 https://www.sec.gov/Archives/edgar/data/1045810/000104581025000023/nvda-20250126.htm), for the fiscal year ended 26
 January 2025. `nvidia-10k-oldest.txt` is the same for the 10-K filed 2024-02-21 (accession 0001045810-24-000029,
 https://www.sec.gov/Archives/edgar/data/1045810/000104581024000029/nvda-20240128.htm), for the fiscal year ended 28
-January 2024. Both were saved, by 3 November 2026, from the reports that Load History downloaded and stored (`reports.text`), one
-paragraph per line like `nvidia-10k.txt`.
+January 2024. Both were exported from the reports that Load History downloaded and stored (`reports.text`), one
+paragraph per line like `nvidia-10k.txt`, and added to the repository on 3 November 2026.
 
 ## The Older NVIDIA Answers
 
 `gemini-nvidia-older.json` and `gemini-nvidia-oldest.json` are Gemini's full responses, saved exactly as they arrived
-(as the AI call record stores them, `ai_calls.response`), when Load History read each report, before they were added
-to the repository on 3 November 2026. Their response ids are `X4foasnWHoTs694Ph4yh4AM` (2025 report) and
-`fofoarC6I-Lr694P9tmi2QM` (2024 report).
+(as the AI call record stores them, `ai_calls.response`), exported from the AI call records that Load History made, and
+added to the repository on 3 November 2026.
 
 - **Model:** `gemini-3.8-flash`, at temperature 0.
-- **Sent:** the report's section (169,555 characters for the 2025 report, 162,198 for the 2024 one, as
-  `ReportSection.forAi` cuts them today) with the relationship
-  prompt shown under "The AMD Answer", filled in with NVIDIA's name and the form.
+- **Sent:** the report's section with the relationship prompt shown under "The AMD Answer", filled in with NVIDIA's name
+  and the form.
 - **Found:** 7 relationships for each report, and all 7 had their quote in the report (none dropped).
 - **Used:** 31,233 tokens in, 597 out (3,816 thinking, 35,646 total) for the 2025 report; 29,582 in, 612 out (4,016
   thinking, 34,210 total) for the 2024 report.
