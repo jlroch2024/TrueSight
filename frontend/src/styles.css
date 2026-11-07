@@ -66,6 +66,8 @@
   /* Shape and motion */
   --gap: 12px;
   --bar: 52px;
+  /* The Inspector, and the workspace's right bar over it. */
+  --inspector: 488px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* How panels move (the drawer, the Inspector), and the graph's view and controls with them. */
   --panel-ease: cubic-bezier(0.65, 0, 0.35, 1);
@@ -97,6 +99,22 @@ button,
 input {
   font: inherit;
   color: inherit;
+}
+
+/* A control's one line of words sits in the middle of its height. A line height that comes to a fraction of a pixel (1.45
+   of 13px) is split unevenly above and below the words, which leaves them a pixel high. */
+.btn,
+.seg button,
+.select-button,
+.text-btn,
+.alert-pill,
+.alert-bar,
+.avatar,
+.insp-reopen,
+.chip,
+.reach-kind,
+.lg-root button {
+  line-height: 1;
 }
 
 button {
@@ -314,7 +332,9 @@ svg.lucide {
 }
 
 .btn.lime-ink,
-.btn.lime-ink svg {
+.btn.lime-ink svg,
+.btn.lime-ink:hover:not(:disabled) svg,
+.icon-btn.lime-ink:hover {
   color: var(--lime);
 }
 
@@ -336,7 +356,7 @@ svg.lucide {
 }
 
 .btn.small {
-  height: 30px;
+  height: 36px;
   padding: 0 11px;
   font-size: var(--t-12);
 }
@@ -588,7 +608,7 @@ svg.lucide {
 
 .chip {
   display: inline-flex;
-  height: 24px;
+  height: 28px;
   align-items: center;
   gap: 6px;
   padding: 0 9px;
@@ -795,16 +815,55 @@ svg.lucide {
   transform: translateY(4px);
 }
 
-/* Below 1440px wide, the workspace's quieter actions fold to their icons (named on hover), leaving the graph's title
-   and search room between the bars. */
-@media (max-width: 1439.98px) {
-  .ws .island.right .btn.quiet {
-    width: 36px;
-    justify-content: center;
+/* The workspace's right bar is as wide as the Inspector under it, whoever is logged in. */
+.ws .island.right {
+  width: var(--inspector);
+  justify-content: flex-end;
+}
+
+/* An analyst's way to the Analyst Desk: a bar of its own just before that one, built as that one is. As the window narrows
+   it shortens, cutting its word, then folds to a square of its icon; its width follows the window alone, so the graph's
+   title and search, keeping clear of it, can never make it change its mind. */
+.ws {
+  --desk: clamp(92px, calc(92px + (100vw - 1276px) * 0.366), 152px);
+}
+
+.desk-bar {
+  right: calc(var(--gap) * 2 + var(--inspector));
+  width: var(--desk);
+}
+
+.desk-bar .btn {
+  min-width: 0;
+  flex: 1;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.desk-bar svg {
+  flex: none;
+}
+
+.desk-bar .btn-word {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws[data-analyst] .lg-in-bar .lg-top {
+  right: calc(var(--lg-bar-right) + var(--desk) + var(--gap));
+}
+
+@media (max-width: 1275.98px) {
+  .ws {
+    --desk: var(--bar);
+  }
+
+  .desk-bar .btn {
     padding: 0;
   }
 
-  .ws .island.right .btn-word {
+  .desk-bar .btn-word {
     display: none;
   }
 }
@@ -1026,6 +1085,7 @@ svg.lucide {
   position: relative;
   width: 7px;
   height: 7px;
+  flex: none;
   background: var(--sev, var(--high));
   box-shadow: 0 0 8px var(--sev, var(--high));
 }
@@ -1914,7 +1974,7 @@ svg.lucide {
 
 .ticker-chip {
   display: inline-flex;
-  height: 22px;
+  height: 28px;
   align-items: center;
   gap: 6px;
   padding: 0 7px;
@@ -2034,6 +2094,10 @@ svg.lucide {
   margin: 6px 0 16px;
 }
 
+.insp-title .row-text .chips {
+  margin-top: 8px;
+}
+
 .insp-title h2 {
   margin: 0;
   font-size: var(--t-20);
@@ -2058,10 +2122,17 @@ svg.lucide {
 
 /* The Inspector's actions: on one line, sharing it. */
 .actions.one-line {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
+/* Their words stay whole and inside them: with too little room, they take a second line. */
 .actions.one-line > .btn,
+.actions.one-line > .contents > .btn {
+  min-width: max-content;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
 .actions.one-line > .weight-edit {
   min-width: 0;
   flex: 1 1 auto;
@@ -2250,6 +2321,32 @@ svg.lucide {
     border-color 0.2s var(--ease);
 }
 
+/* A link on a scenario's paths: who supplies whom, what, and how far it can be relied on, each on its own line. */
+.link-row.stacked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 10px 8px;
+  border-bottom-color: var(--line);
+}
+
+.link-row.stacked .h-name {
+  overflow: visible;
+  white-space: normal;
+}
+
+.link-row.stacked .h-sub {
+  white-space: normal;
+}
+
+.link-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
 .link-row:hover {
   border-color: var(--line);
   background: var(--glass-hover);
@@ -2335,6 +2432,43 @@ svg.lucide {
   margin-top: 10px;
   color: var(--muted);
   font-size: var(--t-12);
+}
+
+/* The words that matter in a quote, and the key under it (see HighlightedQuote). --quote-company is the holding's chain colour. */
+.quote-mark {
+  background: none;
+  color: inherit;
+  font-weight: 500;
+}
+
+.quote-mark.company {
+  color: var(--quote-company, var(--teal));
+}
+
+.quote-mark.supplied {
+  color: var(--lime);
+}
+
+.quote-mark.reliance {
+  color: var(--amber);
+}
+
+.quote-mark.figure {
+  color: #fff;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.quote-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 10px;
+  font-size: var(--t-12);
+}
+
+.review-card .quote-key {
+  margin: 8px 0 0;
 }
 
 /*
@@ -2430,10 +2564,22 @@ svg.lucide {
   line-height: 1.65;
 }
 
-.story h3 {
-  color: var(--muted);
-  font-size: var(--t-12);
+/* Why an alert matters: what the portfolio manager came for, marked in its severity's colour. */
+.insp-section.why {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent);
+  border-left: 3px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 7%, transparent);
 }
+
+.insp-section.why h3 svg {
+  color: var(--tone);
+}
+
+.insp-section .faint.small {
+  margin-top: 8px;
+}
+
 
 /* An alert's head: its event mark, how serious, the headline and where it came from. */
 .alert-hero {
@@ -2477,6 +2623,7 @@ svg.lucide {
 .path-row {
   display: grid;
   width: 100%;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding: 10px 8px;
   border: 1px solid transparent;
@@ -2491,40 +2638,78 @@ svg.lucide {
   background: var(--glass-hover);
 }
 
+/* A path's labels, each its own fixed width so they line up from one path to the next: the holding and how close it is on
+   the left, the confidence on the right. */
 .path-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-/* On the path's own line, at its far end. */
-.path-unreviewed {
+.path-head > * {
+  justify-content: center;
+}
+
+.path-head .ticker-chip {
+  width: 76px;
+}
+
+.path-head .reach-kind {
+  width: 96px;
+  padding: 0;
+}
+
+.path-head .confidence-tag {
+  width: 170px;
   margin-left: auto;
+  padding: 0;
+}
+
+.path-head .path-unreviewed {
+  width: 180px;
+  padding: 0;
+}
+
+.path-unreviewed {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px 0 7px;
+  border: 1px solid var(--line-strong);
   color: var(--soft);
   font-size: var(--t-12);
   font-weight: 650;
   white-space: nowrap;
 }
 
+/* How close the trouble is to a holding, in the colour of the alert it belongs to: one link away is solid, two is dashed. */
 .reach-kind {
-  display: inline-grid;
-  width: 74px;
-  height: 22px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: var(--text);
+  --reach: var(--tone, var(--soft));
+
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px 0 7px;
+  border: 1px solid color-mix(in srgb, var(--reach) 50%, transparent);
+  background: color-mix(in srgb, var(--reach) 14%, transparent);
+  color: color-mix(in srgb, var(--reach) 65%, white);
   font-size: var(--t-11);
   font-weight: 650;
 }
 
 .reach-kind.indirect {
   border-style: dashed;
-  color: var(--soft);
+  background: transparent;
 }
 
+/* A path runs the whole width of the panel, its first company at one end and the holding at the other. */
 .path-steps {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 4px 2px;
 }
 
@@ -2534,7 +2719,6 @@ svg.lucide {
 }
 
 .path-step.linked {
-  max-width: 150px;
   flex: 1 1 0;
 }
 
@@ -2543,10 +2727,22 @@ svg.lucide {
   margin: 0 10px;
 }
 
+/* Each company's name under its tile: the first at the start, the last at the end. */
 .path-text {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
   color: var(--muted);
   font-size: var(--t-12);
-  line-height: 1.6;
+  line-height: 1.4;
+}
+
+.path-text > span:last-child:not(:first-child) {
+  text-align: right;
+}
+
+.path-text > span:not(:first-child):not(:last-child) {
+  text-align: center;
 }
 
 .path-sep {
@@ -2620,7 +2816,7 @@ svg.lucide {
 
 .weight-edit .input {
   width: 84px;
-  height: 30px;
+  height: 36px;
 }
 
 /* ---------- Toasts and dialogs ---------- */
@@ -4317,7 +4513,7 @@ button.source-row:hover {
    alert's colour. Its holder opens and closes its width, clipping no further than the bar's ticks. */
 .alert-bar-holder {
   display: inline-flex;
-  flex: none;
+  flex: 0 1 auto;
   overflow: clip;
   overflow-clip-margin: 2px;
   white-space: nowrap;
@@ -4326,8 +4522,9 @@ button.source-row:hover {
 /* Scoped to the graph, where it sits, so the graph's reset of its own buttons does not undo it. */
 .lg-root .alert-bar {
   display: inline-flex;
+  width: 100%;
+  min-width: 0;
   height: 52px;
-  flex: none;
   align-items: center;
   gap: 10px;
   padding: 0 18px 0 16px;
@@ -4339,6 +4536,33 @@ button.source-row:hover {
   font-size: var(--t-13);
   font-weight: 600;
   transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.alert-bar-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* With the least room between the bars, a square of its mark alone, still in the most severe alert's colour; its words stay
+   for a screen reader and on hover. */
+.lg-bar-tight .alert-bar-holder {
+  width: 52px !important;
+  min-width: 52px !important;
+  flex: none;
+}
+
+.lg-root.lg-bar-tight .alert-bar {
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+.lg-bar-tight .alert-bar-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
 }
 
 .lg-root .alert-bar:hover:not(:disabled) {
@@ -4366,8 +4590,21 @@ button.source-row:hover {
    medium, red when low. (Amber is only the shared badge's.) As tall as the path's Direct tag, its capitals centred:
    Plex sits them high in their line, so the top padding lowers them. */
 .confidence-tag {
-  height: 22px;
-  padding: 3px 9px 0;
+  height: 28px;
+  padding: 0 9px 0 8px;
+}
+
+/* Its squares, as many lit as the alert's own confidence shows them, in the tag's colour. */
+.confidence-tag .confidence i {
+  width: 6px;
+  height: 6px;
+  border-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+
+.confidence-tag .confidence i.on {
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: none;
 }
 
 .confidence-tag.confidence-high {
@@ -4377,7 +4614,9 @@ button.source-row:hover {
 }
 
 .confidence-tag.confidence-medium {
-  color: var(--soft);
+  border-color: color-mix(in srgb, var(--indigo) 40%, transparent);
+  background: color-mix(in srgb, var(--indigo) 12%, transparent);
+  color: var(--indigo);
 }
 
 .confidence-tag.confidence-low {
@@ -4556,6 +4795,278 @@ table.quality-table tbody th {
   to {
     background-position: -100% 0;
   }
+}
+
+/* ---------- The workspace on a phone: one sheet at a time, chosen from a tab bar ---------- */
+
+.dock {
+  position: absolute;
+  z-index: 30;
+  right: var(--gap);
+  bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px));
+  left: var(--gap);
+  display: grid;
+  height: 64px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 5px;
+}
+
+.dock button {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 0.25s var(--ease);
+}
+
+.dock button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.dock-plate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+    width 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+    height 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 0.2s var(--ease);
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 0 var(--teal);
+}
+
+.dock-icon,
+.dock-label {
+  position: relative;
+  z-index: 1;
+}
+
+.dock-icon {
+  display: grid;
+}
+
+.dock-label {
+  font-size: var(--t-11);
+  font-weight: 600;
+}
+
+.dock button[aria-selected='true'] {
+  color: var(--text);
+}
+
+.dock button[aria-selected='true'] .dock-icon {
+  color: var(--teal);
+}
+
+.dock .badge {
+  z-index: 2;
+  top: 4px;
+  right: 4px;
+}
+
+.dock-icon .lit {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+
+.dock button[aria-selected='true'] .dock-icon .lit {
+  opacity: 0.45;
+}
+
+.ws.compact .island.left {
+  right: var(--gap);
+  width: auto;
+}
+
+.ws.compact .island.left,
+.ws.compact .island-end {
+  gap: 6px;
+}
+
+/* The end of the phone's bar: every box as tall as the account's. */
+.ws.compact .island-end .icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line-strong);
+}
+
+/* The portfolio menu gives way to the end of the bar, however long its name. */
+.ws.compact .island.left .picker-holder {
+  flex: 1 1 0;
+}
+
+/* The graph's bars sit under the top bar and over the tab bar, the same gap from them as a panel, and line up with them. */
+.ws.compact .lg-top {
+  top: var(--lg-inset-top);
+  right: var(--lg-inset-right);
+  left: var(--lg-inset-left);
+}
+
+.ws.compact .lg-bottom {
+  right: var(--lg-inset-right);
+  bottom: calc(var(--lg-inset-bottom) + env(safe-area-inset-bottom, 0px));
+  left: var(--lg-inset-left);
+}
+
+/* The key's holdings one above another, largest first, so the key takes little of the screen. */
+.ws.compact .lg-key.lg-key-pop {
+  width: max-content;
+}
+
+.ws.compact .lg-key-pop .lg-chains {
+  grid-template-columns: 1fr;
+}
+
+/* A holding's actions, tighter, to share one line on a phone. */
+.ws.compact .actions.one-line {
+  gap: 6px;
+}
+
+.ws.compact .actions.one-line > .btn,
+.ws.compact .actions.one-line > .contents > .btn {
+  gap: 5px;
+  padding: 0 6px;
+}
+
+/* The title and folded search as tall as the zoom bar, the title's count under its name, with the same room around its
+   light as on a computer. While the search is open, the search needs that room. */
+.ws.compact .lg-root .lg-title {
+  height: 40px;
+  flex: none;
+  gap: 14px;
+  padding: 0 16px;
+}
+
+.ws.compact .lg-root .lg-search {
+  height: 40px;
+}
+
+.ws.compact .lg-root .lg-search[data-open='false'] {
+  width: 40px;
+}
+
+.ws.compact .lg-root .lg-title-text {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.ws.compact .lg-root .lg-title-name {
+  line-height: 1.15;
+}
+
+.ws.compact .lg-root .lg-title-count {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.ws.compact .lg-top:has(.lg-search[data-open='true']) .lg-title-count {
+  display: none;
+}
+
+.ws.compact .island.left .brand {
+  padding-right: 2px;
+}
+
+.alert-pill.compact {
+  height: 36px;
+  margin: 0;
+  padding: 0 10px 0 9px;
+}
+
+.ws.compact .sheet {
+  position: absolute;
+  z-index: 15;
+  top: calc(var(--gap) * 2 + var(--bar));
+  right: var(--gap);
+  bottom: calc(var(--gap) * 2 + 64px + env(safe-area-inset-bottom, 0px));
+  left: var(--gap);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 1px;
+}
+
+.sheet-actions {
+  justify-content: flex-end;
+}
+
+/* A tablet or narrow window has room to spare: a sheet stays a panel's width, on its side of the graph. */
+@media (min-width: 760px) {
+  .ws.compact .sheet {
+    width: 420px;
+  }
+
+  .ws.compact .sheet[data-side='left'] {
+    right: auto;
+  }
+
+  .ws.compact .sheet[data-side='right'] {
+    left: auto;
+  }
+}
+
+/* The window crossing the width where the layout changes: every panel fades out, and back in where it now belongs, with
+   nothing else moving meanwhile. Only the graph carries on, gliding to its new view. The times are the page's. */
+@keyframes ws-switch-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ws-switch-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.ws[data-switching='out'] > :not(.ws-graph),
+.ws[data-switching='out'] .lg-top,
+.ws[data-switching='out'] .lg-bottom,
+.ws[data-switching='out'] .empty-ground {
+  animation: ws-switch-out 0.14s var(--ease) forwards;
+}
+
+.ws[data-switching='in'] > :not(.ws-graph),
+.ws[data-switching='in'] .lg-top,
+.ws[data-switching='in'] .lg-bottom,
+.ws[data-switching='in'] .empty-ground {
+  animation: ws-switch-in 0.26s var(--ease);
+}
+
+.ws[data-switching='in'] *:not(.ws-graph) {
+  transition: none !important;
+}
+
+/* A sheet open: the graph behind it steps back. */
+.ws.sheet-open .ws-graph {
+  opacity: 0.4;
+}
+
+.ws.compact .toasts {
+  bottom: calc(var(--gap) * 2 + 64px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100% - var(--gap) * 2);
+  width: max-content;
 }
 
 @media (max-width: 760px) {

@@ -6,12 +6,14 @@ import com.truesight.ai.AiRequest;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.support.Examples;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,8 +33,11 @@ class NewsAssessorTest {
         GeminiClient gemini = mock(GeminiClient.class);
         AiCallLog calls = mock(AiCallLog.class);
 
+        // Saved articles have ids, and the assessor claims each one by its id.
+        AtomicLong nextId = new AtomicLong(1);
         List<NewsArticle> sample = new GoogleNewsParser().parse(Examples.googleNewsTsmc()).stream()
                 .map(item -> new NewsArticle(1L, item.url(), item.title(), item.source(), item.publishedAt()))
+                .peek(article -> ReflectionTestUtils.setField(article, "id", nextId.getAndIncrement()))
                 .toList();
         when(newsCheck.companiesFor(1L))
                 .thenReturn(List.of(new NewsCheckService.NewsCompany(1L, "Taiwan Semiconductor Manufacturing", null)));

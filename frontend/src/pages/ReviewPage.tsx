@@ -13,6 +13,7 @@ import { ApiError } from '../api/client';
 import { type CompanyOption, type RelationshipType, type ReviewStatus, relationshipApi } from '../api/relationships';
 import { type ReviewFilter, type ReviewItem, reviewApi } from '../api/reviews';
 import { FlowLink } from '../components/FlowLink';
+import { HighlightedQuote } from '../components/HighlightedQuote';
 import { LogoSettingsContext, Tile } from '../components/Tile';
 import { RadioGroup } from '../components/RadioGroup';
 import { Count } from '../components/Count';
@@ -193,7 +194,7 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
           </button>
         </form>
       )}
-      <blockquote className="evidence">{relationship.evidence}</blockquote>
+      <HighlightedQuote text={relationship.evidence} highlights={item.highlights} />
       <p className="review-meta">
         <span>{relationship.report.form}, Filed {formatDate(relationship.report.filingDate)}</span>
         <span>Used by {plural(item.usedByPortfolios, 'Portfolio', 'Portfolios')}</span>

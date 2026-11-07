@@ -24,6 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
@@ -89,6 +91,7 @@ class SecondCheckIT {
     @Autowired AiCallRepository aiCallRows;
     @Autowired GeminiAnswer answers;
     @Autowired SecondCheckPassService pass;
+    @Autowired @Qualifier("taskExecutor") ThreadPoolTaskExecutor background;
     @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
 
@@ -444,6 +447,17 @@ class SecondCheckIT {
     }
 
     /** Makes a portfolio holding NVIDIA, presses Analyse, and waits for the holding to reach {@code expected}. */
+    /**
+     * A holding is Done before its second check starts, so a test that looks at the verdicts waits for the job that ran
+     * the analysis, which does not finish until the second check has.
+     */
+    private void awaitBackgroundIdle() throws Exception {
+        for (int attempt = 0; attempt < 400 && background.getActiveCount() > 0; attempt++) {
+            Thread.sleep(25);
+        }
+        assertThat(background.getActiveCount()).isZero();
+    }
+
     private Portfolio analyse(String email, HoldingStatus expected) throws Exception {
         Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "SC Test " + System.nanoTime()));
         holdings.save(new Holding(portfolio.getId(), "NVDA", new BigDecimal("100")));
@@ -452,6 +466,7 @@ class SecondCheckIT {
                 .andExpect(status().isAccepted());
         for (int attempt = 0; attempt < 400; attempt++) {
             if (holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus() == expected) {
+                awaitBackgroundIdle();
                 return portfolio;
             }
             Thread.sleep(25);

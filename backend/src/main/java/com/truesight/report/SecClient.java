@@ -12,17 +12,17 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** The only class that talks to sec.gov. Requests are paced and identify the TrueSight client. */
 @Component
@@ -33,7 +33,12 @@ public class SecClient {
     private final RestClient client;
     private final ObjectMapper mapper;
     private final long intervalMillis;
-    private final Map<String, SecCompany> tickerCache = new ConcurrentHashMap<>();
+    /** The SEC's whole ticker list is downloaded once a day, however many tickers are asked for. */
+    private static final Duration TICKER_LIST_LIFE = Duration.ofDays(1);
+    private final Clock clock;
+    private final Object tickerListLock = new Object();
+    private volatile Map<String, SecCompany> tickers = Map.of();
+    private volatile Instant tickersLoadedAt;
     private long nextRequestAt;
 
     @Autowired
@@ -44,6 +49,11 @@ public class SecClient {
     }
 
     SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond) {
+        this(client, mapper, requestsPerSecond, Clock.systemUTC());
+    }
+
+    SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond, Clock clock) {
+        this.clock = clock;
         this.client = client;
         this.mapper = mapper;
         int allowedRate = Math.min(10, Math.max(1, requestsPerSecond));
@@ -60,21 +70,35 @@ public class SecClient {
     }
 
     public SecCompany companyForTicker(String ticker) {
-        String key = ticker.toUpperCase(Locale.ROOT);
-        SecCompany cached = tickerCache.get(key);
-        if (cached != null) return cached;
-        JsonNode all = getJson(TICKERS_URL);
-        Iterator<JsonNode> rows = all.iterator();
-        while (rows.hasNext()) {
-            JsonNode row = rows.next();
-            if (key.equals(row.path("ticker").asText().toUpperCase(Locale.ROOT))) {
-                String cik = String.format("%010d", row.path("cik_str").asLong());
-                SecCompany company = new SecCompany(row.path("title").asText(), cik, ticker.toUpperCase(Locale.ROOT));
-                tickerCache.put(key, company);
-                return company;
+        return tickerList().get(ticker.toUpperCase(Locale.ROOT));
+    }
+
+    /**
+     * The SEC's ticker list as a map by upper-case ticker, downloaded on first use and again once it is more than a
+     * day old. The download goes through {@link #request} like any other, so its pacing and User-Agent are the same.
+     * If it cannot be downloaded nothing is kept, so the next ticker asked for tries again.
+     */
+    private Map<String, SecCompany> tickerList() {
+        Instant now = clock.instant();
+        if (isFresh(tickersLoadedAt, now)) return tickers;
+        synchronized (tickerListLock) {
+            if (!isFresh(tickersLoadedAt, now)) {
+                Map<String, SecCompany> loaded = new HashMap<>();
+                for (JsonNode row : getJson(TICKERS_URL)) {
+                    String ticker = row.path("ticker").asText().toUpperCase(Locale.ROOT);
+                    String cik = String.format("%010d", row.path("cik_str").asLong());
+                    // The first row for a ticker wins, as when the list was searched for each ticker.
+                    loaded.putIfAbsent(ticker, new SecCompany(row.path("title").asText(), cik, ticker));
+                }
+                tickers = Map.copyOf(loaded);
+                tickersLoadedAt = now;
             }
+            return tickers;
         }
-        return null;
+    }
+
+    private static boolean isFresh(Instant loadedAt, Instant now) {
+        return loadedAt != null && loadedAt.isAfter(now.minus(TICKER_LIST_LIFE));
     }
 
     /** Returns the first 10-K or 20-F in the recent filings list, as specified by this story. */
@@ -154,7 +178,21 @@ public class SecClient {
         return fallback;
     }
 
-    private synchronized String request(String url, String fallback) {
+    /**
+     * Waits for the next request slot, then downloads outside the lock, so one large report never holds up every
+     * other SEC request: requests still start at most 10 a second, but their downloads can overlap.
+     */
+    private String request(String url, String fallback) {
+        awaitNextSlot();
+        try {
+            return client.get().uri(url).retrieve().body(String.class);
+        } catch (RestClientException exception) {
+            throw new SecAccessException(failureMessage(exception, fallback), exception);
+        }
+    }
+
+    /** Holds the lock only while waiting for this request's turn, and books the slot after it. */
+    private synchronized void awaitNextSlot() {
         long now = System.currentTimeMillis();
         long wait = nextRequestAt - now;
         if (wait > 0) {
@@ -166,11 +204,6 @@ public class SecClient {
             }
         }
         nextRequestAt = System.currentTimeMillis() + intervalMillis;
-        try {
-            return client.get().uri(url).retrieve().body(String.class);
-        } catch (RestClientException exception) {
-            throw new SecAccessException(failureMessage(exception, fallback), exception);
-        }
     }
 
     public record SecCompany(String name, String cik, String ticker) { }
