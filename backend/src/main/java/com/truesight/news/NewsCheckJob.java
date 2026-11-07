@@ -9,19 +9,20 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Collects news away from the request thread, in three rounds, one shared company at a time: each company's Google News
- * headlines and, for a company with an SEC number, its 8-Ks (see {@link CurrentReports}).
+ * Collects news away from the request thread, in three rounds, one shared company at a time: its Google News headlines
+ * and, for a company with an SEC number, its 8-Ks (see {@link CurrentReports}).
  */
 @Component
 public class NewsCheckJob {
+
+    /** The most articles kept from each source for a company in one check: its news, and its 8-Ks. */
+    static final int MOST_PER_SOURCE = 10;
 
     private final NewsCheckService service;
     private final NewsClient news;
@@ -106,7 +107,10 @@ public class NewsCheckJob {
                 attempted++;
                 String searchName = NewsSearchName.of(company.name());
                 try {
-                    service.save(company.id(), itemsFor(company, searchName, now), now);
+                    // Each source keeps its own 10, so a busy week of headlines never crowds out a company's own 8-Ks.
+                    List<NewsItem> recent = new ArrayList<>(newestRecentItems(news.search(searchName), now));
+                    recent.addAll(currentReports(company, now));
+                    service.save(company.id(), recent, now);
                     succeeded++;
                 } catch (NewsClient.NewsAccessException ignored) {
                     // A failed company stays unchecked so this portfolio, or another one, can try it again.
@@ -135,40 +139,40 @@ public class NewsCheckJob {
         return prefix + names + suffix;
     }
 
-    /**
-     * What one company's check saves: its Google News headlines and its 8-Ks together, under the one rule for both (the
-     * last 7 days, newest first, at most 10). Only then are the 8-Ks that remain downloaded, so one that the rule leaves
-     * out is never downloaded for nothing, and one already saved is never downloaded again.
-     */
-    private List<NewsItem> itemsFor(NewsCheckService.NewsCompany company, String searchName, Instant now) {
-        List<NewsItem> found = new ArrayList<>(news.search(searchName));
-        Map<String, SecClient.SecCurrentReport> filings = new HashMap<>();
-        for (SecClient.SecCurrentReport filing : currentReports(company)) {
-            filings.put(filing.url(), filing);
-            // Until it is downloaded, an 8-K is only the item's name: enough to place it among the news.
-            found.add(CurrentReports.newsItem(company.name(), filing, null));
-        }
-        return newestRecentItems(found, now).stream()
-                .map(item -> {
-                    SecClient.SecCurrentReport filing = filings.get(item.url());
-                    return filing == null || service.isSaved(company.id(), filing.url())
-                            ? item
-                            : CurrentReports.newsItem(company.name(), filing, download(filing.url()));
-                })
+    private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now) {
+        Instant oldest = now.minus(Duration.ofDays(7));
+        Set<String> urls = new HashSet<>();
+        return items.stream()
+                .filter(item -> !item.publishedAt().isBefore(oldest) && !item.publishedAt().isAfter(now))
+                .sorted(Comparator.comparing(NewsItem::publishedAt).reversed())
+                .filter(item -> urls.add(item.url()))
+                .limit(MOST_PER_SOURCE)
                 .toList();
     }
 
     /**
-     * A company's 8-Ks that report one of the nine items. None for a company without an SEC number, or when the SEC
-     * cannot be reached: its Google News is still saved, and its 8-Ks are read on its next check.
+     * A company's 8-Ks that report one of the nine items, as articles: by the same rules as news (the last 7 days,
+     * newest first, at most 10), and only those not already saved, so none is downloaded twice. They have a limit of
+     * their own, not shared with the news, so every one chosen here is saved and never downloaded again. None for a
+     * company without an SEC number, or when the SEC cannot be reached: its Google News is still saved, and its 8-Ks
+     * are read on its next check.
      */
-    private List<SecClient.SecCurrentReport> currentReports(NewsCheckService.NewsCompany company) {
+    private List<NewsItem> currentReports(NewsCheckService.NewsCompany company, Instant now) {
         if (!company.hasSecNumber()) return List.of();
+        List<SecClient.SecCurrentReport> filings;
         try {
-            return CurrentReports.kept(sec.recentCurrentReports(company.cik()));
+            filings = sec.recentCurrentReports(company.cik());
         } catch (SecClient.SecAccessException exception) {
             return List.of();
         }
+        Instant oldest = now.minus(Duration.ofDays(7));
+        return CurrentReports.kept(filings).stream()
+                .filter(filing -> !filing.acceptedAt().isBefore(oldest) && !filing.acceptedAt().isAfter(now))
+                .sorted(Comparator.comparing(SecClient.SecCurrentReport::acceptedAt).reversed())
+                .limit(MOST_PER_SOURCE)
+                .filter(filing -> !service.isSaved(company.id(), filing.url()))
+                .map(filing -> CurrentReports.newsItem(company.name(), filing, download(filing.url())))
+                .toList();
     }
 
     /** The filing's document, or null when it cannot be downloaded: its headline is then the item's name. */
@@ -178,16 +182,5 @@ public class NewsCheckJob {
         } catch (SecClient.SecAccessException exception) {
             return null;
         }
-    }
-
-    private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now) {
-        Instant oldest = now.minus(Duration.ofDays(7));
-        Set<String> urls = new HashSet<>();
-        return items.stream()
-                .filter(item -> !item.publishedAt().isBefore(oldest) && !item.publishedAt().isAfter(now))
-                .sorted(Comparator.comparing(NewsItem::publishedAt).reversed())
-                .filter(item -> urls.add(item.url()))
-                .limit(10)
-                .toList();
     }
 }
