@@ -17,6 +17,8 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `amd-10k.txt` | The plain text of AMD's latest 10-K, one paragraph per line | Name Companies the Way People Know Them, in tests |
 | `gemini-amd.json` | One real, unchanged Gemini answer for that 10-K to the relationship prompt that also asks for each company's common name and ticker: 8 relationships, each with a quote | Name Companies the Way People Know Them, in tests, so tests never call Gemini |
 | `gemini-common-names.json` | One real, unchanged Gemini answer to the common-names pass's prompt, for the 13 company names found in `gemini-nvidia.json` and `gemini-amd.json` | Name Companies the Way People Know Them, in tests, so tests never call Gemini |
+| `gemini-highlights.json` | One real, unchanged Gemini answer to the highlights prompt for the 5 quotes in `gemini-highlights-quotes.txt` | Highlight What Matters in a Quote, in tests, so tests never call Gemini |
+| `gemini-highlights-quotes.txt` | Those 5 quotes, one per line, each a sentence copied from `nvidia-10k.txt` or `amd-10k.txt` | Highlight What Matters in a Quote |
 | `google-news-tsmc.xml` | One unchanged Google News RSS response for the TSMC search URL below | Sprint 2 news checks and tests |
 | `gemini-news-assessment.json` | Gemini's full, unchanged API response assessing the first 20 headlines in `google-news-tsmc.xml` | Filter Out Noise tests, so tests never call Gemini |
 | `gemini-recommendation.json` | Gemini's real answer text and response identifiers for the NVIDIA shipment theft headline below | Get a Recommendation tests, so tests never call Gemini |
@@ -128,6 +130,18 @@ what the graph should show once names are matched.
 
 Sony has no relationships here on purpose. Its report names TSMC only as a planned partner under a non-binding
 agreement, not as a current supplier or customer.
+
+## The Gemini Highlights Answer
+
+`gemini-highlights.json` is Gemini's full response, saved exactly as it arrived, on 5 November 2026.
+
+- **Model:** `gemini-3.8-flash`, at temperature 0.
+- **Response ID:** `ZHjsaoLoDPyLjuMPsdiI0A8`
+- **Prompt:** `HighlightFinder.PROMPT`, followed by the 5 quotes in `gemini-highlights-quotes.txt`, numbered from 1, with the
+  same response schema as `GeminiClient.generateHighlights`.
+
+Every phrase in this answer is in its quote word for word, so it has no phrase for the check to drop. The test that a
+phrase which is not in its quote is dropped uses a small answer written by hand in `HighlightFinderTest`, which says so.
 
 ## The Gemini Answer
 

@@ -2,6 +2,7 @@ package com.truesight.relationship;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * One relationship, as the website sees it, in the shape of {@code docs/examples/relationships.json}.
@@ -15,6 +16,9 @@ import java.time.LocalDate;
  * until a decision is made (and the note may stay empty for an approval).
  *
  * <p>{@code confidence} is how confident TrueSight is about it, with its reasons (see {@link RelationshipConfidence}).
+ *
+ * <p>{@code highlights} are the words that matter in the evidence, in the order they appear (see
+ * {@link HighlightFinder}). Empty when there are none.
  */
 public record RelationshipResponse(
         Long id,
@@ -30,9 +34,14 @@ public record RelationshipResponse(
         ReviewStatus reviewStatus,
         Instant reviewedAt,
         String reviewNote,
-        RelationshipConfidence confidence) {
+        RelationshipConfidence confidence,
+        List<Highlight> highlights) {
 
     public record CompanySummary(Long id, String name, String displayName, String ticker) {
+    }
+
+    /** Words in the evidence: {@code start} is where they begin and {@code end} is just after they finish. */
+    public record Highlight(HighlightKind kind, int start, int end) {
     }
 
     /** The report the evidence is in. {@code url} opens it on the SEC website. */

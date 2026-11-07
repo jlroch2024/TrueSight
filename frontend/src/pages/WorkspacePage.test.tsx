@@ -8,7 +8,7 @@
 // real graph does with it is tested in src/graph/.
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { type ReactNode, type Ref, useImperativeHandle } from 'react';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
@@ -19,14 +19,18 @@ import type { Holding, Portfolio } from '../api/portfolios';
 import type { History, HistoryEntry, HistoryYear } from '../api/history';
 import type { Relationship } from '../api/relationships';
 import type { WhatIf } from '../api/whatIf';
-import type { GraphFocus } from '../graph/LivingGraph';
+import type { GraphFocus, GraphHandle } from '../graph/LivingGraph';
 import { showInReportUrl } from '../format';
 import { sampleAlert, tsmcSuppliesNvidia } from '../test/sampleAlerts';
 import { TSMC } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 
+// What the fake graph's snapshot() gives: a picture, or null as the real graph does when it cannot draw one.
+const picture = vi.hoisted(() => ({ png: 'data:image/png;base64,SNAPSHOT' as string | null }));
+
 vi.mock('../graph/LivingGraph', () => ({
   LivingGraph: (props: {
+    ref?: Ref<GraphHandle>;
     nodes: GraphNode[];
     edges: GraphEdge[];
     onEdgeSelect: (relationshipId: number) => void;
@@ -43,7 +47,9 @@ vi.mock('../graph/LivingGraph', () => ({
     insets?: { top: number; right: number; bottom: number; left: number };
     barStart?: ReactNode;
     barEnd?: ReactNode;
-  }) => (
+  }) => {
+    useImperativeHandle(props.ref, () => ({ snapshot: () => picture.png }), []);
+    return (
     <div data-testid="fake-graph">
       {props.barStart}
       <span data-testid="bare">{String(!!props.bare)}</span>
@@ -72,7 +78,8 @@ vi.mock('../graph/LivingGraph', () => ({
       ))}
       <button type="button" onClick={() => props.onNodeSelect?.(null)}>Graph Background</button>
     </div>
-  ),
+    );
+  },
 }));
 
 const sample = sampleRelationshipsJson as Relationship[];
@@ -96,6 +103,8 @@ function held(company: Relationship['company'], id: number, overrides: Partial<H
     reportDate: report.filingDate,
     reportLink: report.url,
     lastAnalysed: '2026-10-27T09:00:00Z',
+    suppliersRead: 0,
+    suppliersToRead: 0,
     ...overrides,
   };
 }
@@ -114,6 +123,8 @@ function waiting(ticker: string, id: number, overrides: Partial<Holding> = {}): 
     reportDate: null,
     reportLink: null,
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
     ...overrides,
   };
 }
@@ -134,6 +145,8 @@ type Backend = {
   found?: AlertEvent[];
   // A news check that goes on running, however often the portfolio is listed.
   stillChecking?: boolean;
+  // A briefing the backend cannot make.
+  briefingFails?: boolean;
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
   // What the SEC Filing Timeline has read (nothing, unless a test says), and what it is once loading is asked for.
@@ -183,6 +196,15 @@ function answer(url: string, init: RequestInit = {}): Response {
     return json(
       backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 0, years: [] },
     );
+  }
+  if (url === `${base}/briefing` && method === 'POST') {
+    if (backend.briefingFails) return json({ message: 'The briefing could not be made.' }, 500);
+    return new Response('%PDF-1.5', {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="Semiconductors-Briefing-2026-11-06.pdf"',
+      },
+    });
   }
   if (url === `${base}/news-check` && method === 'POST') {
     backend.portfolio = { ...backend.portfolio, newsStatus: 'CHECKING' };
@@ -306,6 +328,7 @@ beforeEach(() => {
     logoToken: '',
     sent: [],
   };
+  picture.png = 'data:image/png;base64,SNAPSHOT';
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => answer(url, init)));
 });
 
@@ -646,6 +669,90 @@ describe('Analyse', () => {
     expect(await screen.findByRole('heading', { name: 'No Supply Chain Yet' })).toBeInTheDocument();
     expect(screen.queryByTestId('fake-graph')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Analyse' })).toHaveLength(2);
+  });
+});
+
+describe('Download Briefing', () => {
+  /** Stands in for the browser's way of saving a file, and gives back what it saved the file as. */
+  function saves() {
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:briefing');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const names: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    return { names, click };
+  }
+
+  it('sendsTheGraphAsItIsOnScreenForThePortfolioInTheAddress', async () => {
+    saves();
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: 'data:image/png;base64,SNAPSHOT' });
+  });
+
+  it('savesThePdfUnderTheNameTheBackendGives', async () => {
+    const { names } = saves();
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(names).toEqual(['Semiconductors-Briefing-2026-11-06.pdf']));
+  });
+
+  it('stillMakesABriefingForAPortfolioWithNoGraphBySendingNoPicture', async () => {
+    saves();
+    backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
+    backend.relationships = [];
+    renderAt();
+    expect(await screen.findByRole('heading', { name: 'No Supply Chain Yet' })).toBeInTheDocument();
+    expect(screen.queryByTestId('fake-graph')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: null });
+  });
+
+  it('sendsNoPictureWhenTheGraphCannotDrawOne', async () => {
+    saves();
+    picture.png = null;
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: null });
+  });
+
+  it('showsWhyABriefingFailedAndOffersTheButtonAgain', async () => {
+    const { click } = saves();
+    backend.briefingFails = true;
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The briefing could not be made.');
+    expect(click).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Download Briefing' })).toBeEnabled();
+  });
+
+  it('isOffUntilThePortfolioHasHoldings', async () => {
+    backend.holdings = [];
+    backend.relationships = [];
+    renderAt();
+    expect(await within(drawer()).findByText('No Holdings Yet')).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Download Briefing' })).toBeDisabled();
   });
 });
 

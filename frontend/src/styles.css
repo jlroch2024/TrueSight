@@ -2434,6 +2434,43 @@ svg.lucide {
   font-size: var(--t-12);
 }
 
+/* The words that matter in a quote, and the key under it (see HighlightedQuote). --quote-company is the holding's chain colour. */
+.quote-mark {
+  background: none;
+  color: inherit;
+  font-weight: 500;
+}
+
+.quote-mark.company {
+  color: var(--quote-company, var(--teal));
+}
+
+.quote-mark.supplied {
+  color: var(--lime);
+}
+
+.quote-mark.reliance {
+  color: var(--amber);
+}
+
+.quote-mark.figure {
+  color: #fff;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.quote-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 10px;
+  font-size: var(--t-12);
+}
+
+.review-card .quote-key {
+  margin: 8px 0 0;
+}
+
 /*
  * A link, drawn by the graph's own arrow drawing on a canvas (see FlowLink). The canvas reaches 18px above and below the
  * line it sits on, so the glow fades out instead of meeting an edge.

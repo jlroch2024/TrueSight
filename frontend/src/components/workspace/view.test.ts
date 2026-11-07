@@ -136,6 +136,8 @@ describe('byWeight', () => {
     reportDate: null,
     reportLink: null,
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
   });
   const tickers = (holdings: Holding[]) => holdings.map((found) => found.ticker);
 

@@ -23,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** Owns the database state for starting, saving and finishing a portfolio news check. */
 @Service
@@ -83,50 +84,74 @@ public class NewsCheckService {
         return true;
     }
 
+    /** Every company this portfolio's news is about, the three rounds together. */
     @Transactional(readOnly = true)
     public List<NewsCompany> companiesFor(Long portfolioId) {
+        return roundsFor(portfolioId).all();
+    }
+
+    /**
+     * The companies this portfolio's news is about, in the three rounds a news check fetches them in, most important
+     * first: the holdings themselves, then their suppliers and the companies they name, then those suppliers'
+     * suppliers. Each company is in the first round it belongs to; which companies are checked at all is the same as
+     * if the rounds were one list.
+     */
+    @Transactional(readOnly = true)
+    public NewsRounds roundsFor(Long portfolioId) {
         Set<Long> heldCompanies = new LinkedHashSet<>();
         holdings.findByPortfolioIdAndStatusOrderByTickerAsc(portfolioId, HoldingStatus.DONE).stream()
                 .map(Holding::getCompanyId)
                 .filter(id -> id != null)
                 .forEach(heldCompanies::add);
-        Set<Long> companyIds = new LinkedHashSet<>(heldCompanies);
+        // The companies the holdings' own reports name, and the holdings' direct suppliers.
+        Set<Long> suppliers = new LinkedHashSet<>();
         relationships.findByCompanyIdIn(heldCompanies).stream()
                 .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
                 .map(Relationship::getCounterpartyId)
-                .forEach(companyIds::add);
-        Set<Long> directSuppliers = relationships
-                .findByCompanyIdInOrCounterpartyIdIn(heldCompanies, heldCompanies).stream()
+                .forEach(suppliers::add);
+        Set<Long> directSuppliers = suppliersOf(heldCompanies);
+        suppliers.addAll(directSuppliers);
+        Set<Long> suppliersSuppliers = suppliersOf(directSuppliers);
+        // Each company is in the first round it belongs to.
+        suppliers.removeAll(heldCompanies);
+        suppliersSuppliers.removeAll(heldCompanies);
+        suppliersSuppliers.removeAll(suppliers);
+        return new NewsRounds(named(heldCompanies), named(suppliers), named(suppliersSuppliers));
+    }
+
+    /** The companies that supply any of these customers, by the relationships that are not Rejected. */
+    private Set<Long> suppliersOf(Set<Long> customers) {
+        return relationships.findByCompanyIdInOrCounterpartyIdIn(customers, customers).stream()
                 .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
-                .filter(relationship -> heldCompanies.contains(customerId(relationship)))
+                .filter(relationship -> customers.contains(customerId(relationship)))
                 .map(NewsCheckService::supplierId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        companyIds.addAll(directSuppliers);
-        relationships.findByCompanyIdInOrCounterpartyIdIn(directSuppliers, directSuppliers).stream()
-                .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
-                .filter(relationship -> directSuppliers.contains(customerId(relationship)))
-                .map(NewsCheckService::supplierId)
-                .forEach(companyIds::add);
+    }
+
+    private List<NewsCompany> named(Set<Long> companyIds) {
         return companies.findAllById(companyIds).stream()
                 .map(company -> new NewsCompany(company.getId(), company.getName()))
                 .toList();
     }
 
-    private static Long supplierId(Relationship relationship) {
+    /** The company that supplies the other in this relationship, whichever company's report it came from. */
+    public static Long supplierId(Relationship relationship) {
         return relationship.getType() == RelationshipType.SUPPLIER
                 ? relationship.getCounterpartyId() : relationship.getCompanyId();
     }
 
-    private static Long customerId(Relationship relationship) {
+    /** The company that buys from the other in this relationship, whichever company's report it came from. */
+    public static Long customerId(Relationship relationship) {
         return relationship.getType() == RelationshipType.SUPPLIER
                 ? relationship.getCompanyId() : relationship.getCounterpartyId();
     }
 
+    /** True when the company's news was fetched less than {@code window} before {@code now}. */
     @Transactional(readOnly = true)
-    public boolean wasCheckedWithinTheLastHour(Long companyId, Instant now) {
+    public boolean wasCheckedWithin(Long companyId, Instant now, Duration window) {
         return companies.findById(companyId)
                 .map(Company::getNewsCheckedAt)
-                .filter(checkedAt -> checkedAt.isAfter(now.minus(Duration.ofHours(1))))
+                .filter(checkedAt -> checkedAt.isAfter(now.minus(window)))
                 .isPresent();
     }
 
@@ -160,5 +185,18 @@ public class NewsCheckService {
     }
 
     public record NewsCompany(Long id, String name) {
+    }
+
+    /**
+     * The companies of a news check in the order they are fetched: the holdings, their suppliers (and the companies
+     * they name), and those suppliers' suppliers, which are asked less often.
+     */
+    public record NewsRounds(List<NewsCompany> holdings, List<NewsCompany> suppliers,
+                             List<NewsCompany> suppliersSuppliers) {
+
+        /** All three rounds as one list. */
+        public List<NewsCompany> all() {
+            return Stream.of(holdings, suppliers, suppliersSuppliers).flatMap(List::stream).toList();
+        }
     }
 }

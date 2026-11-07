@@ -34,6 +34,9 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     List<Relationship> findByReportIdAndSecondCheckIsNullOrderByIdAsc(Long reportId);
 
+    /** Every relationship whose quote has not been read for highlights yet, oldest first. */
+    List<Relationship> findByHighlightedAtIsNullOrderByIdAsc();
+
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
 
     /**

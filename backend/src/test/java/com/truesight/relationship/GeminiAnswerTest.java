@@ -166,6 +166,35 @@ class GeminiAnswerTest {
     }
 
     @Test
+    void readsEachPhraseOfGeminisRealHighlightsAnswerWithItsQuotesNumber() {
+        List<GeminiAnswer.HighlightFound> found = answers.readHighlights(Examples.geminiHighlights());
+
+        assertThat(found).hasSize(26);
+        assertThat(found.getFirst()).isEqualTo(new GeminiAnswer.HighlightFound(
+                1, "Taiwan Semiconductor Manufacturing Company Limited", HighlightKind.COMPANY));
+        assertThat(found.getLast()).isEqualTo(new GeminiAnswer.HighlightFound(5, "five years", HighlightKind.FIGURE));
+    }
+
+    @Test
+    void aHighlightsItemWithNoIndexIsLeftOutAndAnUnknownKindIsReadAsNone() throws Exception {
+        String answer = responseWith("[{\"highlights\":[{\"text\":\"No index\",\"kind\":\"FIGURE\"}]},"
+                + "{\"index\":2,\"highlights\":[{\"text\":\"memory\",\"kind\":\"PRODUCT\"}]},"
+                + "{\"index\":3,\"highlights\":[{\"text\":\"memory\",\"kind\":\"supplied\"}]},"
+                + "{\"index\":4}]");
+
+        assertThat(answers.readHighlights(answer)).containsExactly(
+                new GeminiAnswer.HighlightFound(2, "memory", null),
+                new GeminiAnswer.HighlightFound(3, "memory", HighlightKind.SUPPLIED));
+    }
+
+    @Test
+    void aHighlightsAnswerThatIsNotAJsonListIsUnreadable() throws Exception {
+        assertThatThrownBy(() -> answers.readHighlights(null)).isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+        assertThatThrownBy(() -> answers.readHighlights(responseWith("{\"index\":1}")))
+                .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+    }
+
+    @Test
     void aSecondCheckAnswerThatIsNotAJsonListIsUnreadable() throws Exception {
         assertThatThrownBy(() -> answers.readSecondChecks(null)).isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
         assertThatThrownBy(() -> answers.readSecondChecks(responseWith("[{\"index\":1,\"verdict\":\"AGREES\"")))
