@@ -1,44 +1,8 @@
 // Which address each company's logo is asked for, what is tried when Logo.dev does not know it, and how a logo sits on
 // its tile. The images are small ones made here, not saved Logo.dev images.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LogoBook, domainFallback, isUsTicker, logoSource, treatmentOf } from './logos';
-
-type Rgba = [number, number, number, number];
-
-const CLEAR: Rgba = [0, 0, 0, 0];
-// Clear too, though its colour is white, as a PNG's clear pixels often are.
-const CLEAR_WHITE: Rgba = [255, 255, 255, 0];
-const BLACK: Rgba = [0, 0, 0, 255];
-const WHITE: Rgba = [255, 255, 255, 255];
-
-// A 64-pixel image on a background, with a square from 12 to 52 and a bar across the square's middle.
-function image(background: Rgba, square: Rgba, bar: Rgba) {
-  const size = 64;
-  const data = new Uint8ClampedArray(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const inSquare = x >= 12 && x < 52 && y >= 12 && y < 52;
-      const onBar = inSquare && y >= 28 && y < 36 && x >= 20 && x < 44;
-      data.set(onBar ? bar : inSquare ? square : background, (y * size + x) * 4);
-    }
-  }
-  return data;
-}
-
-// A black frame with a black bar inside it (as General Motors' logo), clear everywhere else.
-function blackFrameOnClear() {
-  const size = 64;
-  const data = new Uint8ClampedArray(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const inSquare = x >= 12 && x < 52 && y >= 12 && y < 52;
-      const onFrame = inSquare && (x < 17 || x >= 47 || y < 17 || y >= 47);
-      const onBar = inSquare && y >= 28 && y < 36 && x >= 22 && x < 42;
-      data.set(onFrame || onBar ? BLACK : CLEAR_WHITE, (y * size + x) * 4);
-    }
-  }
-  return data;
-}
+import { BLACK, CLEAR, CLEAR_WHITE, WHITE, blackFrameOnClear, blackSquareWithWhiteMark, image } from '../test/logoPixels';
+import { LogoBook, domainFallback, forgetDomains, isUsTicker, logoSource, rememberDomains, treatmentOf } from './logos';
 
 describe('which address a logo is asked for', () => {
   it('asks for a company with the ticker 005930 by its domain, not by that ticker', () => {
@@ -82,6 +46,7 @@ describe('a US ticker Logo.dev does not know', () => {
 
   beforeEach(() => {
     vi.stubGlobal('Image', FakeImage);
+    forgetDomains();
     // No drawing in jsdom: a logo whose pixels cannot be read goes on a plain white tile.
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   });
@@ -98,6 +63,35 @@ describe('a US ticker Logo.dev does not know', () => {
     expect(fetch).toHaveBeenCalledWith('/api/logos/domains?names=Acme%20Corp', expect.anything());
     const logo = book.get(source);
     expect(logo.state === 'ready' && (logo.image as unknown as FakeImage).address).toContain('img.logo.dev/acme.com?');
+  });
+
+  it('asks once for every company whose ticker fails at the same moment', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ 'Acme Corp': 'acme.com', 'Beta Inc': 'beta.com' })));
+    vi.stubGlobal('fetch', fetch);
+    const book = new LogoBook(() => {});
+    const acme = logoSource({ ticker: 'ACME' }, 'pk_test');
+    const beta = logoSource({ ticker: 'BETA' }, 'pk_test');
+
+    book.get(acme, domainFallback({ ticker: 'ACME' }, 'Acme Corp', 'pk_test'));
+    book.get(beta, domainFallback({ ticker: 'BETA' }, 'Beta Inc', 'pk_test'));
+
+    await vi.waitFor(() => expect(book.get(beta).state).toBe('ready'));
+    await vi.waitFor(() => expect(book.get(acme).state).toBe('ready'));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('names='), expect.anything());
+  });
+
+  it('does not ask for a domain the screen has already fetched', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({})));
+    vi.stubGlobal('fetch', fetch);
+    rememberDomains({ 'Acme Corp': 'acme.com' });
+    const book = new LogoBook(() => {});
+    const source = logoSource({ ticker: 'ACME' }, 'pk_test');
+
+    book.get(source, domainFallback({ ticker: 'ACME' }, 'Acme Corp', 'pk_test'));
+
+    await vi.waitFor(() => expect(book.get(source).state).toBe('ready'));
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('shows initials when its domain is not known either', async () => {
@@ -120,6 +114,15 @@ describe('how a logo sits on its tile', () => {
     // Trimmed to the mark, which is drawn in black on the white.
     expect(look.crop.x).toBeCloseTo(12 / 64);
     expect(look.crop.w).toBeCloseTo(40 / 64);
+  });
+
+  it('puts a black icon with a small white mark of its own on a white tile, hiding nothing', () => {
+    // The white mark covers 2% of the square: too few pixels to be read as a block with something drawn on it (AMD's has
+    // 12%), so it is a dark mark, drawn black on white. It is not filled black, which would hide the mark.
+    const look = treatmentOf(blackSquareWithWhiteMark(0.02), 64, 64);
+
+    expect(look.treatment).toBe('dark');
+    expect(look.background).toBe('#ffffff');
   });
 
   it("still fills the tile with a black square with a white mark (AMD's), on a clear or a white background", () => {

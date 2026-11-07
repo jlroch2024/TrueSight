@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { logoApi } from '../api/logos';
 import { settingsApi } from '../api/settings';
-import { isUsTicker } from '../graph/logos';
+import { isUsTicker, rememberDomains } from '../graph/logos';
 import type { LogoSettings } from './Tile';
 
 /** companies: the companies on the screen, by stored name; the domains of those without a US ticker are asked. */
@@ -41,6 +41,8 @@ export function useLogoSettings(companies: { name: string; ticker: string | null
     logoApi
       .domains(wanted.split('\n'))
       .then((found) => {
+        // The graph's fallback asks the same question when a ticker fails: it need not ask again.
+        rememberDomains(found);
         if (active) setDomains(found);
       })
       .catch(() => {});

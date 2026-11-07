@@ -20,6 +20,15 @@ const LOGO_OPTIONS = 'size=128&retina=true&format=png&fallback=404';
 // Letters, with an optional dot and class letter (BRK.B).
 const US_TICKER = /^[A-Z]{1,5}(\.[A-Z])?$/;
 
+// A drawn pixel this dark (brightness below 0.15) is nearly black, and one this bright (above 0.86) nearly white.
+const NEARLY_BLACK = 0.15;
+const NEARLY_WHITE = 0.86;
+// A clear-background logo is a dark mark when at least this share of its drawn pixels is nearly black. Its remaining
+// pixels may include a small white mark of its own (under 3% of the logo, as a black icon with a tiny glyph): that is
+// still read as dark, and is drawn on a white tile like a plain logo, so nothing is hidden. A black block with a larger
+// mark (AMD's) is not reached here: its white pixels are too many, and it bleeds below.
+const DARK_MARK_SHARE = 0.97;
+
 export type Treatment = 'bleed' | 'light' | 'dark' | 'plain';
 /** The part of a logo's image worth drawing, as shares of its width and height (0 to 1). */
 export type Crop = { x: number; y: number; w: number; h: number };
@@ -49,15 +58,57 @@ export function logoSource(node: Pick<LiveNode, 'ticker'>, token: string, domain
   return path ? `${LOGO_HOST}/${path}?token=${encodeURIComponent(token)}&${LOGO_OPTIONS}` : null;
 }
 
+// The domains found so far, by company name, and the names waiting to be asked: every company whose logo fails in the
+// same moment is asked for in one request, and a company is asked for once.
+const domains = new Map<string, Promise<string | undefined>>();
+const waiting = new Map<string, (domain: string | undefined) => void>();
+let flushing: ReturnType<typeof setTimeout> | undefined;
+
+/** Domains already fetched by the screen (useLogoSettings), so the fallback never asks for them again. */
+export function rememberDomains(found: Record<string, string>) {
+  for (const [name, domain] of Object.entries(found)) domains.set(name, Promise.resolve(domain));
+}
+
+/** Forgets every domain, so a test starts clean. */
+export function forgetDomains() {
+  domains.clear();
+  waiting.clear();
+  clearTimeout(flushing);
+  flushing = undefined;
+}
+
+function domainOf(name: string): Promise<string | undefined> {
+  const known = domains.get(name);
+  if (known) return known;
+  const asked = new Promise<string | undefined>((resolve) => waiting.set(name, resolve));
+  domains.set(name, asked);
+  flushing ??= setTimeout(flush, 0);
+  return asked;
+}
+
+function flush() {
+  const names = [...waiting.keys()];
+  const resolvers = new Map(waiting);
+  waiting.clear();
+  flushing = undefined;
+  logoApi
+    .domains(names)
+    .then((found) => names.forEach((name) => resolvers.get(name)!(found[name])))
+    .catch(() => {
+      // Not asked for good: forgotten, so another company's failure (or a later draw) can ask again.
+      names.forEach((name) => {
+        domains.delete(name);
+        resolvers.get(name)!(undefined);
+      });
+    });
+}
+
 /**
  * A company's logo address by its website's domain, asked of the backend: what LogoBook tries when Logo.dev does not
  * know a US ticker. Null when no domain is known, or it cannot be asked.
  */
 export function domainSource(name: string, token: string): Promise<string | null> {
-  return logoApi
-    .domains([name])
-    .then((found) => logoSource({ ticker: null }, token, found[name]))
-    .catch(() => null);
+  return domainOf(name).then((domain) => logoSource({ ticker: null }, token, domain));
 }
 
 /** What LogoBook tries when a company's logo address fails: its domain, for a company asked for by its US ticker. */
@@ -157,13 +208,13 @@ export function treatmentOf(pixels: Uint8ClampedArray, width: number, height: nu
       const brightness = luminance(pixel[0], pixel[1], pixel[2]);
       total += brightness;
       count++;
-      if (brightness < 0.15) black++;
+      if (brightness < NEARLY_BLACK) black++;
     }
   }
   // A nearly black mark on a clear background (General Motors' black frame) goes on a white tile. Checked before the
   // solid block below, which would take its black frame for a background and fill the tile with black, hiding the
   // mark. AMD's black square is not one: its white mark is drawn too.
-  if (clear && count > 0 && black >= count * 0.97) return { treatment: 'dark', background: '#ffffff', crop: trimmed };
+  if (clear && count > 0 && black >= count * DARK_MARK_SHARE) return { treatment: 'dark', background: '#ffffff', crop: trimmed };
 
   // What is left is a solid block of its own (AMD's black square on a white border): it fills the tile, in its colour.
   if (x2 >= 0 && x2 - x1 > width * 0.3 && y2 - y1 > height * 0.3) {
@@ -200,7 +251,7 @@ export function treatmentOf(pixels: Uint8ClampedArray, width: number, height: nu
   }
 
   // A mark on white or clear: a nearly white one needs a dark tile.
-  if (clear && count > 0 && total / count > 0.86) return { treatment: 'light', background: '#111827', crop: trimmed };
+  if (clear && count > 0 && total / count > NEARLY_WHITE) return { treatment: 'light', background: '#111827', crop: trimmed };
   return { treatment: 'plain', background: '#ffffff', crop: trimmed };
 }
 
