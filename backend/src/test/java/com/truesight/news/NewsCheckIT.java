@@ -44,6 +44,7 @@ import java.time.temporal.ChronoUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -686,13 +687,18 @@ class NewsCheckIT {
      * gaps between filings stay as the SEC sent them; filings after it are now in the future, so none is read.
      */
     private static List<SecClient.SecCurrentReport> cloroxFilingsWithTheNewest(String accession) {
+        return cloroxFilingsWithTheNewest(accession, Duration.ofMinutes(30));
+    }
+
+    /** The same, with the one named accepted {@code age} ago. */
+    private static List<SecClient.SecCurrentReport> cloroxFilingsWithTheNewest(String accession, Duration age) {
         List<SecClient.SecCurrentReport> saved = SecClient.currentReportsIn(CLOROX_CIK,
                 JsonMapper.builder().build().readTree(Examples.secSubmissionsClorox()));
         Instant anchor = saved.stream().filter(filing -> filing.accessionNumber().equals(accession))
                 .findFirst().orElseThrow().acceptedAt();
         // In whole seconds, as the SEC gives them (and as the database keeps them).
         Duration shift = Duration.between(anchor,
-                Instant.now().truncatedTo(ChronoUnit.SECONDS).minus(Duration.ofMinutes(30)));
+                Instant.now().truncatedTo(ChronoUnit.SECONDS).minus(age));
         return saved.stream()
                 .map(filing -> new SecClient.SecCurrentReport(filing.accessionNumber(), filing.items(),
                         filing.acceptedAt().plus(shift), filing.url()))

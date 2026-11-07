@@ -192,6 +192,10 @@ public class NewsCheckService {
 
     /** A company a news check covers. cik is its SEC number, or null when it has none. */
     public record NewsCompany(Long id, String name, String cik) {
+        /** Whether the SEC has a number for it, so its 8-Ks can be read. */
+        public boolean hasSecNumber() {
+            return cik != null && !cik.isBlank();
+        }
     }
 
     /**

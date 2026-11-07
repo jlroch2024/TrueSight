@@ -29,6 +29,11 @@ class CurrentReportsTest {
             "2026-10-30T10:01:48.000Z",
             "https://www.sec.gov/Archives/edgar/data/1498148/000106299326005615/form8k.htm");
 
+    // Amgen's 8-K of 31 July 2026, accession 0000318154-26-000119: Item 1.05 only, a cybersecurity incident.
+    private static final SecCurrentReport AMGEN_CYBER_INCIDENT = filing("0000318154-26-000119", "1.05",
+            "2026-07-31T20:03:44.000Z",
+            "https://www.sec.gov/Archives/edgar/data/318154/000031815426000119/amgn-20260729.htm");
+
     @Test
     void onlyEightKsReportingOneOfTheNineItemsAreKept() {
         List<SecCurrentReport> all = SecClient.currentReportsIn("0000021076",
@@ -60,6 +65,21 @@ class CurrentReportsTest {
         assertThat(item.source()).isEqualTo("SEC 8-K");
         assertThat(item.url()).isEqualTo(CLOROX_CYBER_ATTACK.url());
         assertThat(item.publishedAt()).isEqualTo(Instant.parse("2023-08-14T21:29:29Z"));
+    }
+
+    @Test
+    void anItemOneDotOhFiveIsReadAndHeadlinedFromItsOwnTextWithoutItsHeading() {
+        assertThat(CurrentReports.kept(List.of(AMGEN_CYBER_INCIDENT))).hasSize(1);
+
+        NewsItem item = CurrentReports.newsItem("Amgen Inc.", AMGEN_CYBER_INCIDENT, Examples.sec8kAmgen());
+
+        assertThat(item.title()).startsWith("Amgen Inc., Item 1.05: In July 2026, Amgen Inc. (the");
+        assertThat(item.title()).contains("identified unauthorized activity involving data stored in cloud environments");
+        // The heading and the item's name are not the item's text.
+        assertThat(item.title()).doesNotContain("Material Cybersecurity Incidents").doesNotContain("Files an 8-K");
+        assertThat(item.title().substring("Amgen Inc., Item 1.05: ".length()).length())
+                .isLessThanOrEqualTo(CurrentReports.OPENING_LIMIT);
+        assertThat(item.publishedAt()).isEqualTo(Instant.parse("2026-07-31T20:03:44Z"));
     }
 
     @Test

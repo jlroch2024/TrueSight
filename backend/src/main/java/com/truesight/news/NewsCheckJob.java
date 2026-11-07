@@ -158,7 +158,7 @@ public class NewsCheckJob {
      * are read on its next check.
      */
     private List<NewsItem> currentReports(NewsCheckService.NewsCompany company, Instant now) {
-        if (company.cik() == null || company.cik().isBlank()) return List.of();
+        if (!company.hasSecNumber()) return List.of();
         List<SecClient.SecCurrentReport> filings;
         try {
             filings = sec.recentCurrentReports(company.cik());
