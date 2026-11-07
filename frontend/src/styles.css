@@ -4587,8 +4587,13 @@ button.source-row:hover {
   white-space: nowrap;
 }
 
-.lg-root .history-bar > .btn.quiet:only-child {
-  margin-left: -6px;
+/* Holding only Load History, the panel is the button: no room of its own around it, so the bar keeps its space. */
+.lg-root .history-bar:has(> .btn:only-child) {
+  padding: 0;
+}
+
+.lg-root .history-bar > .btn:only-child {
+  height: 100%;
 }
 
 .history-text {
