@@ -17,7 +17,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -167,6 +169,45 @@ class SecClientTest {
             for (Future<SecClient.SecCompany> company : found) assertThat(company.get()).isNotNull();
 
             server.verify();
+        } finally {
+            callers.shutdownNow();
+        }
+    }
+
+    @Test
+    void twoDownloadsOverlapWhileStillStartingAtMostTenASecond() throws Exception {
+        String url = "https://www.sec.gov/test-large-report";
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        List<Long> startedAt = Collections.synchronizedList(new ArrayList<>());
+        // Each download is held open until both have started: under one lock for the whole download, the second
+        // could never start while the first was running, and this would time out.
+        CountDownLatch bothDownloading = new CountDownLatch(2);
+        server.expect(ExpectedCount.times(2), requestTo(url))
+                .andExpect(request -> startedAt.add(System.nanoTime()))
+                .andRespond(request -> {
+                    bothDownloading.countDown();
+                    try {
+                        if (!bothDownloading.await(3, TimeUnit.SECONDS)) {
+                            throw new AssertionError("The second download never started while the first was running.");
+                        }
+                    } catch (InterruptedException exception) {
+                        throw new AssertionError(exception);
+                    }
+                    return withSuccess("report", MediaType.TEXT_PLAIN).createResponse(request);
+                });
+
+        ExecutorService callers = Executors.newFixedThreadPool(2);
+        try {
+            Future<String> first = callers.submit(() -> sec.download(url));
+            Future<String> second = callers.submit(() -> sec.download(url));
+            assertThat(first.get(5, TimeUnit.SECONDS)).isEqualTo("report");
+            assertThat(second.get(5, TimeUnit.SECONDS)).isEqualTo("report");
+
+            server.verify();
+            List<Long> ordered = startedAt.stream().sorted().toList();
+            assertThat(ordered.get(1) - ordered.get(0)).isGreaterThanOrEqualTo(100_000_000L);
         } finally {
             callers.shutdownNow();
         }

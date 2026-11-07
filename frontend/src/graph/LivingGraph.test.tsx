@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
+import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { buildGraphElements, sharedCompanies, withSharedSummaries } from '../pages/supplyChain';
 import { LivingGraph } from './LivingGraph';
@@ -17,7 +18,24 @@ vi.mock('./model', async (original) => {
 });
 
 const relationships = sampleRelationshipsJson as Relationship[];
-const { nodes, edges } = buildGraphElements(relationships, []);
+// The portfolio's holdings: the companies whose own reports named the sample relationships.
+const holdings: Holding[] = [...new Map(relationships.map((relationship) => [relationship.company.id, relationship.company])).values()]
+  .map((company, index) => ({
+    id: index + 1,
+    ticker: company.ticker ?? company.name,
+    weight: null,
+    companyName: company.name,
+    companyDisplayName: company.displayName,
+    status: 'DONE',
+    statusReason: null,
+    reportType: null,
+    reportDate: null,
+    reportLink: null,
+    lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
+  }));
+const { nodes, edges } = buildGraphElements(relationships, holdings);
 
 beforeEach(() => {
   // No drawing in jsdom; and a graph 800 by 500 on screen.
@@ -59,12 +77,12 @@ function drawGraph(props: Partial<Parameters<typeof LivingGraph>[0]> = {}) {
 describe('LivingGraph', () => {
   it('carries on to new data without clearing its canvas, so the picture never blinks', () => {
     const sized = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
-    const fewer = buildGraphElements(relationships.slice(0, -1), []);
+    const fewer = buildGraphElements(relationships.slice(0, -1), holdings);
     const view = drawGraph({ nodes: fewer.nodes, edges: fewer.edges });
     const before = sized.mock.calls.length;
 
     // A holding analysed: one more relationship on the same portfolio's graph.
-    const more = buildGraphElements(relationships, []);
+    const more = buildGraphElements(relationships, holdings);
     view.rerender(
       <LivingGraph nodes={more.nodes} edges={more.edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
     );

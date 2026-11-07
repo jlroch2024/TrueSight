@@ -1,6 +1,8 @@
 package com.truesight.portfolio;
 
+import com.truesight.relationship.HighlightJob;
 import com.truesight.relationship.SecondCheckPassService;
+import com.truesight.report.SupplierReader;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -45,7 +49,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
-            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers);
+            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class));
             Future<?> finished = caller.submit(() -> job.run(List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L)));
 
             assertThat(firstFourStarted.await(3, TimeUnit.SECONDS)).isTrue();
@@ -88,7 +92,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService portfolios = Executors.newFixedThreadPool(2);
         try {
-            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers);
+            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class));
             Future<?> firstPortfolio = portfolios.submit(() -> job.run(List.of(1L)));
             Future<?> secondPortfolio = portfolios.submit(() -> job.run(List.of(2L)));
 
@@ -124,8 +128,78 @@ class AnalysisJobTest {
 
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, secondChecks, workers).run(List.of(1L, 2L, 3L));
+            new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class)).run(List.of(1L, 2L, 3L));
             assertThat(maximum.get()).isEqualTo(1);
+        } finally {
+            workers.shutdownNow();
+        }
+    }
+
+    @Test
+    void startsTheHighlightsPassOnceAHoldingsRelationshipsAreSaved() {
+        AnalysisService analysis = mock(AnalysisService.class);
+        when(analysis.tickerFor(anyLong())).thenReturn("NVDA");
+        HighlightJob highlights = mock(HighlightJob.class);
+        ExecutorService workers = Executors.newSingleThreadExecutor();
+        try {
+            new AnalysisJob(analysis, secondChecks, workers, highlights, mock(SupplierReader.class)).run(List.of(1L));
+
+            var order = inOrder(analysis, highlights);
+            order.verify(analysis).analyze(1L);
+            order.verify(highlights).run();
+        } finally {
+            workers.shutdownNow();
+        }
+    }
+
+    @Test
+    void readsTheSuppliersOneByOneOnlyAfterTheHoldingIsAnalysed() throws Exception {
+        AnalysisService analysis = mock(AnalysisService.class);
+        when(analysis.tickerFor(1L)).thenReturn("AMD");
+        SupplierReader suppliers = mock(SupplierReader.class);
+        when(suppliers.waitingFor(1L)).thenReturn(List.of(21L, 22L));
+        when(suppliers.tickerOf(21L)).thenReturn("TSM");
+        when(suppliers.tickerOf(22L)).thenReturn(null);
+        CountDownLatch bothRead = new CountDownLatch(2);
+        doAnswer(call -> {
+            bothRead.countDown();
+            return null;
+        }).when(suppliers).read(anyLong());
+        ExecutorService workers = Executors.newSingleThreadExecutor();
+        try {
+            new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), suppliers).run(List.of(1L));
+
+            assertThat(bothRead.await(3, TimeUnit.SECONDS)).isTrue();
+            var order = inOrder(analysis, suppliers);
+            order.verify(analysis).analyze(1L);
+            order.verify(suppliers).waitingFor(1L);
+            order.verify(suppliers).read(21L);
+            order.verify(suppliers).read(22L);
+        } finally {
+            workers.shutdownNow();
+        }
+    }
+
+    @Test
+    void aSupplierThatCannotBeReadIsMarkedFailedAndTheNextIsStillRead() throws Exception {
+        AnalysisService analysis = mock(AnalysisService.class);
+        when(analysis.tickerFor(1L)).thenReturn("AMD");
+        SupplierReader suppliers = mock(SupplierReader.class);
+        when(suppliers.waitingFor(1L)).thenReturn(List.of(21L, 22L));
+        when(suppliers.tickerOf(anyLong())).thenReturn("TSM");
+        doThrow(new IllegalStateException("The transaction could not be saved.")).when(suppliers).read(21L);
+        CountDownLatch secondRead = new CountDownLatch(1);
+        doAnswer(call -> {
+            secondRead.countDown();
+            return null;
+        }).when(suppliers).read(22L);
+        ExecutorService workers = Executors.newSingleThreadExecutor();
+        try {
+            new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), suppliers).run(List.of(1L));
+
+            assertThat(secondRead.await(3, TimeUnit.SECONDS)).isTrue();
+            org.mockito.Mockito.verify(suppliers).fail(21L);
+            org.mockito.Mockito.verify(suppliers, org.mockito.Mockito.never()).fail(22L);
         } finally {
             workers.shutdownNow();
         }

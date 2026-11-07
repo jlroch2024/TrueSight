@@ -7,6 +7,7 @@ import com.truesight.company.CompanyRepository;
 import com.truesight.news.AlertRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
+import com.truesight.report.SupplierReader;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Lists a portfolio's holdings, replaces them from an uploaded CSV, and adds, re-weights or removes one.
@@ -34,6 +36,7 @@ public class HoldingService {
     private final HoldingCsvReader csvReader;
     private final CurrentUser currentUser;
     private final AlertRepository alerts;
+    private final SupplierReader suppliers;
 
     /** The longest ticker the holdings table holds; the CSV reader refuses longer ones too. */
     private static final int MAX_TICKER_LENGTH = 20;
@@ -41,7 +44,7 @@ public class HoldingService {
 
     public HoldingService(PortfolioRepository portfolios, HoldingRepository holdings, CompanyRepository companies,
                           CompanyDisplayNames displayNames, ReportRepository reports, HoldingCsvReader csvReader, CurrentUser currentUser,
-                          AlertRepository alerts) {
+                          AlertRepository alerts, SupplierReader suppliers) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.companies = companies;
@@ -50,12 +53,15 @@ public class HoldingService {
         this.csvReader = csvReader;
         this.currentUser = currentUser;
         this.alerts = alerts;
+        this.suppliers = suppliers;
     }
 
     @Transactional(readOnly = true)
     public List<HoldingResponse> list(Long portfolioId) {
         checkOwned(portfolioId);
-        return holdings.findByPortfolioIdOrderByTickerAsc(portfolioId).stream().map(this::toResponse).toList();
+        List<Holding> rows = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId);
+        SupplierReader.Progress progress = progressOf(rows);
+        return rows.stream().map(holding -> toResponse(holding, progress)).toList();
     }
 
     /**
@@ -104,7 +110,8 @@ public class HoldingService {
         if (holdings.existsByPortfolioIdAndTickerIgnoreCase(portfolioId, ticker)) {
             throw ApiException.conflict(ticker + " is already in this portfolio.");
         }
-        return toResponse(holdings.save(new Holding(portfolioId, ticker, weight)));
+        Holding added = holdings.save(new Holding(portfolioId, ticker, weight));
+        return toResponse(added, progressOf(holdings.findByPortfolioIdOrderByTickerAsc(portfolioId)));
     }
 
     /** Changes one holding's weight; an empty weight says it has none. */
@@ -113,7 +120,8 @@ public class HoldingService {
         checkOwned(portfolioId);
         Holding holding = findHolding(portfolioId, holdingId);
         holding.setWeight(checkedWeight(request.weight()));
-        return toResponse(holdings.save(holding));
+        Holding changed = holdings.save(holding);
+        return toResponse(changed, progressOf(holdings.findByPortfolioIdOrderByTickerAsc(portfolioId)));
     }
 
     /**
@@ -146,7 +154,12 @@ public class HoldingService {
                 .orElseThrow(() -> ApiException.notFound("Portfolio not found."));
     }
 
-    private HoldingResponse toResponse(Holding holding) {
+    /** How far reading the suppliers of these holdings has got, counted once for the whole portfolio. */
+    private SupplierReader.Progress progressOf(List<Holding> rows) {
+        return suppliers.progressOf(rows.stream().map(Holding::getCompanyId).filter(Objects::nonNull).toList());
+    }
+
+    private HoldingResponse toResponse(Holding holding, SupplierReader.Progress progress) {
         Company company = holding.getCompanyId() == null ? null
                 : companies.findById(holding.getCompanyId()).orElse(null);
         Report report = holding.getCompanyId() == null ? null
@@ -162,6 +175,8 @@ public class HoldingService {
                 report == null ? null : report.getForm(),
                 report == null ? null : report.getFilingDate(),
                 report == null ? null : report.getUrl(),
-                holding.getStatus() == HoldingStatus.DONE && report != null ? report.getCreatedAt() : null);
+                holding.getStatus() == HoldingStatus.DONE && report != null ? report.getCreatedAt() : null,
+                progress.read(),
+                progress.toRead());
     }
 }

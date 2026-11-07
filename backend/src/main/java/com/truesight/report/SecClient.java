@@ -141,7 +141,21 @@ public class SecClient {
         return fallback;
     }
 
-    private synchronized String request(String url, String fallback) {
+    /**
+     * Waits for the next request slot, then downloads outside the lock, so one large report never holds up every
+     * other SEC request: requests still start at most 10 a second, but their downloads can overlap.
+     */
+    private String request(String url, String fallback) {
+        awaitNextSlot();
+        try {
+            return client.get().uri(url).retrieve().body(String.class);
+        } catch (RestClientException exception) {
+            throw new SecAccessException(failureMessage(exception, fallback), exception);
+        }
+    }
+
+    /** Holds the lock only while waiting for this request's turn, and books the slot after it. */
+    private synchronized void awaitNextSlot() {
         long now = System.currentTimeMillis();
         long wait = nextRequestAt - now;
         if (wait > 0) {
@@ -153,11 +167,6 @@ public class SecClient {
             }
         }
         nextRequestAt = System.currentTimeMillis() + intervalMillis;
-        try {
-            return client.get().uri(url).retrieve().body(String.class);
-        } catch (RestClientException exception) {
-            throw new SecAccessException(failureMessage(exception, fallback), exception);
-        }
     }
 
     public record SecCompany(String name, String cik, String ticker) { }

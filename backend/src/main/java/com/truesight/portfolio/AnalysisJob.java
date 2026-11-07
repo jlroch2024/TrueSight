@@ -1,6 +1,8 @@
 package com.truesight.portfolio;
 
+import com.truesight.relationship.HighlightJob;
 import com.truesight.relationship.SecondCheckPassService;
+import com.truesight.report.SupplierReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -24,14 +27,19 @@ public class AnalysisJob {
     private final AnalysisService analysis;
     private final SecondCheckPassService secondChecks;
     private final Executor analysisExecutor;
+    private final HighlightJob highlights;
+    private final SupplierReader suppliers;
     private final ConcurrentHashMap<String, Object> companyLocks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Object> reportLocks = new ConcurrentHashMap<>();
 
     public AnalysisJob(AnalysisService analysis, SecondCheckPassService secondChecks,
-                       @Qualifier("analysisExecutor") Executor analysisExecutor) {
+                       @Qualifier("analysisExecutor") Executor analysisExecutor,
+                       HighlightJob highlights, SupplierReader suppliers) {
         this.analysis = analysis;
         this.secondChecks = secondChecks;
         this.analysisExecutor = analysisExecutor;
+        this.highlights = highlights;
+        this.suppliers = suppliers;
     }
 
     @Async
@@ -44,8 +52,15 @@ public class AnalysisJob {
 
     private void analyze(Long holdingId) {
         String ticker = analysis.tickerFor(holdingId);
-        synchronized (companyLocks.computeIfAbsent(ticker, ignored -> new Object())) {
+        synchronized (lockFor(ticker)) {
             analysis.analyze(holdingId);
+        }
+        // Started here, once the holding's relationships are saved, so the job can see them.
+        highlights.run();
+        // The holding is Done already: its suppliers are read afterwards, behind the work queued before them.
+        List<Long> waiting = suppliers.waitingFor(holdingId);
+        if (!waiting.isEmpty()) {
+            analysisExecutor.execute(() -> readSuppliers(waiting));
         }
         // analysis.analyze has committed the holding as Done (or not), so the holding no longer waits for the second
         // check. The check still runs on this analysis worker, so while every worker is busy a holding that has not
@@ -69,5 +84,26 @@ public class AnalysisJob {
             log.warn("The second check for holding {} could not be made. The analyst-run pass will ask again.",
                     holdingId, failure);
         }
+    }
+
+    /** Reads the suppliers one by one. One that fails is recorded as Failed and the rest are still read. */
+    private void readSuppliers(List<Long> companyIds) {
+        for (Long companyId : companyIds) {
+            String ticker = suppliers.tickerOf(companyId);
+            // Locked like a holding of the same ticker, so the same company is never read twice at once.
+            synchronized (lockFor(ticker == null ? "company-" + companyId : ticker)) {
+                try {
+                    suppliers.read(companyId);
+                } catch (RuntimeException exception) {
+                    log.warn("Reading supplier {}'s annual report failed.", companyId, exception);
+                    suppliers.fail(companyId);
+                }
+            }
+        }
+        highlights.run();
+    }
+
+    private Object lockFor(String ticker) {
+        return companyLocks.computeIfAbsent(ticker.toUpperCase(Locale.ROOT), ignored -> new Object());
     }
 }
