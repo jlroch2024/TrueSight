@@ -30,8 +30,9 @@ export function useDismiss<T extends HTMLElement>(open: boolean, away: () => voi
 /**
  * The menu: drawn at the top of the page (glass inside glass cannot blur what is behind both), lined up with its
  * anchor's left or right edge, growing out of it on a spring. It opens 12px under the bar its anchor sits in (the page's
- * one gap), so its top lines up with the panels under that bar. reachBar stretches it from its anchor to the bar's far
-edge, so it lines up with the panel under that bar too.
+ * one gap), so its top lines up with the panels under that bar, and a menu lined up with its right edge ends where the bar
+ * ends. reachBar stretches it from its anchor to the bar's far
+edge, so it lines up with the panel under that bar too; fitAnchor makes it exactly as wide as its anchor.
  */
 export function Popover({
   anchor,
@@ -40,6 +41,7 @@ export function Popover({
   children,
   label,
   reachBar = false,
+  fitAnchor = false,
 }: {
   anchor: RefObject<HTMLElement | null>;
   open: boolean;
@@ -47,6 +49,7 @@ export function Popover({
   children: ReactNode;
   label: string;
   reachBar?: boolean;
+  fitAnchor?: boolean;
 }) {
   const [place, setPlace] = useState<{ top: number; left?: number; right?: number; width?: number; minWidth?: number } | null>(null);
   useLayoutEffect(() => {
@@ -55,19 +58,21 @@ export function Popover({
       const box = anchor.current!.getBoundingClientRect();
       const bar = anchor.current!.closest('.island')?.getBoundingClientRect() ?? box;
       const top = bar.bottom + 12;
-      const size = reachBar
-        ? { width: align === 'left' ? bar.right - box.left : box.right - bar.left, minWidth: 0 }
-        : {};
+      const size = fitAnchor
+        ? { width: box.width, minWidth: 0 }
+        : reachBar
+          ? { width: align === 'left' ? bar.right - box.left : box.right - bar.left, minWidth: 0 }
+          : {};
       setPlace(
         align === 'left'
           ? { top, left: box.left, ...size }
-          : { top, right: window.innerWidth - box.right, ...size },
+          : { top, right: window.innerWidth - bar.right, ...size },
       );
     };
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, [open, anchor, align, reachBar]);
+  }, [open, anchor, align, reachBar, fitAnchor]);
   return createPortal(
     <AnimatePresence>
       {open && place !== null && (

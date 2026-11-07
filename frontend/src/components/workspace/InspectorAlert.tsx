@@ -2,7 +2,7 @@
 // portfolio it reaches, how many holdings, how sure the assessment is); Open Article and Close Alert or Restore; what
 // happened and why it matters; how it reaches each holding, as a path of linked tiles drawn as the graph draws them;
 // the analyst-approved suggested next step; and its other sources.
-import { ChevronRight, BellOff, Clock, FileText, Lightbulb, Newspaper, ShieldCheck, Undo2, Waypoints } from 'lucide-react';
+import { BellOff, CircleDashed, Clock, FileText, Lightbulb, Newspaper, ShieldCheck, Target, Undo2, Waypoints } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import type { AlertEvent, ReachedHolding } from '../../api/alerts';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, openInNewTab } from '../../format';
@@ -13,6 +13,7 @@ import { Count } from '../Count';
 import { FlowLink } from '../FlowLink';
 import { Tile } from '../Tile';
 import { Stat, Stats } from './InspectorCompany';
+import { ReachKind } from './status';
 import { type Chosen, type WorkspaceView, alertKey, exposureOf } from './view';
 
 const SEVERITY_TONE = { HIGH: 'var(--high)', MEDIUM: 'var(--medium)', LOW: 'var(--low)' } as const;
@@ -106,19 +107,26 @@ export function AlertView({
         )}
       </div>
 
-      <section className="insp-section story">
-        {assessment.summary && (
-          <>
-            <h3>What Happened</h3>
-            <p className="prose">{assessment.summary}</p>
-          </>
-        )}
-        <h3>Why It Matters</h3>
+      {assessment.summary && (
+        <section className="insp-section" aria-label="What Happened">
+          <h3>
+            <Newspaper size={16} className="muted" />
+            What Happened
+          </h3>
+          <p className="prose">{assessment.summary}</p>
+        </section>
+      )}
+
+      <section className="insp-section why" aria-label="Why It Matters" style={{ '--tone': tone } as CSSProperties}>
+        <h3>
+          <Target size={16} />
+          Why It Matters
+        </h3>
         <p className="prose">{assessment.reason}</p>
         <p className="prose faint small">Based on the Headline Only</p>
       </section>
 
-      <section className="insp-section" aria-label="How It Reaches You">
+      <section className="insp-section" aria-label="How It Reaches You" style={{ '--tone': tone } as CSSProperties}>
         <h3>
           <Waypoints size={16} className="muted" />
           How It Reaches You
@@ -202,16 +210,21 @@ function PathRow({ item, view, onChoose }: { item: ReachedHolding; view: Workspa
           <i />
           {item.ticker}
         </span>
-        <span className={`reach-kind${item.indirect ? ' indirect' : ''}`}>{item.indirect ? 'Indirect' : 'Direct'}</span>
+        <ReachKind indirect={item.indirect} />
         {/* How confident TrueSight is about this path; none for an alert about the holding itself. */}
         {item.confidence && <ConfidenceTag confidence={item.confidence} />}
-        {item.reviewStatus === 'UNREVIEWED' && <span className="path-unreviewed">Not Yet Reviewed</span>}
+        {item.reviewStatus === 'UNREVIEWED' && (
+          <span className="path-unreviewed">
+            <CircleDashed size={13} aria-hidden="true" />
+            Not Yet Reviewed
+          </span>
+        )}
       </span>
       <span className="path-steps">
         {steps.map((shownStep, index) => (
           <span key={`${shownStep.name}-${index}`} className={`path-step${index > 0 ? ' linked' : ''}`}>
             {index > 0 && <FlowLink {...linkLook(index - 1)} />}
-            <Tile name={shownStep.name} ticker={shownStep.ticker} size={30} holding={shownStep.holding} colour={shownStep.colour} />
+            <Tile name={shownStep.name} ticker={shownStep.ticker} size={36} holding={shownStep.holding} colour={shownStep.colour} />
           </span>
         ))}
       </span>
@@ -219,7 +232,6 @@ function PathRow({ item, view, onChoose }: { item: ReachedHolding; view: Workspa
         {item.supplierName
           ? steps.map((shownStep, index) => (
               <span key={`${shownStep.shown}-${index}`}>
-                {index > 0 && <ChevronRight size={12} className="path-sep" />}
                 <b>{shownStep.shown}</b>
               </span>
             ))

@@ -1,94 +1,69 @@
-# TrueSight
+<a href="https://truesight-1088051639519.asia-southeast1.run.app">
+  <img src="docs/readme/hero.svg" width="100%" alt="TrueSight: Portfolio Supply-Chain Risk, Traced to the Source. Micron, Samsung and GlobalFoundries are drawn supplying NVIDIA, AMD and Qualcomm.">
+</a>
 
-Supplier Risk Intelligence for Portfolio Managers, from companies' own annual reports.
+<p align="center">
+  <a href="https://truesight-1088051639519.asia-southeast1.run.app"><img src="docs/readme/button-live-site.svg" height="44" alt="Open Live Site"></a>
+  &nbsp;
+  <a href="https://truesight-1088051639519.asia-southeast1.run.app/swagger-ui.html"><img src="docs/readme/button-api-docs.svg" height="44" alt="API Docs"></a>
+</p>
 
-Upload a portfolio, and TrueSight reads each company's latest annual report from the SEC, uses AI to find the suppliers
-and customers it names, checks every claim against the report's own words, and draws the result as a graph. Every
-relationship links to the sentence in the report it came from.
+<p align="center">
+  Upload your holdings. TrueSight reads each company's annual report, maps who it depends on,<br>
+  and warns you when something breaks. Every link points to the sentence that proves it.
+</p>
 
-## Live Site
+<img src="docs/readme/demo.webp" width="100%" alt="The TrueSight workspace: clicking from the portfolio's supply chain graph through to the sentence in Tesla's 10-K that names Panasonic as a supplier.">
 
-**https://truesight-1088051639519.asia-southeast1.run.app** (the Swagger page is at
-[/swagger-ui.html](https://truesight-1088051639519.asia-southeast1.run.app/swagger-ui.html))
+## How It Works
 
-Every merge into `main` updates it automatically, once the tests pass. [docs/deployment.md](docs/deployment.md) says
-what runs where on Google Cloud, and every step used to set it up.
+<img src="docs/readme/pipeline.svg" width="100%" alt="Two lines flow into your workspace. Reports: read the latest 10-K or 20-F from SEC EDGAR; Gemini names who supplies and buys, each with a quote; a quote must match the report word for word, or it is never shown. News: Google News for the companies on your chain; Gemini splits real disruptions from noise; TrueSight follows the links to the holdings an event reaches. The workspace shows each relationship with its sentence from the report, and an alert on each holding reached.">
 
-## Status
+## The AI Never Gets the Last Word
 
-**Sprint 1 is complete.** A portfolio manager can go from signing up to seeing their portfolio's supply chain, live on
-the web:
+What you see is always the company's own sentence, never the model's. This is the link in the recording above:
 
-| Area | What works |
-|---|---|
-| Accounts | Sign up and log in with an email and password (stored scrambled with BCrypt; a login lasts 2 hours) |
-| Portfolios | Several portfolios per user: create, rename, delete and switch between them. Nobody sees anyone else's |
-| Holdings | Upload a CSV with a ticker or symbol column, and an optional weight; uploading again replaces the holdings after a confirmation |
-| Annual reports | Analyse finds each company's latest annual report on the SEC website: a 10-K for US companies, a 20-F for foreign ones. It runs in the background, each holding shows its status, and a failed holding can be tried again. Each report is downloaded once and shared by every user |
-| Suppliers and customers | Gemini reads each report's business and risk sections and names the suppliers and customers, each with a quote. A relationship is kept only if its quote is really in the report, and what is shown is the report's own sentence, never the AI's |
-| One company, many names | The same company is recognised under the SEC's name, a report's name and a short name such as "TSMC", so it appears once |
-| Supply chain graph | Holdings, suppliers and customers as a graph with a live physics layout. Clicking an arrow shows its evidence, and Show in Report opens the SEC filing at that sentence |
-| Live site | One service on Google Cloud Run, with Cloud SQL and Secret Manager. Every pull request must pass the backend tests, the website tests and a Docker build; merging into `main` deploys automatically |
+> Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells.
+>
+> [Tesla 10-K, filed 29 January 2026](https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm)
 
-**Next (Sprint 2):** a refreshed interface, one Portfolio page with portfolios managed from the header, and a richer
-graph: company logos, supply flowing along the arrows, and suppliers shared by several holdings highlighted.
+## What You Can Do
 
-**The end goal:** TrueSight as supplier risk intelligence. It will watch the news about every company on a portfolio's
-supply chain, separate real signals from noise, work out which holdings an event affects, and alert the portfolio
-manager, showing how confident it is, and letting them correct a relationship the AI got wrong.
+<table>
+  <tr><td width="170"><strong>See the Chain</strong></td><td>A live graph of your holdings, their suppliers and customers, with shared dependencies marked</td></tr>
+  <tr><td><strong>Check the Source</strong></td><td>Show in Report opens the SEC filing, scrolled to the sentence and highlighted</td></tr>
+  <tr><td><strong>Get Warned</strong></td><td>News about every company on the chain is screened, and real disruptions become alerts on the holdings they reach</td></tr>
+  <tr><td><strong>Test a Failure</strong></td><td>What If It Stops? shows what a supplier going down would reach in your portfolio</td></tr>
+  <tr><td><strong>Correct the AI</strong></td><td>Analysts approve or reject each finding on the Analyst Desk, for every user</td></tr>
+</table>
 
-**Known limits today:** relationships come only from each company's latest annual report, so nothing is tracked over
-time yet; and a supplier or customer that does not file with the SEC is recognised by its name alone.
+## Built With
 
-## Getting It Running
+Spring Boot · Java 21 · PostgreSQL · React · TypeScript · d3-force · Gemini · SEC EDGAR · Google Cloud Run
 
-Install these first: **Git**, **Java 21**, **Node.js** (the LTS version) and **Docker Desktop**. Docker Desktop must be
-open whenever you run the database or the backend tests.
+[Why Each Piece Is Here](docs/tech-stack.md) · [How the Live Site Is Deployed](docs/deployment.md) · [Rules for Contributors and AI Agents](AGENTS.md) · [Every Story](docs/stories/README.md)
 
-1. **Settings.** Copy `.env.example` to `.env` in this folder. Fill in only what your story needs.
-2. **Database.** In this folder: `docker compose up -d`. Check it with `docker compose ps`: it should say `healthy`.
-3. **Backend.** In `backend/`: `./mvnw spring-boot:run` (on Windows without Git Bash: `mvnw.cmd spring-boot:run`).
-   It is ready when it says `Started TrueSightApplication`. Check http://localhost:8080/api/health.
-4. **Website.** In `frontend/`, in a second terminal: `npm install`, then `npm run dev`, then open
-   http://localhost:5173. The home page should say the backend is **Running**. On a laptop you can log in as
-   `demo@truesight.local` with the password `truesight-demo`, which owns a Demo Portfolio holding the 10 sample
-   companies from `docs/examples/holdings.csv`.
+<details>
+<summary><strong>Run It Locally</strong></summary>
 
-The Swagger page, listing every backend address, is at http://localhost:8080/swagger-ui.html.
+<br>
 
-## Running the Tests
+You need Git, Java 21, Node.js (LTS) and Docker Desktop, open. Copy `.env.example` to `.env` and fill in what you need.
 
-- Backend: in `backend/`, `./mvnw verify`. This runs the quick tests, then the ones against a real database, so
-  Docker must be running.
-- Website: in `frontend/`, `npm test`.
+```bash
+docker compose up -d
+```
 
-Both run automatically on every pull request, with a build of the live site's Docker image. Tests never call the SEC
-website or Gemini: they use the real saved data in `docs/examples/`.
+```bash
+cd backend && ./mvnw spring-boot:run
+```
 
-## What Each Piece Is For
+```bash
+cd frontend && npm install && npm run dev
+```
 
-| Piece | What it does | Why we need it |
-|---|---|---|
-| Spring Boot (Java 21) | The backend: receives requests and does the work | The course requires it |
-| PostgreSQL | The database | Saves users, portfolios, reports and AI results |
-| Flyway | Creates the database tables from numbered files | Every copy of the database is built the same way |
-| Swagger | A web page listing every backend address, where each can be tried | The course requires documented endpoints |
-| SEC EDGAR | The SEC's public database of company filings | Where every annual report comes from |
-| jsoup | Turns a report's web page into plain text | So the AI can read it, and its quotes can be checked |
-| Google Gemini | Reads each report's business and risk sections, and lists the suppliers and customers with quotes | Relationships are written in free prose, differently in every report: rules cannot find them |
-| React | The website | A dashboard with pages and a live graph needs a proper frontend |
-| Cytoscape.js | Draws the supply chain graph, with a physics layout | Shared suppliers pull to the centre, where they stand out |
-| Vite | Runs the website while developing, and builds it | Fast start-up, and one command to build |
-| Testcontainers | Starts a real PostgreSQL in Docker for the tests | Tests check the real database, not an imitation |
-| GitHub Actions | Runs every test on every pull request, and deploys `main` | Catches breakage before it is merged, and keeps the live site up to date |
-| Docker Compose | Starts the database with one command | Nobody installs PostgreSQL by hand |
-| Docker image (`Dockerfile`) | Packages the website and backend together | The live site is one service with one address |
-| Google Cloud Run | Runs the live site | No server to look after, and it costs almost nothing when idle |
-| Google Cloud SQL | The live site's PostgreSQL | A managed database with backups |
-| Google Secret Manager | Holds the live site's keys and passwords | Secrets never go in the repository |
+Open http://localhost:5173 and log in as `demo@truesight.local` with the password `truesight-demo`. This account exists only on laptops and in tests. The API docs are at http://localhost:8080/swagger-ui.html.
 
-## How We Work
+**Tests.** `./mvnw verify` in `backend/` (Docker must be running) and `npm test` in `frontend/`. They run on every pull request, and never call the SEC or Gemini: they use the real saved data in [`docs/examples/`](docs/examples/README.md).
 
-We work in Scrum sprints, tracked in Jira. Each Jira story gets one branch, named after its key (e.g.
-`TS-28-Upload-a-Portfolio-CSV`), and one pull request whose title starts with the key. `AGENTS.md` has the rules every
-AI coding agent follows, and the Definition of Done.
+</details>

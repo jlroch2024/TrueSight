@@ -189,7 +189,8 @@ public final class QuoteChecker {
         return count < inQuote ? 1 : 0;
     }
 
-    private static List<Word> split(String text) {
+    /** The text's words, lower-cased, with where each one is. Capitals, spacing and punctuation are left out. */
+    static List<Word> split(String text) {
         List<Word> result = new ArrayList<>();
         Matcher matcher = WORD.matcher(text);
         while (matcher.find()) {
@@ -211,7 +212,7 @@ public final class QuoteChecker {
     }
 
     /** One word, lower-cased, and where it is in the original text. */
-    private record Word(String text, int start, int end) {
+    record Word(String text, int start, int end) {
     }
 
     /** How well the quote lined up, and which report words it lined up with. */

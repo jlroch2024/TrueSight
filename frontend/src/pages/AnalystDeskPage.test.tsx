@@ -35,6 +35,7 @@ const waiting: ReviewItem = {
     criticalityEvidence: null,
     reviewedAt: null,
     reviewNote: null,
+    highlights: [],
   },
   reviewStatus: 'UNREVIEWED',
   reviewNote: null,
@@ -43,6 +44,7 @@ const waiting: ReviewItem = {
   usedByPortfolios: 1,
   secondCheck: null,
   secondCheckReason: null,
+  highlights: [],
 };
 
 function json(body: unknown) {

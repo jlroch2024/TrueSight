@@ -8,24 +8,29 @@
 // real graph does with it is tested in src/graph/.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { type ReactNode, type Ref, useImperativeHandle } from 'react';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
 import { App } from '../App';
 import type { AlertEvent, ReachedHolding } from '../api/alerts';
+import type { AskAnswer } from '../api/ask';
 import { tokenStore } from '../api/client';
 import type { Holding, Portfolio } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import type { WhatIf } from '../api/whatIf';
-import type { GraphFocus } from '../graph/LivingGraph';
+import type { GraphFocus, GraphHandle } from '../graph/LivingGraph';
 import { showInReportUrl } from '../format';
 import { sampleAlert, tsmcSuppliesNvidia } from '../test/sampleAlerts';
 import { TSMC } from '../test/sampleNews';
 import type { GraphEdge, GraphNode } from './supplyChain';
 
+// What the fake graph's snapshot() gives: a picture, or null as the real graph does when it cannot draw one.
+const picture = vi.hoisted(() => ({ png: 'data:image/png;base64,SNAPSHOT' as string | null }));
+
 vi.mock('../graph/LivingGraph', () => ({
   LivingGraph: (props: {
+    ref?: Ref<GraphHandle>;
     nodes: GraphNode[];
     edges: GraphEdge[];
     onEdgeSelect: (relationshipId: number) => void;
@@ -41,7 +46,9 @@ vi.mock('../graph/LivingGraph', () => ({
     bare?: boolean;
     insets?: { top: number; right: number; bottom: number; left: number };
     barStart?: ReactNode;
-  }) => (
+  }) => {
+    useImperativeHandle(props.ref, () => ({ snapshot: () => picture.png }), []);
+    return (
     <div data-testid="fake-graph">
       {props.barStart}
       <span data-testid="bare">{String(!!props.bare)}</span>
@@ -69,7 +76,8 @@ vi.mock('../graph/LivingGraph', () => ({
       ))}
       <button type="button" onClick={() => props.onNodeSelect?.(null)}>Graph Background</button>
     </div>
-  ),
+    );
+  },
 }));
 
 const sample = sampleRelationshipsJson as Relationship[];
@@ -93,6 +101,8 @@ function held(company: Relationship['company'], id: number, overrides: Partial<H
     reportDate: report.filingDate,
     reportLink: report.url,
     lastAnalysed: '2026-10-27T09:00:00Z',
+    suppliersRead: 0,
+    suppliersToRead: 0,
     ...overrides,
   };
 }
@@ -111,6 +121,8 @@ function waiting(ticker: string, id: number, overrides: Partial<Holding> = {}): 
     reportDate: null,
     reportLink: null,
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
     ...overrides,
   };
 }
@@ -129,6 +141,12 @@ type Backend = {
   portfoliosFail?: number;
   // What a news check finds, once it has run.
   found?: AlertEvent[];
+  // A news check that goes on running, however often the portfolio is listed.
+  stillChecking?: boolean;
+  // The answer to a question asked of Ask TrueSight, or the status and message to fail with.
+  ask?: (question: string, history: unknown[]) => AskAnswer | { status: number; message: string };
+  // A briefing the backend cannot make.
+  briefingFails?: boolean;
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
   // The answer to "what if this company stops?", by company id, or the status code to fail with.
@@ -156,11 +174,25 @@ function answer(url: string, init: RequestInit = {}): Response {
   if (url === '/api/portfolios') {
     if (backend.portfoliosFail) return json({ message: 'The server is restarting.' }, backend.portfoliosFail);
     // A check runs on the backend: listed again, it has finished.
-    if (backend.portfolio.newsStatus === 'CHECKING') {
+    if (backend.portfolio.newsStatus === 'CHECKING' && !backend.stillChecking) {
       backend.portfolio = { ...backend.portfolio, newsStatus: 'IDLE', newsCheckedAt: new Date().toISOString() };
       if (backend.found) backend.alerts = backend.found;
     }
     return json([backend.portfolio, { id: 9, name: 'Utilities', createdAt: '', newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: null }]);
+  }
+  if (url === `${base}/questions` && method === 'POST') {
+    const reply = backend.ask?.(body.question, body.history);
+    if (!reply) return json({ message: 'The AI could not be reached. Try again later.' }, 502);
+    return 'status' in reply ? json({ message: reply.message }, reply.status) : json(reply);
+  }
+  if (url === `${base}/briefing` && method === 'POST') {
+    if (backend.briefingFails) return json({ message: 'The briefing could not be made.' }, 500);
+    return new Response('%PDF-1.5', {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="Semiconductors-Briefing-2026-11-06.pdf"',
+      },
+    });
   }
   if (url === `${base}/news-check` && method === 'POST') {
     backend.portfolio = { ...backend.portfolio, newsStatus: 'CHECKING' };
@@ -284,12 +316,14 @@ beforeEach(() => {
     logoToken: '',
     sent: [],
   };
+  picture.png = 'data:image/png;base64,SNAPSHOT';
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => answer(url, init)));
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   tokenStore.clear();
+  window.innerWidth = 1440;
 });
 
 // ---- 1. The workspace ---------------------------------------------------------------------------------------------
@@ -307,7 +341,8 @@ describe('the workspace', () => {
     expect(within(drawer()).getByRole('tab', { name: 'Alerts' })).toHaveAttribute('aria-selected', 'false');
     // The graph is the ground, edge to edge, told how much of each side the panels cover.
     expect(screen.getByTestId('bare')).toHaveTextContent('true');
-    expect(insets()).toEqual({ top: 76, right: 12, bottom: 12, left: 404 });
+    // The bottom keeps the room Ask TrueSight's bar takes: 12 around it and 52 for it.
+    expect(insets()).toEqual({ top: 76, right: 12, bottom: 76, left: 404 });
   });
 
   it('opensTheInspectorOnlyOnceSomethingIsChosenAndTheGraphKeepsClearOfIt', async () => {
@@ -318,7 +353,7 @@ describe('the workspace', () => {
     await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
 
     expect(within(inspector()).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
-    expect(insets().right).toBe(444);
+    expect(insets().right).toBe(512);
   });
 
   it('letsGoOfTheChoiceWhenTheGraphsBackgroundIsClicked', async () => {
@@ -583,6 +618,38 @@ describe('Analyse', () => {
     expect(relationshipReads()).toBe(before + 1);
   });
 
+  it('addsAHoldingsSuppliersAndCustomersToTheGraphWithinOneCheckOfItTurningDoneWhileOthersAreStillAnalysing', async () => {
+    const nvidiaLinks = sample.filter((relationship) => relationship.company.id === NVIDIA.id);
+    const amdLinks = sample.filter((relationship) => relationship.company.id === AMD.id);
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2, { status: 'ANALYSING' }), held(LAM, 6, { status: 'ANALYSING' })];
+    backend.relationships = nvidiaLinks;
+    renderAt();
+    await graph();
+    const before = Number(screen.getByTestId('node-count').textContent);
+
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2), held(LAM, 6, { status: 'ANALYSING' })];
+    backend.relationships = [...nvidiaLinks, ...amdLinks];
+
+    // One check, 1.5 s, and the moment it takes the answers to come back.
+    await waitFor(() => expect(Number(screen.getByTestId('node-count').textContent)).toBeGreaterThan(before), { timeout: 2000 });
+    expect(screen.getByRole('button', { name: 'Portfolio: Semiconductors' })).toHaveTextContent('Analysing · 2 of 3 Done');
+  });
+
+  it('readsTheSuppliersAndCustomersAgainOnlyWhenAnotherHoldingIsDone', async () => {
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2, { status: 'ANALYSING' }), held(LAM, 6, { status: 'ANALYSING' })];
+    renderAt();
+    await graph();
+    const relationshipReads = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/portfolios/7/relationships').length;
+    const holdingReads = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/portfolios/7/holdings').length;
+    await waitFor(() => expect(relationshipReads()).toBeGreaterThan(0));
+    const before = relationshipReads();
+    const checks = holdingReads();
+
+    await waitFor(() => expect(holdingReads()).toBeGreaterThan(checks), { timeout: 2000 });
+
+    expect(relationshipReads()).toBe(before);
+  });
+
   it('offersAnalyseWhenThePortfolioHasHoldingsButNoSuppliersOrCustomersYet', async () => {
     backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
     backend.relationships = [];
@@ -591,6 +658,264 @@ describe('Analyse', () => {
     expect(await screen.findByRole('heading', { name: 'No Supply Chain Yet' })).toBeInTheDocument();
     expect(screen.queryByTestId('fake-graph')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Analyse' })).toHaveLength(2);
+  });
+});
+
+describe('Ask TrueSight', () => {
+  /** What the backend answers every question with. */
+  function answering(reply: AskAnswer) {
+    backend.ask = () => reply;
+  }
+  const bar = () => screen.getByRole('region', { name: 'Ask TrueSight' });
+  async function ask(question: string) {
+    await userEvent.type(within(bar()).getByLabelText('Ask TrueSight'), question);
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Ask' }));
+  }
+
+  it('sitsAlongTheBottomBetweenTheDrawerAndTheInspectorOnceThePortfolioHasLoaded', async () => {
+    renderAt();
+    await graph();
+
+    expect(bar()).toBeInTheDocument();
+    expect(bar().style.left).toBe('404px');
+    expect(bar().style.right).toBe('12px');
+    await userEvent.click(await screen.findByRole('button', { name: `Company ${NVIDIA.id}` }));
+    // It makes way for the Inspector as the graph does.
+    expect(bar().style.right).toBe('512px');
+  });
+
+  it('asksTheQuestionForThePortfolioInTheAddressAndShowsTheAnswerAboveTheBox', async () => {
+    answering({ answer: 'Taiwan Semiconductor Manufacturing supplies NVIDIA (unreviewed).', sources: [] });
+    renderAt();
+    await graph();
+
+    await ask('Who supplies NVIDIA?');
+
+    expect(await within(bar()).findByText('Taiwan Semiconductor Manufacturing supplies NVIDIA (unreviewed).')).toBeInTheDocument();
+    expect(within(bar()).getByText('Who supplies NVIDIA?')).toBeInTheDocument();
+    expect(sentTo('POST', '/api/portfolios/7/questions')[0]!.body).toEqual({ question: 'Who supplies NVIDIA?', history: [] });
+    // The box is ready for the next question.
+    expect(within(bar()).getByLabelText('Ask TrueSight')).toHaveValue('');
+  });
+
+  it('startsFromAQuestionItSuggestsWhileNothingHasBeenAsked', async () => {
+    answering({ answer: 'Two of them do.', sources: [] });
+    renderAt();
+    await graph();
+
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Which Holdings Share a Supplier' }));
+
+    expect(await within(bar()).findByText('Two of them do.')).toBeInTheDocument();
+    expect(sentTo('POST', '/api/portfolios/7/questions')[0]!.body).toMatchObject({ question: 'Which of my holdings share a supplier?' });
+    // Once a question has been asked there is nothing more to suggest.
+    expect(within(bar()).queryByRole('button', { name: 'Which Holdings Share a Supplier' })).not.toBeInTheDocument();
+  });
+
+  it('sendsTheLastQuestionsAndAnswersBackForContext', async () => {
+    answering({ answer: 'An answer (unreviewed).', sources: [] });
+    renderAt();
+    await graph();
+
+    await ask('First?');
+    await within(bar()).findByText('An answer (unreviewed).');
+    await ask('Second?');
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/questions')).toHaveLength(2));
+
+    expect(sentTo('POST', '/api/portfolios/7/questions')[1]!.body).toEqual({
+      question: 'Second?',
+      history: [{ question: 'First?', answer: 'An answer (unreviewed).' }],
+    });
+  });
+
+  it('opensARelationshipSourceInTheInspector', async () => {
+    answering({ answer: 'It is unreviewed.', sources: [{ kind: 'RELATIONSHIP', id: 1, label: 'TSMC supplies NVIDIA' }] });
+    renderAt();
+    await graph();
+    await ask('Who supplies NVIDIA?');
+
+    await userEvent.click(await within(bar()).findByRole('button', { name: 'TSMC supplies NVIDIA' }));
+
+    expect(inspector()).toBeInTheDocument();
+    expect(screen.getByTestId('selected-relationship')).toHaveTextContent('1');
+  });
+
+  it('opensAHoldingSourceAsItsCompanyOnTheGraph', async () => {
+    answering({ answer: 'NVIDIA is 18% of the portfolio.', sources: [{ kind: 'HOLDING', id: 1, label: 'NVIDIA (NVDA)' }] });
+    renderAt();
+    await graph();
+    await ask('How big is NVIDIA?');
+
+    await userEvent.click(await within(bar()).findByRole('button', { name: 'NVIDIA (NVDA)' }));
+
+    expect(inspector()).toBeInTheDocument();
+    expect(screen.getByTestId('selected-node')).toHaveTextContent(String(NVIDIA.id));
+  });
+
+  it('opensAnAlertSourceAsTheEventThatHoldsThatAlert', async () => {
+    const alert = { ...sampleAlert({ id: 21, holdings: [tsmcSuppliesNvidia(1, 1)] }), alertIds: [21, 22] };
+    backend.alerts = [alert];
+    answering({ answer: 'One alert is open.', sources: [{ kind: 'ALERT', id: 22, label: 'Open alert' }] });
+    renderAt();
+    await graph();
+    await ask('Which alerts are open?');
+
+    await userEvent.click(await within(bar()).findByRole('button', { name: 'Open alert' }));
+
+    expect(within(inspector()).getByRole('heading', { name: alert.headline.article.title })).toBeInTheDocument();
+  });
+
+  it('showsASourceThatIsGoneButCannotOpenIt', async () => {
+    answering({ answer: 'It is unreviewed.', sources: [{ kind: 'RELATIONSHIP', id: 9999, label: 'A link that is gone' }] });
+    renderAt();
+    await graph();
+    await ask('Who?');
+
+    const source = await within(bar()).findByRole('button', { name: 'A link that is gone' });
+
+    expect(source).toBeDisabled();
+    expect(source).toHaveAttribute('title', 'No Longer Available');
+  });
+
+  it('showsWhyAQuestionFailedAndAsksItAgainWithRetry', async () => {
+    backend.ask = () => ({ status: 502, message: 'The AI could not be reached. Try again later.' });
+    renderAt();
+    await graph();
+    await ask('Who supplies NVIDIA?');
+
+    expect(await within(bar()).findByRole('alert')).toHaveTextContent('The AI could not be reached. Try again later.');
+    answering({ answer: 'Now it works (unreviewed).', sources: [] });
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Retry' }));
+
+    expect(await within(bar()).findByText('Now it works (unreviewed).')).toBeInTheDocument();
+    expect(within(bar()).queryByRole('alert')).not.toBeInTheDocument();
+    expect(sentTo('POST', '/api/portfolios/7/questions')).toHaveLength(2);
+  });
+
+  it('keepsTheInspectorOpenWhenEscapeIsPressedInTheBox', async () => {
+    answering({ answer: 'It is unreviewed.', sources: [] });
+    renderAt();
+    await graph();
+    await ask('Who?');
+    await within(bar()).findByText('It is unreviewed.');
+    await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
+    expect(inspector()).toBeInTheDocument();
+
+    await userEvent.type(within(bar()).getByLabelText('Ask TrueSight'), '{Escape}');
+
+    // Escape closed the conversation, not the Inspector behind it.
+    expect(inspector()).toBeInTheDocument();
+    expect(within(bar()).queryByRole('log')).not.toBeInTheDocument();
+  });
+
+  it('liftsTheToastsAboveTheBar', async () => {
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Analyse' }));
+
+    await waitFor(() => expect(document.querySelector('.toasts')).toBeInTheDocument());
+    expect((document.querySelector('.toasts') as HTMLElement).style.bottom).toBe('88px');
+  });
+
+  it('isNotOnAPhone', async () => {
+    window.innerWidth = 375;
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(screen.queryByRole('region', { name: 'Ask TrueSight' })).not.toBeInTheDocument();
+  });
+
+  it('isNotThereWhileThePortfolioIsStillLoading', async () => {
+    backend.portfoliosFail = 500;
+    renderAt();
+
+    await screen.findByText('The server is restarting.');
+
+    expect(screen.queryByRole('region', { name: 'Ask TrueSight' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Download Briefing', () => {
+  /** Stands in for the browser's way of saving a file, and gives back what it saved the file as. */
+  function saves() {
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:briefing');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const names: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    return { names, click };
+  }
+
+  it('sendsTheGraphAsItIsOnScreenForThePortfolioInTheAddress', async () => {
+    saves();
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: 'data:image/png;base64,SNAPSHOT' });
+  });
+
+  it('savesThePdfUnderTheNameTheBackendGives', async () => {
+    const { names } = saves();
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(names).toEqual(['Semiconductors-Briefing-2026-11-06.pdf']));
+  });
+
+  it('stillMakesABriefingForAPortfolioWithNoGraphBySendingNoPicture', async () => {
+    saves();
+    backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
+    backend.relationships = [];
+    renderAt();
+    expect(await screen.findByRole('heading', { name: 'No Supply Chain Yet' })).toBeInTheDocument();
+    expect(screen.queryByTestId('fake-graph')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: null });
+  });
+
+  it('sendsNoPictureWhenTheGraphCannotDrawOne', async () => {
+    saves();
+    picture.png = null;
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: null });
+  });
+
+  it('showsWhyABriefingFailedAndOffersTheButtonAgain', async () => {
+    const { click } = saves();
+    backend.briefingFails = true;
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The briefing could not be made.');
+    expect(click).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Download Briefing' })).toBeEnabled();
+  });
+
+  it('isOffUntilThePortfolioHasHoldings', async () => {
+    backend.holdings = [];
+    backend.relationships = [];
+    renderAt();
+    expect(await within(drawer()).findByText('No Holdings Yet')).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Download Briefing' })).toBeDisabled();
   });
 });
 
@@ -607,6 +932,21 @@ describe('Check News', () => {
     await waitFor(() => expect(toast()).toHaveTextContent('News Checked · 1 Open Alert'), { timeout: 4000 });
     expect(within(drawer()).getByRole('listitem', { name: backend.found[0]!.headline.article.title })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '1 Open Alert' })).toBeInTheDocument();
+  });
+
+  it('showsNewAlertsInTheAlertsTabAndTheOpenAlertsCountWhileTheCheckIsStillRunning', async () => {
+    backend.stillChecking = true;
+    renderAt('/portfolios/7?tab=alerts');
+    await graph();
+    await userEvent.click(screen.getByRole('button', { name: 'Check News' }));
+    await screen.findByRole('button', { name: 'Checking News' });
+
+    const found = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [found];
+
+    expect(await within(drawer()).findByRole('listitem', { name: found.headline.article.title }, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1 Open Alert' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Checking News' })).toBeDisabled();
   });
 
   it('saysWhyNewsCouldNotBeChecked', async () => {
@@ -1024,7 +1364,7 @@ describe('the Inspector', () => {
 
 // ---- The graph's marks and logos -------------------------------------------------------------------------------------
 
-// ---- What If It Stops? --------------------------------------------------------------------------------------------
+// ---- Simulate Disruption -------------------------------------------------------------------------------------------
 
 /**
  * TSMC stopping, over the real sample: it supplies NVIDIA (relationship 1) and AMD (relationship 3). Lam Research
@@ -1051,20 +1391,20 @@ function tsmcStops(overrides: Partial<WhatIf> = {}): WhatIf {
 async function openTsmcScenario() {
   await graph();
   await userEvent.click(screen.getByRole('button', { name: `Company ${sample[0]!.counterparty.id}` }));
-  await userEvent.click(within(inspector()).getByRole('button', { name: 'What If It Stops?' }));
+  await userEvent.click(within(inspector()).getByRole('button', { name: 'Simulate Disruption' }));
 }
 
-describe('What If It Stops?', () => {
+describe('Simulate Disruption', () => {
   it('isOfferedForAnyCompanyNotOnlyAHolding', async () => {
     renderAt();
     await graph();
 
     await userEvent.click(screen.getByRole('button', { name: `Company ${sample[0]!.counterparty.id}` }));
     expect(within(inspector()).getByText('Not Held')).toBeInTheDocument();
-    expect(within(inspector()).getByRole('button', { name: 'What If It Stops?' })).toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: 'Simulate Disruption' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
-    expect(within(inspector()).getByRole('button', { name: 'What If It Stops?' })).toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: 'Simulate Disruption' })).toBeInTheDocument();
   });
 
   it('listsEveryHoldingItReachesWithItsPathAndNotOneThatOnlySuppliesTheCompany', async () => {
@@ -1268,7 +1608,253 @@ describe('the old addresses', () => {
   });
 });
 
-// ---- 7. No sidebar, and the Analyst Desk for analysts only ----------------------------------------------------------
+// ---- 7. On a phone ------------------------------------------------------------------------------------------------
+
+describe('the Inspector', () => {
+  it.each(['PORTFOLIO_MANAGER', 'ANALYST'] as const)('isTheSameWidthForA %s', async (role) => {
+    backend.me = { ...backend.me, role };
+    renderAt();
+    const shown = await graph();
+
+    await userEvent.click(within(shown).getAllByRole('button', { name: /^Company / })[0]!);
+
+    expect(inspector()).toHaveStyle({ width: '488px' });
+    expect(insets().right).toBe(512);
+  });
+});
+
+describe('on a phone', () => {
+  const dock = () => within(screen.getByRole('tablist', { name: 'Workspace' }));
+  const press = (name: string | RegExp) => userEvent.click(dock().getByRole('tab', { name }));
+  const sheet = (name: string) => screen.getByRole('region', { name });
+  const openSheets = () => screen.queryAllByRole('region').filter((region) => region.classList.contains('sheet'));
+  // A sheet leaves on the panels' own curve, so the one before it can still be on its way out for a moment.
+  const onlySheetIs = (name: string) =>
+    waitFor(() => expect(openSheets().map((region) => region.getAttribute('aria-label'))).toEqual([name]));
+  const backOnTheGraph = () => waitFor(() => expect(openSheets()).toEqual([]));
+
+  beforeEach(() => {
+    window.innerWidth = 375;
+  });
+
+  it('showsTheGraphAndTheTabBarWithOneSheetAtATimeAndNoDrawerOrInspector', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(dock().getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Holdings', 'Alerts', 'Graph', 'Details']);
+    expect(dock().getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
+    expect(openSheets()).toEqual([]);
+    expect(screen.queryByRole('complementary', { name: 'Portfolio' })).not.toBeInTheDocument();
+
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    expect(dock().getByRole('tab', { name: 'Holdings' })).toHaveAttribute('aria-selected', 'true');
+    await press('Alerts');
+    await onlySheetIs('Alerts');
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  });
+
+  it('keepsTheOpenSheetOutOfTheAddress', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press('Alerts');
+    await onlySheetIs('Alerts');
+
+    expect(screen.getByRole('status', { name: 'Address' })).toHaveTextContent('/portfolios/7');
+    expect(screen.getByRole('status', { name: 'Address' })).not.toHaveTextContent('tab=');
+  });
+
+  it('opensOnTheAlertsSheetFromAnAddressThatAsksForAlerts', async () => {
+    renderAt('/portfolios/7?tab=alerts');
+    await screen.findByTestId('fake-graph');
+
+    await onlySheetIs('Alerts');
+  });
+
+  it('goesBackToTheGraphWhenTheOpenTabIsPressedAgain', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    await press('Holdings');
+
+    await backOnTheGraph();
+    expect(dock().getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('keepsDetailsUnavailableUntilSomethingHasBeenChosen', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(dock().getByRole('tab', { name: 'Details' })).toBeDisabled();
+  });
+
+  it('opensDetailsOnACompanyChosenInTheHoldingsSheetAndAgainOnTheLastChoice', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    await userEvent.click(within(sheet('Holdings')).getByRole('listitem', { name: new RegExp(NVIDIA.ticker!) }));
+
+    await onlySheetIs('Inspector');
+    expect(dock().getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(sheet('Inspector')).getByRole('heading', { name: NVIDIA.displayName })).toBeInTheDocument();
+
+    // Closed, then opened from the tab bar: on what it last showed.
+    await userEvent.click(within(sheet('Inspector')).getByRole('button', { name: 'Close the Inspector' }));
+    await backOnTheGraph();
+    await press('Details');
+
+    await onlySheetIs('Inspector');
+    expect(within(sheet('Inspector')).getByRole('heading', { name: NVIDIA.displayName })).toBeInTheDocument();
+  });
+
+  it('opensDetailsOnAnAlertChosenInTheAlertsSheetAndLightsItOnTheGraph', async () => {
+    const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [alert];
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    await press(/^Alerts/);
+    await onlySheetIs('Alerts');
+    await userEvent.click(within(sheet('Alerts')).getAllByRole('button', { name: alert.headline.article.title })[0]!);
+
+    await onlySheetIs('Inspector');
+    expect(within(sheet('Inspector')).getByText('Alert')).toBeInTheDocument();
+    expect(screen.getByTestId('focus-nodes')).not.toHaveTextContent(/^$/);
+  });
+
+  it('showsARelationshipChosenInDetailsThereAndGoesBackToItFromTheTab', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+    await userEvent.click(within(sheet('Holdings')).getByRole('listitem', { name: new RegExp(NVIDIA.ticker!) }));
+    await onlySheetIs('Inspector');
+
+    const link = sheet('Inspector').querySelector<HTMLElement>('.link-row')!;
+    await userEvent.click(link);
+
+    await waitFor(() => expect(sheet('Inspector')).toHaveTextContent('Relationship'));
+    await press('Details');
+    await backOnTheGraph();
+    await press('Details');
+    await onlySheetIs('Inspector');
+    expect(sheet('Inspector')).toHaveTextContent('Relationship');
+  });
+
+  it('leavesATapOnTheGraphOnTheGraphAndDetailsOpensOnIt', async () => {
+    renderAt();
+    const graphShown = await screen.findByTestId('fake-graph');
+
+    await userEvent.click(within(graphShown).getAllByRole('button', { name: /^Company / })[0]!);
+
+    expect(openSheets()).toEqual([]);
+    await press('Details');
+    await onlySheetIs('Inspector');
+    expect(within(sheet('Inspector')).getByText('Company')).toBeInTheDocument();
+  });
+
+  it('goesBackToTheGraphWhenWhatDetailsShowsIsTakenAway', async () => {
+    const alert = sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [alert];
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press(/^Alerts/);
+    await onlySheetIs('Alerts');
+    await userEvent.click(within(sheet('Alerts')).getAllByRole('button', { name: alert.headline.article.title })[0]!);
+    await onlySheetIs('Inspector');
+
+    await userEvent.click(within(sheet('Inspector')).getByRole('button', { name: 'Close Alert' }));
+
+    await backOnTheGraph();
+  });
+
+  it('reachesUploadCsvAndAnalyseOnTheHoldingsSheet', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press('Holdings');
+    await onlySheetIs('Holdings');
+
+    await userEvent.click(within(sheet('Holdings')).getByRole('button', { name: /Analyse/ }));
+    expect(sentTo('POST', '/api/portfolios/7/analysis')).toHaveLength(1);
+
+    await userEvent.click(within(sheet('Holdings')).getByRole('button', { name: 'Upload CSV' }));
+    expect(await screen.findByRole('dialog', { name: 'Upload a Portfolio CSV' })).toBeInTheDocument();
+  });
+
+  it('reachesCheckNewsOnTheAlertsSheet', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+    await press('Alerts');
+    await onlySheetIs('Alerts');
+
+    await userEvent.click(within(sheet('Alerts')).getAllByRole('button', { name: 'Check News' })[0]!);
+
+    expect(sentTo('POST', '/api/portfolios/7/news-check')).toHaveLength(1);
+  });
+
+  it('keepsTheBrandTheMenuAndTheOpenAlertsPillInTheTopBarAndThePillOpensTheAlertsSheet', async () => {
+    backend.alerts = [sampleAlert({ holdings: [tsmcSuppliesNvidia(1, 1)] })];
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(screen.getByRole('button', { name: 'Portfolio: Semiconductors' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Account/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Upload CSV' })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: '1 Open Alert' }));
+
+    await onlySheetIs('Alerts');
+  });
+
+  it('hasNoTabBarWhenThePortfolioIsNotFound', async () => {
+    renderAt('/portfolios/404');
+
+    await screen.findByRole('heading', { name: 'Portfolio Not Found' });
+    expect(screen.queryByRole('tablist', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('becomesTheComputerLayoutWhenTheWindowWidens', async () => {
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    window.innerWidth = 1440;
+    window.dispatchEvent(new Event('resize'));
+
+    await screen.findByRole('complementary', { name: 'Portfolio' });
+    expect(screen.queryByRole('tablist', { name: 'Workspace' })).not.toBeInTheDocument();
+  });
+
+  it('usesThePhoneLayoutForAnyWindowTooNarrowForTheTopBarsPieces', async () => {
+    window.innerWidth = 1159;
+    renderAt();
+    await screen.findByTestId('fake-graph');
+
+    expect(screen.getByRole('tablist', { name: 'Workspace' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Portfolio' })).not.toBeInTheDocument();
+  });
+
+  it('fadesEveryPanelOutChangesLayoutWhileTheyCannotBeSeenAndFadesThemBackIn', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    const { container } = renderAt();
+    await screen.findByTestId('fake-graph');
+    const workspace = container.querySelector('.ws')!;
+
+    window.innerWidth = 1440;
+    window.dispatchEvent(new Event('resize'));
+
+    await waitFor(() => expect(workspace).toHaveAttribute('data-switching', 'out'));
+    expect(screen.getByRole('tablist', { name: 'Workspace' })).toBeInTheDocument();
+    await waitFor(() => expect(workspace).toHaveAttribute('data-switching', 'in'));
+    expect(screen.queryByRole('tablist', { name: 'Workspace' })).not.toBeInTheDocument();
+    await waitFor(() => expect(workspace).not.toHaveAttribute('data-switching'));
+  });
+});
+
+// ---- 8. No sidebar, and the Analyst Desk for analysts only ----------------------------------------------------------
 
 describe('the top bar', () => {
   it('offersNoSidebarOfPortfolioPages', async () => {

@@ -59,6 +59,27 @@ describe('AI Calls', () => {
     expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
   });
 
+  it('names a question asked of Ask TrueSight and offers it as a purpose to filter by', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        json({
+          calls: [{ ...calls[0], id: 3, purpose: 'ASK', kept: null, dropped: null }],
+          page: 0,
+          totalPages: 1,
+          total: 1,
+        }),
+      ),
+    );
+
+    render(<AiCallsPage />);
+
+    const rows = await screen.findAllByRole('row');
+    expect(within(rows[1]!).getByText('Asking')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Purpose Every Purpose/ }));
+    expect(await screen.findByRole('option', { name: 'Asking' })).toBeInTheDocument();
+  });
+
   it('uses the chosen filters for both the list and the CSV export', async () => {
     const fetch = vi.fn(async (url: string) =>
       url.includes('/export')
