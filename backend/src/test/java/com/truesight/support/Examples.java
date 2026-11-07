@@ -141,6 +141,11 @@ public final class Examples {
         return read("sec-8k-aitx-2026-10-30.htm");
     }
 
+    /** Amgen's real 8-K of 31 July 2026 (Item 1.05, Material Cybersecurity Incidents): data exfiltrated from cloud environments. */
+    public static String sec8kAmgen() {
+        return read("sec-8k-amgen-2026-07-31.htm");
+    }
+
     /**
      * Gemini's real, unchanged answer to Filter Out Noise's prompt for the headlines built from {@link #sec8kClorox()}
      * (1, an event), {@link #sec8kCloroxGojo()} (2) and {@link #sec8kAitx()} (3).

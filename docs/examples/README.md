@@ -25,6 +25,7 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `sec-8k-clorox-2023-08-14.htm` | Clorox's real, unchanged 8-K of 14 August 2023 (Item 8.01): it found unauthorized activity on its IT systems | Alerts From SEC 8-K Filings: the headline from an 8-K's own words |
 | `sec-8k-clorox-2026-01-22.htm` | Clorox's real, unchanged 8-K of 22 January 2026 (Items 7.01 and 8.01): it agreed to buy GOJO. Its Item 7.01 mentions "Item 8.01 below" | Alerts From SEC 8-K Filings: the headline starts at the item's own heading |
 | `sec-8k-aitx-2026-10-30.htm` | Artificial Intelligence Technology Solutions' real, unchanged 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release (Exhibit 99.1) | Alerts From SEC 8-K Filings: the fall-back headline |
+| `sec-8k-amgen-2026-07-31.htm` | Amgen's real, unchanged 8-K of 31 July 2026 (Item 1.05, Material Cybersecurity Incidents): data taken from its cloud environments | Alerts From SEC 8-K Filings: an Item 1.xx 8-K read and headlined from its own text |
 | `gemini-8k-assessment.json` | Gemini's full, unchanged API response to Filter Out Noise's prompt for the three headlines built from those 8-Ks | Alerts From SEC 8-K Filings, so tests never call Gemini |
 
 ## Where It Came From
@@ -110,7 +111,10 @@ exhibit-only 8-K was found with the SEC's full-text search, filtered to 8-K.
 |---|---|---|---|---|---|
 | The Clorox Company | 0000021076 | `sec-8k-clorox-2023-08-14.htm` (`clx4231381-8k.htm`) | 0001206774-23-000969 | 8.01, 9.01 | 2023-08-14T21:29:29Z |
 | The Clorox Company | 0000021076 | `sec-8k-clorox-2026-01-22.htm` (`clx4585201-8k.htm`) | 0001206774-26-000048 | 7.01, 8.01, 9.01 | 2026-01-22T21:11:47Z |
+| Amgen Inc. | 0000318154 | `sec-8k-amgen-2026-07-31.htm` (`amgn-20260729.htm`) | 0000318154-26-000119 | 1.05 | 2026-07-31T20:03:44Z |
 | Artificial Intelligence Technology Solutions Inc. | 0001498148 | `sec-8k-aitx-2026-10-30.htm` (`form8k.htm`) | 0001062993-26-005615 | 8.01, 9.01 | 2026-10-30T10:01:48Z |
+
+The Amgen 8-K was found with the SEC's full-text search ("Item 1.05", filtered to 8-K) and downloaded unchanged on 7 November 2026; its items and acceptance time are from Amgen's submissions list (`data.sec.gov/submissions/CIK0000318154.json`). Gemini was not asked about it, so `gemini-8k-assessment.json` still covers the three earlier headlines.
 
 In the submissions list, Clorox's 8-K 0001206774-26-000586 (accepted 2026-10-29, Items 5.02, 7.01, 9.01) reports none
 of the nine items a news check reads, so it is never downloaded.
