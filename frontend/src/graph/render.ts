@@ -337,6 +337,7 @@ function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions): Chevron
       risk: scene.risks.get(edge.relationshipId)?.severity ?? null,
       reviewed: edge.reviewed,
       critical: edge.critical,
+      fresh: look.fresh,
       flow: scene.flow,
       still,
       now,
@@ -362,6 +363,8 @@ export type ArrowLook = {
   risk: Severity | null;
   reviewed: boolean;
   critical: boolean;
+  // New in the year shown, 0 to 1: lit lime (see Scene.fresh). Left out, not new.
+  fresh?: number;
   // How far the waves of light have travelled (Scene.flow).
   flow: number;
   still: boolean;
@@ -405,6 +408,12 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
   if (reviewed || hover > 0.01 || risk) {
     const peak = (0.16 + hover * 0.45 + alarm * 0.4) * strength;
     glow(context, start, end, deep, peak, (GLOW_WIDTH + hover * 8 + alarm * 6) * dpr, k * dpr);
+  }
+
+  // New in the year shown: a lime glow over the whole arrow, which stays (without its breathing) when motion is reduced.
+  if (a.fresh && a.fresh > 0.01) {
+    const breath = still ? 0 : (Math.sin((now / 900) * Math.PI) + 1) / 2;
+    glow(context, start, end, INK.pin, (0.5 + breath * 0.3) * a.fresh * strength, (GLOW_WIDTH + 6) * dpr, k * dpr);
   }
 
   // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
@@ -719,6 +728,18 @@ export function drawBeaconFace(context: CanvasRenderingContext2D, x: number, y: 
   context.fillRect(x - stroke / 2, y + half * 0.34, stroke, stroke);
 }
 
+/** The mark for what is new in the year shown, in the key: a company's tile outlined in lime, with its glow. */
+export function drawFreshMark(context: CanvasRenderingContext2D, x: number, y: number, side: number) {
+  context.save();
+  context.shadowColor = withAlpha(INK.pin, 0.8);
+  context.shadowBlur = 5;
+  boxPath(context, x, y, side, side * CHAMFER);
+  context.strokeStyle = INK.pin;
+  context.lineWidth = 1.5;
+  context.stroke();
+  context.restore();
+}
+
 // The side of the badge on a company several holdings depend on, in the graph's own units.
 export const SHARED_BADGE = 16;
 
@@ -804,6 +825,21 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
     }
 
     drawTile(context, node, logo, x, y, size);
+
+    // New in the year shown: a lime outline round the tile with a glow that breathes (the outline alone, when motion is
+    // reduced).
+    if (look.fresh > 0.01) {
+      const breath = still ? 0 : (Math.sin((now / 900) * Math.PI) + 1) / 2;
+      context.save();
+      context.shadowColor = withAlpha(INK.pin, (0.6 + breath * 0.3) * look.fresh);
+      context.shadowBlur = (12 + breath * 8) * k * dpr;
+      // The same cut as a holding's ring, whatever the tile: a plain tile's ring would otherwise have only a sliver.
+      boxPath(context, x, y, size + 10, size * CHAMFER + 5 * (2 - Math.SQRT2));
+      context.strokeStyle = withAlpha(INK.pin, 0.95 * look.fresh);
+      context.lineWidth = 2;
+      context.stroke();
+      context.restore();
+    }
 
     // A company the user placed: a lime wedge on its top-right corner, filling the chamfer's cut on a holding, and
     // folding the corner over on any other company.
@@ -895,6 +931,13 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
           ? INK.amber
           : INK.muted;
       context.fillText(node.subtitle, sx, top + (TITLE_LINE + 11) * scale);
+    }
+    // New in the year shown: its tag, under the label ("New in 2025").
+    if (look.fresh > 0.01 && scene.fresh) {
+      context.globalAlpha = alpha * look.fresh;
+      context.font = `600 ${10.5 * scale}px ${FONT}`;
+      context.fillStyle = INK.pin;
+      context.fillText(scene.fresh.tag, sx, top + (TITLE_LINE + (node.subtitle ? 24 : 11)) * scale);
     }
   }
   context.shadowBlur = 0;
@@ -1159,6 +1202,8 @@ export function renderMinimap(
 
   context.lineWidth = 1;
   for (const edge of scene.graph.edges) {
+    // Faded out (another year): not on the map.
+    if (!scene.isEdgeThere(edge)) continue;
     const from = map(scene.positionOf(edge.source));
     const to = map(scene.positionOf(edge.target));
     context.strokeStyle = withAlpha(edge.colour, 0.35);
@@ -1168,6 +1213,7 @@ export function renderMinimap(
     context.stroke();
   }
   for (const node of scene.graph.nodes) {
+    if (!scene.isNodeThere(node)) continue;
     const at = map(scene.positionOf(node));
     context.fillStyle = node.isHolding
       ? (node.colour ?? '#cbd5e1')

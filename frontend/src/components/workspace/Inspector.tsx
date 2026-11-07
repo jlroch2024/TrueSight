@@ -8,8 +8,10 @@ import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
 import { AlertView } from './InspectorAlert';
 import { CompanyView } from './InspectorCompany';
-import { RelationshipView } from './InspectorRelationship';
+import { PastRelationshipView, RelationshipView } from './InspectorRelationship';
 import { ScenarioView } from './InspectorScenario';
+import type { HistoryEntry } from '../../api/history';
+import type { CompanySummary } from '../../api/relationships';
 import type { Scenario } from './useWhatIf';
 import type { Chosen, WorkspaceView } from './view';
 
@@ -28,9 +30,13 @@ type Props = {
   onRestore: (alert: AlertEvent) => void;
   // What the SEC Filing Timeline has read, for the years a company was named in.
   history: History | null;
+  // The year of the history the graph shows (null: Today), and what that year named for a link, so a link chosen in an
+  // older year shows that year's evidence.
+  year?: number | null;
+  entryOf?: (relationshipId: number) => HistoryEntry | null;
 };
 
-export function InspectorBody({ chosen, view, busyKey, history, scenario, onRetryScenario, onChoose, onWeight, onRemove, onClose, onRestore }: Props) {
+export function InspectorBody({ chosen, view, busyKey, history, year = null, entryOf, scenario, onRetryScenario, onChoose, onWeight, onRemove, onClose, onRestore }: Props) {
   const key =
     chosen.kind === 'company'
       ? chosen.nodeId
@@ -39,6 +45,8 @@ export function InspectorBody({ chosen, view, busyKey, history, scenario, onRetr
         : chosen.kind === 'scenario'
           ? `s${chosen.nodeId}`
           : chosen.key;
+  const names = new Map<number, CompanySummary>((history?.companies ?? []).map((company) => [company.id, company]));
+  const past = chosen.kind === 'relationship' && year !== null ? (entryOf?.(chosen.relationshipId) ?? null) : null;
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
@@ -49,9 +57,14 @@ export function InspectorBody({ chosen, view, busyKey, history, scenario, onRetr
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       >
         {chosen.kind === 'company' && (
-          <CompanyView view={view} nodeId={chosen.nodeId} history={history} onChoose={onChoose} onWeight={onWeight} onRemove={onRemove} />
+          <CompanyView view={view} nodeId={chosen.nodeId} history={history} year={year} onChoose={onChoose} onWeight={onWeight} onRemove={onRemove} />
         )}
-        {chosen.kind === 'relationship' && <RelationshipView view={view} relationshipId={chosen.relationshipId} onChoose={onChoose} />}
+        {chosen.kind === 'relationship' &&
+          (past ? (
+            <PastRelationshipView entry={past} companies={names} view={view} onChoose={onChoose} />
+          ) : (
+            <RelationshipView view={view} relationshipId={chosen.relationshipId} onChoose={onChoose} />
+          ))}
         {chosen.kind === 'scenario' && (
           <ScenarioView view={view} nodeId={chosen.nodeId} scenario={scenario} onRetry={onRetryScenario} onChoose={onChoose} />
         )}

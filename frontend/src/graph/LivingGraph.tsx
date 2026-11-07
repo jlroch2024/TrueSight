@@ -47,6 +47,7 @@ import {
   type MapFrame,
   RISK_COLOUR,
   drawBeaconFace,
+  drawFreshMark,
   drawRiskMark,
   drawSharedBadge,
   mapFrame,
@@ -93,11 +94,19 @@ type Props = {
   barStart?: ReactNode;
   // Something of the page's to put last in that band, after the search (the workspace's Load History button).
   barEnd?: ReactNode;
+  // Show only these companies and links (by node id and link id), such as one year of the history; null shows all. The
+  // rest are still part of the layout, so each company keeps its place whatever is shown.
+  shown?: GraphSelection | null;
+  // What is new in the year shown, lit lime; its companies are tagged with `tag` ("New in 2025"). Null lights nothing.
+  fresh?: (GraphSelection & { tag: string }) | null;
   // Shown on a screen taller than it is wide (a phone): the graph spreads down rather than across, to fill it.
   tall?: boolean;
   // How the page reaches the graph's snapshot().
   ref?: Ref<GraphHandle>;
 };
+
+/** Companies and links, by node id and link id. */
+export type GraphSelection = { nodeIds: string[]; edgeIds: string[] };
 
 /** Companies and links to light, by node id and relationship id. */
 export type GraphFocus = { nodeIds: string[]; relationshipIds: number[] };
@@ -318,6 +327,8 @@ export function LivingGraph({
   topBar,
   barStart,
   barEnd,
+  shown = null,
+  fresh = null,
   tall = false,
   ref,
 }: Props) {
@@ -342,6 +353,14 @@ export function LivingGraph({
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const still = useMemo(reducesMotion, []);
+  const shownSets = useMemo(
+    () => (shown ? { nodeIds: new Set(shown.nodeIds), edgeIds: new Set(shown.edgeIds) } : null),
+    [shown],
+  );
+  const freshSets = useMemo(
+    () => (fresh ? { nodeIds: new Set(fresh.nodeIds), edgeIds: new Set(fresh.edgeIds), tag: fresh.tag } : null),
+    [fresh],
+  );
   const [full, setFull] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [tip, setTip] = useState<Tip>(null);
@@ -362,8 +381,8 @@ export function LivingGraph({
   const [keyOpen, setKeyOpen] = useState(false);
 
   // Read by the long-lived handlers, so changing them does not rebuild the graph.
-  const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall });
-  latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall };
+  const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall, shownSets, freshSets });
+  latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall, shownSets, freshSets };
   // The room to keep around the graph when fitting it in view, clear of what covers it.
   const fitRoom = () => around(latest.current.tall ? TALL_FIT_ROOM : FIT_ROOM, latest.current.insets);
   const redrawRef = useRef(() => {});
@@ -530,6 +549,7 @@ export function LivingGraph({
     }
     sceneRef.current = scene;
     shownRef.current = { scene, layoutKey: latest.current.layoutKey };
+    scene.setShown(latest.current.shownSets, latest.current.freshSets);
 
     const context = canvas.getContext?.('2d') ?? null;
     let size = { width, height, dpr: window.devicePixelRatio || 1 };
@@ -665,6 +685,12 @@ export function LivingGraph({
     focus: null,
     focusScene: null,
   });
+  // Another year: what is shown fades out and in, and what is new lights up. Nothing moves.
+  useEffect(() => {
+    sceneRef.current?.setShown(shownSets, freshSets);
+    redrawRef.current();
+  }, [shownSets, freshSets]);
+
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -826,10 +852,10 @@ export function LivingGraph({
       const rig = rigRef.current;
       if (!scene || !rig) return { node: null, edge: null };
       const world = toWorld(rig.camera, screen);
-      const node = nodeAt(scene.graph.nodes, scene.positionOf, world, scene.sizeOf);
+      const node = nodeAt(scene.graph.nodes.filter(scene.isNodeThere), scene.positionOf, world, scene.sizeOf);
       const edge = node
         ? null
-        : edgeAt(scene.graph.edges, scene.positionOf, world, EDGE_REACH / rig.camera.k, scene.sizeOf);
+        : edgeAt(scene.graph.edges.filter(scene.isEdgeThere), scene.positionOf, world, EDGE_REACH / rig.camera.k, scene.sizeOf);
       return { node, edge };
     };
     const point = (screen: { x: number; y: number }) => {
@@ -1075,10 +1101,11 @@ export function LivingGraph({
     const wanted = query.trim().toLowerCase();
     if (!wanted) return [];
     return graph.nodes
+      .filter((node) => !shownSets || shownSets.nodeIds.has(node.id))
       .filter((node) => node.name.toLowerCase().includes(wanted) || node.ticker?.toLowerCase().includes(wanted))
       .sort((a, b) => Number(b.isHolding) - Number(a.isHolding) || a.name.localeCompare(b.name))
       .slice(0, 6);
-  }, [graph, query]);
+  }, [graph, query, shownSets]);
 
   const choose = (node: LiveNode) => {
     onNodeSelect?.(node.id);
@@ -1131,14 +1158,15 @@ export function LivingGraph({
   }, [full, fitAll]);
 
   const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-  const companies = plural(graph.nodes.length, 'Company', 'Companies');
-  const links = plural(graph.edges.length, 'Relationship', 'Relationships');
+  const companies = plural(shownSets ? graph.nodes.filter((node) => shownSets.nodeIds.has(node.id)).length : graph.nodes.length, 'Company', 'Companies');
+  const links = plural(shownSets ? graph.edges.filter((edge) => shownSets.edgeIds.has(edge.id)).length : graph.edges.length, 'Relationship', 'Relationships');
   const counts = `${companies} // ${links}`;
   const selectedEdge = graph.edges.find((edge) => edge.relationshipId === selectedRelationshipId) ?? null;
   const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId) ?? null;
   const linksOf = (node: LiveNode) => {
-    const suppliers = graph.edges.filter((edge) => edge.target.id === node.id).length;
-    const customers = graph.edges.filter((edge) => edge.source.id === node.id).length;
+    const there = graph.edges.filter((edge) => !shownSets || shownSets.edgeIds.has(edge.id));
+    const suppliers = there.filter((edge) => edge.target.id === node.id).length;
+    const customers = there.filter((edge) => edge.source.id === node.id).length;
     return `${plural(suppliers, 'Supplier', 'Suppliers')} · ${plural(customers, 'Customer', 'Customers')}`;
   };
 
@@ -1342,8 +1370,19 @@ export function LivingGraph({
                 ))}
               </ul>
             )}
-            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0) && (
+            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0 || fresh) && (
               <ul className="lg-legend" aria-label="Graph key">
+                {fresh && (
+                  <li>
+                    <KeyMark
+                      className="lg-legend-fresh"
+                      size={18}
+                      colour={INK.pin}
+                      draw={(context) => drawFreshMark(context, 9, 9, 12)}
+                    />
+                    New This Year
+                  </li>
+                )}
                 {graph.nodes.some((node) => node.sharedCount > 1) && (
                   <li>
                     <KeyMark

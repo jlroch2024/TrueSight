@@ -41,6 +41,8 @@ const FLOAT_FADE_MS = 1400;
 const LEAVE_MS = 520;
 const RESIZE_MS = 260;
 const RECOLOUR_MS = 700;
+// Scrubbing through the years: how long a company or arrow takes to fade out or in, and a new one's lime glow to take hold.
+const SHOWN_MS = 300;
 // The least room kept between two holdings' tiles, however far the view zooms out.
 const HOLDING_GAP = 16;
 // How fast the arrows' dashes travel, in the graph's own units a millisecond.
@@ -62,7 +64,12 @@ export function easeOutCubic(t: number): number {
 }
 
 /** How each company and arrow is shown at this moment: every value 0 to 1, blending towards where it is going. */
-export type Look = { appear: number; lit: number; hover: number; label: number };
+export type Look = { appear: number; lit: number; hover: number; label: number; shown: number; fresh: number };
+
+/** The companies and arrows to show, by node id and arrow id (see Scene.setShown). */
+export type Shown = { nodeIds: ReadonlySet<string>; edgeIds: ReadonlySet<string> };
+/** What is new in the year shown, with the tag to put on a new company ("New in 2025"). */
+export type Fresh = Shown & { tag: string };
 
 export class Scene {
   readonly physics: Simulation<LiveNode, { source: LiveNode; target: LiveNode; id: string }>;
@@ -96,6 +103,13 @@ export class Scene {
   private readonly shownSize = new Map<string, number>();
   // Arrows and holdings' rings taking on a new colour, as their chains are coloured again.
   private recolouring: { item: { colour: string | null }; from: string; to: string; since: number }[] = [];
+  // Which companies and arrows are shown, when the page shows only some of them (a year of the history); null shows all.
+  // The others stay in the layout, so showing them again puts each back where it was.
+  private shownSet: Shown | null = null;
+  // What is new in the year shown: drawn with a lime glow, and its companies with a tag.
+  fresh: Fresh | null = null;
+  // The companies and arrows whose first look at shownSet has been taken (they start as it says, rather than fading).
+  private readonly placed = new Set<string>();
   // Companies and arrows the page took away: drawn where they were as they shrink and fade, then forgotten.
   departing: { nodes: LiveNode[]; edges: LiveEdge[] } = { nodes: [], edges: [] };
   // Whether this graph carries on from one already shown (see carryFrom), rather than opening.
@@ -112,12 +126,12 @@ export class Scene {
     this.physics = createPhysics(graph.nodes, graph.edges);
     graph.nodes.forEach((node, index) => {
       this.nodeDelay.set(node.id, ENTRANCE_DELAY_MS + node.rank * ENTRANCE_STEP_MS + (index % 5) * 30);
-      this.nodeLook.set(node.id, { appear: still ? 1 : 0, lit: 1, hover: 0, label: 0 });
+      this.nodeLook.set(node.id, { appear: still ? 1 : 0, lit: 1, hover: 0, label: 0, shown: 1, fresh: 0 });
     });
     for (const edge of graph.edges) {
       const ends = Math.max(this.nodeDelay.get(edge.source.id)!, this.nodeDelay.get(edge.target.id)!);
       this.edgeDelay.set(edge.id, ends + NODE_ENTRANCE_MS * 0.6);
-      this.edgeLook.set(edge.id, { appear: still ? 1 : 0, lit: 1, hover: 0, label: 0 });
+      this.edgeLook.set(edge.id, { appear: still ? 1 : 0, lit: 1, hover: 0, label: 0, shown: 1, fresh: 0 });
     }
     this.openingMs = Math.max(0, ...this.edgeDelay.values(), ...this.nodeDelay.values()) + EDGE_ENTRANCE_MS;
   }
@@ -135,6 +149,8 @@ export class Scene {
     this.flow = previous.flow;
     this.zoom = previous.zoom;
     this.openingMs = previous.openingMs;
+    this.shownSet = previous.shownSet;
+    this.fresh = previous.fresh;
     this.hoveredNode = previous.hoveredNode;
     this.hoveredEdge = previous.hoveredEdge;
     const elapsed = previous.startedAt === null ? 0 : previous.now - previous.startedAt;
@@ -156,6 +172,7 @@ export class Scene {
         node.anchorY = old.anchorY;
         node.labelRoom = old.labelRoom;
         this.nodeLook.set(node.id, { ...previous.nodeLook.get(node.id)! });
+        if (previous.placed.has(node.id)) this.placed.add(node.id);
         this.nodeDelay.set(node.id, previous.nodeDelay.get(node.id)!);
         const since = previous.floatingSince.get(node.id);
         if (since !== undefined) this.floatingSince.set(node.id, since);
@@ -187,6 +204,7 @@ export class Scene {
       const old = beforeEdges.get(edge.id);
       if (old && before.has(edge.source.id) && before.has(edge.target.id)) {
         this.edgeLook.set(edge.id, { ...previous.edgeLook.get(edge.id)! });
+        if (previous.placed.has(edge.id)) this.placed.add(edge.id);
         this.edgeDelay.set(edge.id, previous.edgeDelay.get(edge.id)!);
         if (old.colour !== edge.colour)
           this.recolouring.push({ item: edge, from: old.colour, to: edge.colour, since: now });
@@ -231,6 +249,39 @@ export class Scene {
   get drawnEdges(): LiveEdge[] {
     return this.departing.edges.length ? [...this.departing.edges, ...this.graph.edges] : this.graph.edges;
   }
+
+  /**
+   * Shows only these companies and arrows (null shows all), and lights what is new. The rest fade out; what comes back
+   * fades in. Nothing moves: the layout was worked out over all of them. A company or arrow seen for the first time
+   * starts as it should be, rather than fading to it.
+   */
+  setShown(shown: Shown | null, fresh: Fresh | null) {
+    this.shownSet = shown;
+    this.fresh = fresh;
+    for (const node of this.graph.nodes) this.takeFirstLook(node.id, this.nodeLook.get(node.id)!, this.isNodeShown(node.id), fresh?.nodeIds.has(node.id));
+    for (const edge of this.graph.edges) this.takeFirstLook(edge.id, this.edgeLook.get(edge.id)!, this.isEdgeShown(edge.id), fresh?.edgeIds.has(edge.id));
+  }
+
+  private takeFirstLook(id: string, look: Look, shown: boolean, fresh: boolean | undefined) {
+    if (this.placed.has(id)) return;
+    this.placed.add(id);
+    look.shown = shown ? 1 : 0;
+    look.fresh = fresh ? 1 : 0;
+  }
+
+  isNodeShown(id: string): boolean {
+    return !this.shownSet || this.shownSet.nodeIds.has(id);
+  }
+
+  isEdgeShown(id: string): boolean {
+    return !this.shownSet || this.shownSet.edgeIds.has(id);
+  }
+
+  /** Whether a company is there to point at: not faded out or on its way out. */
+  isNodeThere = (node: LiveNode): boolean => (this.nodeLook.get(node.id)?.shown ?? 1) > 0.5;
+
+  /** Whether an arrow is there to point at. */
+  isEdgeThere = (edge: LiveEdge): boolean => (this.edgeLook.get(edge.id)?.shown ?? 1) > 0.5;
 
   /** How far the opening has gone, 0 to 1; null before the first frame and once it has finished. */
   entrance(): number | null {
@@ -345,10 +396,17 @@ export class Scene {
     const focus = this.focus();
     const elapsed = now - this.startedAt;
     this.easeChanges(dt, now);
+    const step = this.still ? 1 : Math.min(1, dt / SHOWN_MS);
+    const towards = (value: number, target: number) =>
+      value < target ? Math.min(target, value + step) : Math.max(target, value - step);
     for (const node of this.graph.nodes) {
       const look = this.nodeLook.get(node.id)!;
-      if (!this.still)
-        look.appear = Math.min(1, Math.max(0, (elapsed - this.nodeDelay.get(node.id)!) / NODE_ENTRANCE_MS));
+      look.shown = towards(look.shown, this.isNodeShown(node.id) ? 1 : 0);
+      look.fresh = towards(look.fresh, this.fresh?.nodeIds.has(node.id) ? 1 : 0);
+      const entering = this.still
+        ? 1
+        : Math.min(1, Math.max(0, (elapsed - this.nodeDelay.get(node.id)!) / NODE_ENTRANCE_MS));
+      look.appear = Math.min(entering, look.shown);
       look.lit += ((focus ? (focus.nodeIds.has(node.id) ? 1 : 0) : 1) - look.lit) * blend;
       const lifted = node.id === this.hoveredNode || node.id === this.peekNode || node.id === this.draggedNode;
       look.hover += ((lifted ? 1 : 0) - look.hover) * blend;
@@ -356,8 +414,12 @@ export class Scene {
     }
     for (const edge of this.graph.edges) {
       const look = this.edgeLook.get(edge.id)!;
-      if (!this.still)
-        look.appear = Math.min(1, Math.max(0, (elapsed - this.edgeDelay.get(edge.id)!) / EDGE_ENTRANCE_MS));
+      look.shown = towards(look.shown, this.isEdgeShown(edge.id) ? 1 : 0);
+      look.fresh = towards(look.fresh, this.fresh?.edgeIds.has(edge.id) ? 1 : 0);
+      const entering = this.still
+        ? 1
+        : Math.min(1, Math.max(0, (elapsed - this.edgeDelay.get(edge.id)!) / EDGE_ENTRANCE_MS));
+      look.appear = Math.min(entering, look.shown);
       look.lit += ((focus ? (focus.edgeIds.has(edge.id) ? 1 : 0) : 1) - look.lit) * blend;
       const pointed = edge.id === this.hoveredEdge || edge.id === this.selectedEdge;
       look.hover += ((pointed ? 1 : 0) - look.hover) * blend;
@@ -414,6 +476,8 @@ export class Scene {
     for (const node of this.graph.nodes) {
       const point = this.positionOf(node);
       at.set(node.id, point);
+      // Faded out (another year): it takes no room.
+      if (this.nodeLook.get(node.id)!.shown < 0.5) continue;
       const half = (this.sizeOf(node) / 2) * k;
       const sx = point.x * k + camera.x;
       const sy = point.y * k + camera.y;

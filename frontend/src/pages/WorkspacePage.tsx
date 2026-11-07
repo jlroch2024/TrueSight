@@ -37,6 +37,8 @@ import { InspectorBody, InspectorKind } from '../components/workspace/Inspector'
 import { PHONE_TABS, type PhoneTab, PhoneDock } from '../components/workspace/PhoneDock';
 import { ActionsIsland, AnalystDeskButton, OpenAlertsBar, PortfolioIsland, Swap } from '../components/workspace/TopBar';
 import { LoadHistory } from '../components/workspace/LoadHistory';
+import { Scrubber } from '../components/workspace/Scrubber';
+import { type Year, buildTimeline } from '../components/workspace/timeline';
 import { useHistory } from '../components/workspace/useHistory';
 import { useAsk } from '../components/workspace/useAsk';
 import { useWhatIf } from '../components/workspace/useWhatIf';
@@ -290,6 +292,18 @@ export function WorkspacePage() {
 
   const view = useWorkspaceView(holdings ?? [], relationships ?? [], alertsResponse?.alerts ?? [], alertsResponse?.weighted ?? true);
   const logoSettings = useLogoSettings(view.nodes);
+  // Scrub the Graph Through the Years: the graph of every year at once is laid out once; the year chosen shows part of it.
+  const history = timeline.state.status === 'ready' ? timeline.state.history : null;
+  const years = useMemo(() => buildTimeline(view, history), [view, history]);
+  const [year, setYear] = useState<Year>(null);
+  // A year the history no longer has (another portfolio, or a history read again) is Today.
+  const shownYear = year !== null && years.years.includes(year) ? year : null;
+  const yearShown = useMemo(() => years.at(shownYear), [years, shownYear]);
+  const scrubbable = years.years.length > 0;
+  // The workspace's own view, with the companies older years name, for the Inspector to describe them.
+  const inspectorView = useMemo(() => ({ ...view, nodes: years.nodes }), [view, years.nodes]);
+  const noRisks = useMemo(() => new Map(), []);
+  useEffect(() => setYear(null), [portfolioId]);
   const loaded = holdings !== undefined && relationships !== undefined && !!portfolio;
   const worst = useMemo(() => [...view.open].sort(byUrgency)[0] ?? null, [view.open]);
   const analysed = view.holdings.filter((holding) => holding.status === 'DONE').length;
@@ -342,11 +356,23 @@ export function WorkspacePage() {
   // A chosen alert lights the company it is about, the holdings it reaches, and every link on the way; an open scenario
   // lights the stopped company, the holdings it reaches and every path to them. Closing either restores the graph.
   const focus = useMemo(() => {
+    // Looking, not acting: alerts and scenarios belong to Today.
+    if (shownYear !== null) return null;
     if (chosen?.kind === 'scenario') return scenario.status === 'ready' ? scenarioFocus(scenario.result, view) : null;
     if (chosen?.kind !== 'alert') return null;
     const alert = view.alerts.find((item) => alertKey(item) === chosen.key);
     return alert ? spotlightOf(alert, view) : null;
-  }, [chosen, scenario, view]);
+  }, [chosen, scenario, view, shownYear]);
+
+  // Another year: a link that year did not name is no longer there to show, and a scenario runs on Today only.
+  useEffect(() => {
+    if (chosen?.kind === 'relationship') {
+      const edge = years.edges.find((item) => item.relationshipId === chosen.relationshipId);
+      if (!edge || !yearShown.shown.edgeIds.includes(edge.id)) setChosen(null);
+    } else if (chosen?.kind === 'scenario' && shownYear !== null) {
+      setChosen({ kind: 'company', nodeId: chosen.nodeId });
+    }
+  }, [chosen, shownYear, yearShown, years.edges]);
 
   // ---------- Analysis and news, followed until they finish ----------
 
@@ -708,9 +734,11 @@ export function WorkspacePage() {
   const inspectorContent = chosen && (
     <InspectorBody
       chosen={chosen}
-      view={view}
+      view={inspectorView}
       busyKey={busyKey}
-      history={timeline.state.status === 'ready' ? timeline.state.history : null}
+      history={history}
+      year={shownYear}
+      entryOf={(relationshipId) => years.entryOf(shownYear, relationshipId)}
       scenario={scenario}
       onRetryScenario={retryScenario}
       onChoose={setChosen}
@@ -730,8 +758,10 @@ export function WorkspacePage() {
           {loaded && view.nodes.length > 0 && (
             <LivingGraph
               ref={graphRef}
-              nodes={view.nodes}
-              edges={view.edges}
+              nodes={years.nodes}
+              edges={years.edges}
+              shown={scrubbable ? yearShown.shown : null}
+              fresh={yearShown.fresh}
               bare
               tall={compact}
               insets={insets}
@@ -750,13 +780,17 @@ export function WorkspacePage() {
                 )
               }
               barEnd={
-                <LoadHistory
-                  state={timeline.state}
-                  starting={timeline.starting}
-                  startError={timeline.startError}
-                  onLoad={() => void timeline.load()}
-                  onRetry={() => void timeline.refresh()}
-                />
+                <>
+                  {/* Before any history is read, only Today: Load History beside it. */}
+                  <Scrubber years={years.years} value={shownYear} onChange={setYear} />
+                  <LoadHistory
+                    state={timeline.state}
+                    starting={timeline.starting}
+                    startError={timeline.startError}
+                    onLoad={() => void timeline.load()}
+                    onRetry={() => void timeline.refresh()}
+                  />
+                </>
               }
               focus={focus}
               peekNodeId={peek}
@@ -768,8 +802,8 @@ export function WorkspacePage() {
               logoDomains={logoSettings.domains}
               // A phone's graph has a shape of its own (see tall), so each size of screen remembers its own.
               layoutKey={`truesight.graph.${portfolioId}${compact ? '.phone' : ''}`}
-              risks={view.risks}
-              alertDots={view.alertDots}
+              risks={shownYear === null ? view.risks : noRisks}
+              alertDots={shownYear === null ? view.alertDots : noRisks}
             />
           )}
           {loadError ? (

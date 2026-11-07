@@ -36,11 +36,14 @@ export function CompanyView({
   onWeight,
   onRemove,
   history = null,
+  year = null,
 }: {
   view: WorkspaceView;
   nodeId: string;
   // What the SEC Filing Timeline has read, once it has: the years this company was named in.
   history?: History | null;
+  // The year of the history the graph shows; a scenario runs on Today only.
+  year?: number | null;
   onChoose: (chosen: Chosen) => void;
   // Saves a holding's new weight; answers the message to show if it was refused.
   onWeight: (holding: Holding, weight: string) => Promise<string | null>;
@@ -109,14 +112,17 @@ export function CompanyView({
       {holding && <HoldingActions holding={holding} onWeight={onWeight} onRemove={onRemove} />}
 
       {/* For any company, held or not: which holdings would be hit if it stopped supplying. */}
-      {companyIdOfNode(nodeId) !== null && (
-        <div className="actions one-line">
-          <button type="button" className="btn small" onClick={() => onChoose({ kind: 'scenario', nodeId })}>
-            <Octagon size={15} />
-            Simulate Disruption
-          </button>
-        </div>
-      )}
+      {companyIdOfNode(nodeId) !== null &&
+        (year === null ? (
+          <div className="actions one-line">
+            <button type="button" className="btn small" onClick={() => onChoose({ kind: 'scenario', nodeId })}>
+              <Octagon size={15} />
+              Simulate Disruption
+            </button>
+          </div>
+        ) : (
+          <p className="prose muted">Return to Today to run a scenario.</p>
+        ))}
 
       {holding && (
         <div className="facts">

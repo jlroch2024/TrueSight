@@ -28,6 +28,9 @@ export type HistoryYear = { year: number; relationships: HistoryEntry[]; gone: s
 // many earlier reports are still to read, in unreadHoldings of the holdingCount holdings that have been analysed (a
 // holding with some left counts once, however many). years runs from the earliest report's year to the latest's:
 // "Today" is the current graph.
+// A company some year names, with its names, so one no longer named today can still be drawn.
+export type HistoryCompany = { id: number; name: string; displayName: string; ticker: string | null };
+
 export type History = {
   status: HistoryStatus;
   reason: string | null;
@@ -36,6 +39,7 @@ export type History = {
   unreadHoldings: number;
   holdingCount: number;
   years: HistoryYear[];
+  companies: HistoryCompany[];
 };
 
 export const historyApi = {

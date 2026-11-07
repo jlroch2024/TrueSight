@@ -4636,6 +4636,70 @@ button.source-row:hover {
   clip-path: inset(50%);
 }
 
+/* The year scrubber in the graph's top bar (Scrub the Graph Through the Years): a stop for each year, then Today, with a
+   plate that slides to the chosen one. A slider, so it has the focus ring of a control. */
+.lg-root .scrubber {
+  position: relative;
+  display: inline-grid;
+  height: 52px;
+  flex: none;
+  grid-auto-columns: minmax(max-content, 1fr);
+  grid-auto-flow: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.scrubber-stop {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: var(--t-13);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s var(--ease);
+}
+
+.scrubber-stop:hover,
+.scrubber-stop[data-chosen='true'] {
+  color: var(--text);
+}
+
+.scrubber-plate {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+    width 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+    height 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 0.2s var(--ease);
+  border: 1px solid var(--teal, #2dd4bf);
+  background: rgba(45, 212, 191, 0.14);
+}
+
+.lg-root .scrubber:focus-visible {
+  outline: 2px solid var(--teal, #2dd4bf);
+  outline-offset: 2px;
+}
+
+/* Where the bar is crowded the stops come closer. */
+.lg-root.lg-bar-crowded .scrubber-stop {
+  min-width: 36px;
+  padding: 0 4px;
+}
+
 .history-text {
   display: flex;
   flex-direction: column;

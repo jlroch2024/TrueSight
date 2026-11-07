@@ -1,6 +1,8 @@
 package com.truesight.history;
 
 import com.truesight.common.ApiException;
+import com.truesight.company.CompanyDisplayNames;
+import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
@@ -39,11 +41,14 @@ public class HistoryService {
     private final HistoryReads reads;
     private final HistoryProgress progress;
     private final HistoryJob job;
+    private final CompanyRepository companyRecords;
+    private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
 
     HistoryService(PortfolioRepository portfolios, HoldingRepository holdings, RelationshipRepository relationships,
                    PastRelationshipRepository pastRelationships, HistoryReads reads, HistoryProgress progress,
-                   HistoryJob job, CurrentUser currentUser) {
+                   HistoryJob job, CompanyRepository companyRecords, CompanyDisplayNames displayNames,
+                   CurrentUser currentUser) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
@@ -51,6 +56,8 @@ public class HistoryService {
         this.reads = reads;
         this.progress = progress;
         this.job = job;
+        this.companyRecords = companyRecords;
+        this.displayNames = displayNames;
         this.currentUser = currentUser;
     }
 
@@ -107,10 +114,21 @@ public class HistoryService {
                         report.getUrl(), edgesByReport.getOrDefault(report.getId(), List.of())))
                 .toList();
 
+        List<HistoryResponse.Year> years = HistoryTimeline.years(sources);
+        Set<Long> named = new LinkedHashSet<>();
+        years.forEach(year -> year.relationships().forEach(entry -> {
+            named.add(entry.companyId());
+            named.add(entry.counterpartyId());
+        }));
+        List<HistoryResponse.Company> companies = companyRecords.findAllById(named).stream()
+                .map(company -> new HistoryResponse.Company(company.getId(), company.getName(),
+                        displayNames.of(company), company.getTicker()))
+                .toList();
+
         HistoryProgress.State state = progress.of(portfolioId);
         return new HistoryResponse(state.status(), state.reason(),
                 state.status() == HistoryStatus.IDLE ? null : new HistoryResponse.Progress(state.done(), state.total()),
-                unread, unreadHoldings, companyIds.size(), HistoryTimeline.years(sources));
+                unread, unreadHoldings, companyIds.size(), years, companies);
     }
 
     private int unreadOf(Long portfolioId) {

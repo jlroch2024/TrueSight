@@ -64,6 +64,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -193,7 +194,11 @@ class HistoryIT {
                 .andExpect(jsonPath("$.years[2].relationships", hasSize(1)))
                 .andExpect(jsonPath("$.years[2].relationships[0].key").value(latest))
                 .andExpect(jsonPath("$.years[2].relationships[0].change").value(earlier.contains(latest) ? "KEPT" : "NEW"))
-                .andExpect(jsonPath("$.years[2].gone", containsInAnyOrder(minus(earlier, Set.of(latest)))));
+                .andExpect(jsonPath("$.years[2].gone", containsInAnyOrder(minus(earlier, Set.of(latest)))))
+                // Every company a year names comes with its names, so a dropped supplier can still be drawn.
+                .andExpect(jsonPath("$.companies[*].id", hasItem(Integer.valueOf(
+                        latest.substring(0, latest.indexOf('-'))))))
+                .andExpect(jsonPath("$.companies[?(@.displayName == null)]", hasSize(0)));
     }
 
     @Test

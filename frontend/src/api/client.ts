@@ -103,5 +103,5 @@ async function readMessage(response: Response): Promise<string> {
   } catch {
     // Not JSON: fall through to the general message.
   }
-  return `Something went wrong (error ${response.status}).`;
+  return `Something Went Wrong (Error ${response.status})`;
 }

@@ -12,10 +12,14 @@ import java.util.List;
  * nothing is being read. {@code unread} is how many earlier reports are still to read, in {@code unreadHoldings} of the
  * {@code holdingCount} holdings that have been analysed (a holding with some still to read counts once, however many).
  * {@code years} runs from the year of the earliest report read to the year of the latest; "Today" is the current graph,
- * shown by the website.
+ * shown by the website. {@code companies} are the companies the years name, each once.
  */
 public record HistoryResponse(HistoryStatus status, String reason, Progress progress, int unread, int unreadHoldings,
-                              int holdingCount, List<Year> years) {
+                              int holdingCount, List<Year> years, List<Company> companies) {
+
+    /** A company named in some year, so the website can draw one that is no longer named today. */
+    public record Company(Long id, String name, String displayName, String ticker) {
+    }
 
     public record Progress(int done, int total) {
     }
