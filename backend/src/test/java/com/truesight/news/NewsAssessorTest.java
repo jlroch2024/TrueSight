@@ -40,7 +40,7 @@ class NewsAssessorTest {
                 .peek(article -> ReflectionTestUtils.setField(article, "id", nextId.getAndIncrement()))
                 .toList();
         when(newsCheck.companiesFor(1L))
-                .thenReturn(List.of(new NewsCheckService.NewsCompany(1L, "Taiwan Semiconductor Manufacturing")));
+                .thenReturn(List.of(new NewsCheckService.NewsCompany(1L, "Taiwan Semiconductor Manufacturing", null)));
         when(articles.findUnassessedByCompanyIdIn(anyCollection())).thenReturn(sample);
 
         AtomicInteger running = new AtomicInteger();

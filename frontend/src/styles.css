@@ -2598,6 +2598,8 @@ svg.lucide {
 }
 
 .alert-hero h2 {
+  /* An SEC 8-K's headline can be 300 characters of the company's own words: it wraps, even a long unbroken word. */
+  overflow-wrap: anywhere;
   margin: 6px 0 0;
   font-size: var(--t-16);
   font-weight: 650;
@@ -4374,6 +4376,7 @@ table.ai-calls td:nth-child(7) {
 /* An alert's other sources: each a quiet row that opens its article. */
 button.source-row {
   width: 100%;
+  overflow-wrap: anywhere;
   border-width: 0 0 1px;
   border-style: solid;
   border-color: var(--line);
