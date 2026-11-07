@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -91,6 +92,59 @@ class SecClientTest {
         } finally {
             callers.shutdownNow();
         }
+    }
+
+    // The SEC's real submissions response for NVIDIA, saved unchanged in docs/examples (see its README).
+
+    private SecClient secAnswering(String cik, String body) {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://data.sec.gov/submissions/CIK%s.json".formatted(cik)))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+        return new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+    }
+
+    private static final String NVIDIA_CIK = "0001045810";
+
+    @Test
+    void annualFilingsAreNvidiasNewestTenKsInTheOrderTheSecListsThem() {
+        SecClient sec = secAnswering(NVIDIA_CIK, Examples.secSubmissionsNvidia());
+
+        List<SecClient.SecFiling> filings = sec.annualFilings(NVIDIA_CIK, 3);
+
+        assertThat(filings).hasSize(3);
+        assertThat(filings).extracting(SecClient.SecFiling::form).containsOnly("10-K");
+        assertThat(filings.get(0).accessionNumber()).isEqualTo("0001045810-26-000021");
+        assertThat(filings.get(0).filingDate()).hasToString("2026-02-25");
+        assertThat(filings.get(1).accessionNumber()).isEqualTo("0001045810-25-000023");
+        assertThat(filings).extracting(SecClient.SecFiling::filingDate).isSortedAccordingTo(Comparator.reverseOrder());
+        assertThat(filings.get(0).url())
+                .startsWith("https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/");
+    }
+
+    @Test
+    void annualFilingsStopAtTheCountAskedFor() {
+        SecClient sec = secAnswering(NVIDIA_CIK, Examples.secSubmissionsNvidia());
+
+        assertThat(sec.annualFilings(NVIDIA_CIK, 2)).hasSize(2);
+    }
+
+    @Test
+    void askingForManyAnnualFilingsGivesEveryOneInTheListNewestFirstAndNothingElse() {
+        SecClient sec = secAnswering(NVIDIA_CIK, Examples.secSubmissionsNvidia());
+
+        List<SecClient.SecFiling> filings = sec.annualFilings(NVIDIA_CIK, 1000);
+
+        assertThat(filings.size()).isGreaterThanOrEqualTo(3);
+        assertThat(filings).extracting(SecClient.SecFiling::form).isSubsetOf("10-K", "20-F");
+        assertThat(filings).extracting(SecClient.SecFiling::filingDate).isSortedAccordingTo(Comparator.reverseOrder());
+    }
+
+    @Test
+    void theLatestAnnualFilingIsStillTheFirstOfThem() {
+        SecClient sec = secAnswering(NVIDIA_CIK, Examples.secSubmissionsNvidia());
+
+        assertThat(sec.latestAnnualFiling(NVIDIA_CIK).accessionNumber()).isEqualTo("0001045810-26-000021");
     }
 
     // ---- the ticker list: downloaded once a day, not once per ticker -----------------------------------------------

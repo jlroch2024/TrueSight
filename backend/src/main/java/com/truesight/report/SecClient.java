@@ -19,9 +19,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -104,19 +103,29 @@ public class SecClient {
 
     /** Returns the first 10-K or 20-F in the recent filings list, as specified by this story. */
     public SecFiling latestAnnualFiling(String cik) {
+        List<SecFiling> found = annualFilings(cik, 1);
+        return found.isEmpty() ? null : found.get(0);
+    }
+
+    /**
+     * Returns up to {@code count} of the company's 10-K and 20-F filings from the recent filings list, newest first
+     * (the order the SEC lists them in). One request, paced like every other.
+     */
+    public List<SecFiling> annualFilings(String cik, int count) {
         JsonNode root = getJson(SUBMISSIONS_URL.formatted(cik));
         JsonNode recent = root.path("filings").path("recent");
         JsonNode forms = recent.path("form");
-        for (int i = 0; i < forms.size(); i++) {
+        List<SecFiling> filings = new ArrayList<>();
+        for (int i = 0; i < forms.size() && filings.size() < count; i++) {
             String form = forms.get(i).asText();
             if (!form.equals("10-K") && !form.equals("20-F")) continue;
             String accession = recent.path("accessionNumber").path(i).asText();
             String date = recent.path("filingDate").path(i).asText();
             String document = recent.path("primaryDocument").path(i).asText();
             if (accession.isBlank() || date.isBlank() || document.isBlank()) continue;
-            return new SecFiling(form, accession, LocalDate.parse(date), filingUrl(cik, accession, document));
+            filings.add(new SecFiling(form, accession, LocalDate.parse(date), filingUrl(cik, accession, document)));
         }
-        return null;
+        return filings;
     }
 
     /** Every 8-K in the recent filings list, newest first as the SEC lists them. Amendments (8-K/A) are skipped. */

@@ -6,7 +6,7 @@
 // in docs/examples/google-news-tsmc.xml (test/sampleAlerts.ts). The graph draws on a <canvas>, which jsdom cannot draw
 // on, so it is replaced with a fake that shows what it was given and has a button per company and per link; what the
 // real graph does with it is tested in src/graph/.
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactNode, type Ref, useImperativeHandle } from 'react';
 import { MemoryRouter, useLocation } from 'react-router';
@@ -17,6 +17,7 @@ import type { AlertEvent, ReachedHolding } from '../api/alerts';
 import type { AskAnswer } from '../api/ask';
 import { tokenStore } from '../api/client';
 import type { Holding, Portfolio } from '../api/portfolios';
+import type { History, HistoryEntry, HistoryYear } from '../api/history';
 import type { Relationship } from '../api/relationships';
 import type { WhatIf } from '../api/whatIf';
 import type { GraphFocus, GraphHandle } from '../graph/LivingGraph';
@@ -46,6 +47,7 @@ vi.mock('../graph/LivingGraph', () => ({
     bare?: boolean;
     insets?: { top: number; right: number; bottom: number; left: number };
     barStart?: ReactNode;
+    barEnd?: ReactNode;
   }) => {
     useImperativeHandle(props.ref, () => ({ snapshot: () => picture.png }), []);
     return (
@@ -64,6 +66,7 @@ vi.mock('../graph/LivingGraph', () => ({
       <span data-testid="alert-dots">
         {[...(props.alertDots ?? [])].map(([nodeId, severity]) => `${nodeId}:${severity}`).sort().join(',')}
       </span>
+      {props.barEnd}
       {props.edges.map((edge) => (
         <button key={edge.id} type="button" onClick={() => props.onEdgeSelect(edge.relationshipId)}>
           {`Link ${edge.relationshipId}`}
@@ -149,6 +152,11 @@ type Backend = {
   briefingFails?: boolean;
   // What an analysis leaves each holding as.
   analysed?: (holding: Holding) => Holding;
+  // What the SEC Filing Timeline has read (nothing, unless a test says), and what it is once loading is asked for.
+  history?: History;
+  afterLoadHistory?: History;
+  // What the history is once every holding is analysed.
+  historyAfterAnalysis?: History;
   // The answer to "what if this company stops?", by company id, or the status code to fail with.
   whatIf?: (companyId: number) => WhatIf | number;
   sent: { method: string; url: string; body: unknown }[];
@@ -179,6 +187,18 @@ function answer(url: string, init: RequestInit = {}): Response {
       if (backend.found) backend.alerts = backend.found;
     }
     return json([backend.portfolio, { id: 9, name: 'Utilities', createdAt: '', newsStatus: 'IDLE', newsStatusReason: null, newsCheckedAt: null }]);
+  }
+  if (url === `${base}/history`) {
+    if (method === 'POST') {
+      if (backend.afterLoadHistory) backend.history = backend.afterLoadHistory;
+      return new Response(null, { status: 202 });
+    }
+    if (backend.historyAfterAnalysis && backend.holdings.every((holding) => holding.status === 'DONE')) {
+      return json(backend.historyAfterAnalysis);
+    }
+    return json(
+      backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 0, years: [] },
+    );
   }
   if (url === `${base}/questions` && method === 'POST') {
     const reply = backend.ask?.(body.question, body.history);
@@ -1363,6 +1383,161 @@ describe('the Inspector', () => {
 });
 
 // ---- The graph's marks and logos -------------------------------------------------------------------------------------
+
+// ---- Load History ------------------------------------------------------------------------------------------------
+
+function entry(counterparty: number, type: HistoryEntry['type'], change: HistoryEntry['change'] = 'NEW'): HistoryEntry {
+  return {
+    key: `${NVIDIA.id}-${counterparty}-${type}`,
+    companyId: NVIDIA.id,
+    counterpartyId: counterparty,
+    type,
+    provides: 'wafers',
+    evidence: sample[0]!.evidence,
+    reportUrl: sample[0]!.report.url,
+    filingDate: '2026-02-25',
+    change,
+  };
+}
+
+function year(value: number, relationships: HistoryEntry[] = [], gone: string[] = []): HistoryYear {
+  return { year: value, relationships, gone };
+}
+
+function history(overrides: Partial<History> = {}): History {
+  return { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 3, years: [year(2026)], ...overrides };
+}
+
+/** Waits until the workspace has asked for the history and shown the answer. */
+async function historyRead() {
+  await waitFor(() =>
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toContain(`/api/portfolios/${backend.portfolio.id}/history`),
+  );
+  await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+}
+
+describe('Load History', () => {
+  it('offersLoadHistoryAsSoonAsTheAnalysisHasFinishedWithoutReloadingThePage', async () => {
+    backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
+    backend.analysed = (holding) => ({ ...holding, status: 'DONE' });
+    // Nothing is analysed when the workspace opens, so there is nothing to read yet.
+    backend.history = history({ unread: 0, unreadHoldings: 0, holdingCount: 0 });
+    backend.historyAfterAnalysis = history({ unread: 4, unreadHoldings: 2, holdingCount: 2 });
+    renderAt();
+    await graph();
+    await historyRead();
+    expect(screen.queryByRole('button', { name: /Load History/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Analyse' }));
+
+    const offer = await screen.findByRole('button', { name: /Load History/ }, { timeout: 4000 });
+    expect(offer).toHaveTextContent('Reads 4 Earlier Reports');
+  });
+
+  it('isOfferedWithHowManyEarlierReportsItReads', async () => {
+    backend.history = history({ unread: 6, unreadHoldings: 3 });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('button', { name: /Load History/ })).toHaveTextContent('Reads 6 Earlier Reports');
+  });
+
+  it('asksTheBackendToReadThemAndShowsHowFarItHasGot', async () => {
+    backend.history = history({ unread: 6, unreadHoldings: 3 });
+    backend.afterLoadHistory = history({ status: 'READING', progress: { done: 3, total: 6 }, unread: 3 });
+    renderAt();
+    await graph();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Load History/ }));
+
+    expect(backend.sent).toContainEqual({ method: 'POST', url: `/api/portfolios/${backend.portfolio.id}/history`, body: undefined });
+    expect(await screen.findByText('Reading Earlier Reports: 3 of 6')).toBeInTheDocument();
+  });
+
+  it('showsWhyReadingFailedAndReadsAgainWhenRetried', async () => {
+    backend.history = history({ status: 'FAILED', reason: 'The SEC could not be reached.', progress: { done: 1, total: 6 }, unread: 5 });
+    backend.afterLoadHistory = history({ status: 'READING', progress: { done: 1, total: 6 }, unread: 5 });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The SEC could not be reached.');
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(backend.sent.filter((request) => request.url.endsWith('/history'))).toHaveLength(1);
+    expect(await screen.findByText('Reading Earlier Reports: 1 of 6')).toBeInTheDocument();
+  });
+
+  it('offersAHoldingAddedLaterOnItsOwn', async () => {
+    backend.history = history({ unread: 2, unreadHoldings: 1, years: [year(2024), year(2025), year(2026)] });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('button', { name: /Load History for 1 New Holding/ })).toHaveTextContent(
+      'Reads 2 Earlier Reports',
+    );
+  });
+
+  it('countsTheHoldingsWithReportsLeftNotTheReportsDividedByTwo', async () => {
+    // Two holdings each left with one report unread, after a failure: 2 reports, but 2 holdings.
+    backend.history = history({ unread: 2, unreadHoldings: 2, holdingCount: 4, years: [year(2024), year(2025), year(2026)] });
+    renderAt();
+    await graph();
+
+    expect(await screen.findByRole('button', { name: /Load History for 2 New Holdings/ })).toHaveTextContent(
+      'Reads 2 Earlier Reports',
+    );
+  });
+
+  it('offersPlainLoadHistoryWhenEveryHoldingStillHasReportsToRead', async () => {
+    backend.history = history({ unread: 5, unreadHoldings: 3, holdingCount: 3, years: [year(2026)] });
+    renderAt();
+    await graph();
+
+    const button = await screen.findByRole('button', { name: /Load History/ });
+    expect(button).toHaveTextContent('Reads 5 Earlier Reports');
+    expect(button).not.toHaveTextContent('New Holding');
+  });
+
+  it('isNotOfferedOnceEveryHoldingIsRead', async () => {
+    backend.history = history({ unread: 0, unreadHoldings: 0, years: [year(2024), year(2025), year(2026)] });
+    renderAt();
+    await graph();
+    await historyRead();
+
+    expect(screen.queryByRole('button', { name: /Load History/ })).not.toBeInTheDocument();
+  });
+
+  it('tellsInTheInspectorWhichYearsACompanyWasNamedInAsASupplierAndAsACustomer', async () => {
+    const tsmc = sample[0]!.counterparty.id;
+    backend.history = history({
+      years: [
+        year(2024, [entry(tsmc, 'SUPPLIER')]),
+        year(2025, [entry(tsmc, 'SUPPLIER', 'KEPT'), entry(tsmc, 'CUSTOMER')]),
+        year(2026, [entry(tsmc, 'SUPPLIER', 'KEPT')]),
+      ],
+    });
+    renderAt();
+    await graph();
+    await screen.findByRole('button', { name: `Company ${tsmc}` });
+    await historyRead();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${tsmc}` }));
+
+    const lines = await within(inspector()).findByRole('region', { name: 'History' });
+    expect(lines).toHaveTextContent('Named as a Supplier in 2024, 2025 and 2026');
+    expect(lines).toHaveTextContent('Named as a Customer in 2025');
+  });
+
+  it('saysNothingInTheInspectorOfACompanyTheTimelineNeverNamed', async () => {
+    backend.history = history({ years: [year(2024, [entry(sample[0]!.counterparty.id, 'SUPPLIER')]), year(2026)] });
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${LAM.id}` }));
+
+    expect(within(inspector()).queryByRole('region', { name: 'History' })).not.toBeInTheDocument();
+  });
+});
 
 // ---- Simulate Disruption -------------------------------------------------------------------------------------------
 

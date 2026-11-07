@@ -3520,6 +3520,7 @@ svg.lucide {
 }
 
 .call-dot[data-purpose='FIND_RELATIONSHIPS'],
+.call-dot[data-purpose='TIMELINE'],
 .call-dot[data-purpose='CRITICALITY'] {
   background: var(--teal);
   box-shadow: 0 0 8px var(--teal);
@@ -4588,6 +4589,64 @@ button.source-row:hover {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--sev) 22%, transparent), color-mix(in srgb, var(--sev) 8%, transparent)),
     var(--glass);
+}
+
+/* Load History, in the graph's top bar after the search: a glass panel, as tall as the bar, holding a quiet button or
+   the reading's progress. The panel's look is glass ticks'; this only lays it out. */
+.lg-root .history-bar {
+  display: inline-flex;
+  height: 52px;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 0 14px;
+  font-size: var(--t-13);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Holding only Load History, the panel is the button: no room of its own around it, so the bar keeps its space. */
+.lg-root .history-bar:has(> .btn:only-child) {
+  padding: 0;
+}
+
+.lg-root .history-bar > .btn:only-child {
+  height: 100%;
+}
+
+/* Where the bar is crowded, Load History folds to a square of its icon (as Open Alerts folds to its count when the bar
+   is tight), so the graph's title keeps its room first. Its words stay as its tooltip and for screen readers. A failure is never folded. */
+.lg-root.lg-bar-crowded .history-folds {
+  width: 52px;
+  justify-content: center;
+  padding: 0;
+}
+
+.lg-root.lg-bar-crowded .history-folds > .btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0;
+}
+
+.lg-bar-crowded .history-folds .history-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.history-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.history-sub {
+  color: var(--muted);
+  font-size: var(--t-12);
+  font-weight: 500;
 }
 
 /* A field's label with an action beside it, such as a suggestion's Edit. */

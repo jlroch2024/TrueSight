@@ -91,6 +91,8 @@ type Props = {
   topBar?: { left: number; right: number };
   // Something of the page's to put first in that band, before the title (the workspace's Open Alerts bar).
   barStart?: ReactNode;
+  // Something of the page's to put last in that band, after the search (the workspace's Load History button).
+  barEnd?: ReactNode;
   // Shown on a screen taller than it is wide (a phone): the graph spreads down rather than across, to fill it.
   tall?: boolean;
   // How the page reaches the graph's snapshot().
@@ -315,6 +317,7 @@ export function LivingGraph({
   insets = NO_INSETS,
   topBar,
   barStart,
+  barEnd,
   tall = false,
   ref,
 }: Props) {
@@ -1141,25 +1144,37 @@ export function LivingGraph({
 
   const inBar = topBar !== undefined;
   const hasBarStart = barStart !== undefined && barStart !== null;
+  const hasBarEnd = barEnd !== undefined && barEnd !== null;
   // The room is measured as the bars move (a panel opening, the window resized) and as the page's own bar in the row
   // changes width (the Open Alerts bar opening).
   useEffect(() => {
     const top = topRef.current;
     if (!inBar || !top || typeof ResizeObserver === 'undefined') return;
+    // An item that folds when the bar is crowded is measured at its unfolded width, kept from when it was last open:
+    // measured folded, it would make the bar look roomy, unfold, and fold again.
+    const openWidths = new WeakMap<HTMLElement, number>();
+    const openWidth = (item: HTMLElement) => {
+      if (!item.classList.contains('history-folds')) return item.offsetWidth;
+      if (item.offsetWidth > BAR_SQUARE + 1) openWidths.set(item, item.offsetWidth);
+      return openWidths.get(item) ?? item.offsetWidth;
+    };
     const measure = () => {
       const gap = parseFloat(getComputedStyle(top).columnGap) || 0;
       const items = [...top.children] as HTMLElement[];
       const start = items.filter((item) => !item.classList.contains('lg-title') && !item.classList.contains('lg-search'));
-      const needed = start.reduce((sum, item) => sum + item.offsetWidth, 0) + BAR_ITEM * 2 + gap * (start.length + 1);
+      const needed = start.reduce((sum, item) => sum + openWidth(item), 0) + BAR_ITEM * 2 + gap * (start.length + 1);
       setCrowded(top.clientWidth < needed);
-      setTight(top.clientWidth < BAR_TITLE_LEAST + gap + BAR_SQUARE + start.length * (BAR_START_LEAST + gap));
+      // An item that folds to a square as soon as the bar is crowded (the page marks it history-folds, as Load History)
+      // needs only that square here.
+      const least = (item: HTMLElement) => (item.classList.contains('history-folds') ? BAR_SQUARE : BAR_START_LEAST);
+      setTight(top.clientWidth < BAR_TITLE_LEAST + gap + BAR_SQUARE + start.reduce((sum, item) => sum + least(item) + gap, 0));
     };
     const observer = new ResizeObserver(measure);
     observer.observe(top);
     for (const item of top.children) observer.observe(item);
     measure();
     return () => observer.disconnect();
-  }, [inBar, hasBarStart]);
+  }, [inBar, hasBarStart, hasBarEnd]);
 
   return (
     <>
@@ -1249,6 +1264,7 @@ export function LivingGraph({
               )}
             </AnimatePresence>
           </div>
+          {barEnd}
 
           {!bare && (
             <div className="lg-top-right">

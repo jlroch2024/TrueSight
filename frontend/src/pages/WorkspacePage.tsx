@@ -36,6 +36,8 @@ import { HoldingsTab, LoadingRows } from '../components/workspace/HoldingsTab';
 import { InspectorBody, InspectorKind } from '../components/workspace/Inspector';
 import { PHONE_TABS, type PhoneTab, PhoneDock } from '../components/workspace/PhoneDock';
 import { ActionsIsland, AnalystDeskButton, OpenAlertsBar, PortfolioIsland, Swap } from '../components/workspace/TopBar';
+import { LoadHistory } from '../components/workspace/LoadHistory';
+import { useHistory } from '../components/workspace/useHistory';
 import { useAsk } from '../components/workspace/useAsk';
 import { useWhatIf } from '../components/workspace/useWhatIf';
 import { type Chosen, alertKey, byUrgency, companyIdOfNode, scenarioFocus, spotlightOf, useWorkspaceView } from '../components/workspace/view';
@@ -160,6 +162,8 @@ export function WorkspacePage() {
   const [phoneTab, setPhoneTab] = useState<PhoneTab>(tab === 'alerts' ? 'alerts' : 'graph');
   const [leftOpen, setLeftOpen] = useState(true);
   const [chosen, setChosen] = useState<Chosen>(null);
+  // The SEC Filing Timeline: earlier annual reports, read on request, and the years they cover.
+  const timeline = useHistory(portfolioId, (holdings ?? []).filter((holding) => holding.status === 'DONE').length);
   // The last thing the Inspector showed, so a closed Inspector can be opened again where it was.
   const [lastChosen, setLastChosen] = useState<Chosen>(null);
   const [peek, setPeek] = useState<string | null>(null);
@@ -706,6 +710,7 @@ export function WorkspacePage() {
       chosen={chosen}
       view={view}
       busyKey={busyKey}
+      history={timeline.state.status === 'ready' ? timeline.state.history : null}
       scenario={scenario}
       onRetryScenario={retryScenario}
       onChoose={setChosen}
@@ -743,6 +748,15 @@ export function WorkspacePage() {
                     onOpen={openAlertsTab}
                   />
                 )
+              }
+              barEnd={
+                <LoadHistory
+                  state={timeline.state}
+                  starting={timeline.starting}
+                  startError={timeline.startError}
+                  onLoad={() => void timeline.load()}
+                  onRetry={() => void timeline.refresh()}
+                />
               }
               focus={focus}
               peekNodeId={peek}

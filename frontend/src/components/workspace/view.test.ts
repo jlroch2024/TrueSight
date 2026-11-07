@@ -11,6 +11,8 @@ import {
   byWeight,
   companyIdOfNode,
   exposureOf,
+  joinYears,
+  namedIn,
   offGraphId,
   scenarioExposure,
   scenarioFocus,
@@ -85,6 +87,37 @@ describe('offGraphId', () => {
   it('givesAHoldingNotOnTheGraphAnIdNoGraphNodeHas', () => {
     expect(offGraphId(7)).toBe('holding-7');
     expect(offGraphId(7)).not.toMatch(/^\d+$/);
+  });
+});
+
+describe('joinYears', () => {
+  it('writesYearsAsASentencesList', () => {
+    expect(joinYears([2026])).toBe('2026');
+    expect(joinYears([2025, 2026])).toBe('2025 and 2026');
+    expect(joinYears([2024, 2025, 2026])).toBe('2024, 2025 and 2026');
+  });
+});
+
+describe('namedIn', () => {
+  const entry = (counterpartyId: number, type: 'SUPPLIER' | 'CUSTOMER') => ({ counterpartyId, type }) as never;
+  const history = {
+    status: 'IDLE',
+    reason: null,
+    progress: null,
+    unread: 0,
+    years: [
+      { year: 2024, relationships: [entry(5, 'SUPPLIER')], gone: [] },
+      { year: 2025, relationships: [entry(5, 'SUPPLIER'), entry(5, 'CUSTOMER'), entry(6, 'SUPPLIER')], gone: [] },
+      { year: 2026, relationships: [], gone: [] },
+    ],
+  } as never;
+
+  it('givesTheYearsACompanyWasNamedInAsEachRoleAndNothingForACompanyNeverNamed', () => {
+    expect(namedIn(history, 5)).toEqual([
+      { role: 'Supplier', years: [2024, 2025] },
+      { role: 'Customer', years: [2025] },
+    ]);
+    expect(namedIn(history, 7)).toEqual([]);
   });
 });
 
