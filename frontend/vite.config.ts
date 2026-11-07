@@ -23,5 +23,13 @@ export default defineConfig({
     // Vitest empties CSS files; this lets tests read the stylesheets as text (the look's checks in design.test.ts, the
     // Select test). Imported styles stay empty.
     css: { include: [/(styles|livingGraph)\.css\?raw/] },
+    // `npm run coverage` fails below 50% of lines (the course's minimum); the report is coverage/index.html.
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx'],
+      reporter: ['text-summary', 'html'],
+      thresholds: { lines: 50 },
+    },
   },
 });

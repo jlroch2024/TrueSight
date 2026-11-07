@@ -163,7 +163,7 @@ class ReviewIT {
         assertThat(item.toString()).doesNotContain("rv-private@example.com").doesNotContainIgnoringCase("portfolioId");
         assertThat(item.fieldNames()).toIterable()
                 .containsExactlyInAnyOrder("relationship", "reviewStatus", "reviewNote", "reviewedBy", "reviewedAt",
-                        "usedByPortfolios", "secondCheck", "secondCheckReason");
+                        "usedByPortfolios", "secondCheck", "secondCheckReason", "highlights");
     }
 
     // ---- criterion 2 ---------------------------------------------------------------------------------------------

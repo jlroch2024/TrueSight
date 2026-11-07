@@ -7,6 +7,7 @@ import { formatDate, openInNewTab, showInReportUrl, titleCase } from '../../form
 import { NEUTRAL_EDGE } from '../../graph/model';
 import { ConfidenceReasons, ConfidenceTag } from '../Confidence';
 import { FlowLink } from '../FlowLink';
+import { HighlightedQuote } from '../HighlightedQuote';
 import { Tile } from '../Tile';
 import { type Chosen, type WorkspaceView } from './view';
 
@@ -100,13 +101,16 @@ export function RelationshipView({
         <ConfidenceReasons confidence={relationship.confidence} />
       </section>
 
-      <blockquote className="evidence">
-        {relationship.evidence}
+      <HighlightedQuote
+        text={relationship.evidence}
+        highlights={relationship.highlights}
+        companyColour={view.colourOf.get(String(relationship.company.id))}
+      >
         <footer>
           <FileText size={13} />
           From {relationship.company.displayName}’s {relationship.report.form}, Filed {formatDate(relationship.report.filingDate)}
         </footer>
-      </blockquote>
+      </HighlightedQuote>
 
       <div className="actions">
         <button

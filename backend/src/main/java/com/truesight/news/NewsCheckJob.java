@@ -9,14 +9,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Collects news away from the request thread, one shared company at a time: its Google News headlines and, for a
- * company with an SEC number, its 8-Ks (see {@link CurrentReports}).
+ * Collects news away from the request thread, in three rounds, one shared company at a time: each company's Google News
+ * headlines and, for a company with an SEC number, its 8-Ks (see {@link CurrentReports}).
  */
 @Component
 public class NewsCheckJob {
@@ -49,41 +51,73 @@ public class NewsCheckJob {
         }
     }
 
+    /** How long a holding's or a direct supplier's news is kept before it is fetched again. */
+    static final Duration FRESH = Duration.ofHours(1);
+
+    /** The same for a company that is only a supplier's supplier in the portfolio: most of the companies. */
+    static final Duration FRESH_FOR_SUPPLIERS_SUPPLIERS = Duration.ofHours(6);
+
+    /**
+     * Fetches the news in three rounds, most important first: the holdings', their suppliers', then the suppliers'
+     * suppliers'. After each round the headlines are judged and the alerts built, so an alert about a holding exists
+     * within seconds, and the suppliers' follow. A round that fetches nothing new does not stop the next.
+     */
     private void check(Long portfolioId) {
         try {
-            int attempted = 0;
-            int succeeded = 0;
-            List<String> failed = new ArrayList<>();
-            for (NewsCheckService.NewsCompany company : service.companiesFor(portfolioId)) {
-                synchronized (companyLocks.computeIfAbsent(company.id(), ignored -> new Object())) {
-                    Instant now = Instant.now();
-                    if (service.wasCheckedWithinTheLastHour(company.id(), now)) continue;
-                    attempted++;
-                    String searchName = NewsSearchName.of(company.name());
-                    try {
-                        List<NewsItem> found = new ArrayList<>(news.search(searchName));
-                        found.addAll(currentReports(company, now));
-                        List<NewsItem> recent = newestRecentItems(found, now);
-                        service.save(company.id(), recent, now);
-                        succeeded++;
-                    } catch (NewsClient.NewsAccessException ignored) {
-                        // A failed company stays unchecked so this portfolio, or another one, can try it again.
-                        failed.add(searchName);
-                    }
-                }
-            }
-            if (attempted > 0 && succeeded == 0) {
+            NewsCheckService.NewsRounds rounds = service.roundsFor(portfolioId);
+            Fetched total = new Fetched();
+            round(portfolioId, rounds.holdings(), FRESH, total);
+            round(portfolioId, rounds.suppliers(), FRESH, total);
+            round(portfolioId, rounds.suppliersSuppliers(), FRESH_FOR_SUPPLIERS_SUPPLIERS, total);
+            if (total.attempted > 0 && total.succeeded == 0) {
                 service.fail(portfolioId, NewsClient.UNREACHABLE);
                 return;
             }
-            steps.run(portfolioId);
-            service.finish(portfolioId, Instant.now(), failed.isEmpty() ? null : missedReason(failed, attempted));
+            service.finish(portfolioId, Instant.now(), total.failed.isEmpty() ? null : missedReason(total.failed, total.attempted));
         } catch (GeminiClient.GeminiException exception) {
-            // The articles the AI did not judge stay unassessed, so the next Check News sends them again.
+            // The AI is not answering, so the later rounds could not be judged either: the check stops here and fails.
+            // What the earlier rounds fetched is kept, and the articles the AI did not judge stay unassessed, so the
+            // next Check News judges them (and fetches the rounds it did not reach).
             service.fail(portfolioId, NewsAssessor.AI_FAILED);
         } catch (RuntimeException exception) {
             service.fail(portfolioId, "News could not be checked. Please try again later.");
         }
+    }
+
+    /** What the rounds so far have fetched. */
+    private static final class Fetched {
+        int attempted;
+        int succeeded;
+        final List<String> failed = new ArrayList<>();
+    }
+
+    /**
+     * Fetches one round's companies, unless they were fetched within {@code fresh}, then has the steps judge the
+     * headlines and build the alerts. A round whose every fetch failed has nothing new for the steps.
+     */
+    private void round(Long portfolioId, List<NewsCheckService.NewsCompany> companies, Duration fresh, Fetched total) {
+        if (companies.isEmpty()) return;
+        int attempted = 0;
+        int succeeded = 0;
+        for (NewsCheckService.NewsCompany company : companies) {
+            synchronized (companyLocks.computeIfAbsent(company.id(), ignored -> new Object())) {
+                Instant now = Instant.now();
+                if (service.wasCheckedWithin(company.id(), now, fresh)) continue;
+                attempted++;
+                String searchName = NewsSearchName.of(company.name());
+                try {
+                    service.save(company.id(), itemsFor(company, searchName, now), now);
+                    succeeded++;
+                } catch (NewsClient.NewsAccessException ignored) {
+                    // A failed company stays unchecked so this portfolio, or another one, can try it again.
+                    total.failed.add(searchName);
+                }
+            }
+        }
+        total.attempted += attempted;
+        total.succeeded += succeeded;
+        if (attempted > 0 && succeeded == 0) return;
+        steps.run(portfolioId);
     }
 
     private static String missedReason(List<String> failed, int attempted) {
@@ -101,39 +135,40 @@ public class NewsCheckJob {
         return prefix + names + suffix;
     }
 
-    private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now) {
-        Instant oldest = now.minus(Duration.ofDays(7));
-        Set<String> urls = new HashSet<>();
-        return items.stream()
-                .filter(item -> !item.publishedAt().isBefore(oldest) && !item.publishedAt().isAfter(now))
-                .sorted(Comparator.comparing(NewsItem::publishedAt).reversed())
-                .filter(item -> urls.add(item.url()))
-                .limit(10)
+    /**
+     * What one company's check saves: its Google News headlines and its 8-Ks together, under the one rule for both (the
+     * last 7 days, newest first, at most 10). Only then are the 8-Ks that remain downloaded, so one that the rule leaves
+     * out is never downloaded for nothing, and one already saved is never downloaded again.
+     */
+    private List<NewsItem> itemsFor(NewsCheckService.NewsCompany company, String searchName, Instant now) {
+        List<NewsItem> found = new ArrayList<>(news.search(searchName));
+        Map<String, SecClient.SecCurrentReport> filings = new HashMap<>();
+        for (SecClient.SecCurrentReport filing : currentReports(company)) {
+            filings.put(filing.url(), filing);
+            // Until it is downloaded, an 8-K is only the item's name: enough to place it among the news.
+            found.add(CurrentReports.newsItem(company.name(), filing, null));
+        }
+        return newestRecentItems(found, now).stream()
+                .map(item -> {
+                    SecClient.SecCurrentReport filing = filings.get(item.url());
+                    return filing == null || service.isSaved(company.id(), filing.url())
+                            ? item
+                            : CurrentReports.newsItem(company.name(), filing, download(filing.url()));
+                })
                 .toList();
     }
 
     /**
-     * A company's 8-Ks that report one of the nine items, as articles: by the same rules as news (the last 7 days,
-     * newest first, at most 10), and only those not already saved, so none is downloaded twice. None for a company
-     * without an SEC number, or when the SEC cannot be reached: its Google News is still saved, and its 8-Ks are read
-     * on its next check.
+     * A company's 8-Ks that report one of the nine items. None for a company without an SEC number, or when the SEC
+     * cannot be reached: its Google News is still saved, and its 8-Ks are read on its next check.
      */
-    private List<NewsItem> currentReports(NewsCheckService.NewsCompany company, Instant now) {
-        if (company.cik() == null || company.cik().isBlank()) return List.of();
-        List<SecClient.SecCurrentReport> filings;
+    private List<SecClient.SecCurrentReport> currentReports(NewsCheckService.NewsCompany company) {
+        if (!company.hasSecNumber()) return List.of();
         try {
-            filings = sec.recentCurrentReports(company.cik());
+            return CurrentReports.kept(sec.recentCurrentReports(company.cik()));
         } catch (SecClient.SecAccessException exception) {
             return List.of();
         }
-        Instant oldest = now.minus(Duration.ofDays(7));
-        return CurrentReports.kept(filings).stream()
-                .filter(filing -> !filing.acceptedAt().isBefore(oldest) && !filing.acceptedAt().isAfter(now))
-                .sorted(Comparator.comparing(SecClient.SecCurrentReport::acceptedAt).reversed())
-                .limit(10)
-                .filter(filing -> !service.isSaved(company.id(), filing.url()))
-                .map(filing -> CurrentReports.newsItem(company.name(), filing, download(filing.url())))
-                .toList();
     }
 
     /** The filing's document, or null when it cannot be downloaded: its headline is then the item's name. */
@@ -143,5 +178,16 @@ public class NewsCheckJob {
         } catch (SecClient.SecAccessException exception) {
             return null;
         }
+    }
+
+    private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now) {
+        Instant oldest = now.minus(Duration.ofDays(7));
+        Set<String> urls = new HashSet<>();
+        return items.stream()
+                .filter(item -> !item.publishedAt().isBefore(oldest) && !item.publishedAt().isAfter(now))
+                .sorted(Comparator.comparing(NewsItem::publishedAt).reversed())
+                .filter(item -> urls.add(item.url()))
+                .limit(10)
+                .toList();
     }
 }

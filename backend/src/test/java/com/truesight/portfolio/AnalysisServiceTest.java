@@ -9,8 +9,10 @@ import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
+import com.truesight.report.ReportReader;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
+import com.truesight.report.SupplierReader;
 import com.truesight.user.CurrentUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -37,8 +39,9 @@ class AnalysisServiceTest {
         AiCallRepository aiCalls = mock(AiCallRepository.class);
         SecClient sec = mock(SecClient.class);
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
-        AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companies, companyRepository,
-                reports, relationships, aiCalls, sec, relationshipFinder);
+        AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
+                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
+                mock(SupplierReader.class));
 
         Holding holding = new Holding(7L, "ASML", BigDecimal.TEN);
         holding.setStatus(HoldingStatus.ANALYSING);
@@ -82,8 +85,9 @@ class AnalysisServiceTest {
         AiCallRepository aiCalls = mock(AiCallRepository.class);
         SecClient sec = mock(SecClient.class);
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
-        AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companies, companyRepository,
-                reports, relationships, aiCalls, sec, relationshipFinder);
+        AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
+                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
+                mock(SupplierReader.class));
 
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));

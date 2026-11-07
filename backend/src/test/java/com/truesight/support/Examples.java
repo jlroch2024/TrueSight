@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Reads the real sample data in {@code docs/examples/}, whose README says where each file came from. Tests run in
@@ -64,6 +65,16 @@ public final class Examples {
         return read("gemini-nvidia-second-check.json");
     }
 
+    /** Gemini's real, unchanged answer to the highlights prompt, for {@link #highlightQuotes()}. */
+    public static String geminiHighlights() {
+        return read("gemini-highlights.json");
+    }
+
+    /** The 5 sentences of {@link #nvidia10K()} and {@link #amd10K()} sent for {@link #geminiHighlights()}, in order. */
+    public static List<String> highlightQuotes() {
+        return read("gemini-highlights-quotes.txt").lines().toList();
+    }
+
     /** A real Google News RSS response for the TSMC search used by Sprint 2. */
     public static String googleNewsTsmc() {
         return read("google-news-tsmc.xml");
@@ -77,6 +88,26 @@ public final class Examples {
     /** Gemini's real recommendation response supplied during TS-183 implementation. */
     public static String geminiRecommendation() {
         return read("gemini-recommendation.json");
+    }
+
+    /** The sample portfolio: ten holdings, each weighted 10, as {@code ticker,weight} lines. */
+    public static String holdingsCsv() {
+        return read("holdings.csv");
+    }
+
+    /** Gemini's real answer to a question the sample portfolio's data can answer (see the README). */
+    public static String geminiAskAnswerable() {
+        return read("gemini-ask-answerable.json");
+    }
+
+    /** Gemini's real answer to a question the sample portfolio's data cannot answer. */
+    public static String geminiAskUnknown() {
+        return read("gemini-ask-unknown.json");
+    }
+
+    /** Gemini's real answer to a question asking what to buy. */
+    public static String geminiAskAdvice() {
+        return read("gemini-ask-advice.json");
     }
 
     /** The team's hand labels, event or noise, for the 20 headlines in {@link #geminiNewsAssessment()}. */
