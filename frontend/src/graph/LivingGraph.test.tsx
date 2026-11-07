@@ -193,6 +193,49 @@ describe('LivingGraph', () => {
     expect(screen.getByRole('application', { name: 'Supply chain graph' })).toHaveAttribute('tabindex', '0');
   });
 
+  it('counts and finds only the companies and links of the year shown, and does not rebuild when the year changes', async () => {
+    const some = { nodeIds: nodes.slice(0, 3).map((node) => node.id), edgeIds: [] as string[] };
+    const view = drawGraph({ shown: some });
+    expect(screen.getByText(`3 Companies // 0 Relationships`)).toBeInTheDocument();
+
+    const builds = vi.mocked(buildLiveGraph).mock.calls.length;
+    const all = { nodeIds: nodes.map((node) => node.id), edgeIds: edges.map((edge) => edge.id) };
+    view.rerender(<LivingGraph nodes={nodes} edges={edges} shown={all} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />);
+
+    expect(screen.getByText(`${nodes.length} Companies // ${edges.length} Relationships`)).toBeInTheDocument();
+    // Showing more is no new graph: the layout was worked out once, over all of it.
+    expect(vi.mocked(buildLiveGraph).mock.calls.length).toBe(builds);
+  });
+
+  it('finds only a company the year shown has', async () => {
+    const nvidia = nodes.find((node) => node.name === 'NVIDIA Corporation')!;
+    drawGraph({ shown: { nodeIds: nodes.filter((node) => node.id !== nvidia.id).map((node) => node.id), edgeIds: [] } });
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Find a company' }), 'nvidia');
+
+    expect(screen.getByText('No Company by That Name')).toBeInTheDocument();
+  });
+
+  it('adds New This Year to the key only while a year with something new is shown', () => {
+    const everything = { nodeIds: nodes.map((node) => node.id), edgeIds: edges.map((edge) => edge.id) };
+    const view = drawGraph({ shown: everything });
+    expect(screen.queryByText('New This Year')).not.toBeInTheDocument();
+
+    view.rerender(
+      <LivingGraph
+        nodes={nodes}
+        edges={edges}
+        shown={everything}
+        fresh={{ nodeIds: [nodes[0]!.id], edgeIds: [], tag: 'New in 2025' }}
+        onNodeSelect={vi.fn()}
+        onEdgeSelect={vi.fn()}
+        layoutKey="truesight.graph.1"
+      />,
+    );
+
+    expect(screen.getByText('New This Year')).toBeInTheDocument();
+  });
+
   it('keys each holding with arrows by colour, and lights its chain when pressed, until pressed again', async () => {
     drawGraph();
     const chains = screen.getByRole('list', { name: "Each holding's chain" });

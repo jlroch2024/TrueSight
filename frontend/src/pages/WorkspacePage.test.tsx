@@ -48,6 +48,8 @@ vi.mock('../graph/LivingGraph', () => ({
     insets?: { top: number; right: number; bottom: number; left: number };
     barStart?: ReactNode;
     barEnd?: ReactNode;
+    shown?: { nodeIds: string[]; edgeIds: string[] } | null;
+    fresh?: { nodeIds: string[]; edgeIds: string[]; tag: string } | null;
   }) => {
     useImperativeHandle(props.ref, () => ({ snapshot: () => picture.png }), []);
     return (
@@ -66,6 +68,11 @@ vi.mock('../graph/LivingGraph', () => ({
       <span data-testid="alert-dots">
         {[...(props.alertDots ?? [])].map(([nodeId, severity]) => `${nodeId}:${severity}`).sort().join(',')}
       </span>
+      <span data-testid="shown-nodes">{props.shown ? [...props.shown.nodeIds].sort().join(',') : 'all'}</span>
+      <span data-testid="shown-links">{props.shown ? [...props.shown.edgeIds].sort().join(',') : 'all'}</span>
+      <span data-testid="fresh-nodes">{props.fresh ? [...props.fresh.nodeIds].sort().join(',') : ''}</span>
+      <span data-testid="fresh-links">{props.fresh ? [...props.fresh.edgeIds].sort().join(',') : ''}</span>
+      <span data-testid="fresh-tag">{props.fresh?.tag ?? ''}</span>
       {props.barEnd}
       {props.edges.map((edge) => (
         <button key={edge.id} type="button" onClick={() => props.onEdgeSelect(edge.relationshipId)}>
@@ -197,7 +204,7 @@ function answer(url: string, init: RequestInit = {}): Response {
       return json(backend.historyAfterAnalysis);
     }
     return json(
-      backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 0, years: [] },
+      backend.history ?? { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 0, years: [], companies: [] },
     );
   }
   if (url === `${base}/questions` && method === 'POST') {
@@ -1405,7 +1412,7 @@ function year(value: number, relationships: HistoryEntry[] = [], gone: string[] 
 }
 
 function history(overrides: Partial<History> = {}): History {
-  return { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 3, years: [year(2026)], ...overrides };
+  return { status: 'IDLE', reason: null, progress: null, unread: 0, unreadHoldings: 0, holdingCount: 3, years: [year(2026)], companies: [], ...overrides };
 }
 
 /** Waits until the workspace has asked for the history and shown the answer. */
@@ -2102,5 +2109,261 @@ describe('every state', () => {
     await userEvent.click(within(card).getByRole('button', { name: 'Add Holding' }));
     await waitFor(() => expect(screen.getByLabelText('Ticker')).toHaveFocus());
     expect(screen.getByRole('button', { name: 'Portfolio: Semiconductors' })).toHaveTextContent('No Holdings Yet');
+  });
+});
+
+// ---- Scrub the Graph Through the Years ---------------------------------------------------------------------------
+
+describe('Scrub the Graph Through the Years', () => {
+  const tsmc = sample[0]!.counterparty;
+  const dropped = sample.find((item) => item.company.id === NVIDIA.id && item.counterparty.id !== tsmc.id)!.counterparty;
+  const newer = sample.find((item) => ![tsmc.id, dropped.id, NVIDIA.id].includes(item.counterparty.id))!.counterparty;
+  const older = (counterparty: number, change: HistoryEntry['change'], filed: string): HistoryEntry => ({
+    ...entry(counterparty, 'SUPPLIER', change),
+    filingDate: filed,
+    reportUrl: `https://www.sec.gov/older-${filed}`,
+  });
+  const names = (...ids: number[]) =>
+    [NVIDIA, tsmc, dropped, newer]
+      .filter((company) => ids.includes(company.id))
+      .map(({ id, name, displayName, ticker }) => ({ id, name, displayName, ticker }));
+
+  /** Today has only TSMC; 2024 also names one since dropped, and 2025 names one that is new. */
+  function threeYears() {
+    backend.holdings = [held(NVIDIA, 1)];
+    backend.relationships = [sample[0]!];
+    backend.history = history({
+      years: [
+        year(2024, [older(tsmc.id, 'NEW', '2024-02-21'), older(dropped.id, 'NEW', '2024-02-21')]),
+        year(2025, [older(tsmc.id, 'KEPT', '2025-02-26'), older(newer.id, 'NEW', '2025-02-26')], [entry(dropped.id, 'SUPPLIER').key]),
+        year(2026, [older(tsmc.id, 'KEPT', '2026-02-25'), older(newer.id, 'KEPT', '2026-02-25')]),
+      ],
+      companies: names(NVIDIA.id, tsmc.id, dropped.id, newer.id),
+    });
+  }
+  const scrubber = () => screen.getByRole('slider', { name: 'Year of the Supply Chain' });
+  const shownNodes = () => screen.getByTestId('shown-nodes').textContent!.split(',');
+  const ids = (...companies: { id: number }[]) => companies.map((company) => String(company.id)).sort();
+
+  it('showsAStopForEachYearOfTheHistoryThenTodayAndOpensAtToday', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+
+    expect(scrubber()).toHaveAttribute('aria-valuetext', 'Today');
+    expect(within(scrubber()).getAllByText(/^(\d{4}|Today)$/).map((stop) => stop.textContent)).toEqual(['2024', '2025', '2026', 'Today']);
+  });
+
+  it('showsOnlyTodayBeforeAnyHistoryIsReadWithLoadHistoryBesideIt', async () => {
+    backend.history = history({ unread: 2, unreadHoldings: 1, years: [] });
+    renderAt();
+    await graph();
+    await historyRead();
+
+    expect(within(scrubber()).getAllByText(/^(\d{4}|Today)$/).map((stop) => stop.textContent)).toEqual(['Today']);
+    expect(screen.getByRole('button', { name: /Load History/ })).toBeInTheDocument();
+  });
+
+  it('laysOutEveryCompanyOfEveryYearAtOnceSoNoYearAddsOrMovesAny', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+
+    // Today's two and the two older years name: the graph has all four, whichever year is shown.
+    expect(screen.getByTestId('node-count')).toHaveTextContent('4');
+    scrubber().focus();
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(screen.getByTestId('node-count')).toHaveTextContent('4');
+  });
+
+  it('showsExactlyTheChosenYearsRelationshipsTheCompaniesTheyNameAndEveryHolding', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    expect(shownNodes()).toEqual(ids(NVIDIA, tsmc));
+
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+
+    expect(scrubber()).toHaveAttribute('aria-valuetext', '2024');
+    expect(shownNodes()).toEqual(ids(NVIDIA, tsmc, dropped));
+    expect(screen.getByTestId('shown-links').textContent!.split(',')).toHaveLength(2);
+
+    await userEvent.keyboard('{ArrowRight}');
+    expect(scrubber()).toHaveAttribute('aria-valuetext', '2025');
+    expect(shownNodes()).toEqual(ids(NVIDIA, tsmc, newer));
+  });
+
+  it('keepsEveryHoldingInEveryYearEvenWhenNoRelationshipNamesIt', async () => {
+    threeYears();
+    backend.holdings = [held(NVIDIA, 1), held(AMD, 2)];
+    renderAt();
+    await graph();
+    await historyRead();
+
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+
+    expect(shownNodes()).toContain(String(NVIDIA.id));
+    // A holding no link names has a node of its own.
+    expect(shownNodes()).toContain('holding-2');
+  });
+
+  it('lightsWhatIsNewThatYearWithItsTagAndNothingTodayOrInTheFirstYear', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    expect(screen.getByTestId('fresh-tag')).toHaveTextContent('');
+
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+    // The first year has nothing before it to be new against.
+    expect(screen.getByTestId('fresh-nodes')).toHaveTextContent('');
+
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('fresh-tag')).toHaveTextContent('New in 2025');
+    expect(screen.getByTestId('fresh-nodes').textContent).toBe(String(newer.id));
+    expect(screen.getByTestId('fresh-links').textContent!.split(',')).toHaveLength(1);
+
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByTestId('fresh-nodes')).toHaveTextContent('');
+  });
+
+  it('stepsWithTheArrowKeysAndStopsAtBothEnds', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+
+    scrubber().focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(scrubber()).toHaveAttribute('aria-valuetext', 'Today');
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(scrubber()).toHaveAttribute('aria-valuetext', '2026');
+    await userEvent.keyboard('{Home}{ArrowLeft}');
+    expect(scrubber()).toHaveAttribute('aria-valuetext', '2024');
+    await userEvent.keyboard('{End}');
+    expect(scrubber()).toHaveAttribute('aria-valuetext', 'Today');
+  });
+
+  it('choosesAYearByClickingItsStop', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+
+    await userEvent.click(within(scrubber()).getByText('2025'));
+
+    expect(scrubber()).toHaveAttribute('aria-valuetext', '2025');
+  });
+
+  it('showsAnOlderLinksEvidenceUnderItsReportsYearAndOpensThatYearsFiling', async () => {
+    threeYears();
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    renderAt();
+    await graph();
+    await historyRead();
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+
+    // The link only older years name has an id of its own, below zero.
+    await userEvent.click(screen.getByRole('button', { name: 'Link -1' }));
+
+    expect(within(inspector()).getByRole('heading', { name: 'From the 2024 Annual Report' })).toBeInTheDocument();
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Show in Report' }));
+    expect(open).toHaveBeenCalledWith(showInReportUrl('https://www.sec.gov/older-2024-02-21', sample[0]!.evidence), '_blank', 'noopener,noreferrer');
+  });
+
+  it('showsAYearsEvidenceForALinkTodayAlsoHas', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Link 1' }));
+
+    expect(within(inspector()).getByRole('heading', { name: 'From the 2024 Annual Report' })).toBeInTheDocument();
+  });
+
+  it('closesALinkTheNewYearDidNotName', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+    await userEvent.click(screen.getByRole('button', { name: 'Link -1' }));
+    expect(inspector()).toHaveTextContent('From the 2024 Annual Report');
+
+    // Focus is on the link's button now; go back to the scrubber to step.
+    scrubber().focus();
+    await userEvent.keyboard('{ArrowRight}');
+
+    expect(screen.getByTestId('selected-relationship')).toHaveTextContent('');
+  });
+
+  it('runsAScenarioOnlyAtToday', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    await userEvent.click(screen.getByRole('button', { name: `Company ${tsmc.id}` }));
+    expect(within(inspector()).getByRole('button', { name: 'Simulate Disruption' })).toBeInTheDocument();
+
+    scrubber().focus();
+    await userEvent.keyboard('{ArrowLeft}');
+
+    expect(within(inspector()).queryByRole('button', { name: 'Simulate Disruption' })).not.toBeInTheDocument();
+    expect(inspector()).toHaveTextContent('Return to Today to run a scenario.');
+  });
+
+  it('endsAScenarioWhenAYearIsChosen', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    await userEvent.click(screen.getByRole('button', { name: `Company ${tsmc.id}` }));
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Simulate Disruption' }));
+    expect(await within(inspector()).findByRole('button', { name: 'Close Scenario' })).toBeInTheDocument();
+
+    scrubber().focus();
+    await userEvent.keyboard('{ArrowLeft}');
+
+    expect(within(inspector()).queryByRole('button', { name: 'Close Scenario' })).not.toBeInTheDocument();
+  });
+
+  it('showsNoAlertsOrDisruptionsOnAPastYear', async () => {
+    threeYears();
+    backend.alerts = [sampleAlert({ id: 1, headline: 0, holdings: [tsmcSuppliesNvidia(1, 1)] })];
+    renderAt();
+    await graph();
+    await historyRead();
+    await waitFor(() => expect(screen.getByTestId('risk-links')).not.toHaveTextContent(/^$/));
+
+    scrubber().focus();
+    await userEvent.keyboard('{ArrowLeft}');
+
+    expect(screen.getByTestId('risk-links')).toHaveTextContent(/^$/);
+    expect(screen.getByTestId('alert-dots')).toHaveTextContent(/^$/);
+  });
+
+  it('describesACompanyOnlyAnOlderYearNamesInTheInspector', async () => {
+    threeYears();
+    renderAt();
+    await graph();
+    await historyRead();
+    scrubber().focus();
+    await userEvent.keyboard('{Home}');
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${dropped.id}` }));
+
+    expect(within(inspector()).getByRole('heading', { name: dropped.displayName })).toBeInTheDocument();
+    expect(within(inspector()).getByRole('region', { name: 'History' })).toHaveTextContent('Named as a Supplier in 2024');
   });
 });

@@ -2,6 +2,7 @@
 // what is supplied on its own line), whether an analyst has reviewed it, how critical the supplier is, the report's own
 // sentence with Show in Report, and a button for each of the two companies.
 import { ArrowRight, CircleDashed, ExternalLink, FileText, Package, ShieldCheck, UserRoundPen } from 'lucide-react';
+import type { HistoryEntry } from '../../api/history';
 import type { CompanySummary } from '../../api/relationships';
 import { formatDate, openInNewTab, showInReportUrl, titleCase } from '../../format';
 import { NEUTRAL_EDGE } from '../../graph/model';
@@ -163,6 +164,80 @@ export function RelationshipView({
             <span className="row-text">
               <span className="h-name">{company.displayName}</span>
               <span className="h-sub">{company === supplier ? 'Supplier' : 'Customer'}</span>
+            </span>
+            <ArrowRight size={15} />
+          </button>
+        ))}
+      </section>
+    </>
+  );
+}
+
+/**
+ * A link as an older year named it: that year's evidence, headed by the annual report it is from ("From the 2024 Annual
+ * Report"), with Show in Report opening that year's filing. Looking only: nothing here can be reviewed or changed.
+ */
+export function PastRelationshipView({
+  entry,
+  companies,
+  view,
+  onChoose,
+}: {
+  entry: HistoryEntry;
+  // Every company the history names, by id.
+  companies: Map<number, CompanySummary>;
+  view: WorkspaceView;
+  onChoose: (chosen: Chosen) => void;
+}) {
+  const company = companies.get(entry.companyId);
+  const counterparty = companies.get(entry.counterpartyId);
+  if (!company || !counterparty) return <p className="muted">No Longer on the Graph</p>;
+  const [supplier, customer] = entry.type === 'SUPPLIER' ? [counterparty, company] : [company, counterparty];
+  const colour = view.colourOf.get(String(company.id)) ?? NEUTRAL_EDGE;
+  const filedIn = entry.filingDate.slice(0, 4);
+
+  return (
+    <>
+      <div className="insp-title block">
+        <ClaimFlow supplier={supplier} customer={customer} provides={entry.provides} colour={colour} size={48} view={view} />
+        <h2 className="claim-title">
+          {supplier.displayName} <span className="muted light">Supplies</span> {customer.displayName}
+        </h2>
+      </div>
+
+      <section className="insp-section" aria-label="Annual Report">
+        <h3>
+          <span className="h3-mark" />
+          From the {filedIn} Annual Report
+        </h3>
+        <HighlightedQuote text={entry.evidence} highlights={[]} companyColour={view.colourOf.get(String(company.id))}>
+          <footer>
+            <FileText size={13} />
+            From {company.displayName}’s Annual Report, Filed {formatDate(entry.filingDate)}
+          </footer>
+        </HighlightedQuote>
+        <div className="actions">
+          <button type="button" className="btn primary" onClick={() => openInNewTab(showInReportUrl(entry.reportUrl, entry.evidence))}>
+            <ExternalLink size={16} />
+            Show in Report
+          </button>
+        </div>
+      </section>
+
+      <section className="insp-section" aria-label="Companies">
+        <h3>Companies</h3>
+        {[supplier, customer].map((item) => (
+          <button key={item.id} type="button" className="link-row" onClick={() => onChoose({ kind: 'company', nodeId: String(item.id) })}>
+            <Tile
+              name={item.name}
+              ticker={item.ticker}
+              size={32}
+              holding={view.holdingOfNode.has(String(item.id))}
+              colour={view.colourOf.get(String(item.id))}
+            />
+            <span className="row-text">
+              <span className="h-name">{item.displayName}</span>
+              <span className="h-sub">{item === supplier ? 'Supplier' : 'Customer'}</span>
             </span>
             <ArrowRight size={15} />
           </button>
