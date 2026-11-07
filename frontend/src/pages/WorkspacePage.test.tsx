@@ -1451,8 +1451,7 @@ describe('Load History', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Load History/ }));
 
     expect(backend.sent).toContainEqual({ method: 'POST', url: `/api/portfolios/${backend.portfolio.id}/history`, body: undefined });
-    const reading = await screen.findByText('Reading Earlier Reports');
-    expect(reading.closest('.history-bar')).toHaveTextContent('3 of 6 Read');
+    expect(await screen.findByText('Reading Earlier Reports: 3 of 6')).toBeInTheDocument();
   });
 
   it('showsWhyReadingFailedAndReadsAgainWhenRetried', async () => {
@@ -1465,7 +1464,7 @@ describe('Load History', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(backend.sent.filter((request) => request.url.endsWith('/history'))).toHaveLength(1);
-    expect(await screen.findByText('Reading Earlier Reports')).toBeInTheDocument();
+    expect(await screen.findByText('Reading Earlier Reports: 1 of 6')).toBeInTheDocument();
   });
 
   it('offersAHoldingAddedLaterOnItsOwn', async () => {

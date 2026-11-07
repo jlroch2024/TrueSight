@@ -1,6 +1,7 @@
-// The Load History button, in the graph's top bar after the search. It reads each holding's two previous annual reports
-// (the SEC Filing Timeline), shows how far that has got, and says why when it fails, with a way to retry. Once every
-// holding is read it goes away; a holding added later is offered on its own.
+// Load History, in the graph's top bar after the search: a glass panel holding a quiet button. It reads each holding's
+// two previous annual reports (the SEC Filing Timeline), says first how many it will read, shows how far it has got,
+// and says why when it fails, with a way to retry. Once every holding is read it goes away; a holding added later is
+// offered on its own.
 import { History as HistoryIcon, LoaderCircle } from 'lucide-react';
 import { plural } from '../motion';
 import type { HistoryState } from './useHistory';
@@ -24,10 +25,17 @@ export function LoadHistory({
   if (state.status === 'loading') return null;
   if (state.status === 'error') {
     return (
-      <button type="button" className="history-bar glass ticks" title={state.message} onClick={onRetry}>
-        <HistoryIcon size={16} />
-        Retry History
-      </button>
+      <span className="history-bar glass ticks">
+        <span className="history-text">
+          History Not Loaded
+          <span className="history-sub" role="alert">
+            {state.message}
+          </span>
+        </span>
+        <button type="button" className="btn quiet small" onClick={onRetry}>
+          Retry
+        </button>
+      </span>
     );
   }
 
@@ -38,8 +46,7 @@ export function LoadHistory({
       <span className="history-bar glass ticks" role="status">
         <LoaderCircle size={16} className="spin" />
         <span className="history-text">
-          Reading Earlier Reports
-          {progress && <span className="history-sub">{progress.done} of {progress.total} Read</span>}
+          {progress ? `Reading Earlier Reports: ${progress.done} of ${progress.total}` : 'Reading Earlier Reports'}
         </span>
       </span>
     );
@@ -48,11 +55,13 @@ export function LoadHistory({
   if (history.status === 'FAILED') {
     return (
       <span className="history-bar glass ticks">
-        <span className="history-text" role="alert">
+        <span className="history-text">
           Earlier Reports Not Read
-          <span className="history-sub">{history.reason ?? 'Earlier reports could not be read.'}</span>
+          <span className="history-sub" role="alert">
+            {history.reason ?? 'Earlier reports could not be read.'}
+          </span>
         </span>
-        <button type="button" className="btn small" onClick={onLoad}>
+        <button type="button" className="btn quiet small" onClick={onLoad}>
           Retry
         </button>
       </span>
@@ -64,14 +73,16 @@ export function LoadHistory({
   // left unfinished, and are offered on their own. The backend counts them (a holding half read counts once).
   const added = history.unreadHoldings < history.holdingCount ? history.unreadHoldings : 0;
   return (
-    <button type="button" className="history-bar glass ticks" onClick={onLoad}>
-      <HistoryIcon size={16} />
-      <span className="history-text">
-        {added > 0 ? `Load History for ${plural(added, 'New Holding', 'New Holdings')}` : 'Load History'}
-        <span className="history-sub">
-          {startError ?? `Reads ${plural(history.unread, 'Earlier Report', 'Earlier Reports')}`}
+    <span className="history-bar glass ticks">
+      <button type="button" className="btn quiet" onClick={onLoad}>
+        <HistoryIcon size={16} />
+        <span className="history-text">
+          {added > 0 ? `Load History for ${plural(added, 'New Holding', 'New Holdings')}` : 'Load History'}
+          <span className="history-sub" role={startError ? 'alert' : undefined}>
+            {startError ?? `Reads ${plural(history.unread, 'Earlier Report', 'Earlier Reports')}`}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+    </span>
   );
 }

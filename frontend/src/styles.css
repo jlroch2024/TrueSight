@@ -4573,30 +4573,22 @@ button.source-row:hover {
     var(--glass);
 }
 
-/* The Load History button, in the graph's top bar after the search. */
+/* Load History, in the graph's top bar after the search: a glass panel, as tall as the bar, holding a quiet button or
+   the reading's progress. The panel's look is glass ticks'; this only lays it out. */
 .lg-root .history-bar {
   display: inline-flex;
   height: 52px;
   flex: none;
   align-items: center;
   gap: 10px;
-  padding: 0 18px 0 16px;
-  border: 1px solid color-mix(in srgb, var(--teal) 40%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--teal) 14%, transparent), color-mix(in srgb, var(--teal) 5%, transparent)),
-    var(--glass);
-  color: var(--teal-bright);
+  padding: 0 8px 0 14px;
   font-size: var(--t-13);
   font-weight: 600;
   white-space: nowrap;
-  transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
-.lg-root button.history-bar:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--teal) 65%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--teal) 20%, transparent), color-mix(in srgb, var(--teal) 8%, transparent)),
-    var(--glass);
+.lg-root .history-bar > .btn.quiet:only-child {
+  margin-left: -6px;
 }
 
 .history-text {

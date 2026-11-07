@@ -470,7 +470,6 @@ export function WorkspacePage() {
   }
 
   async function upload(file: File) {
-
     if (!portfolio) return;
     if (view.holdings.length > 0) {
       const confirmed = await confirm({
