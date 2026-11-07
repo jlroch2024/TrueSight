@@ -9,6 +9,7 @@ import com.truesight.portfolio.HoldingStatus;
 import com.truesight.portfolio.NewsStatus;
 import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
+import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
@@ -20,6 +21,7 @@ import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,9 +31,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -61,6 +70,7 @@ class NewsCheckIT {
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
     @Autowired NewsArticleRepository articles;
+    @Autowired NewsCheckService newsCheck;
 
     @MockitoBean NewsClient news;
     @MockitoBean NewsCheckStepRunner steps;
@@ -114,7 +124,8 @@ class NewsCheckIT {
         verify(news, never()).search("Samsung Electronics");
         assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(nvidia.getId())).isNotEmpty();
         assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(tsmc.getId())).isNotEmpty();
-        verify(steps).run(portfolio.getId());
+        // The steps run after each round that fetched something: the holding's and its supplier's, at least.
+        verify(steps, atLeast(2)).run(portfolio.getId());
         mockMvc.perform(get("/api/portfolios").header("Authorization", logins.bearer(email)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].newsStatus").value("IDLE"))
@@ -252,6 +263,216 @@ class NewsCheckIT {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Portfolio not found."));
         verify(news, never()).search(anyString());
+    }
+
+    // ---- TS-223: three rounds, most important first ----------------------------------------------------------------
+
+    @Test
+    void theCompaniesComeInThreeRoundsHoldingsThenSuppliersThenTheirSuppliers() {
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio("news-rounds-list@example.com", chain.holding());
+
+        NewsCheckService.NewsRounds rounds = newsCheck.roundsFor(portfolio.getId());
+
+        assertThat(rounds.holdings()).extracting(NewsCheckService.NewsCompany::id).containsExactly(chain.holding().getId());
+        assertThat(rounds.suppliers()).extracting(NewsCheckService.NewsCompany::id).containsExactly(chain.supplier().getId());
+        assertThat(rounds.suppliersSuppliers()).extracting(NewsCheckService.NewsCompany::id)
+                .containsExactly(chain.far().getId());
+        // Together they are the companies there always were.
+        assertThat(newsCheck.companiesFor(portfolio.getId())).extracting(NewsCheckService.NewsCompany::id)
+                .containsExactlyInAnyOrder(chain.holding().getId(), chain.supplier().getId(), chain.far().getId());
+    }
+
+    @Test
+    void eachRoundIsJudgedAndTurnedIntoAlertsBeforeTheNextRoundIsFetched() throws Exception {
+        String email = "news-rounds-order@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        InOrder order = inOrder(news, steps);
+        order.verify(news).search(searchName(chain.holding()));
+        order.verify(steps).run(portfolio.getId());
+        order.verify(news).search(searchName(chain.supplier()));
+        order.verify(steps).run(portfolio.getId());
+        order.verify(news).search(searchName(chain.far()));
+        order.verify(steps).run(portfolio.getId());
+        verify(steps, times(3)).run(portfolio.getId());
+    }
+
+    @Test
+    void theHoldingsNewsIsJudgedWhileTheSuppliersNewsIsStillBeingFetched() throws Exception {
+        String email = "news-rounds-blocked@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        CountDownLatch inSupplierSearch = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        when(news.search(searchName(chain.supplier()))).thenAnswer(invocation -> {
+            inSupplierSearch.countDown();
+            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("The test never released the search");
+            return sample;
+        });
+        try {
+            checkNews(portfolio, email);
+
+            assertThat(inSupplierSearch.await(10, TimeUnit.SECONDS)).isTrue();
+            // The holding's round is done: its news is saved and the steps (judging, alerts) have run, while the
+            // supplier's news has not been fetched yet and the check is still going.
+            verify(steps, times(1)).run(portfolio.getId());
+            assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.holding().getId())).isNotEmpty();
+            assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.supplier().getId())).isEmpty();
+            assertThat(portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatus())
+                    .isEqualTo(NewsStatus.CHECKING);
+        } finally {
+            release.countDown();
+        }
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.supplier().getId())).isNotEmpty();
+    }
+
+    @Test
+    void aRoundWhoseFetchesAllFailDoesNotStopTheNextRound() throws Exception {
+        String email = "news-rounds-failed-round@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        when(news.search(searchName(chain.holding()))).thenThrow(new NewsClient.NewsAccessException("Down.", null));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        verify(news).search(searchName(chain.supplier()));
+        verify(news).search(searchName(chain.far()));
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.supplier().getId())).isNotEmpty();
+        // Nothing was fetched in the first round, so nothing was judged for it; the later two were.
+        verify(steps, times(2)).run(portfolio.getId());
+    }
+
+    // ---- TS-223: how long each round's news is kept ---------------------------------------------------------------
+
+    @Test
+    void aSuppliersSupplierIsNotFetchedAgainWithinSixHoursButAHoldingAndItsSupplierAreAfterAnHour() throws Exception {
+        String email = "news-rounds-windows@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        checkedAgo(chain.holding(), Duration.ofHours(2));
+        checkedAgo(chain.supplier(), Duration.ofHours(2));
+        checkedAgo(chain.far(), Duration.ofHours(2));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        verify(news).search(searchName(chain.holding()));
+        verify(news).search(searchName(chain.supplier()));
+        verify(news, never()).search(searchName(chain.far()));
+    }
+
+    @Test
+    void aSuppliersSupplierIsFetchedAgainOnceSixHoursHavePassed() throws Exception {
+        String email = "news-rounds-windows-six@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        checkedAgo(chain.holding(), Duration.ofMinutes(10));
+        checkedAgo(chain.supplier(), Duration.ofMinutes(10));
+        checkedAgo(chain.far(), Duration.ofHours(7));
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        verify(news, never()).search(searchName(chain.holding()));
+        verify(news, never()).search(searchName(chain.supplier()));
+        verify(news).search(searchName(chain.far()));
+    }
+
+    // ---- TS-223: the AI failing between rounds ---------------------------------------------------------------------
+
+    @Test
+    void anAiFailureAfterTheHoldingsRoundFailsTheCheckKeepsThatRoundAndFetchesNoMore() throws Exception {
+        String email = "news-rounds-ai-fails-first@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        doThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null))
+                .when(steps).run(portfolio.getId());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.FAILED);
+
+        assertThat(portfolios.findById(portfolio.getId()).orElseThrow().getNewsStatusReason())
+                .isEqualTo(NewsAssessor.AI_FAILED);
+        // The holdings' news was fetched and saved; the AI is not answering, so the check stops there.
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.holding().getId())).isNotEmpty();
+        verify(news, never()).search(searchName(chain.supplier()));
+        verify(news, never()).search(searchName(chain.far()));
+        verify(steps, times(1)).run(portfolio.getId());
+    }
+
+    @Test
+    void anAiFailureAfterTheSuppliersRoundKeepsBothRoundsAndSkipsTheLast() throws Exception {
+        String email = "news-rounds-ai-fails-second@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        doNothing().doThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null))
+                .when(steps).run(portfolio.getId());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.FAILED);
+
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.holding().getId())).isNotEmpty();
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.supplier().getId())).isNotEmpty();
+        verify(news, never()).search(searchName(chain.far()));
+    }
+
+    @Test
+    void theNextCheckAfterAnAiFailureFetchesTheRoundsItDidNotReachAndNotTheOnesItDid() throws Exception {
+        String email = "news-rounds-ai-fails-then-retry@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        doThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null))
+                .doNothing()
+                .when(steps).run(portfolio.getId());
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.FAILED);
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        // The holding's news was fetched once, in the first check; the second check fetched the rest.
+        verify(news, times(1)).search(searchName(chain.holding()));
+        verify(news, times(1)).search(searchName(chain.supplier()));
+        verify(news, times(1)).search(searchName(chain.far()));
+    }
+
+    /** A holding company, its direct supplier and that supplier's supplier, each made new for the test. */
+    private record Chain(Company holding, Company supplier, Company far) {
+    }
+
+    private Chain chain() {
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        Company holding = cleanCompany("Rounds Alpha " + unique, null, null);
+        Company supplier = cleanCompany("Rounds Beta " + unique, null, null);
+        Company far = cleanCompany("Rounds Gamma " + unique, null, null);
+        supplies(holding, supplier);
+        supplies(supplier, far);
+        return new Chain(holding, supplier, far);
+    }
+
+    /** The report of {@code customer} says {@code supplier} supplies it. */
+    private void supplies(Company customer, Company supplier) {
+        Report report = reports.save(new Report(customer.getId(), "10-K",
+                "R-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20), LocalDate.parse("2026-02-25"),
+                "https://www.sec.gov/", "Set by the test: the report's text is not used."));
+        relationships.save(new Relationship(report.getId(), customer.getId(), supplier.getId(),
+                RelationshipType.SUPPLIER, "semiconductor wafers", EVIDENCE));
+    }
+
+    private void checkedAgo(Company company, Duration ago) {
+        company.setNewsCheckedAt(Instant.now().minus(ago));
+        companies.saveAndFlush(company);
+    }
+
+    private static String searchName(Company company) {
+        return NewsSearchName.of(company.getName());
     }
 
     private Company cleanCompany(String name, String cik, String ticker) {

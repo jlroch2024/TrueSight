@@ -100,6 +100,8 @@ function held(company: Relationship['company'], id: number, overrides: Partial<H
     reportDate: report.filingDate,
     reportLink: report.url,
     lastAnalysed: '2026-10-27T09:00:00Z',
+    suppliersRead: 0,
+    suppliersToRead: 0,
     ...overrides,
   };
 }
@@ -118,6 +120,8 @@ function waiting(ticker: string, id: number, overrides: Partial<Holding> = {}): 
     reportDate: null,
     reportLink: null,
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
     ...overrides,
   };
 }

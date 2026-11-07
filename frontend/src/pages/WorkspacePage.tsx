@@ -285,6 +285,9 @@ export function WorkspacePage() {
   const worst = useMemo(() => [...view.open].sort(byUrgency)[0] ?? null, [view.open]);
   const analysed = view.holdings.filter((holding) => holding.status === 'DONE').length;
   const analysing = view.holdings.some((holding) => holding.status === 'ANALYSING');
+  // The same on every holding: how many of the holdings' suppliers' own reports are read, of how many.
+  const suppliersRead = view.holdings[0]?.suppliersRead ?? 0;
+  const readingSuppliers = suppliersRead < (view.holdings[0]?.suppliersToRead ?? 0);
   const checking = portfolio?.newsStatus === 'CHECKING';
 
   useEffect(() => {
@@ -357,6 +360,21 @@ export function WorkspacePage() {
       toast(`${plural(analysed, 'Holding', 'Holdings')} Analysed`);
     }
   }, [analysing, loadHoldings, loadRelationships, toast, analysed]);
+
+  // After the holdings, their suppliers' own reports are read: look again every moment until all are, and bring each
+  // supplier's suppliers on to the graph as it is read.
+  useEffect(() => {
+    if (!readingSuppliers || analysing) return;
+    const timer = window.setInterval(() => void loadHoldings(), ANALYSIS_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [readingSuppliers, analysing, loadHoldings]);
+
+  const suppliersReadBefore = useRef(suppliersRead);
+  useEffect(() => {
+    const rose = suppliersRead > suppliersReadBefore.current;
+    suppliersReadBefore.current = suppliersRead;
+    if (rose) void loadRelationships();
+  }, [suppliersRead, loadRelationships]);
 
   // While news is checked, look at the portfolio and its alerts again every moment, so new alerts show as they are found;
   // when it finishes, say what it found.
