@@ -14,10 +14,12 @@ import { Layers, Maximize2, Minimize2, Minus, Plus, RotateCcw, Scan, Search, X }
 import {
   type CSSProperties,
   type ReactNode,
+  type Ref,
   type PointerEvent as ReactPointerEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -91,10 +93,21 @@ type Props = {
   barStart?: ReactNode;
   // Shown on a screen taller than it is wide (a phone): the graph spreads down rather than across, to fill it.
   tall?: boolean;
+  // How the page reaches the graph's snapshot().
+  ref?: Ref<GraphHandle>;
 };
 
 /** Companies and links to light, by node id and relationship id. */
 export type GraphFocus = { nodeIds: string[]; relationshipIds: number[] };
+
+/** What the page can ask of the graph. */
+export type GraphHandle = {
+  /**
+   * The graph as it is on screen now, drawn once more at twice the resolution, as a PNG data URL (for the briefing).
+   * Null when it cannot be drawn: nothing on screen yet, no canvas to draw on, or a picture too big to make.
+   */
+  snapshot: () => string | null;
+};
 
 type Tip =
   | { kind: 'node'; node: LiveNode; x: number; y: number }
@@ -117,6 +130,10 @@ const NEARLY_SETTLED = 0.12;
 const LAYOUT_CHANGE_ENERGY = 0.6;
 // How much room above the pointer the card needs; nearer the top, it goes below instead.
 const TIP_ROOM = 96;
+// The briefing's picture of the graph is drawn at twice the screen's resolution, so it stays sharp on paper.
+const SNAPSHOT_SCALE = 2;
+// The most pixels a browser will make into a PNG; a larger canvas reads back as nothing, so the scale is lowered to fit.
+const MAX_SNAPSHOT_PIXELS = 16_000_000;
 // One step of the zoom buttons and keys.
 const ZOOM_STEP = 1.35;
 // The room a fit leaves for the controls along the top and the key along the bottom.
@@ -299,6 +316,7 @@ export function LivingGraph({
   topBar,
   barStart,
   tall = false,
+  ref,
 }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -309,6 +327,8 @@ export function LivingGraph({
   // The scene last shown, and for which layout: a new graph for the same portfolio carries on from it (Scene.carryFrom).
   const shownRef = useRef<{ scene: Scene; layoutKey: string | undefined } | null>(null);
   const rigRef = useRef<CameraRig | null>(null);
+  // The size the graph was last drawn at, in CSS pixels, for snapshot().
+  const sizeRef = useRef({ width: 0, height: 0 });
   // The shape the graph settled into, kept by every graph carried on from it, so nothing pulls it out of shape.
   const shapeRef = useRef<GraphShape>(tall ? TALL_SHAPE : WIDE_SHAPE);
   const viewChosenRef = useRef(false);
@@ -350,6 +370,45 @@ export function LivingGraph({
   // analysis hands over new arrays, usually with the same companies and links in them.
   const drawn = JSON.stringify([nodes, edges]);
   const graph = useMemo(() => buildLiveGraph(nodes, edges, measurer()), [drawn]);
+
+  // The graph as it is now, drawn once more on a canvas of its own at twice the resolution. render() draws a frame
+  // from the scene and camera alone, so this is the screen's own picture, still, without the pointer's crosshair.
+  // Logos are loaded for a canvas that may be read (logos.ts), so toDataURL does not refuse; a logo that failed is
+  // drawn as initials, as on screen.
+  const snapshot = useCallback((): string | null => {
+    const scene = sceneRef.current;
+    const rig = rigRef.current;
+    const { width, height } = sizeRef.current;
+    if (!scene || !rig || width < 1 || height < 1) return null;
+    const scale = Math.min(SNAPSHOT_SCALE, Math.sqrt(MAX_SNAPSHOT_PIXELS / (width * height)));
+    const picture = document.createElement('canvas');
+    picture.width = Math.round(width * scale);
+    picture.height = Math.round(height * scale);
+    const context = picture.getContext?.('2d') ?? null;
+    if (!context) return null;
+    try {
+      render(context, {
+        scene,
+        camera: rig.camera,
+        width,
+        height,
+        dpr: scale,
+        now: performance.now(),
+        logos,
+        logoToken: latest.current.logoToken,
+        logoDomains: latest.current.logoDomains,
+        still: true,
+        pointer: null,
+      });
+      const url = picture.toDataURL('image/png');
+      // A canvas the browser cannot read back gives "data:," and not a picture.
+      return url.startsWith('data:image/png') ? url : null;
+    } catch {
+      // A canvas that cannot be read (a logo from a site that does not allow it) leaves the briefing without a picture.
+      return null;
+    }
+  }, [logos]);
+  useImperativeHandle(ref, () => ({ snapshot }), [snapshot]);
 
   const remember = useCallback(() => {
     const scene = sceneRef.current;
@@ -494,6 +553,7 @@ export function LivingGraph({
       canvas.style.width = `${size.width}px`;
       canvas.style.height = `${size.height}px`;
       rig.setSize(size.width, size.height);
+      sizeRef.current = { width: size.width, height: size.height };
       const covered = latest.current.insets;
       askNarrow(latest.current.tall || size.width - covered.left - covered.right < NARROW_BELOW);
       // While a company is dragged the view waits, or the company would slide out from under the pointer.

@@ -36,7 +36,7 @@ import { PHONE_TABS, type PhoneTab, PhoneDock } from '../components/workspace/Ph
 import { ActionsIsland, AnalystDeskButton, OpenAlertsBar, PortfolioIsland, Swap } from '../components/workspace/TopBar';
 import { useWhatIf } from '../components/workspace/useWhatIf';
 import { type Chosen, alertKey, byUrgency, companyIdOfNode, scenarioFocus, spotlightOf, useWorkspaceView } from '../components/workspace/view';
-import { LivingGraph } from '../graph/LivingGraph';
+import { type GraphHandle, LivingGraph } from '../graph/LivingGraph';
 import { type WorkspaceTab, paths } from '../paths';
 
 // The layout's measures, in pixels: the gap around every panel, the top bar's height, the drawer open and folded, and
@@ -165,8 +165,11 @@ export function WorkspacePage() {
   const [uploading, setUploading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startingCheck, setStartingCheck] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
+  // The graph, to take its picture for the briefing; empty while no graph is shown.
+  const graphRef = useRef<GraphHandle>(null);
   const inspectorBody = useRef<HTMLDivElement | null>(null);
   const { confirm, dialog } = useConfirm();
 
@@ -436,6 +439,19 @@ export function WorkspacePage() {
     }
   }
 
+  async function downloadBriefing() {
+    if (!portfolio) return;
+    setDownloading(true);
+    try {
+      // The picture is taken now, before the request, so the briefing shows the graph as it was when pressed.
+      await portfolioApi.briefing(portfolio.id, graphRef.current?.snapshot() ?? null);
+    } catch (e) {
+      toast(messageOf(e), { error: true });
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   function openUpload() {
     setUploadError(null);
     setUploadOpen(true);
@@ -679,6 +695,7 @@ export function WorkspacePage() {
         <div className="ws-graph">
           {loaded && view.nodes.length > 0 && (
             <LivingGraph
+              ref={graphRef}
               nodes={view.nodes}
               edges={view.edges}
               bare
@@ -770,10 +787,12 @@ export function WorkspacePage() {
             starting={starting}
             checking={checking || startingCheck}
             uploading={uploading}
+            downloading={downloading}
             hasHoldings={view.holdings.length > 0}
             onUpload={openUpload}
             onCheck={() => void checkNews()}
             onAnalyse={() => void startAnalysis()}
+            onBriefing={() => void downloadBriefing()}
           />
         ) : (
           <div className="island right glass ticks">
