@@ -110,7 +110,7 @@ public class AskService {
         String prompt = prompt(records.text(), request);
         // Recorded in the AI Audit Trail as purpose ASK by the client itself. ai_calls has no column for who asked
         // (and Sprint 4 allows no new migration), so the recorded prompt starts with a line that says so.
-        String recorded = "[Ask TrueSight: portfolio %d, asked by user %d]%n%s".formatted(portfolioId, userId, prompt);
+        String recorded = "[Ask TrueSight: portfolio %d, asked by user %d]\n%s".formatted(portfolioId, userId, prompt);
         AiAnswer answer;
         try {
             answer = gemini.generate(new AiRequest(AiPurpose.ASK, prompt, null, recorded), SCHEMA);
