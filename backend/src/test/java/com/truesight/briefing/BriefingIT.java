@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -123,7 +124,7 @@ class BriefingIT {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
                 .andExpect(header().string("Content-Disposition",
-                        "attachment; filename=\"Briefing-Test-Briefing-" + LocalDate.now() + ".pdf\""))
+                        "attachment; filename=\"Briefing-Test-Briefing-" + LocalDate.now(ZoneOffset.UTC) + ".pdf\""))
                 .andReturn();
 
         List<String> pages = pages(result.getResponse().getContentAsByteArray());
@@ -137,7 +138,7 @@ class BriefingIT {
         assertThat(firstPages).doesNotHaveDuplicates();
         // The cover names the portfolio and the day.
         assertThat(pages.get(0)).contains("Briefing Test");
-        assertThat(pages.get(0)).contains(BriefingText.date(LocalDate.now()));
+        assertThat(pages.get(0)).contains(BriefingText.date(LocalDate.now(ZoneOffset.UTC)));
     }
 
     // ---- 2. The graph in the PDF is the graph as shown when the button was pressed ----------------------------------
@@ -170,6 +171,17 @@ class BriefingIT {
         Portfolio portfolio = seedPortfolio();
 
         byte[] pdf = briefing(portfolio, email, "{\"graphPng\":\"this is not a picture!!\"}")
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(pages(pdf).get(1)).contains("No Supply Chain Yet");
+        assertThat(imageSizesOnPage(pdf, 2)).isEmpty();
+    }
+
+    @Test
+    void aPictureClaimingMoreThanTwentyMillionPixelsIsLeftOutWithoutBeingDecoded() throws Exception {
+        Portfolio portfolio = seedPortfolio();
+
+        byte[] pdf = briefing(portfolio, email, "{\"graphPng\":\"" + dataUrl(png(4500, 4500)) + "\"}")
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
 
         assertThat(pages(pdf).get(1)).contains("No Supply Chain Yet");

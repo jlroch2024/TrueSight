@@ -19,9 +19,14 @@ import com.truesight.relationship.RelationshipResponse;
 import com.truesight.relationship.RelationshipType;
 import org.springframework.stereotype.Component;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Color;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -35,6 +40,9 @@ class BriefingPdf {
     static final String NO_ALERTS = "No open alerts.";
     static final String NO_GRAPH = "No Supply Chain Yet";
     static final String NO_DEPENDENCIES = "No sole- or single-source dependencies.";
+
+    // The website never makes a snapshot of more than 16 million pixels (LivingGraph); a little more is allowed.
+    private static final long MOST_PIXELS = 20_000_000L;
 
     private static final Color HIGH = new Color(0xD1, 0x43, 0x43);
     private static final Color MEDIUM = new Color(0xD9, 0x70, 0x1F);
@@ -105,9 +113,27 @@ class BriefingPdf {
             return null;
         }
         try {
-            return Image.getInstance(png);
+            return tooLarge(png) ? null : Image.getInstance(png);
         } catch (IOException | RuntimeException e) {
             return null;
+        }
+    }
+
+    /**
+     * Whether the picture, once decoded, would be more pixels than a graph snapshot can be. Read from the header alone,
+     * so a small file that claims a huge size is refused before anything is allocated for it.
+     */
+    private static boolean tooLarge(byte[] image) throws IOException {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(image))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) return true;
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input);
+                return (long) reader.getWidth(0) * reader.getHeight(0) > MOST_PIXELS;
+            } finally {
+                reader.dispose();
+            }
         }
     }
 
@@ -127,7 +153,7 @@ class BriefingPdf {
             table.addCell(cell(holding.ticker(), fonts.strong(), false));
             table.addCell(cell(holding.companyDisplayName() != null
                     ? holding.companyDisplayName()
-                    : BriefingText.status(holding.status()), fonts.body(), false));
+                    : "-", fonts.body(), false));
             table.addCell(cell(BriefingText.weight(holding.weight()), fonts.body(), false));
             table.addCell(cell(holding.reportType() == null ? "-" : holding.reportType(), fonts.body(), false));
             table.addCell(cell(BriefingText.date(holding.reportDate()), fonts.body(), false));

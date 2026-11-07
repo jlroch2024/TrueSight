@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
@@ -47,7 +48,8 @@ public class BriefingService {
     public Briefing build(Long portfolioId, String graphPng) {
         Portfolio portfolio = portfolios.findByIdAndUserId(portfolioId, currentUser.id())
                 .orElseThrow(() -> ApiException.notFound("Portfolio not found."));
-        LocalDate today = LocalDate.now();
+        // UTC, the zone the alerts' dates are shown in, so the cover and the alerts never name different days.
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
 
         BriefingData data = new BriefingData(
                 portfolio.getName(),

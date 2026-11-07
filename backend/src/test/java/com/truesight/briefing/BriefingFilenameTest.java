@@ -43,4 +43,10 @@ class BriefingFilenameTest {
 
         assertThat(filename).isEqualTo("A".repeat(59) + "-Briefing-2026-11-06.pdf");
     }
+
+    @Test
+    void accentsAreDroppedAndANameOfOtherScriptsIsCalledPortfolio() {
+        assertThat(BriefingFilename.of("Café Growth", DAY)).isEqualTo("Cafe-Growth-Briefing-2026-11-06.pdf");
+        assertThat(BriefingFilename.of("成长", DAY)).isEqualTo("Portfolio-Briefing-2026-11-06.pdf");
+    }
 }
