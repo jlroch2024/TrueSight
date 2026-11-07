@@ -37,6 +37,11 @@ final class AskRecords {
     static final int LONGEST_TEXT = 400;
     private static final int LONGEST_LABEL = 80;
 
+    /** The most records of each kind one prompt carries, so a very large portfolio cannot make it too long to send. */
+    static final int MOST_HOLDINGS = 200;
+    static final int MOST_RELATIONSHIPS = 300;
+    static final int MOST_ALERTS = 50;
+
     private AskRecords() {
     }
 
@@ -51,23 +56,23 @@ final class AskRecords {
         Set<String> unreviewed = new TreeSet<>();
         StringBuilder text = new StringBuilder();
 
-        text.append("Holdings (").append(holdings.size()).append("):\n");
+        text.append("Holdings (").append(shown(holdings.size(), MOST_HOLDINGS)).append("):\n");
         if (holdings.isEmpty()) {
             text.append("none\n");
         }
-        for (int i = 0; i < holdings.size(); i++) {
+        for (int i = 0; i < Math.min(holdings.size(), MOST_HOLDINGS); i++) {
             HoldingResponse holding = holdings.get(i);
             String id = "H" + (i + 1);
             byPromptId.put(id, new AskResponse.Source(AskResponse.Kind.HOLDING, holding.id(), holdingName(holding)));
             text.append('[').append(id).append("] ").append(holdingLine(holding)).append('\n');
         }
 
-        text.append("\nRelationships (").append(relationships.size()).append("):\n");
+        text.append("\nRelationships (").append(shown(relationships.size(), MOST_RELATIONSHIPS)).append("):\n");
         if (relationships.isEmpty()) {
             text.append("none\n");
         }
         Map<Long, String> relationshipIds = new HashMap<>();
-        for (int i = 0; i < relationships.size(); i++) {
+        for (int i = 0; i < Math.min(relationships.size(), MOST_RELATIONSHIPS); i++) {
             RelationshipResponse relationship = relationships.get(i);
             String id = "R" + (i + 1);
             relationshipIds.put(relationship.id(), id);
@@ -80,11 +85,11 @@ final class AskRecords {
         }
 
         List<AlertEventResponse> events = alerts.alerts();
-        text.append("\nOpen alerts (").append(events.size()).append("):\n");
+        text.append("\nOpen alerts (").append(shown(events.size(), MOST_ALERTS)).append("):\n");
         if (events.isEmpty()) {
             text.append("none\n");
         }
-        for (int i = 0; i < events.size(); i++) {
+        for (int i = 0; i < Math.min(events.size(), MOST_ALERTS); i++) {
             AlertEventResponse event = events.get(i);
             String id = "A" + (i + 1);
             byPromptId.put(id, new AskResponse.Source(AskResponse.Kind.ALERT, event.alertIds().get(0),
@@ -92,6 +97,11 @@ final class AskRecords {
             text.append('[').append(id).append("] ").append(alertLine(event, alerts, relationshipIds)).append('\n');
         }
         return new Built(text.toString(), byPromptId, unreviewed);
+    }
+
+    /** "12", or "first 300 of 450" when there are more than fit, so Gemini knows the list is not the whole of it. */
+    private static String shown(int count, int most) {
+        return count <= most ? String.valueOf(count) : "first " + most + " of " + count;
     }
 
     private static String holdingLine(HoldingResponse holding) {

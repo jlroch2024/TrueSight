@@ -95,6 +95,8 @@ class AskAuditIT {
         assertThat(recorded.getOutcome()).isEqualTo(AiOutcome.ANSWERED);
         // The Audit Trail shows exactly what was sent: the rules, this portfolio's records, and the question.
         assertThat(recorded.getPrompt()).contains("Rules:", "Holdings (1):", "[H1] AUDT, 100% of the portfolio.");
+        // Who asked, and about which portfolio, which ai_calls has no column for.
+        assertThat(recorded.getPrompt()).startsWith("[Ask TrueSight: portfolio " + portfolio.getId() + ", asked by user ");
 
         // An analyst finds it in the Audit Trail, filtered by purpose, and can open it.
         String analyst = logins.analystBearer("ask-audit-analyst-" + UUID.randomUUID() + "@example.com");

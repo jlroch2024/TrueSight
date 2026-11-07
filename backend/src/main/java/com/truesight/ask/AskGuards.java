@@ -66,8 +66,14 @@ final class AskGuards {
         return RecommendationWriter.isInvestmentAdvice(own.toString());
     }
 
+    // "No unreviewed relationships" and "none of them is unreviewed" say the opposite of what the note is for.
+    private static final Pattern NEGATED_UNREVIEWED =
+            Pattern.compile("\\b(no|not|none|without|neither|nor|isn't|aren't)\\b[^.;!?]{0,40}unreviewed");
+
+    /** Whether the answer tells the reader that part of it rests on unreviewed relationships. */
     static boolean mentionsUnreviewed(String answer) {
-        return answer.toLowerCase().contains("unreviewed");
+        String text = answer.toLowerCase().replace('’', '\'');
+        return text.contains("unreviewed") && !NEGATED_UNREVIEWED.matcher(text).find();
     }
 
     private static String normalise(String answer) {

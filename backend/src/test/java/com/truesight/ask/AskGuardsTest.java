@@ -59,4 +59,13 @@ class AskGuardsTest {
         assertThat(AskGuards.mentionsUnreviewed("All of these links are Unreviewed.")).isTrue();
         assertThat(AskGuards.mentionsUnreviewed("No analyst has looked at them.")).isFalse();
     }
+
+    @Test
+    void anAnswerThatSaysThereAreNoUnreviewedRelationshipsDoesNotMentionThem() {
+        assertThat(AskGuards.mentionsUnreviewed("There are no unreviewed relationships here.")).isFalse();
+        assertThat(AskGuards.mentionsUnreviewed("None of them is unreviewed.")).isFalse();
+        assertThat(AskGuards.mentionsUnreviewed("This link isn't unreviewed.")).isFalse();
+        // A negation in another sentence does not cancel it.
+        assertThat(AskGuards.mentionsUnreviewed("There is no doubt about TSMC. The other link is unreviewed.")).isTrue();
+    }
 }

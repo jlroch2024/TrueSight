@@ -4,6 +4,7 @@ import com.truesight.ai.AiAnswer;
 import com.truesight.ai.AiCallLog;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
+import com.truesight.common.ApiException;
 import com.truesight.news.AlertService;
 import com.truesight.news.AlertsResponse;
 import com.truesight.portfolio.HoldingResponse;
@@ -11,6 +12,8 @@ import com.truesight.portfolio.HoldingService;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.RelationshipResponse;
 import com.truesight.relationship.RelationshipService;
+import com.truesight.user.CurrentUser;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -78,15 +81,20 @@ public class AskService {
     private final GeminiClient gemini;
     private final AiCallLog calls;
     private final ObjectMapper mapper;
+    private final CurrentUser currentUser;
+    private final AskRateLimit limit;
 
     public AskService(HoldingService holdings, RelationshipService relationships, AlertService alerts,
-                      GeminiClient gemini, AiCallLog calls, ObjectMapper mapper) {
+                      GeminiClient gemini, AiCallLog calls, ObjectMapper mapper, CurrentUser currentUser,
+                      AskRateLimit limit) {
         this.holdings = holdings;
         this.relationships = relationships;
         this.alerts = alerts;
         this.gemini = gemini;
         this.calls = calls;
         this.mapper = mapper;
+        this.currentUser = currentUser;
+        this.limit = limit;
     }
 
     public AskResponse ask(Long portfolioId, AskRequest request) {
@@ -95,10 +103,21 @@ public class AskService {
         List<RelationshipResponse> links = relationships.forPortfolio(portfolioId);
         AlertsResponse open = alerts.list(portfolioId, false);
 
+        Long userId = currentUser.id();
+        limit.take(userId);
+
         AskRecords.Built records = AskRecords.build(held, links, open);
         String prompt = prompt(records.text(), request);
-        // Recorded in the AI Audit Trail as purpose ASK by the client itself.
-        AiAnswer answer = gemini.generate(AiRequest.of(AiPurpose.ASK, prompt), SCHEMA);
+        // Recorded in the AI Audit Trail as purpose ASK by the client itself. ai_calls has no column for who asked
+        // (and Sprint 4 allows no new migration), so the recorded prompt starts with a line that says so.
+        String recorded = "[Ask TrueSight: portfolio %d, asked by user %d]%n%s".formatted(portfolioId, userId, prompt);
+        AiAnswer answer;
+        try {
+            answer = gemini.generate(new AiRequest(AiPurpose.ASK, prompt, null, recorded), SCHEMA);
+        } catch (GeminiClient.GeminiException e) {
+            // The AI being out of reach is not the user's mistake: tell them, in the AI client's own readable words.
+            throw new ApiException(HttpStatus.BAD_GATEWAY, e.getMessage());
+        }
 
         Parsed parsed = parse(answer);
         return conclude(parsed.answer(), parsed.sourceIds(), records);
@@ -176,14 +195,7 @@ public class AskService {
             return new Parsed(said, ids);
         } catch (RuntimeException e) {
             calls.unreadable(answer.callId());
-            throw new UnreadableAnswer(e);
-        }
-    }
-
-    /** Gemini answered, but not in a form that could be read. */
-    static class UnreadableAnswer extends RuntimeException {
-        UnreadableAnswer(Throwable cause) {
-            super("The AI's answer could not be read.", cause);
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "The AI's answer could not be read. Try again.");
         }
     }
 }

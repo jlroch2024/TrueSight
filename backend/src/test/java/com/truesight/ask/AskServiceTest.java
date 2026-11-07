@@ -4,10 +4,12 @@ import com.truesight.ai.AiAnswer;
 import com.truesight.ai.AiCallLog;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
+import com.truesight.common.ApiException;
 import com.truesight.news.AlertService;
 import com.truesight.portfolio.HoldingService;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.RelationshipService;
+import com.truesight.user.CurrentUser;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.json.JsonMapper;
@@ -171,7 +173,9 @@ class AskServiceTest {
         verify(fixture.gemini).generate(request.capture(), eq(AskService.SCHEMA));
         assertThat(request.getValue().purpose()).isEqualTo(AiPurpose.ASK);
         assertThat(request.getValue().prompt()).contains("Who supplies NVIDIA?", "[R1] Taiwan Semiconductor Manufacturing");
-        assertThat(request.getValue().recordedPrompt()).isEqualTo(request.getValue().prompt());
+        // The Audit Trail has no column for who asked, so its record starts with a line that says so.
+        assertThat(request.getValue().recordedPrompt())
+                .isEqualTo("[Ask TrueSight: portfolio 7, asked by user 3]\n" + request.getValue().prompt());
         assertThat(response.sources()).hasSize(1);
     }
 
@@ -192,7 +196,7 @@ class AskServiceTest {
         when(fixture.gemini.generate(any(), any())).thenReturn(new AiAnswer(envelope(false, "not json at all"), 9L));
 
         assertThatThrownBy(() -> fixture.service.ask(7L, new AskRequest("Q?", List.of())))
-                .isInstanceOf(AskService.UnreadableAnswer.class);
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.status().value()).isEqualTo(502));
         verify(fixture.calls).unreadable(9L);
     }
 
@@ -203,8 +207,22 @@ class AskServiceTest {
                 envelope(false, "{\"answer\":\"  \",\"sourceIds\":[]}"), 11L));
 
         assertThatThrownBy(() -> fixture.service.ask(7L, new AskRequest("Q?", List.of())))
-                .isInstanceOf(AskService.UnreadableAnswer.class);
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.status().value()).isEqualTo(502));
         verify(fixture.calls).unreadable(11L);
+    }
+
+    @Test
+    void aUserWhoAsksTooManyQuestionsInAMinuteIsToldToWait() {
+        Fixture fixture = new Fixture();
+        when(fixture.gemini.generate(any(), any())).thenReturn(new AiAnswer(envelope(false,
+                "{\"answer\":\"All unreviewed.\",\"sourceIds\":[\"R1\"]}"), 5L));
+        for (int i = 0; i < AskRateLimit.MOST_QUESTIONS; i++) {
+            fixture.service.ask(7L, new AskRequest("Q?", List.of()));
+        }
+
+        assertThatThrownBy(() -> fixture.service.ask(7L, new AskRequest("Q?", List.of())))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.status().value()).isEqualTo(429));
+        verify(fixture.gemini, org.mockito.Mockito.times(AskRateLimit.MOST_QUESTIONS)).generate(any(), any());
     }
 
     @Test
@@ -236,7 +254,10 @@ class AskServiceTest {
             when(holdings.list(7L)).thenReturn(AskSample.holdings());
             when(relationships.forPortfolio(7L)).thenReturn(AskSample.relationships());
             when(alerts.list(7L, false)).thenReturn(AskSample.noAlerts());
-            service = new AskService(holdings, relationships, alerts, gemini, calls, JsonMapper.builder().build());
+            CurrentUser currentUser = mock(CurrentUser.class);
+            when(currentUser.id()).thenReturn(3L);
+            service = new AskService(holdings, relationships, alerts, gemini, calls, JsonMapper.builder().build(),
+                    currentUser, new AskRateLimit());
         }
     }
 }

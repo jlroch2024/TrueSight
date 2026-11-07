@@ -157,4 +157,20 @@ class AskRecordsTest {
     private static String lineOf(String text, String id) {
         return text.lines().filter(line -> line.startsWith("[" + id + "] ")).findFirst().orElseThrow();
     }
+
+    @Test
+    void aVeryLargePortfolioSendsOnlyTheFirstOfEachKindAndSaysHowManyThereAre() {
+        List<RelationshipResponse> many = java.util.Collections.nCopies(
+                AskRecords.MOST_RELATIONSHIPS + 50, AskSample.relationships().get(0));
+
+        AskRecords.Built records = AskRecords.build(AskSample.holdings(), many, AskSample.noAlerts());
+
+        assertThat(records.text()).contains("Relationships (first " + AskRecords.MOST_RELATIONSHIPS + " of "
+                + (AskRecords.MOST_RELATIONSHIPS + 50) + "):");
+        assertThat(records.byPromptId()).containsKey("R" + AskRecords.MOST_RELATIONSHIPS)
+                .doesNotContainKey("R" + (AskRecords.MOST_RELATIONSHIPS + 1));
+        // A portfolio under the limit is described as before.
+        assertThat(AskRecords.build(AskSample.holdings(), AskSample.relationships(), AskSample.noAlerts()).text())
+                .contains("Relationships (17):");
+    }
 }
