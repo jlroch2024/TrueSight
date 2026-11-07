@@ -43,6 +43,23 @@ class AskGuardsTest {
     }
 
     @Test
+    void anAnswerThatSaysOneCompanyBuysSellsOrHoldsSomethingFromAnotherIsNotAdvice() {
+        assertThat(AskGuards.isAdvice("Dell and HP buy GPUs from NVIDIA.", "")).isFalse();
+        assertThat(AskGuards.isAdvice("AMD and NVIDIA sell to the same cloud customers.", "")).isFalse();
+        assertThat(AskGuards.isAdvice("Apple and Samsung hold supply agreements with TSMC.", "")).isFalse();
+        assertThat(AskGuards.isAdvice("NVIDIA sells to Dell [R1], which buys and holds inventory.", "")).isFalse();
+    }
+
+    @Test
+    void anAnswerThatAdvisesTheUserInOtherWordsIsStillAdvice() {
+        assertThat(AskGuards.isAdvice("You may want to sell NVIDIA.", "")).isTrue();
+        assertThat(AskGuards.isAdvice("Investors should consider buying TSMC.", "")).isTrue();
+        assertThat(AskGuards.isAdvice("I recommend holding Apple.", "")).isTrue();
+        assertThat(AskGuards.isAdvice("NVIDIA is rated overweight.", "")).isTrue();
+        assertThat(AskGuards.isAdvice("Dell supplies HP. Sell NVIDIA now.", "")).isTrue();
+    }
+
+    @Test
     void wordsInsideAQuotationCopiedFromTheRecordsAreTheReportsNotTheAnswers() {
         String records = "[R1] A supplies B. Evidence: 'We sell our wafers to a limited number of customers.'";
 

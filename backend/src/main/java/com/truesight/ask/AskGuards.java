@@ -1,7 +1,5 @@
 package com.truesight.ask;
 
-import com.truesight.news.RecommendationWriter;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,6 +20,19 @@ final class AskGuards {
 
     /** Added when an answer rests on a relationship no analyst has reviewed and does not say so itself. */
     static final String UNREVIEWED_NOTE = "Part of this answer rests on unreviewed relationships that no analyst has checked yet.";
+
+    // Advice is addressed to the user ("you should buy", "consider selling"), is an order ("Hold your shares."), or names
+    // a rating or a price target. "Dell and HP buy GPUs from NVIDIA" describes a relationship and is not advice.
+    private static final Pattern ADVICE = Pattern.compile(
+            "\\b(you|your|investors?)\\b\\W+(?:\\w+\\W+){0,3}?(buy|sell|hold)\\b"
+                    + "|\\b(consider|recommend|recommends|suggest|suggests|advise|advises|worth)\\s+(?:\\w+\\s+){0,2}?"
+                    + "(buy|sell|hold|buying|selling|holding)\\b"
+                    + "|\\b(buy|sell|hold)\\s+(rating|recommendation|signal)\\b"
+                    + "|\\b(upgrade|upgrades|downgrade|downgrades)\\s+to\\s+(buy|sell|hold)\\b"
+                    + "|\\bprice\\s+targets?\\b|\\b(overweight|underweight)\\b"
+                    + "|(?:^|[.!?;:\"“]\\s*)(buy|sell|hold)\\b(?!-)"
+                    + "|(?:,|\\b(?:so|then|just|now))\\s*(buy|sell|hold)\\s+(?:more|less|it|them|your|some|all)\\b",
+            Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
 
     private static final Pattern QUOTED = Pattern.compile("[\"“]([^\"”]+)[\"”]");
 
@@ -49,8 +60,10 @@ final class AskGuards {
     }
 
     /**
-     * Whether the answer reads as advice to trade (the same words as recommendations are checked for). Words inside a
-     * quotation copied from the records are not the answer's own, so a report's "we sell wafers" does not count.
+     * Whether the answer reads as advice to trade: it tells the user to buy, sell or hold, or names a rating or a price
+     * target. The words alone are not enough, as a supply-chain answer says that one company buys from another. Words
+     * inside a quotation copied from the records are not the answer's own, so a report's "we sell wafers" does not
+     * count.
      */
     static boolean isAdvice(String answer, String records) {
         Matcher quote = QUOTED.matcher(answer);
@@ -63,7 +76,7 @@ final class AskGuards {
             }
         }
         own.append(answer.substring(from));
-        return RecommendationWriter.isInvestmentAdvice(own.toString());
+        return ADVICE.matcher(own.toString()).find();
     }
 
     // "No unreviewed relationships" and "none of them is unreviewed" say the opposite of what the note is for.
