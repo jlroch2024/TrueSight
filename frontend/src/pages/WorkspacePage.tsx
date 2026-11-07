@@ -39,7 +39,7 @@ import { ActionsIsland, AnalystDeskButton, OpenAlertsBar, PortfolioIsland, Swap 
 import { useAsk } from '../components/workspace/useAsk';
 import { useWhatIf } from '../components/workspace/useWhatIf';
 import { type Chosen, alertKey, byUrgency, companyIdOfNode, scenarioFocus, spotlightOf, useWorkspaceView } from '../components/workspace/view';
-import { LivingGraph } from '../graph/LivingGraph';
+import { type GraphHandle, LivingGraph } from '../graph/LivingGraph';
 import { type WorkspaceTab, paths } from '../paths';
 
 // The layout's measures, in pixels: the gap around every panel, the top bar's height, the drawer open and folded, and
@@ -170,8 +170,11 @@ export function WorkspacePage() {
   const [uploading, setUploading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startingCheck, setStartingCheck] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
+  // The graph, to take its picture for the briefing; empty while no graph is shown.
+  const graphRef = useRef<GraphHandle>(null);
   const inspectorBody = useRef<HTMLDivElement | null>(null);
   const { confirm, dialog } = useConfirm();
 
@@ -287,6 +290,9 @@ export function WorkspacePage() {
   const worst = useMemo(() => [...view.open].sort(byUrgency)[0] ?? null, [view.open]);
   const analysed = view.holdings.filter((holding) => holding.status === 'DONE').length;
   const analysing = view.holdings.some((holding) => holding.status === 'ANALYSING');
+  // The same on every holding: how many of the holdings' suppliers' own reports are read, of how many.
+  const suppliersRead = view.holdings[0]?.suppliersRead ?? 0;
+  const readingSuppliers = suppliersRead < (view.holdings[0]?.suppliersToRead ?? 0);
   const checking = portfolio?.newsStatus === 'CHECKING';
 
   useEffect(() => {
@@ -363,6 +369,21 @@ export function WorkspacePage() {
     }
   }, [analysing, loadHoldings, loadRelationships, toast, analysed]);
 
+  // After the holdings, their suppliers' own reports are read: look again every moment until all are, and bring each
+  // supplier's suppliers on to the graph as it is read.
+  useEffect(() => {
+    if (!readingSuppliers || analysing) return;
+    const timer = window.setInterval(() => void loadHoldings(), ANALYSIS_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [readingSuppliers, analysing, loadHoldings]);
+
+  const suppliersReadBefore = useRef(suppliersRead);
+  useEffect(() => {
+    const rose = suppliersRead > suppliersReadBefore.current;
+    suppliersReadBefore.current = suppliersRead;
+    if (rose) void loadRelationships();
+  }, [suppliersRead, loadRelationships]);
+
   // While news is checked, look at the portfolio and its alerts again every moment, so new alerts show as they are found;
   // when it finishes, say what it found.
   const wasChecking = useRef(false);
@@ -423,6 +444,19 @@ export function WorkspacePage() {
       toast(messageOf(e), { error: true });
     } finally {
       setStartingCheck(false);
+    }
+  }
+
+  async function downloadBriefing() {
+    if (!portfolio) return;
+    setDownloading(true);
+    try {
+      // The picture is taken now, before the request, so the briefing shows the graph as it was when pressed.
+      await portfolioApi.briefing(portfolio.id, graphRef.current?.snapshot() ?? null);
+    } catch (e) {
+      toast(messageOf(e), { error: true });
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -690,6 +724,7 @@ export function WorkspacePage() {
         <div className="ws-graph">
           {loaded && view.nodes.length > 0 && (
             <LivingGraph
+              ref={graphRef}
               nodes={view.nodes}
               edges={view.edges}
               bare
@@ -781,10 +816,12 @@ export function WorkspacePage() {
             starting={starting}
             checking={checking || startingCheck}
             uploading={uploading}
+            downloading={downloading}
             hasHoldings={view.holdings.length > 0}
             onUpload={openUpload}
             onCheck={() => void checkNews()}
             onAnalyse={() => void startAnalysis()}
+            onBriefing={() => void downloadBriefing()}
           />
         ) : (
           <div className="island right glass ticks">

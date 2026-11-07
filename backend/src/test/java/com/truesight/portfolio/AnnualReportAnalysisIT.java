@@ -20,6 +20,8 @@ import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +30,8 @@ import java.time.LocalDate;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
@@ -53,6 +57,8 @@ class AnnualReportAnalysisIT {
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
     @Autowired AiCallLog aiCallLog;
+
+    @Autowired @Qualifier("taskExecutor") ThreadPoolTaskExecutor background;
 
     @MockitoBean SecClient sec;
     // Tests never call Gemini; the default fake uses the saved real NVIDIA answer.
@@ -267,6 +273,87 @@ class AnnualReportAnalysisIT {
                 .andExpect(jsonPath("$.message").value("Analysis is already running for this portfolio."));
     }
 
+    // ---- TS-223: a holding is Done when its relationships are saved --------------------------------------------------
+
+    @Test
+    void aHoldingIsDoneBeforeItsSecondCheckAnswers() throws Exception {
+        awaitBackgroundIdle(); // a second check left over from an earlier test would use this test's fake
+        String email = "annual-report-second-check-after-done@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021",
+                "2026-02-25", "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+                TSMC_SENTENCE);
+        stubRecordedNvidiaAnswer();
+        CountDownLatch secondCheckAsked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        // The second AI is asked, and does not answer until the test lets it.
+        when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(invocation -> {
+            secondCheckAsked.countDown();
+            if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("The test never released the second check");
+            return recordedAnswer(invocation.getArgument(0), Examples.geminiNvidiaSecondCheck());
+        });
+        try {
+            mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
+                    .header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
+            awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+
+            // The second check is under way, and the holding is already Done with its relationships saved.
+            assertThat(secondCheckAsked.await(10, TimeUnit.SECONDS)).isTrue();
+            Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+            Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+            assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2)
+                    .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNull());
+            mockMvc.perform(get("/api/portfolios/{id}/holdings", portfolio.getId())
+                            .header("Authorization", logins.bearer(email)))
+                    .andExpect(jsonPath("$[0].status").value("DONE"));
+        } finally {
+            release.countDown();
+        }
+
+        // Once it answers, the verdicts are saved on the relationships as before.
+        awaitBackgroundIdle();
+        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+        assertThat(relationshipsFor(reportId, nvidiaId))
+                .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
+    }
+
+    @Test
+    void aFailedSecondCheckNeverChangesTheHolding() throws Exception {
+        awaitBackgroundIdle();
+        String email = "annual-report-second-check-fails@example.com";
+        Portfolio portfolio = portfolioWith(email, "NVDA");
+        mockCompanyAndReport("NVDA", "NVIDIA Corporation", "0001045810", "10-K", "0001045810-26-000021",
+                "2026-02-25", "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+                TSMC_SENTENCE);
+        stubRecordedNvidiaAnswer();
+        when(gemini.generateSecondCheck(any(AiRequest.class)))
+                .thenThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null));
+
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
+                .header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
+        awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
+        awaitBackgroundIdle();
+
+        verify(gemini, times(1)).generateSecondCheck(any(AiRequest.class));
+        Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
+        assertThat(holding.getStatus()).isEqualTo(HoldingStatus.DONE);
+        assertThat(holding.getStatusReason()).isNull();
+        Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
+        Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+        // The relationships stay saved with no second check, for the analyst-run pass to ask about again.
+        assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2)
+                .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNull());
+    }
+
+    /** The job that ran the analysis does not finish until its second check has. */
+    private void awaitBackgroundIdle() throws Exception {
+        for (int attempt = 0; attempt < 400 && background.getActiveCount() > 0; attempt++) {
+            Thread.sleep(25);
+        }
+        assertThat(background.getActiveCount()).isZero();
+    }
+
     private Portfolio portfolioWith(String email, String... tickers) {
         Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "Report Test " + System.nanoTime()));
         for (String ticker : tickers) holdings.save(new Holding(portfolio.getId(), ticker, new BigDecimal("10")));
@@ -291,14 +378,15 @@ class AnnualReportAnalysisIT {
     }
 
     private void stubRecordedNvidiaAnswer() {
-        when(gemini.generate(any(AiRequest.class))).thenAnswer(invocation -> {
-            AiRequest request = invocation.getArgument(0);
-            String response = Examples.geminiNvidia();
-            Long callId = aiCallLog.record(request, "test-model", response, AiOutcome.ANSWERED, null,
-                    Instant.now(), 1);
-            aiCallLog.attachReport(callId, request.reportId());
-            return new AiAnswer(response, callId);
-        });
+        when(gemini.generate(any(AiRequest.class)))
+                .thenAnswer(invocation -> recordedAnswer(invocation.getArgument(0), Examples.geminiNvidia()));
+    }
+
+    /** What the real AI client returns: the answer, and the id of the call recorded for it. */
+    private AiAnswer recordedAnswer(AiRequest request, String response) {
+        Long callId = aiCallLog.record(request, "test-model", response, AiOutcome.ANSWERED, null, Instant.now(), 1);
+        aiCallLog.attachReport(callId, request.reportId());
+        return new AiAnswer(response, callId);
     }
 
     private void awaitStatuses(Long portfolioId, int count, HoldingStatus status) throws Exception {

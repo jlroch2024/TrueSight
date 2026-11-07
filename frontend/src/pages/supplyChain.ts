@@ -33,10 +33,11 @@ export type GraphEdge = {
 /**
  * One node per company, one edge per relationship, the arrow pointing from supplier to customer.
  *
- * Every relationship's {@code company} is a holding: the backend only looks at the reports of companies the
- * portfolio holds. A holding whose company was found but that has no relationships yet (no supplier or customer was
- * named in its report) would otherwise be missing from the graph, so it is added as a node on its own. It is matched
- * to a node already in the graph by name, because {@link Holding} does not carry a company id.
+ * A relationship's {@code company} is the company whose report named it: a holding, or a holding's supplier, whose own
+ * report names who supplies it. So a node is a holding only when one of the portfolio's holdings is that company. A
+ * holding whose company was found but that has no relationships yet (no supplier or customer was named in its report)
+ * would otherwise be missing from the graph, so it is added as a node on its own. Holdings are matched to nodes by
+ * name, because {@link Holding} does not carry a company id.
  */
 export function buildGraphElements(
   relationships: Relationship[],
@@ -64,7 +65,7 @@ export function buildGraphElements(
   const edges: GraphEdge[] = relationships.map((relationship) => {
     const companyId = String(relationship.company.id);
     const counterpartyId = String(relationship.counterparty.id);
-    upsert(companyId, relationship.company, true);
+    upsert(companyId, relationship.company, false);
     upsert(counterpartyId, relationship.counterparty, false);
 
     // SUPPLIER: the counterparty supplies the company, so the arrow runs counterparty -> company.
@@ -337,7 +338,8 @@ export function sharedCompanies(relationships: Relationship[], nodes: GraphNode[
 
   for (const relationship of relationships) {
     const id = String(relationship.counterparty.id);
-    if (holdingIds.has(id)) continue;
+    // Only a holding's own links count: a supplier's supplier does not serve the holdings directly.
+    if (holdingIds.has(id) || !holdingIds.has(String(relationship.company.id))) continue;
     companies.set(id, relationship.counterparty);
     // SUPPLIER: the counterparty supplies the holding. CUSTOMER: the counterparty buys from the holding.
     const side = relationship.type === 'SUPPLIER' ? supplies : buysFrom;

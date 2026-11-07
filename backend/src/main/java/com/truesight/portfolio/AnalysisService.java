@@ -5,15 +5,15 @@ import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
-import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
-import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
+import com.truesight.report.ReportReader;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.ReportTextExtractor;
 import com.truesight.report.SecClient;
+import com.truesight.report.SupplierReader;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,28 +26,26 @@ public class AnalysisService {
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
     private final CurrentUser currentUser;
-    private final CompanyDirectory companies;
     private final CompanyRepository companyRepository;
     private final ReportRepository reports;
     private final RelationshipRepository relationships;
     private final AiCallRepository aiCalls;
-    private final SecClient sec;
-    private final RelationshipFinder relationshipFinder;
+    private final ReportReader reportReader;
+    private final SupplierReader suppliers;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
-                          CompanyDirectory companies, CompanyRepository companyRepository,
-                          ReportRepository reports, RelationshipRepository relationships, AiCallRepository aiCalls,
-                          SecClient sec, RelationshipFinder relationshipFinder) {
+                          CompanyRepository companyRepository, ReportRepository reports,
+                          RelationshipRepository relationships, AiCallRepository aiCalls, ReportReader reportReader,
+                          SupplierReader suppliers) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
-        this.companies = companies;
         this.companyRepository = companyRepository;
         this.reports = reports;
         this.relationships = relationships;
         this.aiCalls = aiCalls;
-        this.sec = sec;
-        this.relationshipFinder = relationshipFinder;
+        this.reportReader = reportReader;
+        this.suppliers = suppliers;
     }
 
     /**
@@ -104,40 +102,35 @@ public class AnalysisService {
         if (holding == null) return;
         if (holding.getStatus() != HoldingStatus.ANALYSING) return;
         try {
-            SecClient.SecCompany secCompany = sec.companyForTicker(holding.getTicker());
-            if (secCompany == null) {
+            Company company = reportReader.companyFor(holding.getTicker());
+            if (company == null) {
                 holding.setStatus(HoldingStatus.NO_REPORT_FOUND);
                 return;
             }
-            Company company = companies.findOrCreate(secCompany.name(), secCompany.cik(), secCompany.ticker(), List.of());
             holding.setCompanyId(company.getId());
-            Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(company.getId()).orElse(null);
-            if (report == null) {
-                SecClient.SecFiling filing = sec.latestAnnualFiling(secCompany.cik());
-                if (filing == null) {
-                    holding.setStatus(HoldingStatus.NO_REPORT_FOUND);
-                    return;
-                }
-                String text = ReportTextExtractor.extract(sec.download(filing.url()));
-                report = reports.save(new Report(company.getId(), filing.form(), filing.accessionNumber(), filing.filingDate(), filing.url(), text));
+            if (!reportReader.read(company)) {
+                holding.setStatus(HoldingStatus.NO_REPORT_FOUND);
+                return;
             }
-            boolean refreshed = false;
-            if (ReportTextExtractor.hasLegacyWrappedParagraphs(report.getText())) {
-                String currentText = ReportTextExtractor.extract(sec.download(report.getUrl()));
-                if (!currentText.isBlank() && !currentText.equals(report.getText())) {
-                    report.setText(currentText);
-                    reports.save(report);
-                    refreshed = true;
-                }
-            }
-            // A changed report gets one new assessment; unchanged answered reports remain idempotent.
-            relationshipFinder.findIn(report, company, refreshed);
             holding.setStatus(HoldingStatus.DONE);
+            // Its suppliers wait from the moment it is Done; AnalysisJob reads them afterwards.
+            suppliers.queue(company.getId());
         } catch (SecClient.SecAccessException | GeminiClient.GeminiException exception) {
             holding.fail(exception.getMessage());
         } catch (RuntimeException exception) {
             holding.fail("The annual report could not be processed.");
         }
+    }
+
+    /**
+     * The report whose relationships were just saved for this holding, once the holding is Done: the one its second
+     * check is run for. Null for a holding that is not Done, or that has no company or report.
+     */
+    @Transactional(readOnly = true)
+    public Long reportToSecondCheck(Long holdingId) {
+        Holding holding = holdings.findById(holdingId).orElse(null);
+        if (holding == null || holding.getStatus() != HoldingStatus.DONE || holding.getCompanyId() == null) return null;
+        return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).map(Report::getId).orElse(null);
     }
 
     @Transactional(readOnly = true)

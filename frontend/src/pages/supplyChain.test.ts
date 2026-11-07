@@ -74,6 +74,8 @@ function sampleHoldings(): Holding[] {
     reportDate: '2026-01-01',
     reportLink: 'https://www.sec.gov/example',
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
   }));
 }
 
@@ -213,6 +215,8 @@ function holding(id: number, ticker: string, companyName: string | null): Holdin
     reportDate: null,
     reportLink: null,
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
   };
 }
 
@@ -1160,6 +1164,8 @@ describe('alerts on the graph', () => {
         reportDate: '2026-02-25',
         reportLink: null,
         lastAnalysed: null,
+        suppliersRead: 0,
+        suppliersToRead: 0,
       },
     ];
     const { nodes } = buildGraphElements(sampleRelationships, holdings);
@@ -1202,5 +1208,40 @@ describe('alerts on the graph', () => {
     it('marks nothing without alerts', () => {
       expect(alertSeverities([], nodes, holdings, byHolding).size).toBe(0);
     });
+  });
+});
+
+describe("a supplier's own suppliers on the graph", () => {
+  // Two holdings, their suppliers, and a supplier's supplier that both of AMD's suppliers name in their own reports.
+  const amd = { id: 1, name: 'Advanced Micro Devices, Inc.', displayName: 'Advanced Micro Devices', ticker: 'AMD' };
+  const nvidia = { id: 2, name: 'NVIDIA Corporation', displayName: 'NVIDIA', ticker: 'NVDA' };
+  const globalFoundries = { id: 3, name: 'GlobalFoundries', displayName: 'GlobalFoundries', ticker: 'GFS' };
+  const supplier = { id: 4, name: 'Supplier Corporation', displayName: 'Supplier', ticker: null };
+  const secondSupplier = { id: 5, name: 'Second Supplier Corporation', displayName: 'Second Supplier', ticker: null };
+  const twoSteps = [
+    relationship(1, amd, globalFoundries),
+    relationship(2, nvidia, globalFoundries),
+    relationship(3, globalFoundries, supplier),
+    relationship(4, amd, secondSupplier),
+    relationship(5, secondSupplier, supplier),
+  ];
+  const held = [holding(1, 'AMD', amd.name), holding(2, 'NVDA', nvidia.name)];
+
+  it("draws the supplier as a company, not a holding, linked to its own supplier two steps from the holding", () => {
+    const { nodes, edges } = buildGraphElements(twoSteps, held);
+
+    expect(nodes.find((node) => node.name === 'GlobalFoundries')?.isHolding).toBe(false);
+    expect(nodes.find((node) => node.name === 'Supplier Corporation')?.isHolding).toBe(false);
+    expect(nodes.find((node) => node.name === amd.name)?.isHolding).toBe(true);
+    expect(edges).toContainEqual(expect.objectContaining({ source: '4', target: '3' }));
+    expect(edges).toContainEqual(expect.objectContaining({ source: '3', target: '1' }));
+  });
+
+  it("counts only the holdings a company serves directly as sharing it, never a supplier it serves", () => {
+    const { nodes } = buildGraphElements(twoSteps, held);
+
+    const shared = sharedCompanies(twoSteps, nodes);
+
+    expect(shared.map((company) => [company.displayName, company.suppliesHoldings])).toEqual([['GlobalFoundries', 2]]);
   });
 });

@@ -3,11 +3,13 @@
 // is the real component.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
+import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { buildGraphElements, sharedCompanies, withSharedSummaries } from '../pages/supplyChain';
-import { LivingGraph } from './LivingGraph';
+import { type GraphHandle, LivingGraph } from './LivingGraph';
 import { ALERT_COLOUR, buildLiveGraph } from './model';
 
 // The real thing, watched: how often it runs says how often the graph was rebuilt.
@@ -17,7 +19,24 @@ vi.mock('./model', async (original) => {
 });
 
 const relationships = sampleRelationshipsJson as Relationship[];
-const { nodes, edges } = buildGraphElements(relationships, []);
+// The portfolio's holdings: the companies whose own reports named the sample relationships.
+const holdings: Holding[] = [...new Map(relationships.map((relationship) => [relationship.company.id, relationship.company])).values()]
+  .map((company, index) => ({
+    id: index + 1,
+    ticker: company.ticker ?? company.name,
+    weight: null,
+    companyName: company.name,
+    companyDisplayName: company.displayName,
+    status: 'DONE',
+    statusReason: null,
+    reportType: null,
+    reportDate: null,
+    reportLink: null,
+    lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
+  }));
+const { nodes, edges } = buildGraphElements(relationships, holdings);
 
 beforeEach(() => {
   // No drawing in jsdom; and a graph 800 by 500 on screen.
@@ -59,12 +78,12 @@ function drawGraph(props: Partial<Parameters<typeof LivingGraph>[0]> = {}) {
 describe('LivingGraph', () => {
   it('carries on to new data without clearing its canvas, so the picture never blinks', () => {
     const sized = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
-    const fewer = buildGraphElements(relationships.slice(0, -1), []);
+    const fewer = buildGraphElements(relationships.slice(0, -1), holdings);
     const view = drawGraph({ nodes: fewer.nodes, edges: fewer.edges });
     const before = sized.mock.calls.length;
 
     // A holding analysed: one more relationship on the same portfolio's graph.
-    const more = buildGraphElements(relationships, []);
+    const more = buildGraphElements(relationships, holdings);
     view.rerender(
       <LivingGraph nodes={more.nodes} edges={more.edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
     );
@@ -309,5 +328,64 @@ describe('LivingGraph', () => {
     });
 
     await waitFor(() => expect(hint).not.toBeInTheDocument());
+  });
+});
+
+describe('the picture of the graph for the briefing', () => {
+  // A drawing surface that accepts every call, for drawing a frame that is never looked at.
+  function anyContext(): CanvasRenderingContext2D {
+    const make = (): unknown =>
+      new Proxy(function () {}, {
+        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : make()),
+        apply: () => make(),
+        set: () => true,
+      });
+    return make() as CanvasRenderingContext2D;
+  }
+
+  it('gives nothing where the browser cannot draw', () => {
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
+  });
+
+  it('draws the screen once more at twice its size and hands back a PNG', () => {
+    const sizes: [number, number][] = [];
+    const context = anyContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      sizes.push([this.width, this.height]);
+      return context as never;
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,PICTURE');
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    const picture = handle.current!.snapshot();
+
+    expect(picture).toBe('data:image/png;base64,PICTURE');
+    // The graph is 800 by 500 on screen, so the picture is 1600 by 1000.
+    expect(sizes).toContainEqual([1600, 1000]);
+    expect(sizes).not.toContainEqual([3200, 2000]);
+  });
+
+  it('gives nothing when the browser cannot read the canvas back', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(anyContext() as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:,');
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
+  });
+
+  it('gives nothing when reading the canvas is refused', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(anyContext() as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => {
+      throw new DOMException('Tainted canvases may not be exported.', 'SecurityError');
+    });
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
   });
 });
