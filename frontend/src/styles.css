@@ -1551,6 +1551,12 @@ svg.lucide {
   white-space: nowrap;
 }
 
+/* "Nothing Found" is one line: an empty bottom line, the ticker's size, keeps it level with the name, not centred. */
+.link-lines:has(> .link-line:only-child)::after {
+  font-size: var(--t-12);
+  content: '\00a0';
+}
+
 .link-line {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
