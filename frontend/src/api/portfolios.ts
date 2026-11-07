@@ -20,9 +20,13 @@ export const portfolioApi = {
   remove: (id: number) => api(`/portfolios/${id}`, { method: 'DELETE' }),
   newsCheck: (id: number | string) => api<void>(`/portfolios/${id}/news-check`, { method: 'POST' }),
   // Saves the portfolio's briefing PDF under the name the backend gives it. graphPng is the graph as it is on screen
-  // (LivingGraph's snapshot), or null when the portfolio has no graph.
+  // (LivingGraph's snapshot), or null when the portfolio has no graph. The reader's time zone goes with it, so the
+  // briefing's dates are the days the reader sees.
   briefing: (id: number | string, graphPng: string | null) =>
-    apiDownload(`/portfolios/${id}/briefing`, 'Briefing.pdf', { method: 'POST', body: JSON.stringify({ graphPng }) }),
+    apiDownload(`/portfolios/${id}/briefing`, 'Briefing.pdf', {
+      method: 'POST',
+      body: JSON.stringify({ graphPng, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    }),
 };
 
 // Sent in the browser after a portfolio is created, renamed or deleted, so everything showing portfolio names (the

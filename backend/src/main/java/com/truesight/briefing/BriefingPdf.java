@@ -192,7 +192,7 @@ class BriefingPdf {
         document.add(new Paragraph(headline.article().title(), fonts.subheading()));
         String source = headline.article().source() == null ? "Source Not Recorded" : headline.article().source();
         document.add(new Paragraph(source + "  -  "
-                + BriefingText.date(headline.article().publishedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate()),
+                + BriefingText.date(headline.article().publishedAt().atZone(data.zone()).toLocalDate()),
                 fonts.small()));
         if (assessment.summary() != null && !assessment.summary().isBlank()) {
             Paragraph summary = new Paragraph(assessment.summary(), fonts.body());

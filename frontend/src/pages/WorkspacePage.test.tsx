@@ -877,7 +877,11 @@ describe('Download Briefing', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
 
     await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
-    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: 'data:image/png;base64,SNAPSHOT' });
+    // The reader's time zone goes with the picture, so the briefing's dates are the days they see.
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({
+      graphPng: 'data:image/png;base64,SNAPSHOT',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
   });
 
   it('savesThePdfUnderTheNameTheBackendGives', async () => {
@@ -901,7 +905,10 @@ describe('Download Briefing', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
 
     await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
-    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: null });
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({
+      graphPng: null,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
   });
 
   it('sendsNoPictureWhenTheGraphCannotDrawOne', async () => {
@@ -913,7 +920,10 @@ describe('Download Briefing', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Download Briefing' }));
 
     await waitFor(() => expect(sentTo('POST', '/api/portfolios/7/briefing')).toHaveLength(1));
-    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({ graphPng: null });
+    expect(sentTo('POST', '/api/portfolios/7/briefing')[0]!.body).toEqual({
+      graphPng: null,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
   });
 
   it('showsWhyABriefingFailedAndOffersTheButtonAgain', async () => {

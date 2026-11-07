@@ -26,7 +26,7 @@ public class BriefingController {
     @Operation(summary = "Download a PDF briefing of the portfolio's supply-chain risks")
     public ResponseEntity<byte[]> download(@PathVariable Long portfolioId,
                                            @Valid @RequestBody BriefingRequest request) {
-        Briefing briefing = service.build(portfolioId, request.graphPng());
+        Briefing briefing = service.build(portfolioId, request.graphPng(), request.timeZone());
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + briefing.filename() + "\"")

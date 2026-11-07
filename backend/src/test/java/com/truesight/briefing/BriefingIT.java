@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -139,6 +140,32 @@ class BriefingIT {
         // The cover names the portfolio and the day.
         assertThat(pages.get(0)).contains("Briefing Test");
         assertThat(pages.get(0)).contains(BriefingText.date(LocalDate.now(ZoneOffset.UTC)));
+    }
+
+    @Test
+    void theCoverAndTheFileNameNameTheDayInTheReadersTimeZone() throws Exception {
+        Portfolio portfolio = seedPortfolio();
+        // UTC+14 and UTC-11 are 25 hours apart, so they never name the same day.
+        for (ZoneId zone : List.of(ZoneId.of("Pacific/Kiritimati"), ZoneId.of("Pacific/Pago_Pago"))) {
+            MvcResult result = briefing(portfolio, email, "{\"graphPng\":null,\"timeZone\":\"" + zone + "\"}")
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Disposition",
+                            "attachment; filename=\"Briefing-Test-Briefing-" + LocalDate.now(zone) + ".pdf\""))
+                    .andReturn();
+
+            assertThat(pages(result.getResponse().getContentAsByteArray()).get(0))
+                    .contains(BriefingText.date(LocalDate.now(zone)));
+        }
+    }
+
+    @Test
+    void aTimeZoneThatIsNotRealFallsBackToUtc() throws Exception {
+        Portfolio portfolio = seedPortfolio();
+
+        briefing(portfolio, email, "{\"graphPng\":null,\"timeZone\":\"Not/AZone\"}")
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"Briefing-Test-Briefing-" + LocalDate.now(ZoneOffset.UTC) + ".pdf\""));
     }
 
     // ---- 2. The graph in the PDF is the graph as shown when the button was pressed ----------------------------------

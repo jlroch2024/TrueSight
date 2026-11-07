@@ -5,6 +5,7 @@ import com.truesight.portfolio.HoldingResponse;
 import com.truesight.relationship.RelationshipResponse;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -14,6 +15,7 @@ import java.util.List;
 public record BriefingData(
         String portfolioName,
         LocalDate date,
+        ZoneId zone,
         byte[] graphPng,
         List<HoldingResponse> holdings,
         AlertsResponse alerts,
