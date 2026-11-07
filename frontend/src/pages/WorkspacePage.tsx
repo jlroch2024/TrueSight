@@ -10,7 +10,7 @@
 //   alert. Closed, it leaves a tab at the right edge that opens it again on what it last showed.
 //
 // Choosing an alert spotlights it on the graph: the rest dims, and the event's company, the holdings it reaches and the
-// links between them stay lit, while the camera frames them. The bottom middle is kept for the Sprint 4 chat.
+// links between them stay lit, while the camera frames them. The bottom middle holds Ask TrueSight.
 //
 // Below 1160px wide the same panels become one sheet at a time over the graph, chosen from a tab bar (PhoneDock.tsx): any
 // narrower and the top bar's pieces no longer fit between the drawer and the actions.
@@ -19,6 +19,7 @@ import { Bell, Check, ChevronsLeft, ChevronsRight, LoaderCircle, Network, Plus, 
 import { type ChangeEvent, type DragEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { type AlertEvent, type AlertStatus, type AlertsResponse, alertApi } from '../api/alerts';
+import type { AskSource } from '../api/ask';
 import { ApiError, api } from '../api/client';
 import { type Holding, type Portfolio, holdingApi, portfolioApi, portfolioChanges } from '../api/portfolios';
 import { type Relationship, relationshipApi } from '../api/relationships';
@@ -30,10 +31,12 @@ import { Segmented } from '../components/Segmented';
 import { LogoSettingsContext, Tile } from '../components/Tile';
 import { useLogoSettings } from '../components/useLogoSettings';
 import { type AlertFilter, AlertsTab } from '../components/workspace/AlertsTab';
+import { AskPanel } from '../components/workspace/AskPanel';
 import { HoldingsTab, LoadingRows } from '../components/workspace/HoldingsTab';
 import { InspectorBody, InspectorKind } from '../components/workspace/Inspector';
 import { PHONE_TABS, type PhoneTab, PhoneDock } from '../components/workspace/PhoneDock';
 import { ActionsIsland, AnalystDeskButton, OpenAlertsBar, PortfolioIsland, Swap } from '../components/workspace/TopBar';
+import { useAsk } from '../components/workspace/useAsk';
 import { useWhatIf } from '../components/workspace/useWhatIf';
 import { type Chosen, alertKey, byUrgency, companyIdOfNode, scenarioFocus, spotlightOf, useWorkspaceView } from '../components/workspace/view';
 import { type GraphHandle, LivingGraph } from '../graph/LivingGraph';
@@ -50,6 +53,8 @@ const INSPECTOR = 488;
 // Below this width the workspace is one sheet at a time, with a tab bar this tall.
 const COMPACT_BELOW = 1160;
 const DOCK = 64;
+// Ask TrueSight's question bar along the bottom, as tall as the top bar.
+const ASK_BAR = BAR;
 // How long the panels take to fade out and in when the window crosses that width (styles.css has the same times).
 const SWITCH_OUT_MS = 140;
 const SWITCH_IN_MS = 260;
@@ -309,6 +314,9 @@ export function WorkspacePage() {
     lastPhoneTab.current = shownPhoneTab;
   }
   useEffect(() => setPhoneTab(shownPhoneTab), [shownPhoneTab]);
+
+  // The conversation with Ask TrueSight, for the open portfolio.
+  const ask = useAsk(portfolioId);
 
   // Escape closes the Inspector, unless a menu or a window is open (Escape is theirs then).
   useEffect(() => {
@@ -616,6 +624,8 @@ export function WorkspacePage() {
   const railX = useTransform(drawerWidth, [RAIL, RAIL + 140], [0, 14]);
 
   const inspectorOpen = chosen !== null && loaded && !compact;
+  // Ask TrueSight sits along the bottom between the drawer and the Inspector, on a computer; a phone has no room for it.
+  const showAsk = !compact && loaded;
   // Each side keeps the page's 12px gap from what covers it (or from the screen's edge), so the graph's own controls sit
   // on these lines and every gap on the screen is the same.
   const insets = compact
@@ -623,10 +633,29 @@ export function WorkspacePage() {
     : {
         top: GAP * 2 + BAR,
         right: inspectorOpen ? GAP * 2 + INSPECTOR : GAP,
-        bottom: GAP,
+        bottom: showAsk ? GAP * 2 + ASK_BAR : GAP,
         left: loaded ? GAP * 2 + (leftOpen ? DRAWER : RAIL) : GAP,
       };
   const chooseCompany = (nodeId: string) => choose({ kind: 'company', nodeId });
+  // What an answer's source opens, as the workspace shows it: a relationship in the Inspector, a holding as its company,
+  // an alert as the event that holds that alert. Null if the item is not there any more (the portfolio has moved on).
+  const sourceTarget = (source: AskSource): NonNullable<Chosen> | null => {
+    if (source.kind === 'RELATIONSHIP') {
+      return view.relationships.some((relationship) => relationship.id === source.id)
+        ? { kind: 'relationship', relationshipId: source.id }
+        : null;
+    }
+    if (source.kind === 'HOLDING') {
+      const holding = view.holdings.find((item) => item.id === source.id);
+      return holding ? { kind: 'company', nodeId: view.nodeIdOf(holding) } : null;
+    }
+    const event = view.alerts.find((item) => item.alertIds.includes(source.id));
+    return event ? { kind: 'alert', key: alertKey(event) } : null;
+  };
+  const openSource = (source: AskSource) => {
+    const target = sourceTarget(source);
+    if (target) choose(target);
+  };
   const openCount = view.open.length;
   const tabDirection = tab === 'alerts' ? 1 : -1;
 
@@ -1035,8 +1064,30 @@ export function WorkspacePage() {
           </>
         )}
 
+        {/* ---------- Ask TrueSight ---------- */}
+        {showAsk && (
+          <AskPanel
+            exchanges={ask.exchanges}
+            sending={ask.sending}
+            left={insets.left}
+            right={insets.right}
+            onAsk={(question) => void ask.ask(question)}
+            onRetry={ask.retry}
+            canOpen={(source) => sourceTarget(source) !== null}
+            onOpen={openSource}
+          />
+        )}
+
         {/* ---------- Toasts and the upload window ---------- */}
-        <div className="toasts" style={{ left: `calc(50% + ${(insets.left - insets.right) / 2}px)` }} aria-live="polite">
+        <div
+          className="toasts"
+          style={{
+            left: `calc(50% + ${(insets.left - insets.right) / 2}px)`,
+            // Above Ask TrueSight's bar, not over it.
+            ...(showAsk ? { bottom: insets.bottom + GAP } : {}),
+          }}
+          aria-live="polite"
+        >
           <AnimatePresence>
             {toasts.map((item) => (
               <motion.div
