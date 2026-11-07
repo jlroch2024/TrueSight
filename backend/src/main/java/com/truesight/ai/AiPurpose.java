@@ -10,5 +10,6 @@ public enum AiPurpose {
     COMMON_NAMES,
     ASK,
     TIMELINE,
-    HIGHLIGHT
+    HIGHLIGHT,
+    NAME_SEARCH
 }

@@ -336,6 +336,20 @@ file in the demo. Then they open the pull request.
 - The briefing uses OpenPDF and nothing else.
 - The daily news endpoint is the one `/api/` address protected by a scheduler token instead of a login.
 
+## Sprint 5 Shared Rules
+
+- All Sprint 5 table changes are in `V5__sprint_5_tables.sql`. No individual story adds another migration.
+- A dependency figure comes only from a filing's own XBRL tags, never from an AI, and is shown beside a relationship,
+  never made into one.
+- A relationship found by name search is marked `NAME_SEARCH` and never stops the whole report being read later. A
+  report counts as read when an answered `FIND_RELATIONSHIPS` call was given its full text as `ReportSection` chooses it
+  today (`ReportReading`, from Read the Right Part of Every Report).
+- A test with a fake Gemini proves the plumbing, never the answer. A change to an AI prompt, or to the text an AI reads, is
+  measured on hand-labelled real samples before it merges, and the score is saved in `docs/examples/`.
+- SEC full-text search goes through `SecClient`, with the same `User-Agent` and the same 10 requests a second.
+- Work that runs in the background records the server that owns it, so that work whose server has gone can be recovered.
+- A lock that must hold across servers is a `DatabaseLock`, never a Java lock.
+
 ## Definition of Done
 
 A story is done when all of these are true:

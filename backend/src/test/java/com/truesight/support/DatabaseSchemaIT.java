@@ -18,9 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DatabaseSchemaIT {
 
     private static final List<String> TABLES = List.of(
-            "ai_calls", "alert_holdings", "alerts", "companies", "company_names", "holdings", "news_articles",
-            "news_assessments", "past_relationships", "portfolios", "recommendations", "relationship_highlights",
-            "relationships", "reports", "users");
+            "ai_calls", "alert_holdings", "alerts", "companies", "company_names", "concentrations", "holdings",
+            "name_searches", "news_articles", "news_assessments", "past_relationships", "portfolios",
+            "recommendations", "relationship_highlights", "relationships", "reports", "users", "workers");
 
     @Autowired
     JdbcTemplate jdbc;
