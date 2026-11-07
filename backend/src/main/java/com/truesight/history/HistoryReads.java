@@ -3,7 +3,6 @@ package com.truesight.history;
 import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
-import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.PastRelationshipRepository;
 import com.truesight.report.ReportInfo;
 import com.truesight.report.ReportRepository;
@@ -15,6 +14,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * What of a company's earlier annual reports has been read and what is still to read. A holding's two previous reports
@@ -30,14 +30,20 @@ class HistoryReads {
     private final ReportRepository reports;
     private final PastRelationshipRepository pastRelationships;
     private final AiCallRepository aiCalls;
-    private final CompanyRepository companies;
+    // How many earlier reports the SEC had for each company when last asked. Held in memory, as Sprint 4 has no table
+    // change for it: after a restart, a company the SEC has fewer than two for is offered once more, and that Load
+    // History asks the SEC again (one request) and reads nothing.
+    private final Map<Long, Integer> atTheSec = new ConcurrentHashMap<>();
 
-    HistoryReads(ReportRepository reports, PastRelationshipRepository pastRelationships, AiCallRepository aiCalls,
-                 CompanyRepository companies) {
+    HistoryReads(ReportRepository reports, PastRelationshipRepository pastRelationships, AiCallRepository aiCalls) {
         this.reports = reports;
         this.pastRelationships = pastRelationships;
         this.aiCalls = aiCalls;
-        this.companies = companies;
+    }
+
+    /** Remembers how many earlier reports the SEC has for this company (0, 1 or 2). */
+    void rememberAtTheSec(Long companyId, int count) {
+        atTheSec.put(companyId, Math.min(EARLIER, count));
     }
 
     /** Each company's saved reports, newest first. */
@@ -66,14 +72,13 @@ class HistoryReads {
 
     /**
      * How many earlier reports this company has to read: the ones saved, if any (they are saved all together, after
-     * every one has downloaded, so those are all there are), otherwise how many the SEC had when last asked, which is
-     * kept on the company so a restart does not forget it, otherwise two, until the SEC has been asked.
+     * every one has downloaded, so those are all there are), otherwise how many the SEC had when last asked, otherwise
+     * two, until the SEC has been asked.
      */
     int expected(Long companyId, List<ReportInfo> newestFirst) {
         int saved = Math.min(EARLIER, earlier(newestFirst).size());
         if (saved > 0) return saved;
-        Integer asked = companies.findEarlierReportsById(companyId);
-        return asked == null ? EARLIER : Math.min(EARLIER, asked);
+        return atTheSec.getOrDefault(companyId, EARLIER);
     }
 
     /** How many of the company's earlier reports are still to read. */

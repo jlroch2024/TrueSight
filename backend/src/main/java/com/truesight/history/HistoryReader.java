@@ -99,12 +99,8 @@ public class HistoryReader {
                     .filter(filing -> filing.filingDate().isBefore(latest.getFilingDate()))
                     .limit(HistoryReads.EARLIER)
                     .toList();
-            // Kept on the company, so a company with fewer than two earlier reports is not offered again, even after a
-            // restart.
-            if (!java.util.Objects.equals(company.getEarlierReports(), earlier.size())) {
-                company.setEarlierReports(earlier.size());
-                companies.save(company);
-            }
+            // Remembered, so a company with fewer than two earlier reports is not offered again (see HistoryReads).
+            reads.rememberAtTheSec(companyId, earlier.size());
 
             // Download every report not saved yet before saving any, so the reports saved are always all there are:
             // that is what lets a company's earlier reports be counted from what is saved (see HistoryReads.expected).

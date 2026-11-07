@@ -329,9 +329,7 @@ file in the demo. Then they open the pull request.
 
 ## Sprint 4 Shared Rules
 
-- Sprint 4's table changes are in `V4__sprint_4_tables.sql`. The one exception is `V5__sprint_4_earlier_reports.sql`,
-  which adds `companies.earlier_reports` so that the SEC Filing Timeline remembers how many earlier annual reports the SEC
-  had for a company. No other Sprint 4 story adds another migration.
+- All Sprint 4 table changes are in `V4__sprint_4_tables.sql`. No individual story adds another migration.
 - `past_relationships` holds the relationships of a company's older annual reports, and is read only by the SEC Filing
   Timeline. The graph, alerts, the review queue and the news check keep reading `relationships`.
 - Ask TrueSight answers only from TrueSight's own data.

@@ -369,7 +369,7 @@ class HistoryIT {
     // ---- what is still to read is counted from what is saved ---------------------------------------------------------
 
     @Test
-    void aHoldingWithOnlyOneEarlierReportIsNotOfferedAgainAndTheCountIsKeptOnTheCompany() throws Exception {
+    void aHoldingWithOnlyOneEarlierReportIsNotOfferedAgain() throws Exception {
         Company company = directory.findOrCreate("History One Earlier " + UUID.randomUUID(), cik(), null, List.of());
         Report latest = reports.save(new Report(company.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/latest/one", "Set by the test: the latest report's text is not read."));
@@ -383,28 +383,24 @@ class HistoryIT {
 
         load();
 
-        // What the SEC said is on the company, in the database, so a restart does not lose it.
-        assertThat(companyRows.findById(company.getId()).orElseThrow().getEarlierReports()).isEqualTo(1);
         history().andExpect(jsonPath("$.unread").value(0)).andExpect(jsonPath("$.unreadHoldings").value(0));
         load();
         verify(gemini, times(1)).generate(any(AiRequest.class));
     }
 
     @Test
-    void aHoldingWithNoEarlierReportIsNotOfferedAgainAndTheCountIsKeptOnTheCompany() throws Exception {
+    void aHoldingWithNoEarlierReportIsNotOfferedAgain() throws Exception {
         // The company's first annual report: the SEC lists only the latest, so there is nothing earlier to save.
         Company company = directory.findOrCreate("History None Earlier " + UUID.randomUUID(), cik(), null, List.of());
         Report latest = reports.save(new Report(company.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/latest/none", "Set by the test: the latest report's text is not read."));
         holding("AAA", company);
         when(sec.annualFilings(eq(company.getCik()), anyInt())).thenReturn(List.of(filing(latest)));
-        assertThat(companyRows.findById(company.getId()).orElseThrow().getEarlierReports()).isNull();
         history().andExpect(jsonPath("$.unread").value(2)).andExpect(jsonPath("$.unreadHoldings").value(1));
 
         load();
 
-        // Nothing is saved for it, so only the company can say the SEC had none: and it does, across a restart.
-        assertThat(companyRows.findById(company.getId()).orElseThrow().getEarlierReports()).isZero();
+        // Nothing is saved for it, so what the SEC said is remembered: it had none.
         history().andExpect(jsonPath("$.unread").value(0)).andExpect(jsonPath("$.unreadHoldings").value(0))
                 .andExpect(jsonPath("$.status").value("IDLE"));
         verify(gemini, never()).generate(any(AiRequest.class));
@@ -419,7 +415,7 @@ class HistoryIT {
         holding("AAA", company);
         when(sec.annualFilings(eq(company.getCik()), anyInt())).thenReturn(List.of(filing(first)));
         load();
-        assertThat(companyRows.findById(company.getId()).orElseThrow().getEarlierReports()).isZero();
+        history().andExpect(jsonPath("$.unread").value(0));
 
         reports.save(new Report(company.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/second/grows", "Set by the test: not read."));
