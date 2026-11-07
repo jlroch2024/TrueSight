@@ -4,17 +4,93 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TrueSight</title>
-<meta http-equiv="refresh" content="0; url=https://truesight-1088051639519.asia-southeast1.run.app/">
+<noscript><meta http-equiv="refresh" content="0; url=https://truesight-1088051639519.asia-southeast1.run.app/"></noscript>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #07141a; color: #a6c2be;
-         font: 16px 'Segoe UI', system-ui, sans-serif; }
-  a { color: #2dd4bf; }
+/* The opening screen while the live site loads, in the app's own language ("Signal and Schematic"): a glass panel with
+   registration ticks on a night-blue sheet, a company's chamfered tile with a square-capped ring, and a teal signal
+   that travels left to right. */
+:root {
+  color-scheme: dark;
+  --night: #05070d; --glass: rgba(11, 16, 27, 0.72); --line: rgba(255, 255, 255, 0.075);
+  --tick: rgba(203, 213, 225, 0.42); --text: #e8edf5; --teal: #2dd4bf;
+  --font: 'IBM Plex Sans', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: grid; place-items: center; font-family: var(--font); color: var(--text);
+  background:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px) 0 0 / 48px 48px,
+    radial-gradient(ellipse at 50% 42%, #0b1220 0%, var(--night) 70%);
+}
+.panel {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 22px;
+  width: min(340px, calc(100vw - 32px)); padding: 40px 32px 34px;
+  border: 1px solid var(--line); background: var(--glass);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 18px 48px rgba(0,0,0,.42);
+  backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+  animation: rise .6s cubic-bezier(.2,.7,.2,1) both;
+}
+.panel::before {
+  --len: 6px; position: absolute; inset: -1px; content: ''; pointer-events: none;
+  background:
+    linear-gradient(var(--tick),var(--tick)) top left / var(--len) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick)) top left / 1px var(--len) no-repeat,
+    linear-gradient(var(--tick),var(--tick)) top right / var(--len) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick)) top right / 1px var(--len) no-repeat,
+    linear-gradient(var(--tick),var(--tick)) bottom left / var(--len) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick)) bottom left / 1px var(--len) no-repeat,
+    linear-gradient(var(--tick),var(--tick)) bottom right / var(--len) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick)) bottom right / 1px var(--len) no-repeat;
+}
+/* A chamfered tile, drawn with one even 1px edge. */
+.tile {
+  --c: 12px; width: 64px; height: 64px; display: grid; place-items: center;
+  background: rgba(45,212,191,.5);
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, 0 100%);
+}
+.tile > div {
+  width: calc(100% - 2px); height: calc(100% - 2px); margin: 1px; display: grid; place-items: center; background: #0b1220;
+  clip-path: polygon(0 0, calc(100% - var(--c) + 1px) 0, 100% calc(var(--c) - 1px), 100% 100%, 0 100%);
+}
+.tile { padding: 0; }
+svg { width: 34px; height: 34px; overflow: visible; }
+.track { stroke: rgba(255,255,255,.13); }
+.arc { stroke: var(--teal); transform-origin: 12px 12px; animation: spin 1.1s linear infinite; }
+h1 { margin: 0; font-size: 19px; font-weight: 550; letter-spacing: .01em; }
+.rail { position: relative; width: 100%; height: 1px; background: var(--line); overflow: hidden; }
+.rail::after {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 38%; background: linear-gradient(90deg, transparent, var(--teal));
+  animation: travel 1.5s cubic-bezier(.5,0,.3,1) infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes travel { from { transform: translateX(-100%); } to { transform: translateX(270%); } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .arc, .panel { animation: none; }
+  .rail::after { animation: none; width: 100%; opacity: .5; }
+}
 </style>
 </head>
 <body>
-<!-- Opens the live TrueSight site. Each sprint's merge order keeps its own address: sprint-3/, sprint-4/. -->
-<p>Opening <a href="https://truesight-1088051639519.asia-southeast1.run.app/">TrueSight</a>. The merge order is at
-<a href="sprint-4/">sprint-4</a>.</p>
+<main class="panel" role="status" aria-live="polite">
+  <div class="tile"><div>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="square" aria-hidden="true">
+      <circle class="track" cx="12" cy="12" r="9"/>
+      <path class="arc" d="M12 3a9 9 0 0 1 9 9"/>
+    </svg>
+  </div></div>
+  <h1>Loading TrueSight</h1>
+  <div class="rail" aria-hidden="true"></div>
+</main>
+<script>
+// Straight on to the live site. This screen stays up until the site's first page arrives, which can take a few seconds
+// when the site has been idle.
+setTimeout(() => location.replace('https://truesight-1088051639519.asia-southeast1.run.app/'), 600);
+</script>
 </body>
 </html>
