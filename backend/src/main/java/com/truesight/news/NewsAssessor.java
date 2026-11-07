@@ -10,10 +10,13 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -96,8 +99,9 @@ public class NewsAssessor implements NewsCheckStep {
     private final Executor batchExecutor;
     private final NewsAssessmentReader reader = new NewsAssessmentReader();
 
-    // Two portfolios sharing a company could otherwise judge the same article at the same moment.
-    private final Object lock = new Object();
+    // The articles some news check is judging now. Two portfolios sharing a company must not judge the same article at
+    // the same moment, but they need not wait for each other: each takes the articles it can claim and carries on.
+    private final ConcurrentHashMap<Long, Object> articleLocks = new ConcurrentHashMap<>();
 
     public NewsAssessor(NewsCheckService newsCheck, NewsArticleRepository articles,
                         NewsAssessmentRepository assessments, GeminiClient gemini, AiCallLog calls,
@@ -112,25 +116,39 @@ public class NewsAssessor implements NewsCheckStep {
 
     @Override
     public void run(Long portfolioId) {
-        synchronized (lock) {
-            Map<Long, String> names = newsCheck.companiesFor(portfolioId).stream()
-                    .collect(Collectors.toMap(NewsCheckService.NewsCompany::id, NewsCheckService.NewsCompany::name,
-                            (first, second) -> first));
-            if (names.isEmpty()) return;
+        Map<Long, String> names = newsCheck.companiesFor(portfolioId).stream()
+                .collect(Collectors.toMap(NewsCheckService.NewsCompany::id, NewsCheckService.NewsCompany::name,
+                        (first, second) -> first));
+        if (names.isEmpty()) return;
 
-            List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(names.keySet());
+        List<NewsArticle> unjudged = articles.findUnassessedByCompanyIdIn(names.keySet());
+        // Claim what no other check is judging; an article another check has claimed is its to judge, not ours.
+        Set<Long> claimed = new HashSet<>();
+        for (NewsArticle article : unjudged) {
+            if (articleLocks.putIfAbsent(article.getId(), article) == null) claimed.add(article.getId());
+        }
+        try {
+            if (claimed.isEmpty()) return;
+            // Another check may have judged some of them between that read and the claim: read again.
+            List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(names.keySet()).stream()
+                    .filter(article -> claimed.contains(article.getId()))
+                    .toList();
             List<CompletableFuture<Void>> tasks = new ArrayList<>();
             for (int start = 0; start < waiting.size(); start += BATCH_SIZE) {
                 List<NewsArticle> batch = List.copyOf(waiting.subList(start, Math.min(start + BATCH_SIZE, waiting.size())));
                 tasks.add(CompletableFuture.runAsync(
                         () -> save(batch, ask(prompt(batch, names), batch.size())), batchExecutor));
             }
+            // Waits only for the batches this check started, never for an article another check has claimed: the
+            // steps after this one (alerts) need this check's own judgments to be saved before they run.
             try {
                 CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
             } catch (CompletionException exception) {
                 if (exception.getCause() instanceof RuntimeException cause) throw cause;
                 throw exception;
             }
+        } finally {
+            claimed.forEach(articleLocks::remove);
         }
     }
 

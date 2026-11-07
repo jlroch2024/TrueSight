@@ -1,6 +1,7 @@
 package com.truesight.portfolio;
 
 import com.truesight.relationship.HighlightJob;
+import com.truesight.relationship.SecondCheckPassService;
 import com.truesight.report.SupplierReader;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +22,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AnalysisJobTest {
+
+    /** These tests are about running holdings side by side; a mock has no report to second-check. */
+    private final SecondCheckPassService secondChecks = mock(SecondCheckPassService.class);
 
     @Test
     void analyzesManyHoldingsConcurrentlyUpToTheExecutorLimit() throws Exception {
@@ -45,7 +49,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService caller = Executors.newSingleThreadExecutor();
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers, mock(HighlightJob.class), mock(SupplierReader.class));
+            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class));
             Future<?> finished = caller.submit(() -> job.run(List.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L)));
 
             assertThat(firstFourStarted.await(3, TimeUnit.SECONDS)).isTrue();
@@ -88,7 +92,7 @@ class AnalysisJobTest {
         ExecutorService workers = Executors.newFixedThreadPool(4);
         ExecutorService portfolios = Executors.newFixedThreadPool(2);
         try {
-            AnalysisJob job = new AnalysisJob(analysis, workers, mock(HighlightJob.class), mock(SupplierReader.class));
+            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class));
             Future<?> firstPortfolio = portfolios.submit(() -> job.run(List.of(1L)));
             Future<?> secondPortfolio = portfolios.submit(() -> job.run(List.of(2L)));
 
@@ -124,7 +128,7 @@ class AnalysisJobTest {
 
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers, mock(HighlightJob.class), mock(SupplierReader.class)).run(List.of(1L, 2L, 3L));
+            new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class)).run(List.of(1L, 2L, 3L));
             assertThat(maximum.get()).isEqualTo(1);
         } finally {
             workers.shutdownNow();
@@ -138,7 +142,7 @@ class AnalysisJobTest {
         HighlightJob highlights = mock(HighlightJob.class);
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers, highlights, mock(SupplierReader.class)).run(List.of(1L));
+            new AnalysisJob(analysis, secondChecks, workers, highlights, mock(SupplierReader.class)).run(List.of(1L));
 
             var order = inOrder(analysis, highlights);
             order.verify(analysis).analyze(1L);
@@ -163,7 +167,7 @@ class AnalysisJobTest {
         }).when(suppliers).read(anyLong());
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers, mock(HighlightJob.class), suppliers).run(List.of(1L));
+            new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), suppliers).run(List.of(1L));
 
             assertThat(bothRead.await(3, TimeUnit.SECONDS)).isTrue();
             var order = inOrder(analysis, suppliers);
@@ -191,7 +195,7 @@ class AnalysisJobTest {
         }).when(suppliers).read(22L);
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
-            new AnalysisJob(analysis, workers, mock(HighlightJob.class), suppliers).run(List.of(1L));
+            new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), suppliers).run(List.of(1L));
 
             assertThat(secondRead.await(3, TimeUnit.SECONDS)).isTrue();
             org.mockito.Mockito.verify(suppliers).fail(21L);

@@ -122,6 +122,17 @@ public class AnalysisService {
         }
     }
 
+    /**
+     * The report whose relationships were just saved for this holding, once the holding is Done: the one its second
+     * check is run for. Null for a holding that is not Done, or that has no company or report.
+     */
+    @Transactional(readOnly = true)
+    public Long reportToSecondCheck(Long holdingId) {
+        Holding holding = holdings.findById(holdingId).orElse(null);
+        if (holding == null || holding.getStatus() != HoldingStatus.DONE || holding.getCompanyId() == null) return null;
+        return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).map(Report::getId).orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public String tickerFor(Long holdingId) {
         return holdings.findById(holdingId).map(Holding::getTicker).orElse(holdingId.toString());
