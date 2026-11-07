@@ -335,12 +335,14 @@ class AnnualReportAnalysisIT {
         awaitStatuses(portfolio.getId(), 1, HoldingStatus.DONE);
         awaitBackgroundIdle();
 
-        verify(gemini, times(1)).generateSecondCheck(any(AiRequest.class));
         Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
         assertThat(holding.getStatus()).isEqualTo(HoldingStatus.DONE);
         assertThat(holding.getStatusReason()).isNull();
         Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
         Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
+        // Only this report's calls are counted: the mock is shared by the whole suite, and another test's background
+        // work can still be asking the second check about its own report.
+        verify(gemini, times(1)).generateSecondCheck(argThat(request -> reportId.equals(request.reportId())));
         // The relationships stay saved with no second check, for the analyst-run pass to ask about again.
         assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2)
                 .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNull());
