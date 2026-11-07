@@ -1,7 +1,5 @@
 package com.truesight.news;
 
-import com.truesight.ai.AiPurpose;
-import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
@@ -18,9 +16,7 @@ import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
-import com.truesight.report.SecClient;
 import com.truesight.support.Examples;
-import com.truesight.support.FakeAi;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,22 +25,23 @@ import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import com.truesight.ai.AiPurpose;
+import com.truesight.ai.AiRequest;
+import com.truesight.report.SecClient;
+import com.truesight.support.FakeAi;
+import tools.jackson.databind.json.JsonMapper;
+import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
@@ -60,6 +57,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 
 @IntegrationTest
 class NewsCheckIT {
@@ -89,9 +90,9 @@ class NewsCheckIT {
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
     @Autowired NewsArticleRepository articles;
-    @Autowired NewsCheckService newsCheck;
     @Autowired NewsAssessmentRepository assessments;
     @Autowired List<NewsCheckStep> realSteps;
+    @Autowired NewsCheckService newsCheck;
 
     @MockitoBean NewsClient news;
     @MockitoBean SecClient sec;
@@ -584,25 +585,31 @@ class NewsCheckIT {
     }
 
     @Test
-    void anEightKThatTenNewerHeadlinesPushOutIsNeitherDownloadedNorSavedSoItIsNotDownloadedAgainOnTheNextCheck()
-            throws Exception {
-        String email = "news-8k-pushed-out@example.com";
+    void anEightKOlderThanTenNewsHeadlinesIsStillSavedAndDownloadedOnlyOnce() throws Exception {
+        String email = "news-8k-not-crowded@example.com";
         Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
         Portfolio portfolio = analysedPortfolio(email, clorox);
-        // The saved Google News sample has far more than ten headlines; the newest ten are all newer than this 8-K,
-        // which was accepted five days ago, so the one rule for a company (at most 10, newest first) leaves it out.
-        assertThat(sample.stream().filter(item -> item.publishedAt().isAfter(Instant.now().minus(Duration.ofDays(4))))
-                .count()).isGreaterThanOrEqualTo(10);
-        when(sec.recentCurrentReports(CLOROX_CIK))
-                .thenReturn(cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK, Duration.ofDays(5)));
+        // The 8-K three days old, the saved Google News within the last hour or so: a busy company's week.
+        List<SecClient.SecCurrentReport> filings = cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK).stream()
+                .map(filing -> new SecClient.SecCurrentReport(filing.accessionNumber(), filing.items(),
+                        filing.acceptedAt().minus(Duration.ofDays(3)), filing.url()))
+                .toList();
+        Instant eightKAccepted = acceptedAt(filings, CLOROX_CYBER_ATTACK);
+        assertThat(sample).filteredOn(item -> item.publishedAt().isAfter(eightKAccepted)).hasSizeGreaterThanOrEqualTo(10);
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(filings);
         when(sec.download(CLOROX_CYBER_ATTACK_URL)).thenReturn(Examples.sec8kClorox());
 
         checkNews(portfolio, email);
         awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+        clorox = companies.findById(clorox.getId()).orElseThrow();
+        clorox.setNewsCheckedAt(null);
+        companies.saveAndFlush(clorox);
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
 
-        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(clorox.getId())).hasSize(10);
-        assertThat(eightKsOf(clorox)).isEmpty();
-        verify(sec, never()).download(anyString());
+        assertThat(eightKsOf(clorox)).singleElement()
+                .satisfies(article -> assertThat(article.getUrl()).isEqualTo(CLOROX_CYBER_ATTACK_URL));
+        verify(sec, times(1)).download(CLOROX_CYBER_ATTACK_URL);
     }
 
     @Test
