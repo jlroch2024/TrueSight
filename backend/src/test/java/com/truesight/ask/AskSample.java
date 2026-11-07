@@ -56,7 +56,7 @@ final class AskSample {
             String[] report = REPORTS.get(ticker).split(" ");
             holdings.add(new HoldingResponse((long) i, ticker, new BigDecimal(cells[1].strip()),
                     company == null ? null : company.name(), company == null ? null : company.displayName(),
-                    HoldingStatus.DONE, null, report[0], LocalDate.parse(report[1]), "https://www.sec.gov/", null));
+                    HoldingStatus.DONE, null, report[0], LocalDate.parse(report[1]), "https://www.sec.gov/", null, 0, 0));
         }
         // The order HoldingService.list gives them in, which is the order of the records ([H1] is AMD).
         holdings.sort(java.util.Comparator.comparing(HoldingResponse::ticker));
