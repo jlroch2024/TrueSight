@@ -18,6 +18,8 @@ function holding(status: HoldingStatus): Holding {
     reportDate: null,
     reportLink: null,
     lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
   };
 }
 
@@ -78,6 +80,29 @@ describe('the holdings tab', () => {
     rerender(<Drawer holdings={[weighted('AAA', 1, 50), weighted('BBB', 2, 20), weighted('CCC', 3, 10)]} />);
 
     expect(order()).toEqual(['AAA (AAA)', 'BBB (BBB)', 'CCC (CCC)']);
+  });
+
+  it('saysHowManySuppliersReportsAreReadWhileTheyAreBeingRead', () => {
+    const reading = { suppliersRead: 12, suppliersToRead: 30 };
+    render(<Drawer holdings={[{ ...holding('AMD', 1, 10), ...reading }, { ...holding('NVDA', 2, 20), ...reading }]} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent("Reading Suppliers' Reports, 12 of 30");
+  });
+
+  it('showsNothingOnceEverySuppliersReportIsRead', () => {
+    const done = { suppliersRead: 30, suppliersToRead: 30 };
+    const { rerender } = render(<Drawer holdings={[{ ...holding('AMD', 1, 10), suppliersRead: 29, suppliersToRead: 30 }]} />);
+    expect(screen.getByRole('status')).toHaveTextContent("Reading Suppliers' Reports, 29 of 30");
+
+    rerender(<Drawer holdings={[{ ...holding('AMD', 1, 10), ...done }]} />);
+
+    expect(screen.queryByText(/Reading Suppliers' Reports/)).not.toBeInTheDocument();
+  });
+
+  it('showsNothingWhenNoSupplierIsToBeRead', () => {
+    render(<Drawer holdings={[holding('AMD', 1, 10)]} />);
+
+    expect(screen.queryByText(/Reading Suppliers' Reports/)).not.toBeInTheDocument();
   });
 });
 

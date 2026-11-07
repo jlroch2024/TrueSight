@@ -96,6 +96,26 @@ public class GeminiClient {
                     "required", List.of("index", "verdict", "reason"),
                     "propertyOrdering", List.of("index", "verdict", "reason")));
 
+    /** For each numbered quote, the phrases in it that matter, each with its kind. */
+    private static final Map<String, Object> HIGHLIGHT_SCHEMA = Map.of(
+            "type", "ARRAY",
+            "items", Map.of(
+                    "type", "OBJECT",
+                    "properties", Map.of(
+                            "index", Map.of("type", "INTEGER"),
+                            "highlights", Map.of(
+                                    "type", "ARRAY",
+                                    "items", Map.of(
+                                            "type", "OBJECT",
+                                            "properties", Map.of(
+                                                    "text", Map.of("type", "STRING"),
+                                                    "kind", Map.of("type", "STRING", "enum",
+                                                            List.of("COMPANY", "SUPPLIED", "RELIANCE", "FIGURE"))),
+                                            "required", List.of("text", "kind"),
+                                            "propertyOrdering", List.of("text", "kind")))),
+                    "required", List.of("index", "highlights"),
+                    "propertyOrdering", List.of("index", "highlights")));
+
     private final RestClient client;
     private final String apiKey;
     private final String model;
@@ -138,6 +158,11 @@ public class GeminiClient {
     /** Asks for a verdict, Agrees or Doubts with a reason, on each numbered claim of the second check. */
     public AiAnswer generateSecondCheck(AiRequest request) {
         return generate(request, SECOND_CHECK_SCHEMA);
+    }
+
+    /** Asks for the phrases that matter in each numbered quote, in the shape of {@link #HIGHLIGHT_SCHEMA}. */
+    public AiAnswer generateHighlights(AiRequest request) {
+        return generate(request, HIGHLIGHT_SCHEMA);
     }
 
     /** As {@link #generate(AiRequest)}, with the caller's JSON response schema. */

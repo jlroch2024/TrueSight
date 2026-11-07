@@ -3,15 +3,40 @@
 // is the real component.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import sampleRelationshipsJson from '../../../docs/examples/relationships.json';
+import type { Holding } from '../api/portfolios';
 import type { Relationship } from '../api/relationships';
 import { buildGraphElements, sharedCompanies, withSharedSummaries } from '../pages/supplyChain';
-import { LivingGraph } from './LivingGraph';
-import { ALERT_COLOUR } from './model';
+import { type GraphHandle, LivingGraph } from './LivingGraph';
+import { ALERT_COLOUR, buildLiveGraph } from './model';
+
+// The real thing, watched: how often it runs says how often the graph was rebuilt.
+vi.mock('./model', async (original) => {
+  const actual = await original<typeof import('./model')>();
+  return { ...actual, buildLiveGraph: vi.fn(actual.buildLiveGraph) };
+});
 
 const relationships = sampleRelationshipsJson as Relationship[];
-const { nodes, edges } = buildGraphElements(relationships, []);
+// The portfolio's holdings: the companies whose own reports named the sample relationships.
+const holdings: Holding[] = [...new Map(relationships.map((relationship) => [relationship.company.id, relationship.company])).values()]
+  .map((company, index) => ({
+    id: index + 1,
+    ticker: company.ticker ?? company.name,
+    weight: null,
+    companyName: company.name,
+    companyDisplayName: company.displayName,
+    status: 'DONE',
+    statusReason: null,
+    reportType: null,
+    reportDate: null,
+    reportLink: null,
+    lastAnalysed: null,
+    suppliersRead: 0,
+    suppliersToRead: 0,
+  }));
+const { nodes, edges } = buildGraphElements(relationships, holdings);
 
 beforeEach(() => {
   // No drawing in jsdom; and a graph 800 by 500 on screen.
@@ -53,17 +78,99 @@ function drawGraph(props: Partial<Parameters<typeof LivingGraph>[0]> = {}) {
 describe('LivingGraph', () => {
   it('carries on to new data without clearing its canvas, so the picture never blinks', () => {
     const sized = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
-    const fewer = buildGraphElements(relationships.slice(0, -1), []);
+    const fewer = buildGraphElements(relationships.slice(0, -1), holdings);
     const view = drawGraph({ nodes: fewer.nodes, edges: fewer.edges });
     const before = sized.mock.calls.length;
 
     // A holding analysed: one more relationship on the same portfolio's graph.
-    const more = buildGraphElements(relationships, []);
+    const more = buildGraphElements(relationships, holdings);
     view.rerender(
       <LivingGraph nodes={more.nodes} edges={more.edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
     );
 
     expect(sized.mock.calls.length).toBe(before);
+  });
+
+  it('folds its controls on the tall layout however wide the screen, and when it changes to it', () => {
+    const view = drawGraph();
+    const root = view.container.querySelector('.lg-root')!;
+    expect(root).not.toHaveClass('lg-narrow');
+
+    view.rerender(<LivingGraph nodes={nodes} edges={edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" tall />);
+
+    expect(root).toHaveClass('lg-narrow');
+  });
+
+  it('fades its key and minimap out, folds them while they cannot be seen, and fades them back in', async () => {
+    const view = drawGraph();
+    const root = view.container.querySelector('.lg-root')!;
+    expect(root).not.toHaveClass('lg-narrow');
+
+    // A panel opening over the graph leaves it too little room.
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={edges} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" insets={{ top: 0, right: 300, bottom: 0, left: 0 }} />,
+    );
+
+    expect(root).toHaveAttribute('data-folding', 'out');
+    expect(root).not.toHaveClass('lg-narrow');
+    await waitFor(() => expect(root).toHaveAttribute('data-folding', 'in'));
+    expect(root).toHaveClass('lg-narrow');
+    await waitFor(() => expect(root).not.toHaveAttribute('data-folding'));
+  });
+
+  it('folds its title and the bar before it to squares of their marks when there is too little room for their words', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const room = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(200);
+    const tight = drawGraph({ bare: true, topBar: { left: 0, right: 0 }, barStart: <button type="button">5 Open Alerts</button> });
+    const root = tight.container.querySelector('.lg-root');
+    expect(root).toHaveClass('lg-bar-tight');
+    expect(screen.getByText('Supply Chain').closest('.lg-title')).toHaveAttribute('title', expect.stringContaining('Companies'));
+    tight.unmount();
+
+    room.mockReturnValue(300);
+    const roomy = drawGraph({ bare: true, topBar: { left: 0, right: 0 }, barStart: <button type="button">5 Open Alerts</button> });
+    expect(roomy.container.querySelector('.lg-root')).not.toHaveClass('lg-bar-tight');
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the same scene when rendered again with equal but new companies and links', () => {
+    const view = drawGraph();
+    vi.mocked(buildLiveGraph).mockClear();
+
+    view.rerender(
+      <LivingGraph nodes={structuredClone(nodes)} edges={structuredClone(edges)} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+
+    expect(buildLiveGraph).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds when something it draws has changed', () => {
+    const view = drawGraph();
+    vi.mocked(buildLiveGraph).mockClear();
+
+    const [first, ...rest] = edges;
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={[{ ...first!, reviewStatus: 'APPROVED', criticality: 'SOLE_SOURCE' }, ...rest]} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+
+    expect(buildLiveGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fly back to what is lit when the page sends the same focus again', async () => {
+    const focus = { nodeIds: [nodes[0]!.id], relationshipIds: [edges[0]!.relationshipId] };
+    const view = drawGraph({ focus });
+    const shown = () => Number(screen.getByText(/^\d+%$/).textContent!.replace('%', ''));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom Out' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Zoom Out' }));
+    await waitFor(() => expect(shown()).toBeLessThan(100));
+    const chosen = shown();
+
+    view.rerender(
+      <LivingGraph nodes={nodes} edges={edges} focus={structuredClone(focus)} onNodeSelect={vi.fn()} onEdgeSelect={vi.fn()} layoutKey="truesight.graph.1" />,
+    );
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 250)));
+
+    expect(shown()).toBeLessThanOrEqual(chosen);
   });
 
   it('folds its search to an icon when the top bar of a page leaves too little room for it', () => {
@@ -221,5 +328,64 @@ describe('LivingGraph', () => {
     });
 
     await waitFor(() => expect(hint).not.toBeInTheDocument());
+  });
+});
+
+describe('the picture of the graph for the briefing', () => {
+  // A drawing surface that accepts every call, for drawing a frame that is never looked at.
+  function anyContext(): CanvasRenderingContext2D {
+    const make = (): unknown =>
+      new Proxy(function () {}, {
+        get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : make()),
+        apply: () => make(),
+        set: () => true,
+      });
+    return make() as CanvasRenderingContext2D;
+  }
+
+  it('gives nothing where the browser cannot draw', () => {
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
+  });
+
+  it('draws the screen once more at twice its size and hands back a PNG', () => {
+    const sizes: [number, number][] = [];
+    const context = anyContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+      sizes.push([this.width, this.height]);
+      return context as never;
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,PICTURE');
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    const picture = handle.current!.snapshot();
+
+    expect(picture).toBe('data:image/png;base64,PICTURE');
+    // The graph is 800 by 500 on screen, so the picture is 1600 by 1000.
+    expect(sizes).toContainEqual([1600, 1000]);
+    expect(sizes).not.toContainEqual([3200, 2000]);
+  });
+
+  it('gives nothing when the browser cannot read the canvas back', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(anyContext() as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:,');
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
+  });
+
+  it('gives nothing when reading the canvas is refused', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(anyContext() as never);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => {
+      throw new DOMException('Tainted canvases may not be exported.', 'SecurityError');
+    });
+    const handle = createRef<GraphHandle>();
+    drawGraph({ ref: handle });
+
+    expect(handle.current!.snapshot()).toBeNull();
   });
 });

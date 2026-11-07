@@ -266,7 +266,8 @@
 }
 
 .lg-in-bar .lg-title {
-  min-width: 140px;
+  min-width: 88px;
+  overflow: hidden;
   flex: 0 1 auto;
   gap: 14px;
   padding: 0 16px;
@@ -291,6 +292,20 @@
   overflow: hidden;
   max-width: 100%;
   text-overflow: ellipsis;
+}
+
+/* With less room still, the title is a square of its light alone, as the search beside it is of its icon. */
+.lg-in-bar.lg-bar-tight .lg-title {
+  width: 52px;
+  min-width: 52px;
+  flex: none;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+.lg-in-bar.lg-bar-tight .lg-title-text {
+  display: none;
 }
 
 .lg-in-bar.lg-bar-crowded .lg-search[data-open='false'] {
@@ -343,6 +358,7 @@
   position: relative;
   width: 7px;
   height: 7px;
+  flex: none;
   background: var(--lg-live);
   box-shadow: 0 0 10px var(--lg-live);
 }
@@ -528,6 +544,7 @@
 
 .lg-chains {
   display: grid;
+  grid-template-columns: repeat(var(--lg-chain-columns, 3), auto);
   gap: 8px;
   margin: 0;
   padding: 0;
@@ -563,7 +580,9 @@
 .lg-root .lg-chain {
   position: relative;
   display: flex;
+  line-height: 1;
   width: 100%;
+  min-height: 30px;
   align-items: center;
   gap: 7px;
   padding: 4px 9px 4px 7px;
@@ -649,11 +668,13 @@
   filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 45%, transparent));
 }
 
-/* Narrow: the key folds to a button, and opens above it. */
+/* Narrow: the key folds to a button, as tall as the zoom bar across from it, and opens above it. */
 .lg-root .lg-key-button {
   --cut: 8px;
 
   position: relative;
+  width: 40px;
+  height: 40px;
   color: var(--lg-text);
 }
 
@@ -721,17 +742,43 @@
   background: var(--lg-line);
 }
 
-.lg-hint {
-  position: absolute;
-  z-index: 1;
-  right: var(--lg-inset-right, 0px);
-  bottom: calc(132px + var(--lg-inset-bottom, 0px));
-  left: var(--lg-inset-left, 0px);
-  width: max-content;
-  max-width: calc(100% - 28px);
-  margin: 0 auto;
-  padding: 6px 12px;
+/* The key and minimap fold and unfold out of sight: they fade out, change, and fade back in. */
+@keyframes lg-fold-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lg-fold-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.lg-root[data-folding='out'] .lg-key-holder,
+.lg-root[data-folding='out'] .lg-minimap,
+.lg-root[data-folding='out'] .lg-bottom > .lg-hint {
+  animation: lg-fold-out 0.14s ease forwards;
+}
+
+.lg-root[data-folding='in'] .lg-key-holder,
+.lg-root[data-folding='in'] .lg-minimap,
+.lg-root[data-folding='in'] .lg-bottom > .lg-hint {
+  animation: lg-fold-in 0.26s ease;
+}
+
+/* In the bottom row, between the key and the zoom, on the same line and as tall as the zoom bar. */
+.lg-bottom > .lg-hint {
+  overflow: hidden;
+  min-width: 0;
+  flex: 0 1 auto;
+  height: 40px;
+  margin: 0;
+  padding: 0 12px;
   border: 1px solid var(--lg-line);
+  line-height: 38px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: rgba(12, 17, 29, 0.5);
   color: var(--lg-muted);
   font-size: 13px;
@@ -948,7 +995,8 @@
   opacity: 1;
 }
 
-.lg-narrow .lg-title-count {
+/* In a page's top bar the count stays under the title's name, however narrow the graph, and is cut short only if it must. */
+.lg-narrow:not(.lg-in-bar) .lg-title-count {
   display: none;
 }
 
@@ -958,17 +1006,8 @@
     display: none;
   }
 
-  .lg-bottom {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .lg-key {
     max-width: none;
-  }
-
-  .lg-bottom-right {
-    align-self: flex-end;
   }
 
   .lg-minimap {

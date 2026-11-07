@@ -100,7 +100,8 @@ public class ReviewService {
                     relationship.getReviewedAt(),
                     usedBy.getOrDefault(relationship.getId(), 0L),
                     relationship.getSecondCheck(),
-                    relationship.getSecondCheckReason());
+                    relationship.getSecondCheckReason(),
+                    response.highlights());
         }).toList();
     }
 }

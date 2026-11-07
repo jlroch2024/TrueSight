@@ -12,12 +12,18 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.net.http.HttpClient;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** The only class that talks to sec.gov. Requests are paced and identify the TrueSight client. */
 @Component
@@ -28,7 +34,12 @@ public class SecClient {
     private final RestClient client;
     private final ObjectMapper mapper;
     private final long intervalMillis;
-    private final Map<String, SecCompany> tickerCache = new ConcurrentHashMap<>();
+    /** The SEC's whole ticker list is downloaded once a day, however many tickers are asked for. */
+    private static final Duration TICKER_LIST_LIFE = Duration.ofDays(1);
+    private final Clock clock;
+    private final Object tickerListLock = new Object();
+    private volatile Map<String, SecCompany> tickers = Map.of();
+    private volatile Instant tickersLoadedAt;
     private long nextRequestAt;
 
     @Autowired
@@ -39,6 +50,11 @@ public class SecClient {
     }
 
     SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond) {
+        this(client, mapper, requestsPerSecond, Clock.systemUTC());
+    }
+
+    SecClient(RestClient client, ObjectMapper mapper, int requestsPerSecond, Clock clock) {
+        this.clock = clock;
         this.client = client;
         this.mapper = mapper;
         int allowedRate = Math.min(10, Math.max(1, requestsPerSecond));
@@ -55,21 +71,35 @@ public class SecClient {
     }
 
     public SecCompany companyForTicker(String ticker) {
-        String key = ticker.toUpperCase(Locale.ROOT);
-        SecCompany cached = tickerCache.get(key);
-        if (cached != null) return cached;
-        JsonNode all = getJson(TICKERS_URL);
-        Iterator<JsonNode> rows = all.iterator();
-        while (rows.hasNext()) {
-            JsonNode row = rows.next();
-            if (key.equals(row.path("ticker").asText().toUpperCase(Locale.ROOT))) {
-                String cik = String.format("%010d", row.path("cik_str").asLong());
-                SecCompany company = new SecCompany(row.path("title").asText(), cik, ticker.toUpperCase(Locale.ROOT));
-                tickerCache.put(key, company);
-                return company;
+        return tickerList().get(ticker.toUpperCase(Locale.ROOT));
+    }
+
+    /**
+     * The SEC's ticker list as a map by upper-case ticker, downloaded on first use and again once it is more than a
+     * day old. The download goes through {@link #request} like any other, so its pacing and User-Agent are the same.
+     * If it cannot be downloaded nothing is kept, so the next ticker asked for tries again.
+     */
+    private Map<String, SecCompany> tickerList() {
+        Instant now = clock.instant();
+        if (isFresh(tickersLoadedAt, now)) return tickers;
+        synchronized (tickerListLock) {
+            if (!isFresh(tickersLoadedAt, now)) {
+                Map<String, SecCompany> loaded = new HashMap<>();
+                for (JsonNode row : getJson(TICKERS_URL)) {
+                    String ticker = row.path("ticker").asText().toUpperCase(Locale.ROOT);
+                    String cik = String.format("%010d", row.path("cik_str").asLong());
+                    // The first row for a ticker wins, as when the list was searched for each ticker.
+                    loaded.putIfAbsent(ticker, new SecCompany(row.path("title").asText(), cik, ticker));
+                }
+                tickers = Map.copyOf(loaded);
+                tickersLoadedAt = now;
             }
+            return tickers;
         }
-        return null;
+    }
+
+    private static boolean isFresh(Instant loadedAt, Instant now) {
+        return loadedAt != null && loadedAt.isAfter(now.minus(TICKER_LIST_LIFE));
     }
 
     /** Returns the first 10-K or 20-F in the recent filings list, as specified by this story. */
@@ -84,11 +114,44 @@ public class SecClient {
             String date = recent.path("filingDate").path(i).asText();
             String document = recent.path("primaryDocument").path(i).asText();
             if (accession.isBlank() || date.isBlank() || document.isBlank()) continue;
-            String url = "https://www.sec.gov/Archives/edgar/data/%s/%s/%s".formatted(
-                    Long.parseLong(cik), accession.replace("-", ""), document);
-            return new SecFiling(form, accession, LocalDate.parse(date), url);
+            return new SecFiling(form, accession, LocalDate.parse(date), filingUrl(cik, accession, document));
         }
         return null;
+    }
+
+    /** Every 8-K in the recent filings list, newest first as the SEC lists them. Amendments (8-K/A) are skipped. */
+    public List<SecCurrentReport> recentCurrentReports(String cik) {
+        return currentReportsIn(cik, getJson(SUBMISSIONS_URL.formatted(cik)));
+    }
+
+    /** The 8-Ks in a submissions response, as {@link #recentCurrentReports} reads them. */
+    public static List<SecCurrentReport> currentReportsIn(String cik, JsonNode submissions) {
+        JsonNode recent = submissions.path("filings").path("recent");
+        JsonNode forms = recent.path("form");
+        List<SecCurrentReport> found = new ArrayList<>();
+        for (int i = 0; i < forms.size(); i++) {
+            if (!forms.get(i).asText().equals("8-K")) continue;
+            String accession = recent.path("accessionNumber").path(i).asText();
+            String accepted = recent.path("acceptanceDateTime").path(i).asText();
+            String document = recent.path("primaryDocument").path(i).asText();
+            if (accession.isBlank() || accepted.isBlank() || document.isBlank()) continue;
+            List<String> items = Arrays.stream(recent.path("items").path(i).asText().split(","))
+                    .map(String::trim)
+                    .filter(item -> !item.isEmpty())
+                    .toList();
+            try {
+                found.add(new SecCurrentReport(accession, items, Instant.parse(accepted),
+                        filingUrl(cik, accession, document)));
+            } catch (DateTimeParseException unreadableTime) {
+                // A filing whose acceptance time cannot be read cannot be placed in the last 7 days: it is left out.
+            }
+        }
+        return found;
+    }
+
+    private static String filingUrl(String cik, String accession, String document) {
+        return "https://www.sec.gov/Archives/edgar/data/%s/%s/%s".formatted(
+                Long.parseLong(cik), accession.replace("-", ""), document);
     }
 
     public String download(String url) {
@@ -116,7 +179,21 @@ public class SecClient {
         return fallback;
     }
 
-    private synchronized String request(String url, String fallback) {
+    /**
+     * Waits for the next request slot, then downloads outside the lock, so one large report never holds up every
+     * other SEC request: requests still start at most 10 a second, but their downloads can overlap.
+     */
+    private String request(String url, String fallback) {
+        awaitNextSlot();
+        try {
+            return client.get().uri(url).retrieve().body(String.class);
+        } catch (RestClientException exception) {
+            throw new SecAccessException(failureMessage(exception, fallback), exception);
+        }
+    }
+
+    /** Holds the lock only while waiting for this request's turn, and books the slot after it. */
+    private synchronized void awaitNextSlot() {
         long now = System.currentTimeMillis();
         long wait = nextRequestAt - now;
         if (wait > 0) {
@@ -128,15 +205,12 @@ public class SecClient {
             }
         }
         nextRequestAt = System.currentTimeMillis() + intervalMillis;
-        try {
-            return client.get().uri(url).retrieve().body(String.class);
-        } catch (RestClientException exception) {
-            throw new SecAccessException(failureMessage(exception, fallback), exception);
-        }
     }
 
     public record SecCompany(String name, String cik, String ticker) { }
     public record SecFiling(String form, String accessionNumber, LocalDate filingDate, String url) { }
+    /** An 8-K: the items it reports (such as "1.05"), when the SEC accepted it, and the filing's address. */
+    public record SecCurrentReport(String accessionNumber, List<String> items, Instant acceptedAt, String url) { }
 
     public static class SecAccessException extends RuntimeException {
         public SecAccessException(String message, Throwable cause) { super(message, cause); }

@@ -23,11 +23,14 @@ public class RelationshipController {
     private final RelationshipService service;
     private final RelationshipEditService edits;
     private final CurrentUser currentUser;
+    private final HighlightJob highlights;
 
-    public RelationshipController(RelationshipService service, RelationshipEditService edits, CurrentUser currentUser) {
+    public RelationshipController(RelationshipService service, RelationshipEditService edits, CurrentUser currentUser,
+                                  HighlightJob highlights) {
         this.service = service;
         this.edits = edits;
         this.currentUser = currentUser;
+        this.highlights = highlights;
     }
 
     @GetMapping("/api/portfolios/{portfolioId}/relationships")
@@ -40,7 +43,9 @@ public class RelationshipController {
     @Operation(summary = "Correct what a relationship provides")
     public ReviewItemResponse edit(@PathVariable Long id, @Valid @RequestBody EditRelationshipRequest request) {
         currentUser.requireAnalyst();
-        return edits.edit(id, request);
+        ReviewItemResponse edited = edits.edit(id, request);
+        highlights.run();
+        return edited;
     }
 
     @PostMapping("/api/relationships")
@@ -48,7 +53,10 @@ public class RelationshipController {
     @Operation(summary = "Add a relationship found in an annual report")
     public ReviewItemResponse add(@Valid @RequestBody AddRelationshipRequest request) {
         currentUser.requireAnalyst();
-        return edits.add(request);
+        // Started here, once the new relationship is saved, so the job can see it.
+        ReviewItemResponse added = edits.add(request);
+        highlights.run();
+        return added;
     }
 
     @GetMapping(value = "/api/companies", params = "withReport=true")

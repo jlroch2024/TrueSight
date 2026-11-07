@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"assessments\":[{\"index\":1,\"isEvent\":true,\"eventType\":\"CYBER_ATTACK\",\"severity\":\"MEDIUM\",\"confidence\":\"HIGH\",\"summary\":\"The Clorox Company detected unauthorized activity on its IT network and took certain systems offline for remediation.\",\"reason\":\"Taking operational IT systems offline due to a cyber security incident can disrupt business operations and supply chain processing.\"},{\"index\":2,\"isEvent\":false,\"eventType\":\"\",\"severity\":\"\",\"confidence\":\"HIGH\",\"summary\":\"\",\"reason\":\"The headline reports an acquisition agreement, which is a standard corporate transaction rather than a supply chain disruption.\"},{\"index\":3,\"isEvent\":false,\"eventType\":\"\",\"severity\":\"\",\"confidence\":\"HIGH\",\"summary\":\"\",\"reason\":\"A generic notice of an 8-K filing does not report any operational disruption or supply chain impact.\"}]}",
+            "thoughtSignature": "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"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 526,
+    "candidatesTokenCount": 160,
+    "totalTokenCount": 1347,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 526
+      }
+    ],
+    "thoughtsTokenCount": 661,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "epjlatvkLL3g694P6ITL4AI"
+}

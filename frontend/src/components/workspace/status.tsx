@@ -1,5 +1,6 @@
-// How far a portfolio's analysis has got: the ring beside its name, and each holding's status as a coloured label.
-import { Check, Clock, FileX, LoaderCircle, TriangleAlert } from 'lucide-react';
+// How far a portfolio's analysis has got: the ring beside its name, and each holding's status as a coloured label. And
+// how close the trouble is to a holding, as a label.
+import { Check, Clock, Crosshair, FileX, LoaderCircle, MoveRight, Route, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { HoldingStatus } from '../../api/portfolios';
 import { STATUS_LABELS } from '../../format';
@@ -42,6 +43,32 @@ export function State({ status }: { status: HoldingStatus }) {
     <span className={`state ${look.tone}`}>
       {look.icon}
       {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+/**
+ * How close the trouble is to a holding: Direct is one link from the company in question, Indirect is two, and Itself is
+ * the company in question. Drawn in the colour of what it belongs to (the --tone around it).
+ */
+export function ReachKind({ indirect, itself = false }: { indirect: boolean; itself?: boolean }) {
+  if (itself) {
+    return (
+      <span className="reach-kind" title="This Holding Is the Company in Question">
+        <Crosshair size={13} aria-hidden="true" />
+        Itself
+      </span>
+    );
+  }
+  return indirect ? (
+    <span className="reach-kind indirect" title="Two Links Away, Through Another Company">
+      <Route size={13} aria-hidden="true" />
+      Indirect
+    </span>
+  ) : (
+    <span className="reach-kind" title="One Link Away, With Nothing Between">
+      <MoveRight size={13} aria-hidden="true" />
+      Direct
     </span>
   );
 }

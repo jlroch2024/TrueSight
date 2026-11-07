@@ -1,6 +1,7 @@
 package com.truesight.relationship;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * One relationship on the Review page: the relationship itself, its review, and how many portfolios rely on it.
@@ -11,6 +12,8 @@ import java.time.Instant;
  *
  * <p>{@code secondCheck} is what the second AI made of the relationship, AGREES or DOUBTS, and {@code secondCheckReason}
  * its reason. Both are null until the relationship has been second-checked.
+ *
+ * <p>{@code highlights} are the words that matter in the evidence, empty when there are none.
  */
 public record ReviewItemResponse(
         RelationshipResponse relationship,
@@ -20,5 +23,6 @@ public record ReviewItemResponse(
         Instant reviewedAt,
         long usedByPortfolios,
         SecondCheckVerdict secondCheck,
-        String secondCheckReason) {
+        String secondCheckReason,
+        List<RelationshipResponse.Highlight> highlights) {
 }

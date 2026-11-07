@@ -26,6 +26,11 @@ export type Confidence = {
   reasons: { text: string; effect: ConfidenceEffect }[];
 };
 
+// The words that matter in the evidence: start is where they begin and end is just after they finish, as string indexes.
+// In the order they appear, and never overlapping. Empty when the quote has none, or has not been read yet.
+export type HighlightKind = 'COMPANY' | 'SUPPLIED' | 'RELIANCE' | 'FIGURE';
+export type Highlight = { kind: HighlightKind; start: number; end: number };
+
 export type Relationship = {
   id: number;
   company: CompanySummary;
@@ -41,6 +46,7 @@ export type Relationship = {
   reviewedAt: string | null;
   reviewNote: string | null;
   confidence: Confidence;
+  highlights: Highlight[];
 };
 
 export type CompanyOption = { id: number; name: string; displayName: string };

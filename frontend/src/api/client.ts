@@ -44,15 +44,24 @@ export async function api<T = void>(path: string, options: RequestInit = {}): Pr
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-/** Downloads a backend response as a file, with the same login token and errors as api(). */
-export async function apiDownload(path: string, filename: string): Promise<void> {
-  const response = await send(path);
+/**
+ * Downloads a backend response as a file, with the same login token and errors as api(). options goes on to the
+ * request, so a download can send something (the briefing POSTs its picture of the graph). The file is saved under the
+ * name the backend asks for in Content-Disposition; filename is the name to use when it asks for none.
+ */
+export async function apiDownload(path: string, filename: string, options: RequestInit = {}): Promise<void> {
+  const response = await send(path, options);
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename;
+  link.download = nameFrom(response) ?? filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/** The file name in a response's Content-Disposition (attachment; filename="Tech-Briefing-2026-11-06.pdf"), if any. */
+function nameFrom(response: Response): string | null {
+  return /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') ?? '')?.[1] ?? null;
 }
 
 async function send(path: string, options: RequestInit = {}): Promise<Response> {

@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Reads the real sample data in {@code docs/examples/}, whose README says where each file came from. Tests run in
@@ -64,6 +65,16 @@ public final class Examples {
         return read("gemini-nvidia-second-check.json");
     }
 
+    /** Gemini's real, unchanged answer to the highlights prompt, for {@link #highlightQuotes()}. */
+    public static String geminiHighlights() {
+        return read("gemini-highlights.json");
+    }
+
+    /** The 5 sentences of {@link #nvidia10K()} and {@link #amd10K()} sent for {@link #geminiHighlights()}, in order. */
+    public static List<String> highlightQuotes() {
+        return read("gemini-highlights-quotes.txt").lines().toList();
+    }
+
     /** A real Google News RSS response for the TSMC search used by Sprint 2. */
     public static String googleNewsTsmc() {
         return read("google-news-tsmc.xml");
@@ -79,9 +90,68 @@ public final class Examples {
         return read("gemini-recommendation.json");
     }
 
+    /** The sample portfolio: ten holdings, each weighted 10, as {@code ticker,weight} lines. */
+    public static String holdingsCsv() {
+        return read("holdings.csv");
+    }
+
+    /** Gemini's real answer to a question the sample portfolio's data can answer (see the README). */
+    public static String geminiAskAnswerable() {
+        return read("gemini-ask-answerable.json");
+    }
+
+    /** Gemini's real answer to a question the sample portfolio's data cannot answer. */
+    public static String geminiAskUnknown() {
+        return read("gemini-ask-unknown.json");
+    }
+
+    /** Gemini's real answer to a question asking what to buy. */
+    public static String geminiAskAdvice() {
+        return read("gemini-ask-advice.json");
+    }
+
     /** The team's hand labels, event or noise, for the 20 headlines in {@link #geminiNewsAssessment()}. */
     public static String newsLabels() {
         return read("news-labels.csv");
+    }
+
+    /**
+     * Clorox's real SEC submissions list (CIK 0000021076), trimmed to its {@code filings.recent} arrays: its 8-Ks
+     * include ones reporting Item 8.01 and ones reporting none of the nine items a news check reads.
+     */
+    public static String secSubmissionsClorox() {
+        return read("sec-submissions-clorox.json");
+    }
+
+    /** Clorox's real 8-K of 14 August 2023 (Item 8.01): it found unauthorized activity on its IT systems. */
+    public static String sec8kClorox() {
+        return read("sec-8k-clorox-2023-08-14.htm");
+    }
+
+    /**
+     * Clorox's real 8-K of 22 January 2026 (Items 7.01 and 8.01): it agreed to buy GOJO. Its Item 7.01 mentions
+     * "Item 8.01 below" before Item 8.01's own heading.
+     */
+    public static String sec8kCloroxGojo() {
+        return read("sec-8k-clorox-2026-01-22.htm");
+    }
+
+    /** AITX's real 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release, Exhibit 99.1. */
+    public static String sec8kAitx() {
+        return read("sec-8k-aitx-2026-10-30.htm");
+    }
+
+    /** Amgen's real 8-K of 31 July 2026 (Item 1.05, Material Cybersecurity Incidents): data exfiltrated from cloud environments. */
+    public static String sec8kAmgen() {
+        return read("sec-8k-amgen-2026-07-31.htm");
+    }
+
+    /**
+     * Gemini's real, unchanged answer to Filter Out Noise's prompt for the headlines built from {@link #sec8kClorox()}
+     * (1, an event), {@link #sec8kCloroxGojo()} (2) and {@link #sec8kAitx()} (3).
+     */
+    public static String gemini8kAssessment() {
+        return read("gemini-8k-assessment.json");
     }
 
     /** docs/examples/README.md, which states how often Gemini agreed with {@link #newsLabels()}. */

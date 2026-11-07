@@ -84,4 +84,36 @@ describe('carrying a graph on', () => {
     for (let t = 7032; t < 9000; t += 16) again.update(16, t);
     expect(again.nodeLook.get('c')!.appear).toBe(1);
   });
+
+  it('keeps a company being dragged held where the pointer has it, and the web warm around it', () => {
+    const before = opened([supplier, holding], [link]);
+    const dragged = before.nodeById('b')!;
+    dragged.fx = 300;
+    dragged.fy = -120;
+    before.hold('b');
+    before.heat(0.3);
+
+    const after = new Scene(buildLiveGraph([supplier, holding, other], [link]), false);
+    after.carryFrom(before);
+
+    expect(after.draggedNode).toBe('b');
+    expect(after.physics.alphaTarget()).toBe(0.3);
+    const held = after.nodeById('b')!;
+    expect({ fx: held.fx, fy: held.fy }).toEqual({ fx: 300, fy: -120 });
+    after.physics.tick();
+    expect({ x: held.x, y: held.y }).toEqual({ x: 300, y: -120 });
+
+    after.hold(null);
+    expect({ anchorX: held.anchorX, anchorY: held.anchorY, fx: held.fx }).toEqual({ anchorX: 300, anchorY: -120, fx: null });
+  });
+
+  it('lets go of a company being dragged when the new graph no longer has it', () => {
+    const before = opened([supplier, holding, other], [link]);
+    before.hold('c');
+
+    const after = new Scene(buildLiveGraph([supplier, holding], [link]), false);
+    after.carryFrom(before);
+
+    expect(after.draggedNode).toBeNull();
+  });
 });
