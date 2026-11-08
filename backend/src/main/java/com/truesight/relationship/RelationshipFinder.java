@@ -39,6 +39,9 @@ import java.util.Set;
  * <p>Reports are public, so a report that already has relationships or a completed relationship-finding answer is
  * never sent to the AI again, whichever portfolio asks.
  *
+ * <p>Past the day's limit on reading reports ({@link ReadingLimit}) a report is not sent: a {@link ReadingLimit.ReachedException}
+ * says so, which is a {@link GeminiClient.GeminiException}, so the holding shows it as the reason it Failed.
+ *
  * <p>Each call is recorded in the AI Audit Trail with the report's text replaced by a marker, and with how many quotes
  * were kept and how many dropped because they were not in the report.
  */
@@ -83,10 +86,11 @@ public class RelationshipFinder {
     private final AiCallRepository aiCalls;
     private final AiCallLog calls;
     private final PastRelationshipRepository pastRelationships;
+    private final ReadingLimit readingLimit;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
                               RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls,
-                              PastRelationshipRepository pastRelationships) {
+                              PastRelationshipRepository pastRelationships, ReadingLimit readingLimit) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
@@ -94,6 +98,17 @@ public class RelationshipFinder {
         this.aiCalls = aiCalls;
         this.calls = calls;
         this.pastRelationships = pastRelationships;
+        this.readingLimit = readingLimit;
+    }
+
+    /**
+     * Refuses to go on once today's limit on reading reports is reached ({@link ReadingLimit}). Called before a report
+     * is downloaded, so one that could not be read is not downloaded for nothing.
+     *
+     * @throws ReadingLimit.ReachedException if the limit is reached
+     */
+    public void requireRoomToRead() {
+        readingLimit.requireRoom();
     }
 
     /**
@@ -120,6 +135,8 @@ public class RelationshipFinder {
         AiRequest request = new AiRequest(AiPurpose.FIND_RELATIONSHIPS,
                 PROMPT.formatted(company.getName(), report.getForm(), section), report.getId(),
                 PROMPT.formatted(company.getName(), report.getForm(), AiRequest.reportMarker(report.getId(), section)));
+        // Only a report that has to be sent counts: one already read returned above. Past the limit, nothing is sent.
+        readingLimit.requireRoom();
         Asked asked = ask(request);
 
         Proof proof = prove(asked.found(), report, company);
@@ -164,6 +181,8 @@ public class RelationshipFinder {
         AiRequest request = new AiRequest(AiPurpose.TIMELINE,
                 PROMPT.formatted(company.getName(), report.getForm(), section), report.getId(),
                 PROMPT.formatted(company.getName(), report.getForm(), AiRequest.reportMarker(report.getId(), section)));
+        // An earlier report past the limit is left unread; reading the history again carries on from it.
+        readingLimit.requireRoom();
         Asked asked = ask(request);
 
         Proof proof = prove(asked.found(), report, company);

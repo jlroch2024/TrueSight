@@ -17,11 +17,18 @@ import java.util.Locale;
  * Turns an uploaded CSV into holdings: a ticker, and a weight when the file has one.
  *
  * <p>The ticker column is the first whose name, ignoring spaces and capitals, is "ticker" or "symbol". The weight
- * column is optional, and accepts both {@code 12.5} and {@code 12.5%}. Rows with an empty ticker are skipped. Any
- * problem is a 400 that says what is wrong, so nothing is saved from a bad file.
+ * column is optional, and accepts both {@code 12.5} and {@code 12.5%}. Rows with an empty ticker are skipped, and
+ * are not counted towards {@link #MAX_HOLDINGS}. Any problem is a 400 that says what is wrong, so nothing is saved
+ * from a bad file.
  */
 @Component
 public class HoldingCsvReader {
+
+    /** The most holdings a portfolio may have: a CSV of more is refused, and so is adding a holding past it. */
+    public static final int MAX_HOLDINGS = 100;
+
+    /** What a user is told when a portfolio would hold more than {@link #MAX_HOLDINGS} companies. */
+    public static final String TOO_MANY_HOLDINGS = "A portfolio can hold at most " + MAX_HOLDINGS + " companies.";
 
     /** One row of the file: an upper-case ticker, and a weight or null. */
     public record Row(String ticker, BigDecimal weight) {
@@ -60,6 +67,9 @@ public class HoldingCsvReader {
         }
         if (rows.isEmpty()) {
             throw ApiException.badRequest("The file has no holdings.");
+        }
+        if (rows.size() > MAX_HOLDINGS) {
+            throw ApiException.badRequest(TOO_MANY_HOLDINGS);
         }
         return rows;
     }
