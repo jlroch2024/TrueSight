@@ -35,6 +35,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static com.truesight.support.FakeAi.answer;
@@ -74,6 +79,7 @@ class FigureServiceIT {
     @Autowired @Qualifier("taskExecutor") ThreadPoolTaskExecutor background;
     @Autowired GeminiAnswer answers;
     @Autowired RelationshipRepository relationships;
+    @Autowired FigureService figureService;
     @Autowired SupplierReader supplierReader;
 
     @MockitoBean SecClient sec;
@@ -237,6 +243,37 @@ class FigureServiceIT {
         assertThat(concentrations.findByReportIdOrderByIdAsc(reportId())).hasSize(10)
                 .allSatisfy(row -> assertThat(row.getLabel().length()).isLessThanOrEqualTo(300));
         assertThat(reports.findById(reportId()).orElseThrow().getFiguresReadAt()).isNotNull();
+    }
+
+    @Test
+    void twoAnalysesReadingTheSameReportAtOnceSaveItsFiguresOnce() throws Exception {
+        analyse("figures-race-setup@example.com");
+        Long reportId = reportId();
+        // Back to unread, as it is for two analyses of one company that both start before either has saved.
+        concentrations.deleteAll(concentrations.findByReportIdOrderByIdAsc(reportId));
+        Report report = reports.findById(reportId).orElseThrow();
+        report.setFiguresReadAt(null);
+        reports.save(report);
+        CountDownLatch bothHaveDownloaded = new CountDownLatch(2);
+        when(sec.taggedFigures(any(Report.class))).thenAnswer(call -> {
+            bothHaveDownloaded.countDown();
+            // Neither saves until both have seen the report unread.
+            bothHaveDownloaded.await(10, TimeUnit.SECONDS);
+            return Optional.of(new SecClient.TaggedFigures(Examples.cirrusFigures(), Examples.cirrusLabels()));
+        });
+        Long companyId = cirrus().getId();
+        ExecutorService both = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = both.submit(() -> figureService.readLatestOf(companyId));
+            Future<?> second = both.submit(() -> figureService.readLatestOf(companyId));
+            first.get(30, TimeUnit.SECONDS);
+            second.get(30, TimeUnit.SECONDS);
+        } finally {
+            both.shutdownNow();
+        }
+
+        assertThat(concentrations.findByReportIdOrderByIdAsc(reportId)).hasSize(10);
+        assertThat(reports.findById(reportId).orElseThrow().getFiguresReadAt()).isNotNull();
     }
 
     @Test

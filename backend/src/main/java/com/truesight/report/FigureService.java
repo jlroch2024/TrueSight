@@ -79,10 +79,16 @@ public class FigureService {
         save(report.getId(), report.getCompanyId(), figures);
     }
 
-    /** Saves the rows and marks the report read in one transaction: all of it, or none of it. */
+    /**
+     * Saves the rows and marks the report read in one transaction: all of it, or none of it. The report's row is
+     * locked first and checked again, so when two analyses read the same report at once (two portfolios holding the
+     * company, or a holding that is also a supplier, on one server or two) the second finds it read and saves nothing.
+     */
     private void save(Long reportId, Long companyId, List<ConcentrationReader.Figure> figures) {
         try {
             transaction.executeWithoutResult(status -> {
+                Report report = reports.findForUpdateById(reportId).orElseThrow();
+                if (report.getFiguresReadAt() != null) return;
                 for (ConcentrationReader.Figure figure : figures) {
                     Long counterpartyId = figure.named()
                             ? companies.findOrCreate(figure.label(), null, null, List.of()).getId()
@@ -90,7 +96,6 @@ public class FigureService {
                     concentrations.save(new Concentration(reportId, companyId, counterpartyId, figure.label(),
                             figure.kind(), figure.measure(), figure.share(), figure.periodStart(), figure.periodEnd()));
                 }
-                Report report = reports.findById(reportId).orElseThrow();
                 report.setFiguresReadAt(Instant.now());
                 reports.save(report);
             });
