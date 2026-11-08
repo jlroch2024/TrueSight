@@ -3,6 +3,8 @@ package com.truesight.news;
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
+import com.truesight.config.WorkRecovery;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
@@ -32,6 +34,8 @@ public class NewsCheckService {
     static final String ALREADY_CHECKING = "News is already being checked for this portfolio.";
     static final String ANALYSE_FIRST = "Analyse the portfolio before checking the news.";
     private static final String NOT_FOUND = "Portfolio not found.";
+    /** Why a news check is Failed when its server stopped before the check ended. */
+    public static final String INTERRUPTED_REASON = "The news check was interrupted. Check News to try again.";
 
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
@@ -39,20 +43,28 @@ public class NewsCheckService {
     private final CompanyRepository companies;
     private final NewsArticleRepository articles;
     private final CurrentUser currentUser;
+    private final WorkRecovery recovery;
+    private final WorkerHeartbeat heartbeat;
 
     public NewsCheckService(PortfolioRepository portfolios, HoldingRepository holdings,
                             RelationshipRepository relationships, CompanyRepository companies,
-                            NewsArticleRepository articles, CurrentUser currentUser) {
+                            NewsArticleRepository articles, CurrentUser currentUser,
+                            WorkRecovery recovery, WorkerHeartbeat heartbeat) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
         this.articles = articles;
         this.currentUser = currentUser;
+        this.recovery = recovery;
+        this.heartbeat = heartbeat;
     }
 
     @Transactional
     public void start(Long portfolioId) {
+        // First, and before the row lock below: it commits on its own, so a check whose server has gone is Failed
+        // before this one is refused for it.
+        recovery.recover(portfolioId);
         Portfolio portfolio = portfolios.findForUpdateByIdAndUserId(portfolioId, currentUser.id())
                 .orElseThrow(() -> ApiException.notFound(NOT_FOUND));
         if (portfolio.getNewsStatus() == NewsStatus.CHECKING) {
@@ -66,6 +78,7 @@ public class NewsCheckService {
         }
         portfolio.setNewsStatus(NewsStatus.CHECKING);
         portfolio.setNewsStatusReason(null);
+        portfolio.setNewsWorkerId(heartbeat.id());
     }
 
     /** The portfolios the daily check covers: every one with at least one analysed holding. */
@@ -77,10 +90,12 @@ public class NewsCheckService {
     /** Like {@link #start}, for the daily check, which has no logged-in user. False if it should be skipped. */
     @Transactional
     public boolean startForDaily(Long portfolioId) {
+        recovery.recover(portfolioId);
         Portfolio portfolio = portfolios.findById(portfolioId).orElse(null);
         if (portfolio == null || portfolio.getNewsStatus() == NewsStatus.CHECKING) return false;
         portfolio.setNewsStatus(NewsStatus.CHECKING);
         portfolio.setNewsStatusReason(null);
+        portfolio.setNewsWorkerId(heartbeat.id());
         return true;
     }
 

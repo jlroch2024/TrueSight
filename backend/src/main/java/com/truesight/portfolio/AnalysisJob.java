@@ -53,6 +53,12 @@ public class AnalysisJob {
         CompletableFuture.allOf(tasks).join();
     }
 
+    /** Reads these suppliers, whose server stopped before they were read (see {@link AnalysisService#restartSuppliers}). */
+    @Async
+    public void runSuppliers(List<Long> companyIds) {
+        readSuppliers(companyIds);
+    }
+
     private void analyze(Long holdingId) {
         String ticker = analysis.tickerFor(holdingId);
         synchronized (lockFor(ticker)) {

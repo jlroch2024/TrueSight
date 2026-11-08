@@ -6,6 +6,8 @@ import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
+import com.truesight.config.WorkRecovery;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
@@ -32,11 +34,13 @@ public class AnalysisService {
     private final AiCallRepository aiCalls;
     private final ReportReader reportReader;
     private final SupplierReader suppliers;
+    private final WorkRecovery recovery;
+    private final WorkerHeartbeat heartbeat;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyRepository companyRepository, ReportRepository reports,
                           RelationshipRepository relationships, AiCallRepository aiCalls, ReportReader reportReader,
-                          SupplierReader suppliers) {
+                          SupplierReader suppliers, WorkRecovery recovery, WorkerHeartbeat heartbeat) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
@@ -46,6 +50,8 @@ public class AnalysisService {
         this.aiCalls = aiCalls;
         this.reportReader = reportReader;
         this.suppliers = suppliers;
+        this.recovery = recovery;
+        this.heartbeat = heartbeat;
     }
 
     /**
@@ -58,6 +64,8 @@ public class AnalysisService {
      */
     @Transactional
     public List<Long> start(Long portfolioId) {
+        // First: work whose server has gone is Failed (and committed) before the 409 check below reads the rows.
+        recovery.recover(portfolioId);
         requirePortfolio(portfolioId);
         List<Holding> rows = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId);
         if (rows.stream().anyMatch(h -> h.getStatus() == HoldingStatus.ANALYSING)) {
@@ -69,9 +77,29 @@ public class AnalysisService {
             default -> false;
         }).toList();
         // setStatus also clears a failed holding's old reason.
-        toAnalyse.forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
+        toAnalyse.forEach(h -> {
+            h.setStatus(HoldingStatus.ANALYSING);
+            h.setWorkerId(heartbeat.id());
+        });
         holdings.saveAll(toAnalyse);
         return toAnalyse.stream().map(Holding::getId).toList();
+    }
+
+    /**
+     * Sets Waiting the unread suppliers of the portfolio's Done holdings that are not being analysed now (those are
+     * queued with their holding's own analysis), and returns their company ids: a supplier whose server stopped
+     * before it was read has no status again, so a Done holding's analysis is not repeated just to read it. Nothing
+     * is sent to the AI here.
+     */
+    @Transactional
+    public List<Long> restartSuppliers(Long portfolioId, List<Long> queuedHoldingIds) {
+        requirePortfolio(portfolioId);
+        return holdings.findByPortfolioIdOrderByTickerAsc(portfolioId).stream()
+                .filter(h -> h.getStatus() == HoldingStatus.DONE && h.getCompanyId() != null)
+                .filter(h -> !queuedHoldingIds.contains(h.getId()))
+                .flatMap(h -> suppliers.queue(h.getCompanyId()).stream())
+                .distinct()
+                .toList();
     }
 
     /** A Done holding whose report's dependency figures were never read: its next Analyse reads only those. */

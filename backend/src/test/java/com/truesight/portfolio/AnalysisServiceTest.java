@@ -8,6 +8,8 @@ import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
+import com.truesight.config.WorkRecovery;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.report.Report;
 import com.truesight.report.ReportReader;
 import com.truesight.report.ReportRepository;
@@ -41,7 +43,7 @@ class AnalysisServiceTest {
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
                 relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
-                mock(SupplierReader.class));
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
 
         Holding holding = new Holding(7L, "ASML", BigDecimal.TEN);
         holding.setStatus(HoldingStatus.ANALYSING);
@@ -87,7 +89,7 @@ class AnalysisServiceTest {
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
                 relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
-                mock(SupplierReader.class));
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
 
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
@@ -148,7 +150,7 @@ class AnalysisServiceTest {
                 mock(CompanyRepository.class), reports, relationships, aiCalls,
                 new ReportReader(mock(SecClient.class), mock(CompanyDirectory.class), reports,
                         mock(RelationshipFinder.class)),
-                mock(SupplierReader.class));
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
         Holding unread = new Holding(7L, "CRUS", BigDecimal.TEN);
