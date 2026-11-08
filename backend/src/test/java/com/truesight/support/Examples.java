@@ -182,6 +182,35 @@ public final class Examples {
         return read("gemini-8k-assessment.json");
     }
 
+    /**
+     * Cirrus Logic's tagged figures (XBRL) from its 10-K for the year to 28 March 2026, trimmed to the
+     * concentration facts and what they use: Apple's revenue share for three years, Foxconn's and Luxshare's
+     * receivables, and the ten largest customers' revenue share.
+     */
+    public static String cirrusFigures() {
+        return read("crus-20260328_htm.xml");
+    }
+
+    /** The label file that goes with {@link #cirrusFigures()}. */
+    public static String cirrusLabels() {
+        return read("crus-20260328_lab.xml");
+    }
+
+    /** NVIDIA's tagged figures from its 10-K filed 2026-02-25: customer receivables shares, its customers unnamed. */
+    public static String nvidiaFigures() {
+        return read("nvda-20260125_htm.xml");
+    }
+
+    /** The label file that goes with {@link #nvidiaFigures()}. */
+    public static String nvidiaLabels() {
+        return read("nvda-20260125_lab.xml");
+    }
+
+    /** The unchanged folder listing of Cirrus Logic's filing, accession 0000772406-26-000018. */
+    public static String secIndexCirrus() {
+        return read("sec-index-cirrus-0000772406-26-000018.json");
+    }
+
     /** docs/examples/README.md, which states how often Gemini agreed with {@link #newsLabels()}. */
     public static String readme() {
         return read("README.md");

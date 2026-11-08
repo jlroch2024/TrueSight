@@ -65,13 +65,21 @@ public class AnalysisService {
         }
         List<Holding> toAnalyse = rows.stream().filter(h -> switch (h.getStatus()) {
             case WAITING, FAILED -> true;
-            case DONE -> needsRelationshipAnalysis(h);
+            case DONE -> needsRelationshipAnalysis(h) || needsFigures(h);
             default -> false;
         }).toList();
         // setStatus also clears a failed holding's old reason.
         toAnalyse.forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
         holdings.saveAll(toAnalyse);
         return toAnalyse.stream().map(Holding::getId).toList();
+    }
+
+    /** A Done holding whose report's dependency figures were never read: its next Analyse reads only those. */
+    private boolean needsFigures(Holding holding) {
+        if (holding.getCompanyId() == null) return false;
+        return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId())
+                .map(report -> report.getFiguresReadAt() == null)
+                .orElse(false);
     }
 
     private boolean needsRelationshipAnalysis(Holding holding) {

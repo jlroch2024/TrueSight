@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--XBRL Document Created with the Workiva Platform-->
+<!--Copyright 2026 Workiva-->
+<!--r:019e190f-5b0a-767e-8db0-a2767d886a43,g:26f77633-da54-4627-81e0-fe5f3e868112-->
+<link:linkbase xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.xbrl.org/2003/linkbase http://www.xbrl.org/2003/xbrl-linkbase-2003-12-31.xsd">
+  <link:labelLink xlink:role="http://www.xbrl.org/2003/role/link" xlink:type="extended">
+    <link:label id="lab_crus_AppleIncMember_019e190f-5f12-7407-ad62-dd145cb5b760_terseLabel_en-US" xlink:label="lab_crus_AppleIncMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Apple, Inc.</link:label>
+    <link:label id="lab_crus_AppleIncMember_label_en-US" xlink:label="lab_crus_AppleIncMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Apple Inc [Member]</link:label>
+    <link:label id="lab_crus_AppleIncMember_documentation_en-US" xlink:label="lab_crus_AppleIncMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">Apple, Inc. [Member]</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_crus_AppleIncMember" xlink:href="crus-20260328.xsd#crus_AppleIncMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_crus_AppleIncMember" xlink:to="lab_crus_AppleIncMember" xlink:type="arc" order="1"/>
+    <link:label id="lab_crus_FoxconnMember_019e190f-5e7b-7f9f-b1a2-b3f59b16ecfb_terseLabel_en-US" xlink:label="lab_crus_FoxconnMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Foxconn</link:label>
+    <link:label id="lab_crus_FoxconnMember_label_en-US" xlink:label="lab_crus_FoxconnMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Foxconn [Member]</link:label>
+    <link:label id="lab_crus_FoxconnMember_documentation_en-US" xlink:label="lab_crus_FoxconnMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">Foxconn</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_crus_FoxconnMember" xlink:href="crus-20260328.xsd#crus_FoxconnMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_crus_FoxconnMember" xlink:to="lab_crus_FoxconnMember" xlink:type="arc" order="1"/>
+    <link:label id="lab_crus_LuxshareMember_019e190f-5e7b-7f12-8289-d496a805c799_terseLabel_en-US" xlink:label="lab_crus_LuxshareMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Luxshare</link:label>
+    <link:label id="lab_crus_LuxshareMember_label_en-US" xlink:label="lab_crus_LuxshareMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Luxshare [Member]</link:label>
+    <link:label id="lab_crus_LuxshareMember_documentation_en-US" xlink:label="lab_crus_LuxshareMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">Luxshare</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_crus_LuxshareMember" xlink:href="crus-20260328.xsd#crus_LuxshareMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_crus_LuxshareMember" xlink:to="lab_crus_LuxshareMember" xlink:type="arc" order="1"/>
+    <link:label id="lab_crus_TenLargestCustomersMember_019e190f-5e7c-71dd-b9b2-db23d57a14e7_terseLabel_en-US" xlink:label="lab_crus_TenLargestCustomersMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Ten Largest Customers</link:label>
+    <link:label id="lab_crus_TenLargestCustomersMember_label_en-US" xlink:label="lab_crus_TenLargestCustomersMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Ten Largest Customers [Member]</link:label>
+    <link:label id="lab_crus_TenLargestCustomersMember_documentation_en-US" xlink:label="lab_crus_TenLargestCustomersMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">Ten Largest Customers [Member]</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_crus_TenLargestCustomersMember" xlink:href="crus-20260328.xsd#crus_TenLargestCustomersMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_crus_TenLargestCustomersMember" xlink:to="lab_crus_TenLargestCustomersMember" xlink:type="arc" order="1"/>
+  </link:labelLink>
+</link:linkbase>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--XBRL Document Created with the Workiva Platform-->
+<!--Copyright 2026 Workiva-->
+<!--r:4162ec64-83cd-4200-bc68-3c2e5d770d07,g:cfc6aa43-ff61-421e-a103-d35a92414428-->
+<link:linkbase xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.xbrl.org/2003/linkbase http://www.xbrl.org/2003/xbrl-linkbase-2003-12-31.xsd">
+  <link:labelLink xlink:role="http://www.xbrl.org/2003/role/link" xlink:type="extended">
+    <link:label id="lab_nvda_CustomerOneMember_8857df8e-9d4a-4820-93db-fa24426bcc98_terseLabel_en-US" xlink:label="lab_nvda_CustomerOneMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Customer one</link:label>
+    <link:label id="lab_nvda_CustomerOneMember_label_en-US" xlink:label="lab_nvda_CustomerOneMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Customer One [Member]</link:label>
+    <link:label id="lab_nvda_CustomerOneMember_documentation_en-US" xlink:label="lab_nvda_CustomerOneMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">One Customer [Member]</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_nvda_CustomerOneMember" xlink:href="nvda-20260125.xsd#nvda_CustomerOneMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_nvda_CustomerOneMember" xlink:to="lab_nvda_CustomerOneMember" xlink:type="arc" order="1"/>
+    <link:label id="lab_nvda_CustomerThreeMember_325ff260-6039-4f3d-bb0a-c5d4fa0ba960_terseLabel_en-US" xlink:label="lab_nvda_CustomerThreeMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Customer three</link:label>
+    <link:label id="lab_nvda_CustomerThreeMember_label_en-US" xlink:label="lab_nvda_CustomerThreeMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Customer Three [Member]</link:label>
+    <link:label id="lab_nvda_CustomerThreeMember_documentation_en-US" xlink:label="lab_nvda_CustomerThreeMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">Customer Three</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_nvda_CustomerThreeMember" xlink:href="nvda-20260125.xsd#nvda_CustomerThreeMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_nvda_CustomerThreeMember" xlink:to="lab_nvda_CustomerThreeMember" xlink:type="arc" order="1"/>
+    <link:label id="lab_nvda_CustomerTwoMember_ab757997-b693-494d-a54d-ecfe01b74ccb_terseLabel_en-US" xlink:label="lab_nvda_CustomerTwoMember" xlink:role="http://www.xbrl.org/2003/role/terseLabel" xlink:type="resource" xml:lang="en-US">Customer two</link:label>
+    <link:label id="lab_nvda_CustomerTwoMember_label_en-US" xlink:label="lab_nvda_CustomerTwoMember" xlink:role="http://www.xbrl.org/2003/role/label" xlink:type="resource" xml:lang="en-US">Customer Two [Member]</link:label>
+    <link:label id="lab_nvda_CustomerTwoMember_documentation_en-US" xlink:label="lab_nvda_CustomerTwoMember" xlink:role="http://www.xbrl.org/2003/role/documentation" xlink:type="resource" xml:lang="en-US">Customer Two</link:label>
+    <link:loc xlink:type="locator" xlink:label="loc_nvda_CustomerTwoMember" xlink:href="nvda-20260125.xsd#nvda_CustomerTwoMember"/>
+    <link:labelArc xlink:arcrole="http://www.xbrl.org/2003/arcrole/concept-label" xlink:from="loc_nvda_CustomerTwoMember" xlink:to="lab_nvda_CustomerTwoMember" xlink:type="arc" order="1"/>
+  </link:labelLink>
+</link:linkbase>

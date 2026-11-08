@@ -301,4 +301,52 @@ class SecClientTest {
             callers.shutdownNow();
         }
     }
+
+    private static Report cirrusReport() {
+        return new Report(1L, "10-K", "0000772406-26-000018", java.time.LocalDate.parse("2026-05-21"),
+                "https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/crus-20260328.htm", "text");
+    }
+
+    @Test
+    void findsAFilingsTaggedFiguresInItsFolderListingAndDownloadsBothFiles() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        String folder = "https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/";
+        server.expect(requestTo(folder + "index.json"))
+                .andRespond(withSuccess(Examples.secIndexCirrus(), MediaType.APPLICATION_JSON));
+        server.expect(requestTo(folder + "crus-20260328_htm.xml")).andRespond(withSuccess("<xbrl/>", MediaType.APPLICATION_XML));
+        server.expect(requestTo(folder + "crus-20260328_lab.xml")).andRespond(withSuccess("<linkbase/>", MediaType.APPLICATION_XML));
+
+        SecClient.TaggedFigures figures = sec.taggedFigures(cirrusReport()).orElseThrow();
+
+        server.verify();
+        assertThat(figures.instance()).isEqualTo("<xbrl/>");
+        assertThat(figures.labels()).isEqualTo("<linkbase/>");
+    }
+
+    @Test
+    void aFilingFolderWithNoTaggedFilesGivesNoFiguresAndDownloadsNothingMore() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        server.expect(requestTo("https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/index.json"))
+                .andRespond(withSuccess("{\"directory\":{\"item\":[{\"name\":\"crus-20260328.htm\"}]}}",
+                        MediaType.APPLICATION_JSON));
+
+        assertThat(sec.taggedFigures(cirrusReport())).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    void aFolderListingTheSecCannotServeIsAnAccessError() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        server.expect(requestTo("https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/index.json"))
+                .andRespond(withServerError());
+
+        assertThatThrownBy(() -> sec.taggedFigures(cirrusReport()))
+                .isInstanceOf(SecClient.SecAccessException.class);
+    }
 }

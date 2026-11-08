@@ -14,7 +14,8 @@ import java.util.List;
  * <ol>
  *   <li>{@link #companyFor} looks the ticker up at the SEC, and finds or creates the company it names.</li>
  *   <li>{@link #read} downloads the company's latest 10-K or 20-F, unless it is stored already, and has
- *       {@link RelationshipFinder} find the suppliers and customers it names.</li>
+ *       {@link RelationshipFinder} find the suppliers and customers it names, then has {@link FigureService} read
+ *       its dependency figures, once.</li>
  * </ol>
  *
  * <p>Not transactional itself: it runs inside its caller's transaction, so a failure here never stops the caller
@@ -27,13 +28,15 @@ public class ReportReader {
     private final CompanyDirectory companies;
     private final ReportRepository reports;
     private final RelationshipFinder relationshipFinder;
+    private final FigureService figures;
 
     public ReportReader(SecClient sec, CompanyDirectory companies, ReportRepository reports,
-                        RelationshipFinder relationshipFinder) {
+                        RelationshipFinder relationshipFinder, FigureService figures) {
         this.sec = sec;
         this.companies = companies;
         this.reports = reports;
         this.relationshipFinder = relationshipFinder;
+        this.figures = figures;
     }
 
     /** The company the SEC knows by this ticker, or null if it knows none. */
@@ -75,6 +78,8 @@ public class ReportReader {
         }
         // A changed report gets one new assessment; unchanged answered reports remain idempotent.
         relationshipFinder.findIn(report, company, refreshed);
+        // The report's own tagged figures, read once and never failing the caller (no AI is involved).
+        figures.read(report, company);
         return true;
     }
 }
