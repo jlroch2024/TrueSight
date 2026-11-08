@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /** The only class that talks to sec.gov. Requests are paced and identify the TrueSight client. */
 @Component
@@ -163,6 +164,29 @@ public class SecClient {
                 Long.parseLong(cik), accession.replace("-", ""), document);
     }
 
+    /**
+     * The tagged figures (XBRL) filed beside a report: the text of the file ending {@code _htm.xml} and of the one
+     * ending {@code _lab.xml}, found in the filing's folder listing. Empty when the filing has no such pair. Three
+     * downloads at most, each paced like every other request.
+     *
+     * @throws SecAccessException if the SEC cannot be reached or answers with something unreadable
+     */
+    public Optional<TaggedFigures> taggedFigures(Report report) {
+        String folder = report.getUrl().substring(0, report.getUrl().lastIndexOf('/') + 1);
+        JsonNode items = getJson(folder + "index.json").path("directory").path("item");
+        String instance = null;
+        String labels = null;
+        for (JsonNode item : items) {
+            String name = item.path("name").asText();
+            if (name.endsWith("_htm.xml") && instance == null) instance = name;
+            if (name.endsWith("_lab.xml") && labels == null) labels = name;
+        }
+        if (instance == null || labels == null) return Optional.empty();
+        return Optional.of(new TaggedFigures(
+                request(folder + instance, "The SEC tagged figures could not be downloaded."),
+                request(folder + labels, "The SEC tagged figures could not be downloaded.")));
+    }
+
     public String download(String url) {
         return request(url, "The SEC report could not be downloaded.");
     }
@@ -216,6 +240,8 @@ public class SecClient {
         nextRequestAt = System.currentTimeMillis() + intervalMillis;
     }
 
+    /** The text of a filing's tagged-figures file and of the file that names its tags. */
+    public record TaggedFigures(String instance, String labels) { }
     public record SecCompany(String name, String cik, String ticker) { }
     public record SecFiling(String form, String accessionNumber, LocalDate filingDate, String url) { }
     /** An 8-K: the items it reports (such as "1.05"), when the SEC accepted it, and the filing's address. */
