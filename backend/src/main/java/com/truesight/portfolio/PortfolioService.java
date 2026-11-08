@@ -3,8 +3,12 @@ package com.truesight.portfolio;
 import com.truesight.common.ApiException;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -18,15 +22,28 @@ public class PortfolioService {
 
     static final String NAME_IN_USE = "You already have a portfolio with this name.";
     static final String NOT_FOUND = "Portfolio not found.";
+    static final String SAMPLE_NAME = "Sample Portfolio";
+    /** A copy of docs/examples/holdings.csv, since the built backend cannot read docs/. A test keeps them the same. */
+    static final String SAMPLE_HOLDINGS = "/sample-holdings.csv";
 
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;
     private final CurrentUser currentUser;
+    private final HoldingCsvReader csvReader;
+    private final AnalysisService analysis;
+    private final AnalysisJob job;
+    private final TransactionTemplate transaction;
 
-    public PortfolioService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser) {
+    public PortfolioService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
+                            HoldingCsvReader csvReader, AnalysisService analysis, AnalysisJob job,
+                            PlatformTransactionManager transactions) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
+        this.csvReader = csvReader;
+        this.analysis = analysis;
+        this.job = job;
+        this.transaction = new TransactionTemplate(transactions);
     }
 
     public List<PortfolioResponse> list() {
@@ -43,6 +60,41 @@ public class PortfolioService {
             throw ApiException.conflict(NAME_IN_USE);
         }
         return PortfolioResponse.from(portfolios.saveAndFlush(new Portfolio(userId, trimmed)));
+    }
+
+    /**
+     * Creates "Sample Portfolio" (or "Sample Portfolio 2", and so on, when the name is taken) with the sample CSV's
+     * holdings, then starts their analysis as Analyse does. The portfolio and its holdings are saved in one transaction
+     * that ends before the analysis starts, so the background job always finds them. It is an ordinary portfolio.
+     */
+    public PortfolioResponse createSample() {
+        Long userId = currentUser.id();
+        List<HoldingCsvReader.Row> rows = sampleHoldings();
+        Portfolio portfolio = transaction.execute(status -> {
+            Portfolio saved = portfolios.saveAndFlush(new Portfolio(userId, freeSampleName(userId)));
+            holdings.saveAll(rows.stream().map(row -> new Holding(saved.getId(), row.ticker(), row.weight())).toList());
+            return saved;
+        });
+        List<Long> queued = analysis.start(portfolio.getId());
+        if (!queued.isEmpty()) job.run(queued);
+        return PortfolioResponse.from(portfolio);
+    }
+
+    private String freeSampleName(Long userId) {
+        String name = SAMPLE_NAME;
+        for (int number = 2; portfolios.existsByUserIdAndName(userId, name); number++) {
+            name = SAMPLE_NAME + " " + number;
+        }
+        return name;
+    }
+
+    private List<HoldingCsvReader.Row> sampleHoldings() {
+        try (InputStream in = PortfolioService.class.getResourceAsStream(SAMPLE_HOLDINGS)) {
+            if (in == null) throw new IllegalStateException("The sample holdings are missing from the build.");
+            return csvReader.read(in);
+        } catch (IOException exception) {
+            throw new IllegalStateException("The sample holdings could not be read.", exception);
+        }
     }
 
     @Transactional
