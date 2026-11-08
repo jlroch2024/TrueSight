@@ -30,6 +30,8 @@ public class HoldingsController {
     public void analyze(@PathVariable Long portfolioId) {
         List<Long> queued = analysis.start(portfolioId);
         if (!queued.isEmpty()) job.run(queued);
+        // Holdings that stay Done are not analysed again, but a name search that failed, or is 90 days old, runs again.
+        job.searchNames(analysis.doneHoldingIds(portfolioId));
     }
 
 }

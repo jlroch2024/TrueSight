@@ -27,8 +27,9 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>Only suppliers: a disruption flows down the chain to customers, so a holding's customers are not read.</li>
  *   <li>Only one level: a supplier's own suppliers are found in its report, but their reports are not read.</li>
- *   <li>Reports are shared: a supplier whose report is stored, that has a {@code report_status} already, or that is a
- *       holding somewhere (and so read as one) is never read again.</li>
+ *   <li>Reports are shared: a supplier whose report has been read whole, that has a {@code report_status} already, or
+ *       that is a holding somewhere (and so read as one) is never read again. A report a name search stored, and read
+ *       only passages of, is still read whole.</li>
  *   <li>Each supplier is read by {@link ReportReader}, exactly as a holding is, and its {@code report_status} records
  *       how it went: Done, No Report Found (no ticker, or the SEC does not know it), or Failed with the reason.</li>
  * </ul>
@@ -67,7 +68,8 @@ public class SupplierReader {
     public void queue(Long holdingCompanyId) {
         companies.findAllById(suppliersOf(List.of(holdingCompanyId))).stream()
                 .filter(company -> company.getReportStatus() == null)
-                .filter(company -> reports.findLatestIdByCompanyId(company.getId()).isEmpty())
+                // A report a name search stored is still read whole.
+                .filter(company -> !reports.findLatestIdByCompanyId(company.getId()).map(reportReader::isRead).orElse(false))
                 .filter(company -> !holdings.existsByCompanyId(company.getId()))
                 .forEach(company -> record(company, ReportStatus.WAITING, null));
     }

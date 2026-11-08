@@ -108,12 +108,26 @@ public class RelationshipFinder {
         findIn(report, company, false);
     }
 
+    /**
+     * Whether the whole report has been read: it has a relationship found by reading it, or a completed answer to the
+     * relationship prompt. A report a name search read only passages of has not.
+     */
+    @Transactional(readOnly = true)
+    public boolean isRead(Long reportId) {
+        return relationships.existsByReportIdAndFoundBy(reportId, FoundBy.REPORT) || answered(reportId);
+    }
+
+    private boolean answered(Long reportId) {
+        return aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                reportId, AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED);
+    }
+
     /** Reassesses once when the saved report text was refreshed from its SEC filing. */
     @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
     public void findIn(Report report, Company company, boolean textWasRefreshed) {
-        if (relationships.existsByReportId(report.getId()) || (!textWasRefreshed
-                && aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
-                report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED))) {
+        // A relationship a name search found reads only a few passages: the whole report is still read.
+        if (relationships.existsByReportIdAndFoundBy(report.getId(), FoundBy.REPORT) || (!textWasRefreshed
+                && answered(report.getId()))) {
             return;
         }
         String section = ReportSection.forAi(report.getForm(), report.getText());
@@ -127,6 +141,10 @@ public class RelationshipFinder {
         List<Relationship> proven = new ArrayList<>();
         for (Provable found : proof.proven()) {
             GeminiAnswer.Found item = found.item();
+            if (relationships.existsByReportIdAndCounterpartyIdAndType(
+                    report.getId(), found.counterparty().getId(), item.relationship())) {
+                continue; // found already, by a name search
+            }
             Relationship relationship = new Relationship(report.getId(), company.getId(), found.counterparty().getId(),
                     item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
                     found.match().evidence());

@@ -310,6 +310,39 @@ class FindSuppliersAndCustomersIT {
         return Examples.geminiNvidia().replace("final products.\\\"}]\"", "final products.\\\"}\"");
     }
 
+    // ---- Find Who Names My Holding, criterion 7 --------------------------------------------------------------------
+
+    @Test
+    void thePortfolioListsAnotherCompanysRelationshipThatNamesItsHoldingWithTheArrowFromSupplierToCustomer()
+            throws Exception {
+        // A name search for TSMC found it in NVIDIA's report: NVIDIA's own sentence, NVIDIA's relationship.
+        // TSMC as a holding is the SEC's company, with its SEC number, as every holding is.
+        Company tsmc = companyDirectory.findOrCreate("Taiwan Semiconductor Manufacturing Company Limited", "0001046179",
+                "TSM", List.of("TSMC"));
+        Report nvidiaReport = reports.findByAccessionNumber("0001045810-26-000021").orElseThrow();
+        Relationship named = new Relationship(nvidiaReport.getId(), nvidiaReport.getCompanyId(), tsmc.getId(),
+                RelationshipType.SUPPLIER, "semiconductor wafers", TSMC_SENTENCE);
+        named.setFoundBy(FoundBy.NAME_SEARCH);
+        relationships.save(named);
+        String email = "ai-named-by-another@example.com";
+        Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "AI Test " + System.nanoTime()));
+        Holding held = new Holding(portfolio.getId(), "TSM", new BigDecimal("100"));
+        held.setCompanyId(tsmc.getId());
+        held.setStatus(HoldingStatus.DONE);
+        holdings.save(held);
+
+        mockMvc.perform(get("/api/portfolios/{id}/relationships", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].company.name").value("NVIDIA Corporation"))
+                .andExpect(jsonPath("$[0].counterparty.id").value(tsmc.getId()))
+                // SUPPLIER: the counterparty, the holding, supplies NVIDIA.
+                .andExpect(jsonPath("$[0].type").value("SUPPLIER"))
+                .andExpect(jsonPath("$[0].foundBy").value("NAME_SEARCH"))
+                .andExpect(jsonPath("$[0].evidence").value(TSMC_SENTENCE));
+    }
+
     /** Makes a portfolio holding NVIDIA, presses Analyse, and waits for the holding to reach {@code expected}. */
     private Portfolio analyse(String email, HoldingStatus expected) throws Exception {
         Portfolio portfolio = portfolioWith(email);

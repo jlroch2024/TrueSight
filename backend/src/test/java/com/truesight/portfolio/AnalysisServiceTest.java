@@ -6,6 +6,7 @@ import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
+import com.truesight.relationship.FoundBy;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
@@ -113,9 +114,9 @@ class AnalysisServiceTest {
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(101L)).thenReturn(Optional.of(incompleteReport));
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(102L)).thenReturn(Optional.of(completedReport));
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(103L)).thenReturn(Optional.of(legacyReport));
-        when(relationships.existsByReportId(501L)).thenReturn(false);
-        when(relationships.existsByReportId(502L)).thenReturn(false);
-        when(relationships.existsByReportId(503L)).thenReturn(false);
+        when(relationships.existsByReportIdAndFoundBy(501L, FoundBy.REPORT)).thenReturn(false);
+        when(relationships.existsByReportIdAndFoundBy(502L, FoundBy.REPORT)).thenReturn(false);
+        when(relationships.existsByReportIdAndFoundBy(503L, FoundBy.REPORT)).thenReturn(false);
         when(aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(501L, AiPurpose.FIND_RELATIONSHIPS,
                 AiOutcome.ANSWERED)).thenReturn(false);
         when(aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(502L, AiPurpose.FIND_RELATIONSHIPS,
@@ -166,8 +167,8 @@ class AnalysisServiceTest {
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(201L)).thenReturn(Optional.of(unreadReport));
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(202L)).thenReturn(Optional.of(readReport));
         // Both reports' relationships were found and answered already: only the figures are missing.
-        when(relationships.existsByReportId(601L)).thenReturn(true);
-        when(relationships.existsByReportId(602L)).thenReturn(true);
+        when(relationships.existsByReportIdAndFoundBy(601L, FoundBy.REPORT)).thenReturn(true);
+        when(relationships.existsByReportIdAndFoundBy(602L, FoundBy.REPORT)).thenReturn(true);
 
         assertThat(service.start(7L)).containsExactly(1L);
         assertThat(unread.getStatus()).isEqualTo(HoldingStatus.ANALYSING);

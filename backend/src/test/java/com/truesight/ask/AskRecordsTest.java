@@ -78,7 +78,7 @@ class AskRecordsTest {
     void anApprovedRelationshipSaysSoAndSoDoesASoleSourceAndAnAnalystNote() {
         RelationshipResponse first = AskSample.relationships().get(0);
         RelationshipResponse approved = new RelationshipResponse(first.id(), first.company(), first.counterparty(),
-                first.type(), first.provides(), first.evidence(), first.source(), Criticality.SOLE_SOURCE,
+                first.type(), first.provides(), first.evidence(), first.source(), first.foundBy(), Criticality.SOLE_SOURCE,
                 "Certain materials are available only from a sole supplier.", first.report(), ReviewStatus.APPROVED,
                 Instant.parse("2026-03-01T09:00:00Z"), "Checked against the filing.", first.confidence(),
                 first.highlights());

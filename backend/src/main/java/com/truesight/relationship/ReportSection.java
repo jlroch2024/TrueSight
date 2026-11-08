@@ -1,6 +1,7 @@
 package com.truesight.relationship;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,6 +49,37 @@ public final class ReportSection {
     /** The text to send to the AI for a report of this form ("10-K" or "20-F"). */
     public static String forAi(String form, String reportText) {
         return trim(section(form, reportText), MAX_CHARACTERS);
+    }
+
+    /**
+     * The paragraphs that name a company (any of {@code names}, as whole words, in any capitals) and also have a
+     * supplier or customer word, in their order in the report: at most {@code maxPassages} of them, and only as many
+     * whole paragraphs as fit in {@code maxCharacters}, counting a line break between each. Empty when none does, as in
+     * a report that names the company only as a competitor.
+     */
+    public static List<String> passagesNaming(String text, Collection<String> names, int maxPassages, int maxCharacters) {
+        List<Pattern> named = names.stream()
+                .filter(name -> name != null && !name.isBlank())
+                .map(name -> Pattern.compile("(?<![\\p{L}\\p{N}])" + Pattern.quote(name.strip()) + "(?![\\p{L}\\p{N}])",
+                        Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE))
+                .toList();
+        List<String> passages = new ArrayList<>();
+        int used = 0;
+        for (String paragraph : text.split("\n")) {
+            if (passages.size() == maxPassages) {
+                break;
+            }
+            if (!RELATIONSHIP_WORDS.matcher(paragraph).find()
+                    || named.stream().noneMatch(name -> name.matcher(paragraph).find())) {
+                continue;
+            }
+            int cost = paragraph.length() + (passages.isEmpty() ? 0 : 1);
+            if (used + cost <= maxCharacters) {
+                passages.add(paragraph);
+                used += cost;
+            }
+        }
+        return passages;
     }
 
     /** The business and risk sections, or the whole report if their headings are not found. */

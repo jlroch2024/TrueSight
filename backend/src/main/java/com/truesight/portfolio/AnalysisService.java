@@ -6,6 +6,7 @@ import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
+import com.truesight.relationship.FoundBy;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.report.Report;
@@ -74,6 +75,14 @@ public class AnalysisService {
         return toAnalyse.stream().map(Holding::getId).toList();
     }
 
+    /** The portfolio's holdings that are Done, and so not being analysed now. */
+    @Transactional(readOnly = true)
+    public List<Long> doneHoldingIds(Long portfolioId) {
+        requirePortfolio(portfolioId);
+        return holdings.findByPortfolioIdAndStatusOrderByTickerAsc(portfolioId, HoldingStatus.DONE).stream()
+                .map(Holding::getId).toList();
+    }
+
     /** A Done holding whose report's dependency figures were never read: its next Analyse reads only those. */
     private boolean needsFigures(Holding holding) {
         if (holding.getCompanyId() == null) return false;
@@ -85,7 +94,7 @@ public class AnalysisService {
     private boolean needsRelationshipAnalysis(Holding holding) {
         if (holding.getCompanyId() == null) return false;
         Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).orElse(null);
-        if (report == null || relationships.existsByReportId(report.getId())) return false;
+        if (report == null || relationships.existsByReportIdAndFoundBy(report.getId(), FoundBy.REPORT)) return false;
         if (ReportTextExtractor.hasLegacyWrappedParagraphs(report.getText())) return true;
         return !aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
                 report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED);

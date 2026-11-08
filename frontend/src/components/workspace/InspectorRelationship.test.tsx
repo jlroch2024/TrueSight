@@ -22,6 +22,7 @@ function relationship(highlights: Relationship['highlights']): Relationship {
     provides: 'memory',
     evidence: EVIDENCE,
     source: 'AI',
+    foundBy: 'REPORT',
     confidence: UNREVIEWED_CONFIDENCE,
     highlights,
     criticality: null,

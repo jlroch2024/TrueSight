@@ -198,6 +198,7 @@ function ReviewCard({ item, onChanged }: { item: ReviewItem; onChanged: (updated
       <p className="review-meta">
         <span>{relationship.report.form}, Filed {formatDate(relationship.report.filingDate)}</span>
         <span>Used by {plural(item.usedByPortfolios, 'Portfolio', 'Portfolios')}</span>
+        {relationship.foundBy === 'NAME_SEARCH' && <span className="chip">Found by Name Search</span>}
       </p>
       {item.reviewStatus !== 'UNREVIEWED' && (
         <p className={`review-note ${item.reviewStatus.toLowerCase()}`}>

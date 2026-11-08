@@ -191,6 +191,7 @@ function relationship(
     provides: null,
     evidence: 'Evidence sentence.',
     source: 'AI',
+    foundBy: 'REPORT',
     confidence: UNREVIEWED_CONFIDENCE,
     highlights: [],
     criticality: null,
@@ -1245,3 +1246,20 @@ describe("a supplier's own suppliers on the graph", () => {
     expect(shared.map((company) => [company.displayName, company.suppliesHoldings])).toEqual([['GlobalFoundries', 2]]);
   });
 });
+
+describe('a relationship another company\'s report names a holding in', () => {
+  // CEVA's 10-K names Cirrus Logic among its licensees: CEVA's relationship, Cirrus Logic its customer.
+  const ceva = { id: 7, name: 'CEVA INC', displayName: 'CEVA', ticker: 'CEVA' };
+  const cirrus = { id: 8, name: 'CIRRUS LOGIC, INC.', displayName: 'Cirrus Logic', ticker: 'CRUS' };
+  const named = { ...relationship(1, ceva, cirrus, 'CUSTOMER'), foundBy: 'NAME_SEARCH' as const };
+
+  it('draws that company linked to the holding, with the arrow from supplier to customer', () => {
+    const { nodes, edges } = buildGraphElements([named], [holding(1, 'CRUS', cirrus.name)]);
+
+    expect(nodes.find((node) => node.name === cirrus.name)?.isHolding).toBe(true);
+    expect(nodes.find((node) => node.name === ceva.name)?.isHolding).toBe(false);
+    // CUSTOMER: Cirrus Logic buys from CEVA, so the arrow runs CEVA -> Cirrus Logic.
+    expect(edges).toEqual([expect.objectContaining({ source: '7', target: '8', relationshipId: 1 })]);
+  });
+});
+

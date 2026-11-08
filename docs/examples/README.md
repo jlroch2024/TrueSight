@@ -5,7 +5,7 @@ Real data to build and test against, so every story can start on day 1 and tests
 | File | What it is | Used by |
 |---|---|---|
 | `holdings.csv` | The sample portfolio: 10 companies, each weighted 10% | Upload a Portfolio CSV, and the demo |
-| `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns. Every one was found by AI and is `UNREVIEWED`: `source` is `"AI"`, `reviewStatus` is `"UNREVIEWED"`, and `reviewedAt` and `reviewNote` are `null`. Each company's `displayName` is what the backend's `CompanyDisplayNames` makes of its `name` with no report to read, which `CompanyDisplayNamesTest` checks. Each relationship's `confidence` is what `RelationshipConfidence` gives an unreviewed relationship with no recorded quote match and no second check (Medium), which `RelationshipConfidenceTest` checks | See the Supply Chain as a Graph, until the real endpoint exists; Review AI Findings; Spell Each Company as Its Own Report Does; See How Confident TrueSight Is |
+| `relationships.json` | 17 relationships, in exactly the shape `GET /api/portfolios/{id}/relationships` returns. Every one was found by AI, by reading its company's whole report, and is `UNREVIEWED`: `source` is `"AI"`, `foundBy` is `"REPORT"`, `reviewStatus` is `"UNREVIEWED"`, and `reviewedAt` and `reviewNote` are `null`. Each company's `displayName` is what the backend's `CompanyDisplayNames` makes of its `name` with no report to read, which `CompanyDisplayNamesTest` checks. Each relationship's `confidence` is what `RelationshipConfidence` gives an unreviewed relationship with no recorded quote match and no second check (Medium), which `RelationshipConfidenceTest` checks | See the Supply Chain as a Graph, until the real endpoint exists; Review AI Findings; Spell Each Company as Its Own Report Does; See How Confident TrueSight Is |
 | `nvidia-10k.txt` | The plain text of NVIDIA's latest 10-K, one paragraph per line | Find Suppliers and Customers with AI, in tests |
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
@@ -38,6 +38,11 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `sec-8k-aitx-2026-10-30.htm` | Artificial Intelligence Technology Solutions' real, unchanged 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release (Exhibit 99.1) | Alerts From SEC 8-K Filings: the fall-back headline |
 | `sec-8k-amgen-2026-07-31.htm` | Amgen's real, unchanged 8-K of 31 July 2026 (Item 1.05, Material Cybersecurity Incidents): data taken from its cloud environments | Alerts From SEC 8-K Filings: an Item 1.xx 8-K read and headlined from its own text |
 | `gemini-8k-assessment.json` | Gemini's full, unchanged API response to Filter Out Noise's prompt for the three headlines built from those 8-Ks | Alerts From SEC 8-K Filings, so tests never call Gemini |
+| `sec-search-cirrus-logic.json` | The SEC full-text search's real, unchanged answer for "Cirrus Logic", in quotes, in 10-Ks and 20-Fs filed from 8 August 2025 to 8 November 2026 (see The Name Search Samples): 23 files, 9 of them Cirrus Logic's own report and exhibits | Find Who Names My Holding: `SecClientTest`, `NameSearchIT` |
+| `ceva-10k.txt` | The plain text of CEVA's 10-K filed 2026-02-27, one of that search's hits, one paragraph per line | Find Who Names My Holding: `ReportSectionTest`, `NameSearchIT` |
+| `gemini-name-search-ceva.json` | Gemini's full, unchanged API response to the name search prompt for the passages of that 10-K that name Cirrus Logic: Cirrus Logic is CEVA's customer, for IP licenses | Find Who Names My Holding, so tests never call Gemini |
+| `gemini-name-search-skyworks.json`, `gemini-name-search-aeluma.json`, `gemini-name-search-zrcn.json` | Gemini's full, unchanged API responses to the same prompt for the passages naming Cirrus Logic in the three other reports of that search that have any: each an empty list | How Often the Name Search Is Right |
+| `name-search-labels.csv` | The hand label (CUSTOMER, SUPPLIER or NEITHER: what the passages say Cirrus Logic is to the company) of each report whose passages were sent to Gemini, made before seeing Gemini's answer, beside Gemini's answer | How Often the Name Search Is Right |
 
 ## Where It Came From
 
@@ -446,6 +451,44 @@ Which of my holdings depend on Taiwan Semiconductor, and have those links been r
 Every id Gemini cited here is in the records. The test that an id which is not in the portfolio's data is dropped runs
 the same answer against a portfolio that has fewer relationships, so it needs no answer written by hand. The sample has
 no alert, so the one test of an alert as a source (`AskIT`) uses a small answer written by hand, which says so.
+
+## The Name Search Samples
+
+All three were made on 8 November 2026 for Find Who Names My Holding.
+
+- **`sec-search-cirrus-logic.json`** is the unchanged answer from the address `SecClient.searchAnnualReports` uses,
+  sent with TrueSight's `User-Agent`:
+
+  ```text
+  https://efts.sec.gov/LATEST/search-index?q=%22Cirrus%20Logic%22&forms=10-K,20-F&dateRange=custom&startdt=2025-08-08&enddt=2026-11-08
+  ```
+
+  Of its 23 files, 9 are Cirrus Logic's own 10-K and exhibits and 2 are Kulicke & Soffa exhibits (pay plans naming
+  peer companies). The other 12 are 11 companies' annual reports (ZRCN has two). The name search reads only reports
+  themselves, never exhibits, and never the holding's own.
+- **`ceva-10k.txt`** is CEVA's 10-K (accession 0001437749-26-006091), downloaded from
+  `https://www.sec.gov/Archives/edgar/data/1173489/000143774926006091/ceva20251231_10k.htm` and turned into text by
+  `ReportTextExtractor`. Of the 11 reports, it is the only one whose passages name Cirrus Logic as a supplier or
+  customer: "Our publicly announced licensees include companies such as ... Cirrus Logic ...".
+- **`gemini-name-search-ceva.json`** is Gemini's full, unchanged answer to `NameSearcher`'s prompt and response schema,
+  at temperature 0, for that 10-K's one passage (`ReportSection.passagesNaming`), with "CEVA INC" as the company and
+  "Cirrus Logic" as the holding. **Model:** `gemini-3.8-flash`, response ID `TSXwavTAD-eX0r4PjOTfwAU`. It answers
+  CUSTOMER, "IP licenses", quoting CEVA's sentence word for word.
+
+## How Often the Name Search Is Right
+
+Measured on 8 November 2026, with `gemini-3.8-flash` at temperature 0, on the real search for "Cirrus Logic" above.
+
+- Of the 11 companies' reports the search found, 7 have no paragraph naming Cirrus Logic beside a supplier or customer
+  word, so `ReportSection.passagesNaming` sends them nothing: they are never asked about.
+- The other 4 were each labelled by hand, by a team member, from the sentence naming Cirrus Logic, before seeing
+  Gemini's answer (`name-search-labels.csv`): CEVA's names it among its licensees (CUSTOMER); Skyworks' among its
+  competitors, and Aeluma's and ZRCN's in officers' biographies (NEITHER).
+- **Gemini agreed with the hand label on 4 of 4.** Response IDs: CEVA `TSXwavTAD-eX0r4PjOTfwAU`, Skyworks
+  `cSXwaqTILdPNqfkPhYO62AQ`, Aeluma `dyXwasXyBPrI3LUPmI_uwAY`, ZRCN `eyXwasbtFO21z7sPh7SwqA4`.
+
+Four is a small sample, with one relationship: it shows the prompt tells a customer from a competitor or a biography,
+not how often it finds every relationship.
 
 ## The Shape of a Relationship
 

@@ -15,6 +15,9 @@ import java.util.List;
  * <p>{@code reviewStatus} is where an Analyst's review has got; {@code reviewedAt} and {@code reviewNote} are null
  * until a decision is made (and the note may stay empty for an approval).
  *
+ * <p>{@code foundBy} is REPORT when it was found by reading the company's whole report, and NAME_SEARCH when a search
+ * for the counterparty's name found it in a few passages of that report (see {@link NameSearcher}).
+ *
  * <p>{@code confidence} is how confident TrueSight is about it, with its reasons (see {@link RelationshipConfidence}).
  *
  * <p>{@code highlights} are the words that matter in the evidence, in the order they appear (see
@@ -28,6 +31,7 @@ public record RelationshipResponse(
         String provides,
         String evidence,
         RelationshipSource source,
+        FoundBy foundBy,
         Criticality criticality,
         String criticalityEvidence,
         ReportSummary report,

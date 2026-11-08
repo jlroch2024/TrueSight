@@ -202,4 +202,21 @@ class GeminiAnswerTest {
         assertThatThrownBy(() -> answers.readSecondChecks(responseWith("{\"index\":1}")))
                 .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
     }
+
+    @Test
+    void readsTheRealNameSearchAnswerForCevaAsCirrusLogicBeingItsCustomer() {
+        List<GeminiAnswer.NameSearchFound> found = answers.readNameSearch(Examples.geminiNameSearchCeva());
+
+        assertThat(found).hasSize(1);
+        assertThat(found.getFirst().relationship()).isEqualTo(RelationshipType.CUSTOMER);
+        assertThat(found.getFirst().provides()).isEqualTo("IP licenses");
+        assertThat(found.getFirst().quote()).startsWith("Our publicly announced licensees include companies such as");
+    }
+
+    @Test
+    void anEmptyNameSearchAnswerFindsNothingAndOneThatIsNotAListIsUnreadable() throws Exception {
+        assertThat(answers.readNameSearch(responseWith("[]"))).isEmpty();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> answers.readNameSearch(responseWith("{}")))
+                .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+    }
 }

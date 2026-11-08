@@ -264,11 +264,13 @@ class SecClientTest {
     }
 
     @Test
-    void twoDownloadsOverlapWhileStillStartingAtMostTenASecond() throws Exception {
+    void twoDownloadsOverlapWhileStillStartingNoFasterThanThePace() throws Exception {
         String url = "https://www.sec.gov/test-large-report";
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        // Two a second, so the second download's turn comes 550 ms after the first's, well clear of the few
+        // milliseconds a request takes to be built after its turn (the 10-a-second pace itself is checked above).
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 2);
         List<Long> startedAt = Collections.synchronizedList(new ArrayList<>());
         // Each download is held open until both have started: under one lock for the whole download, the second
         // could never start while the first was running, and this would time out.
@@ -296,7 +298,7 @@ class SecClientTest {
 
             server.verify();
             List<Long> ordered = startedAt.stream().sorted().toList();
-            assertThat(ordered.get(1) - ordered.get(0)).isGreaterThanOrEqualTo(100_000_000L);
+            assertThat(ordered.get(1) - ordered.get(0)).isGreaterThanOrEqualTo(500_000_000L);
         } finally {
             callers.shutdownNow();
         }
@@ -348,5 +350,61 @@ class SecClientTest {
 
         assertThatThrownBy(() -> sec.taggedFigures(cirrusReport()))
                 .isInstanceOf(SecClient.SecAccessException.class);
+    }
+
+    // ---- Find Who Names My Holding -------------------------------------------------------------------------------
+
+    @Test
+    void theHitsOfTheSavedCirrusLogicSearchAreReadWithTheirCompanyFileAndAddress() throws Exception {
+        JsonNode response = JsonMapper.builder().build().readTree(Examples.secSearchCirrusLogic());
+
+        List<SecClient.SecSearchHit> hits = SecClient.searchHitsIn(response);
+
+        assertThat(hits).hasSize(23);
+        assertThat(hits.getFirst().companyName()).isEqualTo("CIRRUS LOGIC, INC.");
+        assertThat(hits.getFirst().isTheReport()).isFalse(); // an exhibit, EX-23.1
+        SecClient.SecSearchHit ceva = hits.stream().filter(hit -> hit.cik().equals("0001173489")).findFirst().orElseThrow();
+        assertThat(ceva).isEqualTo(new SecClient.SecSearchHit("0001437749-26-006091", "0001173489", "CEVA INC", "CEVA",
+                "10-K", "10-K", java.time.LocalDate.parse("2026-02-27"),
+                "https://www.sec.gov/Archives/edgar/data/1173489/000143774926006091/ceva20251231_10k.htm"));
+        assertThat(ceva.isTheReport()).isTrue();
+        // Two tickers: the first is kept. No ticker at all: none.
+        assertThat(hits.stream().filter(hit -> hit.cik().equals("0002007825")).findFirst().orElseThrow().ticker())
+                .isEqualTo("INFQ");
+        assertThat(hits.stream().filter(hit -> hit.cik().equals("0002027033")).findFirst().orElseThrow().ticker())
+                .isNull();
+    }
+
+    @Test
+    void theSearchAsksForTheNameInQuotesInTenKsAndTwentyFsBetweenTheTwoDates() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        server.expect(requestTo("https://efts.sec.gov/LATEST/search-index?q=%22Cirrus%20Logic%22&forms=10-K,20-F"
+                        + "&dateRange=custom&startdt=2025-08-08&enddt=2026-11-08"))
+                .andRespond(withSuccess(Examples.secSearchCirrusLogic(), MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://efts.sec.gov/LATEST/search-index?q=%22Johnson%20%26%20Johnson%22&forms=10-K,20-F"
+                        + "&dateRange=custom&startdt=2025-08-08&enddt=2026-11-08"))
+                .andRespond(withSuccess("{\"hits\":{\"hits\":[]}}", MediaType.APPLICATION_JSON));
+
+        java.time.LocalDate from = java.time.LocalDate.parse("2025-08-08");
+        java.time.LocalDate to = java.time.LocalDate.parse("2026-11-08");
+        assertThat(sec.searchAnnualReports("Cirrus Logic", from, to)).hasSize(23);
+        assertThat(sec.searchAnnualReports("Johnson & Johnson", from, to)).isEmpty();
+        server.verify();
+    }
+
+    @Test
+    void aSearchTheSecCannotAnswerIsAnAccessFailure() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SecClient sec = new SecClient(builder.build(), JsonMapper.builder().build(), 10);
+        server.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.anything())
+                .andRespond(withServerError());
+
+        assertThatThrownBy(() -> sec.searchAnnualReports("Cirrus Logic", java.time.LocalDate.parse("2025-08-08"),
+                java.time.LocalDate.parse("2026-11-08")))
+                .isInstanceOf(SecClient.SecAccessException.class)
+                .hasMessage("The SEC returned HTTP 500 for a request.");
     }
 }

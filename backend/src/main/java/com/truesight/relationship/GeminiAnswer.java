@@ -37,6 +37,12 @@ public class GeminiAnswer {
                         String criticalityQuote) {
     }
 
+    /**
+     * What a name search's passages say of the holding, as the AI gave it, its quote not checked yet. SUPPLIER: the
+     * holding supplies the company whose report it is. CUSTOMER: the holding buys from it.
+     */
+    public record NameSearchFound(RelationshipType relationship, String provides, String quote) { }
+
     /** One stored company name as the AI answered it in the common-names pass. Both fields may be empty. */
     public record CommonNameFound(String name, String commonName, String ticker) { }
 
@@ -70,6 +76,32 @@ public class GeminiAnswer {
             found.add(new Found(company, text(item, "alsoKnownAs"), text(item, "commonName"), text(item, "ticker"),
                     type, text(item, "provides"), quote, criticality(text(item, "criticality")),
                     text(item, "criticalityQuote")));
+        }
+        return found;
+    }
+
+    /**
+     * Reads a name search's answer: a JSON list of {@code { relationship, provides, quote }}, empty when the passages
+     * name the holding as neither. An answer that is not a list throws {@link UnreadableAnswerException}; an item with
+     * no quote, or a relationship other than SUPPLIER or CUSTOMER, is left out.
+     */
+    public List<NameSearchFound> readNameSearch(String response) {
+        JsonNode list;
+        try {
+            list = mapper.readTree(answerText(response));
+        } catch (JacksonException exception) {
+            throw new UnreadableAnswerException();
+        }
+        if (list == null || !list.isArray()) {
+            throw new UnreadableAnswerException();
+        }
+        List<NameSearchFound> found = new ArrayList<>();
+        for (JsonNode item : list) {
+            RelationshipType type = type(text(item, "relationship"));
+            String quote = text(item, "quote");
+            if (type != null && !quote.isEmpty()) {
+                found.add(new NameSearchFound(type, text(item, "provides"), quote));
+            }
         }
         return found;
     }

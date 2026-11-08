@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** The only class that talks to sec.gov. Requests are paced and identify the TrueSight client. */
 @Component
@@ -31,6 +33,11 @@ public class SecClient {
 
     private static final String TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
     private static final String SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK%s.json";
+    /** The address the SEC's own full-text search page uses. It is not a published API. */
+    private static final String SEARCH_URL = "https://efts.sec.gov/LATEST/search-index?q={phrase}&forms=10-K,20-F"
+            + "&dateRange=custom&startdt={from}&enddt={to}";
+    /** "CIRRUS LOGIC, INC.  (CRUS)  (CIK 0000772406)": the name, any tickers, then the SEC number. */
+    private static final Pattern DISPLAY_NAME = Pattern.compile("^(.*?)(?:\\s+\\(([^()]*)\\))?\\s+\\(CIK \\d+\\)$");
     private final RestClient client;
     private final ObjectMapper mapper;
     private final long intervalMillis;
@@ -134,6 +141,39 @@ public class SecClient {
         return currentReportsIn(cik, getJson(SUBMISSIONS_URL.formatted(cik)));
     }
 
+    /**
+     * The files of 10-Ks and 20-Fs filed from {@code from} to {@code to} whose text has {@code phrase}, word for word, in
+     * the order the SEC's full-text search gives them. Each hit is one file of a filing: the report itself, or one of
+     * its exhibits ({@link SecSearchHit#fileType}).
+     *
+     * @throws SecAccessException if the SEC cannot be reached or answers with something unreadable
+     */
+    public List<SecSearchHit> searchAnnualReports(String phrase, LocalDate from, LocalDate to) {
+        return searchHitsIn(getJson(SEARCH_URL, "\"" + phrase + "\"", from.toString(), to.toString()));
+    }
+
+    /** The hits in a full-text search response, as {@link #searchAnnualReports} reads them. */
+    public static List<SecSearchHit> searchHitsIn(JsonNode response) {
+        List<SecSearchHit> hits = new ArrayList<>();
+        for (JsonNode hit : response.path("hits").path("hits")) {
+            String[] id = hit.path("_id").asText().split(":", 2);
+            JsonNode source = hit.path("_source");
+            String cik = source.path("ciks").path(0).asText();
+            String date = source.path("file_date").asText();
+            Matcher name = DISPLAY_NAME.matcher(source.path("display_names").path(0).asText().strip());
+            if (id.length < 2 || id[1].isBlank() || cik.isBlank() || date.isBlank() || !name.matches()) continue;
+            String tickers = name.group(2);
+            String ticker = tickers == null ? null : tickers.split(",")[0].strip();
+            try {
+                hits.add(new SecSearchHit(id[0], cik, name.group(1).strip(), ticker, source.path("form").asText(),
+                        source.path("file_type").asText(), LocalDate.parse(date), filingUrl(cik, id[0], id[1])));
+            } catch (DateTimeParseException | NumberFormatException unreadable) {
+                // A hit whose date or SEC number cannot be read cannot be found again: it is left out.
+            }
+        }
+        return hits;
+    }
+
     /** The 8-Ks in a submissions response, as {@link #recentCurrentReports} reads them. */
     public static List<SecCurrentReport> currentReportsIn(String cik, JsonNode submissions) {
         JsonNode recent = submissions.path("filings").path("recent");
@@ -191,9 +231,9 @@ public class SecClient {
         return request(url, "The SEC report could not be downloaded.");
     }
 
-    private JsonNode getJson(String url) {
+    private JsonNode getJson(String url, Object... variables) {
         try {
-            String body = request(url, "The SEC could not be reached or returned unreadable data.");
+            String body = request(url, "The SEC could not be reached or returned unreadable data.", variables);
             return mapper.readTree(body == null ? "{}" : body);
         } catch (SecAccessException exception) {
             throw exception;
@@ -216,10 +256,10 @@ public class SecClient {
      * Waits for the next request slot, then downloads outside the lock, so one large report never holds up every
      * other SEC request: requests still start at most 10 a second, but their downloads can overlap.
      */
-    private String request(String url, String fallback) {
+    private String request(String url, String fallback, Object... variables) {
         awaitNextSlot();
         try {
-            return client.get().uri(url).retrieve().body(String.class);
+            return client.get().uri(url, variables).retrieve().body(String.class);
         } catch (RestClientException exception) {
             throw new SecAccessException(failureMessage(exception, fallback), exception);
         }
@@ -243,6 +283,20 @@ public class SecClient {
     /** The text of a filing's tagged-figures file and of the file that names its tags. */
     public record TaggedFigures(String instance, String labels) { }
     public record SecCompany(String name, String cik, String ticker) { }
+
+    /**
+     * One file a full-text search found: its filing's accession number, the filing company's SEC number, name and first
+     * ticker (null if it has none), the filing's form, the file's own type ("10-K" for the report itself, "EX-10.15" for
+     * an exhibit), the filing date, and where the file is.
+     */
+    public record SecSearchHit(String accessionNumber, String cik, String companyName, String ticker, String form,
+                               String fileType, LocalDate filingDate, String url) {
+
+        /** Whether this file is the annual report itself, not one of its exhibits. */
+        public boolean isTheReport() {
+            return fileType.equals(form);
+        }
+    }
     public record SecFiling(String form, String accessionNumber, LocalDate filingDate, String url) { }
     /** An 8-K: the items it reports (such as "1.05"), when the SEC accepted it, and the filing's address. */
     public record SecCurrentReport(String accessionNumber, List<String> items, Instant acceptedAt, String url) { }
