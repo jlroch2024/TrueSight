@@ -8,7 +8,6 @@ import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
-import com.truesight.report.FigureService;
 import com.truesight.report.Report;
 import com.truesight.report.ReportReader;
 import com.truesight.report.ReportRepository;
@@ -41,8 +40,7 @@ class AnalysisServiceTest {
         SecClient sec = mock(SecClient.class);
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
-                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder,
-                        mock(FigureService.class)),
+                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
                 mock(SupplierReader.class));
 
         Holding holding = new Holding(7L, "ASML", BigDecimal.TEN);
@@ -88,8 +86,7 @@ class AnalysisServiceTest {
         SecClient sec = mock(SecClient.class);
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
-                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder,
-                        mock(FigureService.class)),
+                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
                 mock(SupplierReader.class));
 
         when(currentUser.id()).thenReturn(41L);
@@ -150,7 +147,7 @@ class AnalysisServiceTest {
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser,
                 mock(CompanyRepository.class), reports, relationships, aiCalls,
                 new ReportReader(mock(SecClient.class), mock(CompanyDirectory.class), reports,
-                        mock(RelationshipFinder.class), mock(FigureService.class)),
+                        mock(RelationshipFinder.class)),
                 mock(SupplierReader.class));
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));

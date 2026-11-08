@@ -14,8 +14,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -36,6 +39,11 @@ public final class ConcentrationReader {
 
     private static final String TYPE_AXIS = "ConcentrationRiskByTypeAxis";
     private static final String BENCHMARK_AXIS = "ConcentrationRiskByBenchmarkAxis";
+    /** The axis a filing usually names its customer or supplier on; it wins over any other axis in the context. */
+    private static final String PARTY_AXIS = "MajorCustomersAxis";
+
+    /** The longest label stored: the width of the {@code concentrations.label} column. */
+    static final int MAX_LABEL = 300;
 
     /** A label with any of these words names no company. */
     private static final Pattern UNNAMED = Pattern.compile(
@@ -68,6 +76,8 @@ public final class ConcentrationReader {
         }
 
         List<Figure> figures = new ArrayList<>();
+        // A filing sometimes tags the same figure twice; it is kept once.
+        Set<String> seen = new HashSet<>();
         for (Element fact : children(root, null, "ConcentrationRiskPercentage1")) {
             if (fact.getNamespaceURI() == null || !fact.getNamespaceURI().startsWith("http://fasb.org/us-gaap/")) continue;
             Context context = contexts.get(fact.getAttribute("contextRef"));
@@ -80,11 +90,15 @@ public final class ConcentrationReader {
             };
             if (kind == null) continue;
 
-            String party = null;
-            for (Map.Entry<String, String> member : context.members().entrySet()) {
-                if (!member.getKey().equals(TYPE_AXIS) && !member.getKey().equals(BENCHMARK_AXIS)) {
-                    party = member.getValue();
-                    break;
+            // The party is on the customers axis if the context has one, else on the first other axis in the file's
+            // order (the members are kept in document order), never chosen by chance.
+            String party = context.members().get(PARTY_AXIS);
+            if (party == null) {
+                for (Map.Entry<String, String> member : context.members().entrySet()) {
+                    if (!member.getKey().equals(TYPE_AXIS) && !member.getKey().equals(BENCHMARK_AXIS)) {
+                        party = member.getValue();
+                        break;
+                    }
                 }
             }
             if (party == null) continue;
@@ -93,14 +107,20 @@ public final class ConcentrationReader {
             if (share == null) continue;
 
             String label = labelOf.getOrDefault(localName(party), splitAtCapitals(party));
-            figures.add(new Figure(label, !UNNAMED.matcher(label).find(), kind,
-                    measureOf(context.members().get(BENCHMARK_AXIS)), share, context.start(), context.end()));
+            if (label.length() > MAX_LABEL) label = label.substring(0, MAX_LABEL).trim();
+            ConcentrationMeasure measure = measureOf(context.members().get(BENCHMARK_AXIS));
+            if (!seen.add(String.join("|", label, kind.name(), measure.name(), String.valueOf(context.start()),
+                    String.valueOf(context.end())))) {
+                continue;
+            }
+            figures.add(new Figure(label, !UNNAMED.matcher(label).find(), kind, measure, share, context.start(),
+                    context.end()));
         }
         return figures;
     }
 
     private static Context readContext(Element context) {
-        Map<String, String> members = new HashMap<>();
+        Map<String, String> members = new LinkedHashMap<>();
         for (Element member : descendants(context, XBRLDI, "explicitMember")) {
             members.putIfAbsent(localName(member.getAttribute("dimension")), member.getTextContent().trim());
         }
