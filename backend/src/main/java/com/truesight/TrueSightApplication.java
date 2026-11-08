@@ -3,6 +3,7 @@ package com.truesight;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Where the backend starts. Running this starts a web server on port 8080 (or $PORT), connects to the database,
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @SpringBootApplication
 @EnableAsync
+@EnableScheduling
 public class TrueSightApplication {
 
     public static void main(String[] args) {

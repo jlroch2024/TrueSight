@@ -3,6 +3,7 @@ package com.truesight.report;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.company.ReportStatus;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.news.NewsCheckService;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
@@ -49,27 +50,35 @@ public class SupplierReader {
     private final CompanyRepository companies;
     private final ReportRepository reports;
     private final ReportReader reportReader;
+    private final WorkerHeartbeat heartbeat;
 
     public SupplierReader(HoldingRepository holdings, RelationshipRepository relationships,
-                          CompanyRepository companies, ReportRepository reports, ReportReader reportReader) {
+                          CompanyRepository companies, ReportRepository reports, ReportReader reportReader,
+                          WorkerHeartbeat heartbeat) {
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
         this.reports = reports;
         this.reportReader = reportReader;
+        this.heartbeat = heartbeat;
     }
 
     /**
      * Sets the suppliers of a holding's company to Waiting, leaving out every supplier that is never read again (see
-     * the class).
+     * the class), and records this server as their owner. Returns the ids it set Waiting.
      */
     @Transactional
-    public void queue(Long holdingCompanyId) {
-        companies.findAllById(suppliersOf(List.of(holdingCompanyId))).stream()
+    public List<Long> queue(Long holdingCompanyId) {
+        List<Company> queued = companies.findAllById(suppliersOf(List.of(holdingCompanyId))).stream()
                 .filter(company -> company.getReportStatus() == null)
                 .filter(company -> reports.findLatestIdByCompanyId(company.getId()).isEmpty())
                 .filter(company -> !holdings.existsByCompanyId(company.getId()))
-                .forEach(company -> record(company, ReportStatus.WAITING, null));
+                .toList();
+        queued.forEach(company -> {
+            record(company, ReportStatus.WAITING, null);
+            company.setReportWorkerId(heartbeat.id());
+        });
+        return queued.stream().map(Company::getId).toList();
     }
 
     /**
@@ -100,6 +109,7 @@ public class SupplierReader {
         if (supplier == null || supplier.getReportStatus() != ReportStatus.WAITING) {
             return;
         }
+        supplier.setReportWorkerId(heartbeat.id());
         try {
             Company filer = supplier.getTicker() == null ? null : reportReader.companyFor(supplier.getTicker());
             if (filer == null || !reportReader.read(filer)) {

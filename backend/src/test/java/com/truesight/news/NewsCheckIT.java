@@ -1,5 +1,6 @@
 package com.truesight.news;
 
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
@@ -81,6 +82,7 @@ class NewsCheckIT {
             + "Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor "
             + "wafers.";
 
+    @Autowired WorkerHeartbeat heartbeat;
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
     @Autowired PortfolioRepository portfolios;
@@ -236,6 +238,8 @@ class NewsCheckIT {
         Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
         Portfolio portfolio = analysedPortfolio(email, tsmc);
         portfolio.setNewsStatus(NewsStatus.CHECKING);
+        // Running on this server, so it is not taken for a check a restart interrupted.
+        portfolio.setNewsWorkerId(heartbeat.id());
         portfolios.saveAndFlush(portfolio);
 
         mockMvc.perform(post("/api/portfolios/{id}/news-check", portfolio.getId())

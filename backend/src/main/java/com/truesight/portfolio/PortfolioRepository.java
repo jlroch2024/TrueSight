@@ -2,12 +2,15 @@ package com.truesight.portfolio;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Reads and saves portfolios.
@@ -26,4 +29,27 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
     Optional<Portfolio> findForUpdateByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
     boolean existsByUserIdAndName(Long userId, String name);
+
+    /**
+     * Marks every portfolio whose news check was interrupted (on Checking, its server gone: see
+     * {@link HoldingRepository#failInterrupted}) Failed, with {@code reason}. Returns how many it changed.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Portfolio portfolio set portfolio.newsStatus = com.truesight.portfolio.NewsStatus.FAILED, "
+            + "portfolio.newsStatusReason = :reason "
+            + "where portfolio.newsStatus = com.truesight.portfolio.NewsStatus.CHECKING "
+            + "and (portfolio.newsWorkerId is null or (portfolio.newsWorkerId <> :self and portfolio.newsWorkerId not in "
+            + "(select worker.id from Worker worker where worker.lastSeenAt > :cutoff)))")
+    int failInterruptedChecks(@Param("reason") String reason, @Param("self") UUID self,
+                              @Param("cutoff") Instant cutoff);
+
+    /** {@link #failInterruptedChecks} for one portfolio. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Portfolio portfolio set portfolio.newsStatus = com.truesight.portfolio.NewsStatus.FAILED, "
+            + "portfolio.newsStatusReason = :reason "
+            + "where portfolio.newsStatus = com.truesight.portfolio.NewsStatus.CHECKING and portfolio.id = :portfolioId "
+            + "and (portfolio.newsWorkerId is null or (portfolio.newsWorkerId <> :self and portfolio.newsWorkerId not in "
+            + "(select worker.id from Worker worker where worker.lastSeenAt > :cutoff)))")
+    int failInterruptedCheckOf(@Param("portfolioId") Long portfolioId, @Param("reason") String reason,
+                               @Param("self") UUID self, @Param("cutoff") Instant cutoff);
 }

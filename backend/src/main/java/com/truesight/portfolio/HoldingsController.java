@@ -30,6 +30,9 @@ public class HoldingsController {
     public void analyze(@PathVariable Long portfolioId) {
         List<Long> queued = analysis.start(portfolioId);
         if (!queued.isEmpty()) job.run(queued);
+        // Also when nothing is queued: a Done holding may have a supplier its restarted server never read.
+        List<Long> unreadSuppliers = analysis.restartSuppliers(portfolioId, queued);
+        if (!unreadSuppliers.isEmpty()) job.runSuppliers(unreadSuppliers);
     }
 
 }

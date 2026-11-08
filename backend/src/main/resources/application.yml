@@ -39,6 +39,10 @@ springdoc:
 # TrueSight's own settings, read by the stories that need them. The names match .env.example.
 truesight:
   jwt-secret: ${JWT_SECRET:}
+  work:
+    # Each server renews its workers row every 30 seconds and looks for interrupted work every minute. Set to false
+    # in tests that must not have either running.
+    scheduled: ${WORK_SCHEDULED:true}
   analysis:
     # Maximum holdings analysed at once; Gemini's default request budget supports four parallel reports.
     parallel: ${ANALYSIS_PARALLEL:4}
