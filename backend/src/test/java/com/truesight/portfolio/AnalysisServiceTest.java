@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.ai.AiCall;
 import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
@@ -8,6 +9,7 @@ import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.ReportReading;
 import com.truesight.report.Report;
 import com.truesight.report.ReportReader;
 import com.truesight.report.ReportRepository;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -40,7 +43,7 @@ class AnalysisServiceTest {
         SecClient sec = mock(SecClient.class);
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
-                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
+                new ReportReading(aiCalls, relationships), new ReportReader(sec, companies, reports, relationshipFinder),
                 mock(SupplierReader.class));
 
         Holding holding = new Holding(7L, "ASML", BigDecimal.TEN);
@@ -85,54 +88,114 @@ class AnalysisServiceTest {
         AiCallRepository aiCalls = mock(AiCallRepository.class);
         SecClient sec = mock(SecClient.class);
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
+        ReportReading reading = mock(ReportReading.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
-                relationships, aiCalls, new ReportReader(sec, companies, reports, relationshipFinder),
-                mock(SupplierReader.class));
+                reading, new ReportReader(sec, companies, reports, relationshipFinder), mock(SupplierReader.class));
 
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
-        Holding retryable = new Holding(7L, "NVDA", BigDecimal.TEN);
-        retryable.setCompanyId(101L);
-        retryable.setStatus(HoldingStatus.DONE);
-        ReflectionTestUtils.setField(retryable, "id", 1L);
-        Holding alreadyAnswered = new Holding(7L, "ASML", BigDecimal.TEN);
-        alreadyAnswered.setCompanyId(102L);
-        alreadyAnswered.setStatus(HoldingStatus.DONE);
-        ReflectionTestUtils.setField(alreadyAnswered, "id", 2L);
-        Holding legacyText = new Holding(7L, "ASML", BigDecimal.TEN);
-        legacyText.setCompanyId(103L);
-        legacyText.setStatus(HoldingStatus.DONE);
-        ReflectionTestUtils.setField(legacyText, "id", 3L);
-        when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(retryable, alreadyAnswered, legacyText));
+        Holding retryable = done(1L, "NVDA", 101L);
+        Holding alreadyRead = done(2L, "ASML", 102L);
+        Holding legacyText = done(3L, "ASML", 103L);
+        when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(retryable, alreadyRead, legacyText));
 
-        Report incompleteReport = report(101L, 501L);
-        Report completedReport = report(102L, 502L);
+        Report readFromTooLittle = report(101L, 501L);
+        Report readInFull = report(102L, 502L);
         Report legacyReport = report(103L, 503L);
         legacyReport.setText(legacyAsmlText());
-        when(reports.findFirstByCompanyIdOrderByFilingDateDesc(101L)).thenReturn(Optional.of(incompleteReport));
-        when(reports.findFirstByCompanyIdOrderByFilingDateDesc(102L)).thenReturn(Optional.of(completedReport));
+        when(reports.findFirstByCompanyIdOrderByFilingDateDesc(101L)).thenReturn(Optional.of(readFromTooLittle));
+        when(reports.findFirstByCompanyIdOrderByFilingDateDesc(102L)).thenReturn(Optional.of(readInFull));
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(103L)).thenReturn(Optional.of(legacyReport));
-        when(relationships.existsByReportId(501L)).thenReturn(false);
-        when(relationships.existsByReportId(502L)).thenReturn(false);
-        when(relationships.existsByReportId(503L)).thenReturn(false);
-        when(aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(501L, AiPurpose.FIND_RELATIONSHIPS,
-                AiOutcome.ANSWERED)).thenReturn(false);
-        when(aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(502L, AiPurpose.FIND_RELATIONSHIPS,
-                AiOutcome.ANSWERED)).thenReturn(true);
-        when(aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(503L, AiPurpose.FIND_RELATIONSHIPS,
-                AiOutcome.ANSWERED)).thenReturn(true);
+        when(reading.readFromItsFullText(readFromTooLittle)).thenReturn(false);
+        when(reading.readFromItsFullText(readInFull)).thenReturn(true);
 
         assertThat(service.start(7L)).containsExactly(1L, 3L);
         assertThat(retryable.getStatus()).isEqualTo(HoldingStatus.ANALYSING);
-        assertThat(alreadyAnswered.getStatus()).isEqualTo(HoldingStatus.DONE);
+        assertThat(alreadyRead.getStatus()).isEqualTo(HoldingStatus.DONE);
         assertThat(legacyText.getStatus()).isEqualTo(HoldingStatus.ANALYSING);
         verify(holdings).saveAll(List.of(retryable, legacyText));
-        verify(aiCalls).existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(501L, AiPurpose.FIND_RELATIONSHIPS,
-                AiOutcome.ANSWERED);
-        verify(aiCalls).existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(502L, AiPurpose.FIND_RELATIONSHIPS,
-                AiOutcome.ANSWERED);
-        verify(aiCalls, never()).existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(503L, AiPurpose.FIND_RELATIONSHIPS,
-                AiOutcome.ANSWERED);
+        verify(reading, never()).readFromItsFullText(legacyReport);
+    }
+
+    // ---- TS-229: a report read from too little text is read again, once ------------------------------------------
+
+    @Test
+    void aDoneHoldingWhoseReportHasRelationshipsButWasReadFromAContentsPageIsAnalysedAgain() {
+        Fixture fixture = new Fixture();
+        Report report = fixture.reportWithText(601L, "10-K", "Item 1. Business\n" + "Our supplier is Example.\n".repeat(400));
+        when(fixture.relationships.existsByReportId(601L)).thenReturn(true);
+        fixture.answered(601L, "TEXT:\n" + "[report 601: 107 characters]");
+
+        assertThat(fixture.service.start(7L)).containsExactly(1L);
+    }
+
+    @Test
+    void aDoneHoldingWhoseReportWasReadFromItsFullTextIsNeverAskedAgainEvenIfItFoundNothing() {
+        Fixture fixture = new Fixture();
+        String text = "Our supplier is Example.\n".repeat(400);
+        Report report = fixture.reportWithText(602L, "10-K", text);
+        when(fixture.relationships.existsByReportId(602L)).thenReturn(false);
+        int today = com.truesight.relationship.ReportSection.forAi("10-K", text).length();
+        fixture.answered(602L, "TEXT:\n" + "[report 602: " + (today / 2) + " characters]");
+
+        assertThat(fixture.service.start(7L)).isEmpty();
+    }
+
+    @Test
+    void aCallWithNoMarkerCountsAsNotReadAndAReportWithRelationshipsButNoCallAtAllIsLeftAsItIs() {
+        Fixture withoutMarker = new Fixture();
+        withoutMarker.reportWithText(603L, "10-K", "Our supplier is Example.");
+        withoutMarker.answered(603L, "A prompt recorded before markers.");
+        assertThat(withoutMarker.service.start(7L)).containsExactly(1L);
+
+        Fixture beforeCallsWereRecorded = new Fixture();
+        beforeCallsWereRecorded.reportWithText(604L, "10-K", "Our supplier is Example.");
+        when(beforeCallsWereRecorded.relationships.existsByReportId(604L)).thenReturn(true);
+        assertThat(beforeCallsWereRecorded.service.start(7L)).isEmpty();
+    }
+
+    /** One Done holding (id 1, company 101) in portfolio 7, with the real ReportReading over mocked repositories. */
+    private static final class Fixture {
+        final HoldingRepository holdings = mock(HoldingRepository.class);
+        final ReportRepository reports = mock(ReportRepository.class);
+        final RelationshipRepository relationships = mock(RelationshipRepository.class);
+        final AiCallRepository aiCalls = mock(AiCallRepository.class);
+        final AnalysisService service;
+
+        Fixture() {
+            PortfolioRepository portfolios = mock(PortfolioRepository.class);
+            CurrentUser currentUser = mock(CurrentUser.class);
+            when(currentUser.id()).thenReturn(41L);
+            when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
+            when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(done(1L, "CRUS", 101L)));
+            service = new AnalysisService(portfolios, holdings, currentUser, mock(CompanyRepository.class), reports,
+                    new ReportReading(aiCalls, relationships), mock(ReportReader.class), mock(SupplierReader.class));
+        }
+
+        Report reportWithText(Long id, String form, String text) {
+            Report report = new Report(101L, form, "test-" + id, LocalDate.parse("2026-02-25"),
+                    "https://www.sec.gov/example", text);
+            ReflectionTestUtils.setField(report, "id", id);
+            when(reports.findFirstByCompanyIdOrderByFilingDateDesc(101L)).thenReturn(Optional.of(report));
+            return report;
+        }
+
+        void answered(Long reportId, String recordedPrompt) {
+            AiCall call = new AiCall(AiPurpose.FIND_RELATIONSHIPS, "gemini", recordedPrompt, reportId, "[]",
+                    AiOutcome.ANSWERED, null, Instant.now(), 10);
+            call.setKept(0);
+            when(aiCalls.findByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(reportId, AiPurpose.FIND_RELATIONSHIPS,
+                    AiOutcome.ANSWERED)).thenReturn(List.of(call));
+            when(aiCalls.existsByReportIdAndPurpose(reportId, AiPurpose.FIND_RELATIONSHIPS)).thenReturn(true);
+        }
+    }
+
+    private static Holding done(Long id, String ticker, Long companyId) {
+        Holding holding = new Holding(7L, ticker, BigDecimal.TEN);
+        holding.setCompanyId(companyId);
+        holding.setStatus(HoldingStatus.DONE);
+        ReflectionTestUtils.setField(holding, "id", id);
+        return holding;
     }
 
     private static Report report(Long companyId, Long id) {

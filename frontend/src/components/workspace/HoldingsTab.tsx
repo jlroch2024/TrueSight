@@ -202,7 +202,7 @@ function LinkLines({ suppliers, customers }: { suppliers: number; customers: num
   if (suppliers === 0 && customers === 0) {
     return (
       <span className="link-lines">
-        <span className="link-line faint">Nothing Found</span>
+        <span className="link-line faint">None Named in Report</span>
       </span>
     );
   }
@@ -260,7 +260,8 @@ export function HoldingRow({
   }, [holding.status]);
   const working = holding.status === 'ANALYSING';
   const done = holding.status === 'DONE';
-  const subKey = done && links ? 'links' : holding.status;
+  // A Done holding with no suppliers or customers has no links on the graph, so it says so plainly.
+  const subKey = done ? 'links' : holding.status;
 
   return (
     <motion.button
@@ -308,7 +309,7 @@ export function HoldingRow({
       </span>
       <span className="h-links">
         <AnimatePresence initial={false}>
-          {subKey === 'links' && links && (
+          {subKey === 'links' && (
             <motion.span
               key="links"
               className="h-sub-item"
@@ -317,7 +318,7 @@ export function HoldingRow({
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: 'spring', stiffness: 420, damping: 34 }}
             >
-              <LinkLines suppliers={links.suppliers.length} customers={links.customers.length} />
+              <LinkLines suppliers={links?.suppliers.length ?? 0} customers={links?.customers.length ?? 0} />
             </motion.span>
           )}
         </AnimatePresence>

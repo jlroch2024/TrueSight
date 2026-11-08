@@ -36,8 +36,10 @@ import java.util.Set;
  * <p>The second check ({@link SecondCheck}, a second AI agreeing or doubting each one) is not made here: AnalysisJob
  * makes it once the holding is Done, so it never holds the holding up.
  *
- * <p>Reports are public, so a report that already has relationships or a completed relationship-finding answer is
- * never sent to the AI again, whichever portfolio asks.
+ * <p>Reports are public, so a report read from its full text ({@link ReportReading}) is never sent to the AI again,
+ * whichever portfolio asks, whether or not it found anything. One read from too little text is read again once, and
+ * that only adds: a relationship the report already has, with the same counterparty and type, is not saved twice, so
+ * analysts' reviews stand.
  *
  * <p>Each call is recorded in the AI Audit Trail with the report's text replaced by a marker, and with how many quotes
  * were kept and how many dropped because they were not in the report.
@@ -83,10 +85,11 @@ public class RelationshipFinder {
     private final AiCallRepository aiCalls;
     private final AiCallLog calls;
     private final PastRelationshipRepository pastRelationships;
+    private final ReportReading reading;
 
     public RelationshipFinder(GeminiClient gemini, GeminiAnswer answers, CompanyDirectory companies,
                               RelationshipRepository relationships, AiCallRepository aiCalls, AiCallLog calls,
-                              PastRelationshipRepository pastRelationships) {
+                              PastRelationshipRepository pastRelationships, ReportReading reading) {
         this.gemini = gemini;
         this.answers = answers;
         this.companies = companies;
@@ -94,11 +97,12 @@ public class RelationshipFinder {
         this.aiCalls = aiCalls;
         this.calls = calls;
         this.pastRelationships = pastRelationships;
+        this.reading = reading;
     }
 
     /**
      * Finds and saves the relationships in {@code report}, which is {@code company}'s. Does nothing if the report has
-     * been analysed already.
+     * been read from its full text already.
      *
      * @throws GeminiClient.GeminiException if the AI fails; its message is the reason to show on the holding
      */
@@ -111,11 +115,13 @@ public class RelationshipFinder {
     /** Reassesses once when the saved report text was refreshed from its SEC filing. */
     @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
     public void findIn(Report report, Company company, boolean textWasRefreshed) {
-        if (relationships.existsByReportId(report.getId()) || (!textWasRefreshed
-                && aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
-                report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED))) {
+        if (!textWasRefreshed && reading.readFromItsFullText(report)) {
             return;
         }
+        // Reading a report again only adds: the counterparties and types it already has are skipped.
+        Set<String> existing = new HashSet<>();
+        relationships.findByReportIdOrderByIdAsc(report.getId())
+                .forEach(saved -> existing.add(saved.getCounterpartyId() + " " + saved.getType()));
         String section = ReportSection.forAi(report.getForm(), report.getText());
         AiRequest request = new AiRequest(AiPurpose.FIND_RELATIONSHIPS,
                 PROMPT.formatted(company.getName(), report.getForm(), section), report.getId(),
@@ -127,6 +133,7 @@ public class RelationshipFinder {
         List<Relationship> proven = new ArrayList<>();
         for (Provable found : proof.proven()) {
             GeminiAnswer.Found item = found.item();
+            if (!existing.add(found.counterparty().getId() + " " + item.relationship())) continue;
             Relationship relationship = new Relationship(report.getId(), company.getId(), found.counterparty().getId(),
                     item.relationship(), item.provides().isEmpty() ? null : cut(item.provides(), MAX_PROVIDES),
                     found.match().evidence());

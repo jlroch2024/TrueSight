@@ -20,6 +20,12 @@ public interface AiCallRepository extends JpaRepository<AiCall, Long>, JpaSpecif
     boolean existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
             Long reportId, AiPurpose purpose, AiOutcome outcome);
 
+    /** The completed calls of this purpose for a report: what ReportReading reads their markers from. */
+    List<AiCall> findByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(Long reportId, AiPurpose purpose, AiOutcome outcome);
+
+    /** Whether any call of this purpose was ever recorded for the report, answered or not. */
+    boolean existsByReportIdAndPurpose(Long reportId, AiPurpose purpose);
+
     /** True when an answered call for this report used a prompt that contains the given text. */
     boolean existsByReportIdAndPurposeAndOutcomeAndPromptContaining(
             Long reportId, AiPurpose purpose, AiOutcome outcome, String promptText);

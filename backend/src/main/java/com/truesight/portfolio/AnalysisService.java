@@ -1,13 +1,10 @@
 package com.truesight.portfolio;
 
 import com.truesight.common.ApiException;
-import com.truesight.ai.AiCallRepository;
-import com.truesight.ai.AiOutcome;
-import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
-import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.ReportReading;
 import com.truesight.report.Report;
 import com.truesight.report.ReportReader;
 import com.truesight.report.ReportRepository;
@@ -28,22 +25,19 @@ public class AnalysisService {
     private final CurrentUser currentUser;
     private final CompanyRepository companyRepository;
     private final ReportRepository reports;
-    private final RelationshipRepository relationships;
-    private final AiCallRepository aiCalls;
+    private final ReportReading reading;
     private final ReportReader reportReader;
     private final SupplierReader suppliers;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyRepository companyRepository, ReportRepository reports,
-                          RelationshipRepository relationships, AiCallRepository aiCalls, ReportReader reportReader,
-                          SupplierReader suppliers) {
+                          ReportReading reading, ReportReader reportReader, SupplierReader suppliers) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
         this.companyRepository = companyRepository;
         this.reports = reports;
-        this.relationships = relationships;
-        this.aiCalls = aiCalls;
+        this.reading = reading;
         this.reportReader = reportReader;
         this.suppliers = suppliers;
     }
@@ -52,9 +46,9 @@ public class AnalysisService {
      * Starts analysing the portfolio's holdings that are Waiting, and tries again those that Failed: a failure is
      * usually the SEC or the AI being briefly unreachable, so pressing Analyse again should retry it rather than
      * leave the portfolio stuck. Holdings already Done or with No Report Found are left alone. Refused only while an
-     * analysis is already running for this portfolio. A completed holding with no saved relationships is retried only
-     * when its latest report has no completed relationship-finding answer, or its text matches the legacy extraction
-     * format and can be refreshed from the saved SEC filing first.
+     * analysis is already running for this portfolio. A Done holding is analysed again when its latest report was not
+     * read from its full text ({@link ReportReading}), whether or not it found relationships, or its text matches the
+     * legacy extraction format and can be refreshed from the saved SEC filing first.
      */
     @Transactional
     public List<Long> start(Long portfolioId) {
@@ -77,10 +71,9 @@ public class AnalysisService {
     private boolean needsRelationshipAnalysis(Holding holding) {
         if (holding.getCompanyId() == null) return false;
         Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).orElse(null);
-        if (report == null || relationships.existsByReportId(report.getId())) return false;
+        if (report == null) return false;
         if (ReportTextExtractor.hasLegacyWrappedParagraphs(report.getText())) return true;
-        return !aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
-                report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED);
+        return !reading.readFromItsFullText(report);
     }
 
     @Transactional(readOnly = true)

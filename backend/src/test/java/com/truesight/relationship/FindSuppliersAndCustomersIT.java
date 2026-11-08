@@ -185,7 +185,7 @@ class FindSuppliersAndCustomersIT {
     }
 
     @Test
-    void onlyTheBusinessAndRiskSectionsAreSentToTheAi() throws Exception {
+    void theBusinessAndRiskSectionsAreSentWithSupplierAndCustomerParagraphsFromElsewhere() throws Exception {
         when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
         analyse("ai-sections@example.com", HoldingStatus.DONE);
 
@@ -194,10 +194,10 @@ class FindSuppliersAndCustomersIT {
         assertThat(prompt.getValue().prompt())
                 .startsWith("Below is part of NVIDIA Corporation's annual report (10-K).")
                 .contains("copied exactly from the text")
-                .contains("TEXT:\nItem 1. Business\nOur Company")
+                // TS-229: the section is sent whole, and the report's supplier and customer paragraphs outside it too.
+                .contains(ReportSection.section("10-K", Examples.nvidia10K()))
                 .contains("Item 1A. Risk Factors")
-                .doesNotContain("Item 2. Properties")
-                .doesNotContain("Item 5. Market for Registrant");
+                .endsWith(ReportSection.forAi("10-K", Examples.nvidia10K()));
     }
 
     @Test
@@ -311,6 +311,134 @@ class FindSuppliersAndCustomersIT {
     }
 
     /** Makes a portfolio holding NVIDIA, presses Analyse, and waits for the holding to reach {@code expected}. */
+    // ---- TS-229: a report read from too little text is read again, once --------------------------------------------
+
+    @Test
+    void aDoneHoldingWhoseReportWasReadFromUnderHalfTodaysTextIsAnalysedAtTheNextAnalyseAndAskedOnce() throws Exception {
+        recordsLikeGemini(Examples.geminiNvidia());
+        Report report = nvidiaReport();
+        // As Cirrus Logic and Qualcomm were: answered from 107 characters of contents page.
+        answeredFrom(report, 107, 0);
+        String email = "ai-read-again@example.com";
+        Portfolio portfolio = doneNvidiaPortfolio(email);
+
+        analyseAgain(portfolio, email);
+        awaitFindCalls(report, 2);
+        awaitRelationships(report, 7);
+        analyseAgain(portfolio, email);
+        Thread.sleep(300);
+
+        verify(gemini, times(1)).generate(org.mockito.ArgumentMatchers.argThat(
+                (AiRequest request) -> request != null && request.purpose() == AiPurpose.FIND_RELATIONSHIPS));
+        assertThat(relationships.findByReportIdOrderByIdAsc(report.getId())).hasSize(7);
+    }
+
+    @Test
+    void readingAgainSavesOnlyRelationshipsTheReportDoesNotHaveAndAnExistingOneKeepsItsReview() throws Exception {
+        recordsLikeGemini(Examples.geminiNvidia());
+        Report report = nvidiaReport();
+        Company nvidia = companies.findById(report.getCompanyId()).orElseThrow();
+        Company tsmc = companyDirectory.findOrCreate("Taiwan Semiconductor Manufacturing Company Limited", null, "TSM",
+                List.of());
+        Relationship reviewed = new Relationship(report.getId(), nvidia.getId(), tsmc.getId(), RelationshipType.SUPPLIER,
+                "semiconductor wafers", TSMC_SENTENCE);
+        reviewed.setReviewStatus(ReviewStatus.APPROVED);
+        reviewed = relationships.save(reviewed);
+        answeredFrom(report, 107, 1);
+        String email = "ai-read-again-adds@example.com";
+        Portfolio portfolio = doneNvidiaPortfolio(email);
+
+        analyseAgain(portfolio, email);
+        awaitFindCalls(report, 2);
+        awaitRelationships(report, 7);
+
+        List<Relationship> saved = relationships.findByReportIdOrderByIdAsc(report.getId());
+        assertThat(saved).hasSize(7);
+        assertThat(saved).filteredOn(r -> r.getCounterpartyId().equals(tsmc.getId())).singleElement()
+                .satisfies(r -> assertThat(r.getReviewStatus()).isEqualTo(ReviewStatus.APPROVED));
+        assertThat(saved.getFirst().getId()).isEqualTo(reviewed.getId());
+    }
+
+    @Test
+    void aReportReadFromItsFullTextIsNeverAskedAgainWhetherOrNotItFoundAnything() throws Exception {
+        Report report = nvidiaReport();
+        answeredFrom(report, ReportSection.forAi("10-K", report.getText()).length(), 0);
+        String email = "ai-read-in-full@example.com";
+        Portfolio portfolio = doneNvidiaPortfolio(email);
+
+        analyseAgain(portfolio, email);
+        Thread.sleep(300);
+
+        verify(gemini, never()).generate(any(AiRequest.class));
+        assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus())
+                .isEqualTo(HoldingStatus.DONE);
+    }
+
+    private Report nvidiaReport() {
+        Company nvidia = companies.findByCik(NVIDIA_CIK).orElseThrow();
+        return reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidia.getId()).orElseThrow();
+    }
+
+    /** A completed relationship-finding call for the report, recorded as it is today: with its marker. */
+    private void answeredFrom(Report report, int characters, int kept) {
+        String recorded = "Below is part of NVIDIA Corporation's annual report (10-K).\nTEXT:\n"
+                + "[report %d: %d characters]".formatted(report.getId(), characters);
+        Long callId = aiCalls.record(new AiRequest(AiPurpose.FIND_RELATIONSHIPS, recorded, report.getId(), recorded),
+                "gemini-test-model", "[]", AiOutcome.ANSWERED, null, Instant.now(), 1);
+        aiCalls.attachReport(callId, report.getId());
+        aiCalls.finish(callId, kept, 0);
+    }
+
+    /** A fake that records each call in the audit trail as GeminiClient does, with its marker, then answers. */
+    private void recordsLikeGemini(String text) {
+        when(gemini.generate(any(AiRequest.class))).thenAnswer(invocation -> {
+            AiRequest request = invocation.getArgument(0);
+            Long callId = aiCalls.record(request, "gemini-test-model", text, AiOutcome.ANSWERED, null, Instant.now(), 1);
+            aiCalls.attachReport(callId, request.reportId());
+            return new AiAnswer(text, callId);
+        });
+    }
+
+    private Portfolio doneNvidiaPortfolio(String email) {
+        Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "AI Test " + System.nanoTime()));
+        Holding holding = new Holding(portfolio.getId(), "NVDA", new BigDecimal("100"));
+        holding.setCompanyId(companies.findByCik(NVIDIA_CIK).orElseThrow().getId());
+        holding.setStatus(HoldingStatus.DONE);
+        holdings.save(holding);
+        return portfolio;
+    }
+
+    private void analyseAgain(Portfolio portfolio, String email) throws Exception {
+        for (int attempt = 0; attempt < 400; attempt++) {
+            if (holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus()
+                    != HoldingStatus.ANALYSING) break;
+            Thread.sleep(25);
+        }
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isAccepted());
+    }
+
+    private void awaitFindCalls(Report report, int count) throws InterruptedException {
+        for (int attempt = 0; attempt < 400; attempt++) {
+            if (findCalls(report) >= count) return;
+            Thread.sleep(25);
+        }
+        assertThat(findCalls(report)).isGreaterThanOrEqualTo(count);
+    }
+
+    private long findCalls(Report report) {
+        return aiCallRows.findByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(report.getId(),
+                AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED).size();
+    }
+
+    private void awaitRelationships(Report report, int count) throws InterruptedException {
+        for (int attempt = 0; attempt < 400; attempt++) {
+            if (relationships.findByReportIdOrderByIdAsc(report.getId()).size() >= count) return;
+            Thread.sleep(25);
+        }
+    }
+
     private Portfolio analyse(String email, HoldingStatus expected) throws Exception {
         Portfolio portfolio = portfolioWith(email);
         mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
