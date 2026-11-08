@@ -21,8 +21,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class NewsCheckJob {
 
-    /** The most articles kept from each source for a company in one check: its news, and its 8-Ks. */
-    static final int MOST_PER_SOURCE = 10;
+    /**
+     * The most articles kept for a holding or a direct supplier in one check, its 8-Ks and its news together. A busy
+     * company has far more than 10 headlines a day, and these are the companies that matter most.
+     */
+    static final int HEADLINES_FOR_HOLDINGS_AND_SUPPLIERS = 30;
+
+    /** The same for a company that is only a supplier's supplier. */
+    static final int HEADLINES_FOR_OTHERS = 10;
 
     private final NewsCheckService service;
     private final NewsClient news;
@@ -67,9 +73,9 @@ public class NewsCheckJob {
         try {
             NewsCheckService.NewsRounds rounds = service.roundsFor(portfolioId);
             Fetched total = new Fetched();
-            round(portfolioId, rounds.holdings(), FRESH, total);
-            round(portfolioId, rounds.suppliers(), FRESH, total);
-            round(portfolioId, rounds.suppliersSuppliers(), FRESH_FOR_SUPPLIERS_SUPPLIERS, total);
+            round(portfolioId, rounds.holdings(), FRESH, HEADLINES_FOR_HOLDINGS_AND_SUPPLIERS, total);
+            round(portfolioId, rounds.suppliers(), FRESH, HEADLINES_FOR_HOLDINGS_AND_SUPPLIERS, total);
+            round(portfolioId, rounds.suppliersSuppliers(), FRESH_FOR_SUPPLIERS_SUPPLIERS, HEADLINES_FOR_OTHERS, total);
             if (total.attempted > 0 && total.succeeded == 0) {
                 service.fail(portfolioId, NewsClient.UNREACHABLE);
                 return;
@@ -93,10 +99,12 @@ public class NewsCheckJob {
     }
 
     /**
-     * Fetches one round's companies, unless they were fetched within {@code fresh}, then has the steps judge the
-     * headlines and build the alerts. A round whose every fetch failed has nothing new for the steps.
+     * Fetches one round's companies, unless they were fetched within {@code fresh}, keeping at most {@code headlines}
+     * articles each, then has the steps judge the headlines and build the alerts. A round whose every fetch failed has
+     * nothing new for the steps.
      */
-    private void round(Long portfolioId, List<NewsCheckService.NewsCompany> companies, Duration fresh, Fetched total) {
+    private void round(Long portfolioId, List<NewsCheckService.NewsCompany> companies, Duration fresh, int headlines,
+                       Fetched total) {
         if (companies.isEmpty()) return;
         int attempted = 0;
         int succeeded = 0;
@@ -107,9 +115,10 @@ public class NewsCheckJob {
                 attempted++;
                 String searchName = NewsSearchName.of(company.name());
                 try {
-                    // Each source keeps its own 10, so a busy week of headlines never crowds out a company's own 8-Ks.
-                    List<NewsItem> recent = new ArrayList<>(newestRecentItems(news.search(searchName), now));
-                    recent.addAll(currentReports(company, now));
+                    // The company's own 8-Ks are kept first, so a busy week of headlines never crowds them out, and
+                    // its news fills the rest of the limit.
+                    List<NewsItem> recent = new ArrayList<>(currentReports(company, now, headlines));
+                    recent.addAll(newestRecentItems(news.search(searchName), now, headlines - recent.size()));
                     service.save(company.id(), recent, now);
                     succeeded++;
                 } catch (NewsClient.NewsAccessException ignored) {
@@ -139,25 +148,25 @@ public class NewsCheckJob {
         return prefix + names + suffix;
     }
 
-    private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now) {
+    private List<NewsItem> newestRecentItems(List<NewsItem> items, Instant now, int limit) {
         Instant oldest = now.minus(Duration.ofDays(7));
         Set<String> urls = new HashSet<>();
         return items.stream()
                 .filter(item -> !item.publishedAt().isBefore(oldest) && !item.publishedAt().isAfter(now))
                 .sorted(Comparator.comparing(NewsItem::publishedAt).reversed())
                 .filter(item -> urls.add(item.url()))
-                .limit(MOST_PER_SOURCE)
+                .limit(Math.max(0, limit))
                 .toList();
     }
 
     /**
      * A company's 8-Ks that report one of the nine items, as articles: by the same rules as news (the last 7 days,
-     * newest first, at most 10), and only those not already saved, so none is downloaded twice. They have a limit of
-     * their own, not shared with the news, so every one chosen here is saved and never downloaded again. None for a
+     * newest first, at most {@code limit}), and only those not already saved, so none is downloaded twice. They are
+     * taken before the news, so every one chosen here is saved and never downloaded again. None for a
      * company without an SEC number, or when the SEC cannot be reached: its Google News is still saved, and its 8-Ks
      * are read on its next check.
      */
-    private List<NewsItem> currentReports(NewsCheckService.NewsCompany company, Instant now) {
+    private List<NewsItem> currentReports(NewsCheckService.NewsCompany company, Instant now, int limit) {
         if (!company.hasSecNumber()) return List.of();
         List<SecClient.SecCurrentReport> filings;
         try {
@@ -169,7 +178,7 @@ public class NewsCheckJob {
         return CurrentReports.kept(filings).stream()
                 .filter(filing -> !filing.acceptedAt().isBefore(oldest) && !filing.acceptedAt().isAfter(now))
                 .sorted(Comparator.comparing(SecClient.SecCurrentReport::acceptedAt).reversed())
-                .limit(MOST_PER_SOURCE)
+                .limit(limit)
                 .filter(filing -> !service.isSaved(company.id(), filing.url()))
                 .map(filing -> CurrentReports.newsItem(company.name(), filing, download(filing.url())))
                 .toList();

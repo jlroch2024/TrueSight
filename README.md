@@ -37,6 +37,20 @@ What you see is always the company's own sentence, never the model's. This is th
   <tr><td><strong>Correct the AI</strong></td><td>Analysts approve or reject each finding on the Analyst Desk, for every user</td></tr>
 </table>
 
+## How Much of a Busy Day Is Read
+
+A holding and its direct suppliers keep their newest 30 headlines a check (8-Ks first), a supplier's supplier its
+newest 10. Checked by hand on Google News on 8 November 2026 (a Sunday, so a quiet day), with the search names
+TrueSight now uses:
+
+| Company | Headlines in the last 24 hours | Read before (10) | Read now (30) |
+|---|---|---|---|
+| Samsung Electronics | 19 | 53% | 100% |
+| Tesla | 18 | 56% | 100% |
+| Micron Technology | 4 | 100% | 100% |
+| Taiwan Semiconductor Manufacturing | 5 | 100% | 100% |
+| NVIDIA | 17 | 59% | 100% |
+
 ## Built With
 
 Spring Boot · Java 21 · PostgreSQL · React · TypeScript · d3-force · Gemini · SEC EDGAR · Google Cloud Run
