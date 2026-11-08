@@ -85,7 +85,6 @@ public class AnalysisService {
         return toAnalyse.stream().map(Holding::getId).toList();
     }
 
-    /** A Done holding whose report's dependency figures were never read: its next Analyse reads only those. */
     /**
      * Sets Waiting the unread suppliers of the portfolio's Done holdings that are not being analysed now (those are
      * queued with their holding's own analysis), and returns their company ids: a supplier whose server stopped
@@ -103,6 +102,7 @@ public class AnalysisService {
                 .toList();
     }
 
+    /** A Done holding whose report's dependency figures were never read: its next Analyse reads only those. */
     private boolean needsFigures(Holding holding) {
         if (holding.getCompanyId() == null) return false;
         return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId())

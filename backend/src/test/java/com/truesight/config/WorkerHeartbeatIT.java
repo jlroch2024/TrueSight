@@ -2,9 +2,9 @@ package com.truesight.config;
 
 import com.truesight.support.IntegrationTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.TestPropertySource;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -14,22 +14,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * A running server keeps its workers row less than a minute old, and rows older than a day are removed. The test
- * profile turns the schedule off for every other test; here it is on.
+ * profile turns the schedule off for every test, so this one makes its own heartbeat with the schedule on and calls
+ * {@code beat()} itself. It does not change a setting: that would start a second Spring context that stays alive for the
+ * rest of the run, whose every-minute recovery would see the other tests' work as belonging to a server that has gone.
  */
 @IntegrationTest
-@TestPropertySource(properties = "truesight.work.scheduled=true")
 class WorkerHeartbeatIT {
 
-    @Autowired WorkerHeartbeat heartbeat;
     @Autowired WorkerRepository workers;
+
+    private WorkerHeartbeat heartbeat;
 
     private UUID oldRow;
     private UUID recentRow;
+
+    @BeforeEach
+    void aHeartbeatWithTheScheduleOn() {
+        heartbeat = new WorkerHeartbeat(workers, true);
+    }
 
     @AfterEach
     void removeWhatTheTestSaved() {
         if (oldRow != null) workers.deleteById(oldRow);
         if (recentRow != null) workers.deleteById(recentRow);
+        workers.deleteById(heartbeat.id());
     }
 
     @Test
