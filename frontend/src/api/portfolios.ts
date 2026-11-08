@@ -15,6 +15,8 @@ export type Portfolio = {
 export const portfolioApi = {
   list: () => api<Portfolio[]>('/portfolios'),
   create: (name: string) => api<Portfolio>('/portfolios', { method: 'POST', body: JSON.stringify({ name }) }),
+  // Creates "Sample Portfolio" with the ten sample holdings and starts their analysis.
+  createSample: () => api<Portfolio>('/portfolios/sample', { method: 'POST' }),
   rename: (id: number, name: string) =>
     api<Portfolio>(`/portfolios/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   remove: (id: number) => api(`/portfolios/${id}`, { method: 'DELETE' }),

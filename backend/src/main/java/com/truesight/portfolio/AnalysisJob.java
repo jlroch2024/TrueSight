@@ -2,6 +2,7 @@ package com.truesight.portfolio;
 
 import com.truesight.relationship.HighlightJob;
 import com.truesight.relationship.SecondCheckPassService;
+import com.truesight.report.FigureService;
 import com.truesight.report.SupplierReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,17 +30,19 @@ public class AnalysisJob {
     private final Executor analysisExecutor;
     private final HighlightJob highlights;
     private final SupplierReader suppliers;
+    private final FigureService figures;
     private final ConcurrentHashMap<String, Object> companyLocks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Object> reportLocks = new ConcurrentHashMap<>();
 
     public AnalysisJob(AnalysisService analysis, SecondCheckPassService secondChecks,
                        @Qualifier("analysisExecutor") Executor analysisExecutor,
-                       HighlightJob highlights, SupplierReader suppliers) {
+                       HighlightJob highlights, SupplierReader suppliers, FigureService figures) {
         this.analysis = analysis;
         this.secondChecks = secondChecks;
         this.analysisExecutor = analysisExecutor;
         this.highlights = highlights;
         this.suppliers = suppliers;
+        this.figures = figures;
     }
 
     @Async
@@ -48,6 +51,12 @@ public class AnalysisJob {
                 .map(holdingId -> CompletableFuture.runAsync(() -> analyze(holdingId), analysisExecutor))
                 .toArray(CompletableFuture[]::new);
         CompletableFuture.allOf(tasks).join();
+    }
+
+    /** Reads these suppliers, whose server stopped before they were read (see {@link AnalysisService#restartSuppliers}). */
+    @Async
+    public void runSuppliers(List<Long> companyIds) {
+        readSuppliers(companyIds);
     }
 
     private void analyze(Long holdingId) {
@@ -62,6 +71,10 @@ public class AnalysisJob {
         if (!waiting.isEmpty()) {
             analysisExecutor.execute(() -> readSuppliers(waiting));
         }
+        // The holding's dependency figures, once the work queued above is started. The holding's own transaction has
+        // committed, and the figures have one of their own: a failure here loses only the figures.
+        Long companyId = analysis.companyIdFor(holdingId);
+        if (companyId != null) figures.readLatestOf(companyId);
         // analysis.analyze has committed the holding as Done (or not), so the holding no longer waits for the second
         // check. The check still runs on this analysis worker, so while every worker is busy a holding that has not
         // started yet starts a little later; there is no ordering between that and a second check.
@@ -94,6 +107,7 @@ public class AnalysisJob {
             synchronized (lockFor(ticker == null ? "company-" + companyId : ticker)) {
                 try {
                     suppliers.read(companyId);
+                    figures.readLatestOf(companyId);
                 } catch (RuntimeException exception) {
                     log.warn("Reading supplier {}'s annual report failed.", companyId, exception);
                     suppliers.fail(companyId);

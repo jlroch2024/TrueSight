@@ -1,0 +1,4 @@
+truesight:
+  work:
+    # Tests that need the heartbeat or the every-minute recovery turn it on with @TestPropertySource.
+    scheduled: false

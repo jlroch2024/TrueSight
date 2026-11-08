@@ -9,6 +9,8 @@ import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
+import com.truesight.config.WorkRecovery;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.relationship.ReportReading;
 import com.truesight.report.Report;
 import com.truesight.report.ReportReader;
@@ -44,7 +46,7 @@ class AnalysisServiceTest {
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
                 new ReportReading(aiCalls, relationships), new ReportReader(sec, companies, reports, relationshipFinder),
-                mock(SupplierReader.class));
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
 
         Holding holding = new Holding(7L, "ASML", BigDecimal.TEN);
         holding.setStatus(HoldingStatus.ANALYSING);
@@ -90,7 +92,8 @@ class AnalysisServiceTest {
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         ReportReading reading = mock(ReportReading.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
-                reading, new ReportReader(sec, companies, reports, relationshipFinder), mock(SupplierReader.class));
+                reading, new ReportReader(sec, companies, reports, relationshipFinder), mock(SupplierReader.class),
+                mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
 
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
@@ -100,7 +103,9 @@ class AnalysisServiceTest {
         when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(retryable, alreadyRead, legacyText));
 
         Report readFromTooLittle = report(101L, 501L);
+        readFromTooLittle.setFiguresReadAt(Instant.now());
         Report readInFull = report(102L, 502L);
+        readInFull.setFiguresReadAt(Instant.now());
         Report legacyReport = report(103L, 503L);
         legacyReport.setText(legacyAsmlText());
         when(reports.findFirstByCompanyIdOrderByFilingDateDesc(101L)).thenReturn(Optional.of(readFromTooLittle));
@@ -169,13 +174,16 @@ class AnalysisServiceTest {
             when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
             when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(done(1L, "CRUS", 101L)));
             service = new AnalysisService(portfolios, holdings, currentUser, mock(CompanyRepository.class), reports,
-                    new ReportReading(aiCalls, relationships), mock(ReportReader.class), mock(SupplierReader.class));
+                    new ReportReading(aiCalls, relationships), mock(ReportReader.class), mock(SupplierReader.class),
+                    mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
         }
 
         Report reportWithText(Long id, String form, String text) {
             Report report = new Report(101L, form, "test-" + id, LocalDate.parse("2026-02-25"),
                     "https://www.sec.gov/example", text);
             ReflectionTestUtils.setField(report, "id", id);
+            // These tests are about the relationships: the figures (TS-225) are read already.
+            report.setFiguresReadAt(Instant.now());
             when(reports.findFirstByCompanyIdOrderByFilingDateDesc(101L)).thenReturn(Optional.of(report));
             return report;
         }
@@ -196,6 +204,43 @@ class AnalysisServiceTest {
         holding.setStatus(HoldingStatus.DONE);
         ReflectionTestUtils.setField(holding, "id", id);
         return holding;
+    }
+
+    @Test
+    void aDoneHoldingWhoseReportFiguresWereNeverReadIsSelectedAndOneWhoseFiguresWereReadIsNot() {
+        PortfolioRepository portfolios = mock(PortfolioRepository.class);
+        HoldingRepository holdings = mock(HoldingRepository.class);
+        CurrentUser currentUser = mock(CurrentUser.class);
+        ReportRepository reports = mock(ReportRepository.class);
+        ReportReading reading = mock(ReportReading.class);
+        AnalysisService service = new AnalysisService(portfolios, holdings, currentUser,
+                mock(CompanyRepository.class), reports, reading,
+                new ReportReader(mock(SecClient.class), mock(CompanyDirectory.class), reports,
+                        mock(RelationshipFinder.class)),
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
+        when(currentUser.id()).thenReturn(41L);
+        when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
+        Holding unread = new Holding(7L, "CRUS", BigDecimal.TEN);
+        unread.setCompanyId(201L);
+        unread.setStatus(HoldingStatus.DONE);
+        ReflectionTestUtils.setField(unread, "id", 1L);
+        Holding read = new Holding(7L, "NVDA", BigDecimal.TEN);
+        read.setCompanyId(202L);
+        read.setStatus(HoldingStatus.DONE);
+        ReflectionTestUtils.setField(read, "id", 2L);
+        when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(unread, read));
+        Report unreadReport = report(201L, 601L);
+        Report readReport = report(202L, 602L);
+        readReport.setFiguresReadAt(java.time.Instant.now());
+        when(reports.findFirstByCompanyIdOrderByFilingDateDesc(201L)).thenReturn(Optional.of(unreadReport));
+        when(reports.findFirstByCompanyIdOrderByFilingDateDesc(202L)).thenReturn(Optional.of(readReport));
+        // Both reports were read for relationships from their full text already: only the figures are missing.
+        when(reading.readFromItsFullText(unreadReport)).thenReturn(true);
+        when(reading.readFromItsFullText(readReport)).thenReturn(true);
+
+        assertThat(service.start(7L)).containsExactly(1L);
+        assertThat(unread.getStatus()).isEqualTo(HoldingStatus.ANALYSING);
+        assertThat(read.getStatus()).isEqualTo(HoldingStatus.DONE);
     }
 
     private static Report report(Long companyId, Long id) {

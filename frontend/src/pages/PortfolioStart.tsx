@@ -41,6 +41,19 @@ export function PortfolioStart() {
     };
   }, [navigate, attempt]);
 
+  async function trySample() {
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await portfolioApi.createSample();
+      navigate(paths.portfolio(created.id), { replace: true });
+    } catch (e) {
+      setError(messageOf(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function create(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -78,7 +91,7 @@ export function PortfolioStart() {
       <h1>Create Your First Portfolio</h1>
       <p>
         You have no portfolios yet. A portfolio is a set of holdings that TrueSight maps to its suppliers and customers.
-        Name your first one to start.
+        Name your first one to start, or try a sample portfolio of ten chip and electronics companies.
       </p>
       <form className="first-portfolio" onSubmit={create}>
         <div className="field">
@@ -93,6 +106,9 @@ export function PortfolioStart() {
         </div>
         <button type="submit" className="btn primary" disabled={busy || !newName.trim()}>
           Create Portfolio
+        </button>
+        <button type="button" className="btn" disabled={busy} onClick={trySample}>
+          Try a Sample Portfolio
         </button>
       </form>
       {error && <p className="error">{error}</p>}

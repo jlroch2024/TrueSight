@@ -3,6 +3,8 @@ package com.truesight.portfolio;
 import com.truesight.common.ApiException;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
+import com.truesight.config.WorkRecovery;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.ReportReading;
 import com.truesight.report.Report;
@@ -28,10 +30,13 @@ public class AnalysisService {
     private final ReportReading reading;
     private final ReportReader reportReader;
     private final SupplierReader suppliers;
+    private final WorkRecovery recovery;
+    private final WorkerHeartbeat heartbeat;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyRepository companyRepository, ReportRepository reports,
-                          ReportReading reading, ReportReader reportReader, SupplierReader suppliers) {
+                          ReportReading reading, ReportReader reportReader, SupplierReader suppliers,
+                          WorkRecovery recovery, WorkerHeartbeat heartbeat) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
@@ -40,6 +45,8 @@ public class AnalysisService {
         this.reading = reading;
         this.reportReader = reportReader;
         this.suppliers = suppliers;
+        this.recovery = recovery;
+        this.heartbeat = heartbeat;
     }
 
     /**
@@ -52,6 +59,8 @@ public class AnalysisService {
      */
     @Transactional
     public List<Long> start(Long portfolioId) {
+        // First: work whose server has gone is Failed (and committed) before the 409 check below reads the rows.
+        recovery.recover(portfolioId);
         requirePortfolio(portfolioId);
         List<Holding> rows = holdings.findByPortfolioIdOrderByTickerAsc(portfolioId);
         if (rows.stream().anyMatch(h -> h.getStatus() == HoldingStatus.ANALYSING)) {
@@ -59,13 +68,41 @@ public class AnalysisService {
         }
         List<Holding> toAnalyse = rows.stream().filter(h -> switch (h.getStatus()) {
             case WAITING, FAILED -> true;
-            case DONE -> needsRelationshipAnalysis(h);
+            case DONE -> needsRelationshipAnalysis(h) || needsFigures(h);
             default -> false;
         }).toList();
         // setStatus also clears a failed holding's old reason.
-        toAnalyse.forEach(h -> h.setStatus(HoldingStatus.ANALYSING));
+        toAnalyse.forEach(h -> {
+            h.setStatus(HoldingStatus.ANALYSING);
+            h.setWorkerId(heartbeat.id());
+        });
         holdings.saveAll(toAnalyse);
         return toAnalyse.stream().map(Holding::getId).toList();
+    }
+
+    /**
+     * Sets Waiting the unread suppliers of the portfolio's Done holdings that are not being analysed now (those are
+     * queued with their holding's own analysis), and returns their company ids: a supplier whose server stopped
+     * before it was read has no status again, so a Done holding's analysis is not repeated just to read it. Nothing
+     * is sent to the AI here.
+     */
+    @Transactional
+    public List<Long> restartSuppliers(Long portfolioId, List<Long> queuedHoldingIds) {
+        requirePortfolio(portfolioId);
+        return holdings.findByPortfolioIdOrderByTickerAsc(portfolioId).stream()
+                .filter(h -> h.getStatus() == HoldingStatus.DONE && h.getCompanyId() != null)
+                .filter(h -> !queuedHoldingIds.contains(h.getId()))
+                .flatMap(h -> suppliers.queue(h.getCompanyId()).stream())
+                .distinct()
+                .toList();
+    }
+
+    /** A Done holding whose report's dependency figures were never read: its next Analyse reads only those. */
+    private boolean needsFigures(Holding holding) {
+        if (holding.getCompanyId() == null) return false;
+        return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId())
+                .map(report -> report.getFiguresReadAt() == null)
+                .orElse(false);
     }
 
     private boolean needsRelationshipAnalysis(Holding holding) {
@@ -124,6 +161,12 @@ public class AnalysisService {
         Holding holding = holdings.findById(holdingId).orElse(null);
         if (holding == null || holding.getStatus() != HoldingStatus.DONE || holding.getCompanyId() == null) return null;
         return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).map(Report::getId).orElse(null);
+    }
+
+    /** The company the holding was matched to, or null if it has none yet. */
+    @Transactional(readOnly = true)
+    public Long companyIdFor(Long holdingId) {
+        return holdings.findById(holdingId).map(Holding::getCompanyId).orElse(null);
     }
 
     @Transactional(readOnly = true)
