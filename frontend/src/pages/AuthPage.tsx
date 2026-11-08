@@ -65,6 +65,9 @@ export function AuthPage() {
     if (signUp && checkPasswordsMatch(password, confirm)) return;
 
     setSending(true);
+    // An old or expired token must never ride along: after a restart it would answer "Please log in." under the
+    // password. Log In and Sign Up are the way in, so whatever token is stored is forgotten first.
+    tokenStore.clear();
     try {
       // Only the password is sent: Confirm Password is checked here, in the browser.
       const answer = await api<AuthResponse>(signUp ? '/auth/signup' : '/auth/login', {
