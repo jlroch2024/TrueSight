@@ -1,7 +1,10 @@
 package com.truesight.report;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
@@ -10,6 +13,11 @@ import java.util.Optional;
 
 /** Reads and saves annual reports. */
 public interface ReportRepository extends JpaRepository<Report, Long> {
+
+    /** The report with its row locked until the transaction ends, so two servers never change it at once. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select report from Report report where report.id = :id")
+    Optional<Report> findForUpdateById(@Param("id") Long id);
 
     Optional<Report> findByAccessionNumber(String accessionNumber);
 

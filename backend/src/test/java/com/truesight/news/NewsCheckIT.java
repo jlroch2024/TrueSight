@@ -216,20 +216,99 @@ class NewsCheckIT {
     }
 
     @Test
-    void onlyTheTenNewestArticlesFromTheLastSevenDaysAreSaved() throws Exception {
+    void aHoldingSavesTheThirtyNewestArticlesFromTheLastSevenDays() throws Exception {
         String email = "news-recent-limit@example.com";
         Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
         Portfolio portfolio = analysedPortfolio(email, tsmc);
+        when(news.search(anyString())).thenReturn(sample.subList(0, 50));
 
         checkNews(portfolio, email);
         awaitFinished(portfolio.getId(), NewsStatus.IDLE);
 
         List<NewsArticle> saved = articles.findByCompanyIdOrderByPublishedAtDesc(tsmc.getId());
-        assertThat(saved).hasSize(10);
+        assertThat(saved).hasSize(NewsCheckJob.HEADLINES_FOR_HOLDINGS_AND_SUPPLIERS).hasSize(30);
         assertThat(saved).allSatisfy(article ->
                 assertThat(article.getPublishedAt()).isAfterOrEqualTo(Instant.now().minus(Duration.ofDays(7))));
         assertThat(saved).isSortedAccordingTo(
                 (left, right) -> right.getPublishedAt().compareTo(left.getPublishedAt()));
+        Instant thirtiethNewest = newestFirst(sample.subList(0, 50)).get(29).publishedAt();
+        assertThat(saved).allSatisfy(article ->
+                assertThat(article.getPublishedAt()).isAfterOrEqualTo(thirtiethNewest.truncatedTo(ChronoUnit.SECONDS)));
+    }
+
+    // ---- TS-236: more headlines for what matters most --------------------------------------------------------------
+
+    @Test
+    void withFiftyRecentHeadlinesAHoldingAndADirectSupplierSaveThirtyAndASuppliersSupplierTen() throws Exception {
+        String email = "news-limit-by-round@example.com";
+        Chain chain = chain();
+        Portfolio portfolio = analysedPortfolio(email, chain.holding());
+        List<NewsItem> fifty = sample.subList(0, 50);
+        when(news.search(anyString())).thenReturn(fifty);
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.holding().getId())).hasSize(30);
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.supplier().getId())).hasSize(30);
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(chain.far().getId()))
+                .hasSize(NewsCheckJob.HEADLINES_FOR_OTHERS).hasSize(10);
+    }
+
+    @Test
+    void aCompanysEightKIsKeptAheadOfItsNewsAndTheLimitCountsBoth() throws Exception {
+        String email = "news-8k-first@example.com";
+        Company clorox = cleanCompany(CLOROX, CLOROX_CIK, "CLX");
+        Portfolio portfolio = analysedPortfolio(email, clorox);
+        // The 8-K three days old: older than every one of the 50 headlines, so a sort by time alone would drop it.
+        List<SecClient.SecCurrentReport> filings = cloroxFilingsWithTheNewest(CLOROX_CYBER_ATTACK).stream()
+                .map(filing -> new SecClient.SecCurrentReport(filing.accessionNumber(), filing.items(),
+                        filing.acceptedAt().minus(Duration.ofDays(3)), filing.url()))
+                .toList();
+        when(news.search(anyString())).thenReturn(sample.subList(0, 50));
+        when(sec.recentCurrentReports(CLOROX_CIK)).thenReturn(filings);
+        when(sec.download(CLOROX_CYBER_ATTACK_URL)).thenReturn(Examples.sec8kClorox());
+
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        List<NewsArticle> saved = articles.findByCompanyIdOrderByPublishedAtDesc(clorox.getId());
+        assertThat(saved).hasSize(30);
+        assertThat(eightKsOf(clorox)).singleElement()
+                .satisfies(article -> assertThat(article.getUrl()).isEqualTo(CLOROX_CYBER_ATTACK_URL));
+        assertThat(saved).filteredOn(article -> !"SEC 8-K".equals(article.getSource())).hasSize(29);
+    }
+
+    @Test
+    void aHeadlineAlreadySavedIsNotJudgedAgain() throws Exception {
+        String email = "news-not-judged-again@example.com";
+        Company tsmc = cleanCompany("Taiwan Semiconductor Manufacturing Company Limited", TSMC_CIK, "TSM");
+        Portfolio portfolio = analysedPortfolio(email, tsmc);
+        when(news.search(anyString())).thenReturn(sample.subList(10, 50));
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+        List<NewsArticle> first = articles.findByCompanyIdOrderByPublishedAtDesc(tsmc.getId());
+        // As Filter Out Noise would: every saved headline judged once.
+        first.forEach(article -> assessments.save(new NewsAssessment(article.getId(), false, null, null, Confidence.HIGH,
+                null, "Judged by the first check.")));
+        tsmc = companies.findById(tsmc.getId()).orElseThrow();
+        tsmc.setNewsCheckedAt(null);
+        companies.saveAndFlush(tsmc);
+
+        // The next check sees ten newer headlines as well as the thirty it already has.
+        when(news.search(anyString())).thenReturn(sample.subList(0, 50));
+        checkNews(portfolio, email);
+        awaitFinished(portfolio.getId(), NewsStatus.IDLE);
+
+        List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(List.of(tsmc.getId()));
+        assertThat(waiting).extracting(NewsArticle::getId)
+                .doesNotContainAnyElementsOf(first.stream().map(NewsArticle::getId).toList());
+        assertThat(articles.findByCompanyIdOrderByPublishedAtDesc(tsmc.getId()).stream().map(NewsArticle::getUrl))
+                .doesNotHaveDuplicates();
+    }
+
+    private static List<NewsItem> newestFirst(List<NewsItem> items) {
+        return items.stream().sorted(java.util.Comparator.comparing(NewsItem::publishedAt).reversed()).toList();
     }
 
     @Test

@@ -169,6 +169,12 @@ public class AnalysisService {
         return reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).map(Report::getId).orElse(null);
     }
 
+    /** The company the holding was matched to, or null if it has none yet. */
+    @Transactional(readOnly = true)
+    public Long companyIdFor(Long holdingId) {
+        return holdings.findById(holdingId).map(Holding::getCompanyId).orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public String tickerFor(Long holdingId) {
         return holdings.findById(holdingId).map(Holding::getTicker).orElse(holdingId.toString());

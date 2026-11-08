@@ -129,6 +129,52 @@ class ConcentrationReaderTest {
     }
 
     @Test
+    void theCustomersAxisNamesThePartyEvenWhenAnotherAxisComesFirstInTheContext() {
+        String twoAxes = Examples.cirrusFigures().replace(
+                "<xbrldi:explicitMember dimension=\"srt:MajorCustomersAxis\">crus:AppleIncMember",
+                "<xbrldi:explicitMember dimension=\"srt:ProductOrServiceAxis\">crus:AudioProductMember</xbrldi:explicitMember>\n"
+                        + "                <xbrldi:explicitMember dimension=\"srt:MajorCustomersAxis\">crus:AppleIncMember");
+
+        List<ConcentrationReader.Figure> figures = ConcentrationReader.read(twoAxes, Examples.cirrusLabels());
+
+        assertThat(of(figures, "Apple, Inc.")).hasSize(3);
+        assertThat(figures).extracting(ConcentrationReader.Figure::label).doesNotContain("Audio Product");
+    }
+
+    @Test
+    void withNoCustomersAxisTheFirstOtherAxisInTheFilesOrderNamesTheParty() {
+        String otherAxes = Examples.cirrusFigures()
+                .replace("srt:MajorCustomersAxis\">crus:AppleIncMember", "srt:ProductOrServiceAxis\">crus:AppleIncMember");
+
+        for (int run = 0; run < 20; run++) {
+            assertThat(of(ConcentrationReader.read(otherAxes, Examples.cirrusLabels()), "Apple, Inc.")).hasSize(3);
+        }
+    }
+
+    @Test
+    void aFigureTaggedTwiceInTheSameContextIsKeptOnce() {
+        String line = "<us-gaap:ConcentrationRiskPercentage1 contextRef=\"c-69\"";
+        String text = Examples.cirrusFigures();
+        int from = text.indexOf(line);
+        String fact = text.substring(from, text.indexOf("</us-gaap:ConcentrationRiskPercentage1>", from)
+                + "</us-gaap:ConcentrationRiskPercentage1>".length());
+        String twice = text.replace("</xbrl>", fact.replace("f-", "dup-") + "\n</xbrl>");
+
+        assertThat(ConcentrationReader.read(twice, Examples.cirrusLabels())).hasSize(10);
+    }
+
+    @Test
+    void aLabelOverTheColumnWidthIsCut() {
+        String longLabel = "A".repeat(400);
+        String labels = Examples.cirrusLabels().replace(">Apple, Inc.</link:label>", ">" + longLabel + "</link:label>");
+
+        List<ConcentrationReader.Figure> figures = ConcentrationReader.read(Examples.cirrusFigures(), labels);
+
+        assertThat(figures).extracting(figure -> figure.label().length()).allMatch(length -> length <= 300);
+        assertThat(of(figures, "A".repeat(300))).hasSize(3);
+    }
+
+    @Test
     void textThatIsNotXmlIsRefused() {
         assertThatThrownBy(() -> ConcentrationReader.read("not xml", Examples.cirrusLabels()))
                 .isInstanceOf(IllegalArgumentException.class);

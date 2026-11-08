@@ -13,6 +13,7 @@ import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.GeminiAnswer;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.RelationshipRepository;
 import com.truesight.support.Examples;
 import com.truesight.support.IntegrationTest;
 import com.truesight.support.TestLogins;
@@ -21,7 +22,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -30,12 +35,18 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static com.truesight.support.FakeAi.answer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,8 +75,11 @@ class FigureServiceIT {
     @Autowired CompanyRepository companies;
     @Autowired CompanyNameRepository nameRows;
     @Autowired ReportRepository reports;
-    @Autowired ConcentrationRepository concentrations;
+    @MockitoSpyBean ConcentrationRepository concentrations;
+    @Autowired @Qualifier("taskExecutor") ThreadPoolTaskExecutor background;
     @Autowired GeminiAnswer answers;
+    @Autowired RelationshipRepository relationships;
+    @Autowired FigureService figureService;
     @Autowired SupplierReader supplierReader;
 
     @MockitoBean SecClient sec;
@@ -206,7 +220,64 @@ class FigureServiceIT {
     }
 
     @Test
-    void figuresThatCannotBeReadAsXmlNeverFailTheHolding() throws Exception {
+    void aFailureSavingTheFiguresNeverUndoesTheHoldingsRelationships() throws Exception {
+        doThrow(new DataIntegrityViolationException("The figures could not be saved."))
+                .when(concentrations).save(any(Concentration.class));
+
+        Portfolio portfolio = analyse("figures-save-fails@example.com");
+
+        assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus())
+                .isEqualTo(HoldingStatus.DONE);
+        assertThat(relationships.findByReportIdOrderByIdAsc(reportId())).isNotEmpty();
+        assertThat(reports.findById(reportId()).orElseThrow().getFiguresReadAt()).isNull();
+    }
+
+    @Test
+    void aLabelLongerThanTheColumnIsCutNotRefused() throws Exception {
+        when(sec.taggedFigures(any(Report.class))).thenReturn(Optional.of(new SecClient.TaggedFigures(
+                Examples.cirrusFigures(),
+                Examples.cirrusLabels().replace(">Apple, Inc.</link:label>", ">Apple " + "x".repeat(400) + "</link:label>"))));
+
+        analyse("figures-long-label@example.com");
+
+        assertThat(concentrations.findByReportIdOrderByIdAsc(reportId())).hasSize(10)
+                .allSatisfy(row -> assertThat(row.getLabel().length()).isLessThanOrEqualTo(300));
+        assertThat(reports.findById(reportId()).orElseThrow().getFiguresReadAt()).isNotNull();
+    }
+
+    @Test
+    void twoAnalysesReadingTheSameReportAtOnceSaveItsFiguresOnce() throws Exception {
+        analyse("figures-race-setup@example.com");
+        Long reportId = reportId();
+        // Back to unread, as it is for two analyses of one company that both start before either has saved.
+        concentrations.deleteAll(concentrations.findByReportIdOrderByIdAsc(reportId));
+        Report report = reports.findById(reportId).orElseThrow();
+        report.setFiguresReadAt(null);
+        reports.save(report);
+        CountDownLatch bothHaveDownloaded = new CountDownLatch(2);
+        when(sec.taggedFigures(any(Report.class))).thenAnswer(call -> {
+            bothHaveDownloaded.countDown();
+            // Neither saves until both have seen the report unread.
+            bothHaveDownloaded.await(10, TimeUnit.SECONDS);
+            return Optional.of(new SecClient.TaggedFigures(Examples.cirrusFigures(), Examples.cirrusLabels()));
+        });
+        Long companyId = cirrus().getId();
+        ExecutorService both = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> first = both.submit(() -> figureService.readLatestOf(companyId));
+            Future<?> second = both.submit(() -> figureService.readLatestOf(companyId));
+            first.get(30, TimeUnit.SECONDS);
+            second.get(30, TimeUnit.SECONDS);
+        } finally {
+            both.shutdownNow();
+        }
+
+        assertThat(concentrations.findByReportIdOrderByIdAsc(reportId)).hasSize(10);
+        assertThat(reports.findById(reportId).orElseThrow().getFiguresReadAt()).isNotNull();
+    }
+
+    @Test
+    void figuresThatCannotBeReadAsXmlNeverFailTheHoldingAndAreNotAskedForAgain() throws Exception {
         when(sec.taggedFigures(any(Report.class)))
                 .thenReturn(Optional.of(new SecClient.TaggedFigures("not xml", "not xml")));
 
@@ -214,7 +285,9 @@ class FigureServiceIT {
 
         assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus())
                 .isEqualTo(HoldingStatus.DONE);
-        assertThat(reports.findById(reportId()).orElseThrow().getFiguresReadAt()).isNull();
+        // Asking again would not change the files: the report is marked read with no figures.
+        assertThat(concentrations.findByReportIdOrderByIdAsc(reportId())).isEmpty();
+        assertThat(reports.findById(reportId()).orElseThrow().getFiguresReadAt()).isNotNull();
     }
 
     // ---- helpers -------------------------------------------------------------------------------------------------
@@ -230,6 +303,8 @@ class FigureServiceIT {
             SupplierReader.Progress progress = supplierReader.progressOf(List.of(cirrus().getId()));
             return progress.toRead() > 0 && progress.read() == progress.toRead();
         });
+        // The figures are read by the job after the holding is Done: wait until the whole run has ended.
+        await(() -> background.getActiveCount() == 0);
         return portfolio;
     }
 

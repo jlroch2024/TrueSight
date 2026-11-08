@@ -41,6 +41,13 @@ public class PortfolioController {
         return service.create(request.name());
     }
 
+    @PostMapping("/sample")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a sample portfolio")
+    public PortfolioResponse createSample() {
+        return service.createSample();
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Rename a portfolio")
     public PortfolioResponse rename(@PathVariable Long id, @Valid @RequestBody PortfolioRequest request) {
