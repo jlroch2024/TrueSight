@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -46,24 +48,30 @@ public class WorkRecovery {
     private final SupplierReader suppliers;
     private final WorkerHeartbeat heartbeat;
     private final boolean scheduled;
+    private final TransactionTemplate transaction;
 
     public WorkRecovery(HoldingRepository holdings, PortfolioRepository portfolios, CompanyRepository companies,
                         SupplierReader suppliers, WorkerHeartbeat heartbeat,
-                        @Value("${truesight.work.scheduled:true}") boolean scheduled) {
+                        @Value("${truesight.work.scheduled:true}") boolean scheduled,
+                        PlatformTransactionManager transactions) {
         this.holdings = holdings;
         this.portfolios = portfolios;
         this.companies = companies;
         this.suppliers = suppliers;
         this.heartbeat = heartbeat;
         this.scheduled = scheduled;
+        this.transaction = new TransactionTemplate(transactions);
     }
 
-    /** Every minute, each server looks for interrupted work everywhere. Does nothing when the schedule is off. */
+    /**
+     * Every minute, each server looks for interrupted work everywhere. Does nothing when the schedule is off. The
+     * transaction is opened here because a call from inside this class never reaches {@code recoverAll}'s annotation.
+     */
     @Scheduled(initialDelay = 60_000, fixedDelay = 60_000)
     public void scheduledRecovery() {
         if (!scheduled) return;
         try {
-            recoverAll();
+            transaction.executeWithoutResult(status -> recoverAll());
         } catch (RuntimeException failure) {
             log.warn("Looking for interrupted work failed; it will be tried again in a minute.", failure);
         }

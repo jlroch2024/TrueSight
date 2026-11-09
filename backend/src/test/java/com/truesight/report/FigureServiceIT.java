@@ -220,6 +220,26 @@ class FigureServiceIT {
     }
 
     @Test
+    void aDoneHoldingFetchingOnlyItsFiguresStaysDoneWhenTheSecsTickerListIsOut() throws Exception {
+        String email = "figures-ticker-list-out@example.com";
+        when(sec.taggedFigures(any(Report.class)))
+                .thenThrow(new SecClient.SecAccessException("The SEC could not be reached.", null));
+        Portfolio portfolio = analyse(email);
+
+        when(sec.companyForTicker("CRUS"))
+                .thenThrow(new SecClient.SecAccessException("The SEC could not be reached.", null));
+        when(sec.taggedFigures(any(Report.class))).thenReturn(
+                Optional.of(new SecClient.TaggedFigures(Examples.cirrusFigures(), Examples.cirrusLabels())));
+        mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
+                .header("Authorization", logins.bearer(email))).andExpect(status().isAccepted());
+        await(() -> reports.findById(reportId()).orElseThrow().getFiguresReadAt() != null);
+
+        assertThat(holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst().getStatus())
+                .isEqualTo(HoldingStatus.DONE);
+        assertThat(concentrations.findByReportIdOrderByIdAsc(reportId())).hasSize(10);
+    }
+
+    @Test
     void aFailureSavingTheFiguresNeverUndoesTheHoldingsRelationships() throws Exception {
         doThrow(new DataIntegrityViolationException("The figures could not be saved."))
                 .when(concentrations).save(any(Concentration.class));
