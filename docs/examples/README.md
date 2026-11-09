@@ -10,6 +10,8 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `gemini-nvidia-second-check.json` | Gemini's real, unchanged answers to the second check's judge, one for each of the 7 relationships in `gemini-nvidia.json`, keyed by company | Second AI Checks the First, in tests, so tests never call Gemini |
 | `second-check-judge.json` | 62 claims labelled by hand from real annual reports, with the passage and Gemini's real reading of each. See below | The Second Check as a Real Judge |
+| `news-filter-judge.json` | 80 headlines labelled by hand, event or noise, each tagged with its company, with Gemini's real answer in three orders. See below | Fewer False Alarms From the Noise Filter |
+| `measure_news_filter.py` | Sends every headline in `news-filter-judge.json` to Gemini in three orders, saves the answers there, and prints the score | Run by hand after changing Filter Out Noise's prompt |
 | `measure_second_check.py` | Sends every claim in `second-check-judge.json` to Gemini, saves the answers there, and prints the score | Run by hand after changing the judge's prompt |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `sec-submissions-nvidia.json` | NVIDIA's filing list from the SEC, unchanged, in the shape the SEC sends it | SEC Filing Timeline, in tests |
@@ -92,12 +94,12 @@ they do not call Gemini.
 
 ## The Gemini News Assessment
 
-`gemini-news-assessment.json` is the complete, unchanged Gemini API response saved on 14 October 2026. It contains
+`gemini-news-assessment.json` is the complete, unchanged Gemini API response saved on 9 November 2026, to Filter Out Noise's current prompt. It contains
 Gemini's assessment of headlines 1–20 from `google-news-tsmc.xml`, sent with the company name
 `Taiwan Semiconductor Manufacturing` and temperature 0.
 
 - **Model:** `gemini-3.8-flash`
-- **Usage:** 887 input tokens, 1,319 output tokens
+- **Usage:** 1,014 input tokens, 1,340 output tokens
 - **Result:** 20 indexed assessments; the API finished normally
 - **Response schema:** one object per headline, with `index`, `isEvent`, `eventType`, `severity`, `confidence`, `summary`, and `reason`
 
@@ -566,3 +568,30 @@ though the first AI's description of what is sold is wrong.
 
 `SecondCheckTest` fails when `SecondCheck.PROMPT` changes without being measured again. To measure, from the repository
 root: `python docs/examples/measure_second_check.py`.
+
+## How Filter Out Noise Is Measured
+
+`news-filter-judge.json` measures Filter Out Noise's prompt on real headlines. Each entry has its hand `label` (`E` an event,
+`N` noise), the `company` it was tagged with, the `headline` as Google News gave it, when it was `fetched`, and `answer`, Gemini's
+real judgement in each of three orders, in batches of 20 numbered as the app numbers them. `promptSha256` is the prompt that was
+measured: `NewsAssessorPromptTest` fails if the prompt changes without being measured again.
+
+60 headlines came from the audit of 3 November 2026 (17 events, 43 noise). 20 are new, fetched from Google News on 9 November 2026
+and labelled before Gemini read them (5 events, 15 noise; two of the noise entries are a real event at another company, tagged with
+a company it does not affect).
+
+**Score, on real Gemini on 9 November 2026 (`gemini-3.8-flash`, temperature 0):**
+
+| Order | Events caught, of 22 | False alarms, of 58 | Right, of 80 |
+|---|---|---|---|
+| 1 | 20 | 0 | 78 |
+| 2 | 18 | 0 | 76 |
+| 3 | 19 | 0 | 77 |
+| All three | 57 of 66 (86%) | 0 of 174 | 231 of 240 |
+
+Verdicts changed across orders on 3 of the 80. The story asks for at least 85% of events caught, and no more than 2 false alarms in
+every 50 non-events: the three orders together meet both, and order 2 on its own (82%) is under the first. Micron's labour-dispute
+headline and the sanction on an ASML supplier are missed in every order, as the story expected.
+
+**Labels.** The 60 were written by one reader in the audit, and the 20 new ones by Claude while building this story. **No one on the
+team has checked them yet.** The name of whoever does belongs here.

@@ -102,7 +102,13 @@ public final class Examples {
         return null;
     }
 
-    /** The claims labelled by hand from real filings, with Gemini's real readings of them. */
+
+    /** Headlines labelled by hand, with Gemini's real answers in three orders and the prompt they measured. */
+    public static JsonNode newsFilterJudge() {
+        return JsonMapper.builder().build().readTree(read("news-filter-judge.json"));
+    }
+
+    /** Claims labelled by hand, with Gemini's real readings and the prompt they measured. */
     public static JsonNode secondCheckJudge() {
         return JsonMapper.builder().build().readTree(read("second-check-judge.json"));
     }

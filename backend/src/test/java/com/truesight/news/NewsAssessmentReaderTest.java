@@ -48,7 +48,7 @@ class NewsAssessmentReaderTest {
         Map<Integer, Judgement> judgements = reader.read(Examples.geminiNewsAssessment(), 20);
 
         JsonNode saved = JSON.readTree(JSON.readTree(Examples.geminiNewsAssessment())
-                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asString());
+                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asString()).path("assessments");
         assertThat(judgements).hasSize(20);
         for (JsonNode answer : saved) {
             Judgement judgement = judgements.get(answer.path("index").asInt());
@@ -61,7 +61,7 @@ class NewsAssessmentReaderTest {
             assertThat(judgement.summary()).isNull();
         }
         assertThat(judgements.get(3).reason())
-                .isEqualTo("This reports financial performance expectations and profit records rather than a supply chain issue.");
+                .isEqualTo("Headline is an earnings and profit forecast, which falls under general financial noise.");
     }
 
     @Test

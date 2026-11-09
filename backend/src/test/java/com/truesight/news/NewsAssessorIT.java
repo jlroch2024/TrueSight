@@ -436,7 +436,7 @@ class NewsAssessorIT {
     /** The list of 20 judgements inside the saved Gemini answer. */
     private static JsonNode savedAnswers() {
         return JSON.readTree(JSON.readTree(Examples.geminiNewsAssessment())
-                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asString());
+                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asString()).path("assessments");
     }
 
     /** A whole Gemini API response whose answer text is {@code answer}. */

@@ -1,0 +1,2885 @@
+{
+ "promptSha256": "d0da1d6483f7acacd82436e0279471230779273fd753cd2484254eaed9c75f8f",
+ "cases": [
+  {
+   "label": "E",
+   "company": "Micron",
+   "headline": "Micron union in Taiwan to launch one-day strike as bonus dispute escalates - Reuters",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 15,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Micron's union in Taiwan is launching a one-day strike over an escalating bonus dispute.",
+     "reason": "Micron's workforce is staging a strike, which threatens disruption to production operations."
+    },
+    {
+     "index": 5,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Micron's union in Taiwan plans to launch a one-day strike over a bonus dispute.",
+     "reason": "An impending strike by Micron workers directly threatens manufacturing operations."
+    },
+    {
+     "index": 1,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Micron's union in Taiwan plans to launch a one-day strike over a bonus dispute.",
+     "reason": "A strike by Micron's workforce directly risks disrupting operations and production."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Micron",
+   "headline": "Micron Is Making Record Profits, But a Taiwan Union Just Voted 99% to Authorize a Strike - 24/7 Wall St.",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 15,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "A Taiwan union representing Micron workers has overwhelmingly voted to authorize a strike.",
+     "reason": "A strike authorization vote introduces immediate risk of work stoppage at Micron manufacturing operations."
+    },
+    {
+     "index": 16,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "A union in Taiwan voted 99% to authorize a strike against Micron.",
+     "reason": "A 99% strike authorization vote is a labour action that could halt or delay Micron's manufacturing operations."
+    },
+    {
+     "index": 20,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "A Taiwan union voted overwhelmingly to authorize a strike against Micron.",
+     "reason": "A strike authorization directly threatens a labor stoppage that could halt or delay semiconductor production."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Micron",
+   "headline": "Micron Facing Labor Dispute Over Performance-Based Bonuses, Echoing Samsung and SK Hynix - SBS 뉴스",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A dispute over bonuses without mention of strikes, work stoppages, or production impact is considered noise."
+    },
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Disputes over compensation or bonuses without an active strike or production halt are noise."
+    },
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "MEDIUM",
+     "summary": "",
+     "reason": "Facing a labor dispute over bonuses does not explicitly state that a strike or production stoppage has occurred."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "TSMC",
+   "headline": "Four dead after collapse at TSMC Kaohsiung site - Taipei Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 16,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Four people were killed following a site collapse at TSMC's Kaohsiung location.",
+     "reason": "A fatal structural collapse at a TSMC facility directly disrupts site operations and construction/production."
+    },
+    {
+     "index": 8,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Four people died following a collapse at TSMC's Kaohsiung site.",
+     "reason": "A fatal structural collapse at a TSMC site disrupts site operations and construction."
+    },
+    {
+     "index": 2,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Four people died following a collapse at a TSMC site in Kaohsiung.",
+     "reason": "A fatal structural collapse at a TSMC site represents a serious operational accident likely halting or delaying site activities."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "TSMC",
+   "headline": "TSMC slows construction after accident kills four - Taipei Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 13,
+     "isEvent": true,
+     "eventType": "OTHER_DISRUPTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "TSMC has slowed facility construction following a fatal accident that killed four people.",
+     "reason": "A fatal accident directly forced TSMC to slow its facility construction."
+    },
+    {
+     "index": 2,
+     "isEvent": true,
+     "eventType": "OTHER_DISRUPTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "TSMC has slowed facility construction following a fatal accident that killed four workers.",
+     "reason": "Slowing construction delays the buildout of facilities and future production capacity."
+    },
+    {
+     "index": 12,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "TSMC slowed facility construction following a fatal accident.",
+     "reason": "The headline states TSMC slowed construction following a fatal workplace accident."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Honda",
+   "headline": "Nexperia chip standoff forces Honda and Bosch to halt car production - Startup Fortune",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 18,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A standoff over Nexperia chips has forced Honda to halt car production.",
+     "reason": "The headline explicitly states that a component supply issue has forced Honda to halt car production."
+    },
+    {
+     "index": 11,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A standoff over Nexperia chips forces Honda to halt car production.",
+     "reason": "The headline explicitly states car production has been halted at Honda due to a chip standoff."
+    },
+    {
+     "index": 9,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Honda and Bosch were forced to halt vehicle production due to a chip supply dispute.",
+     "reason": "The headline directly reports a car production halt caused by component supply issues."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Nexperia",
+   "headline": "Nexperia: Chip shipments could face fresh bottlenecks - Table.Briefings",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 15,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Nexperia chip shipments are facing potential fresh bottlenecks.",
+     "reason": "The headline reports an active risk of shipping bottlenecks for Nexperia's chips."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Speculation that shipments could face bottlenecks is general commentary rather than a confirmed disruption event."
+    },
+    {
+     "index": 4,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Nexperia chip shipments could face new bottleneck disruptions.",
+     "reason": "Bottlenecks affecting chip shipments directly impact the company's ability to distribute and ship its products."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "ASML",
+   "headline": "EU negotiates sanction swap with China to rescue critical ASML supplier — German coatings firm faces shutdown without Chinese rare earths",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 6,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A German coatings firm that is a critical supplier to ASML faces a potential shutdown due to a lack of Chinese rare earths.",
+     "reason": "The headline explicitly indicates a critical supplier to ASML faces a shutdown due to lack of raw materials."
+    },
+    {
+     "index": 10,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A critical supplier to ASML faces a potential shutdown due to a shortage of Chinese rare earths amid ongoing sanction talks.",
+     "reason": "A critical supplier facing shutdown over scarce raw materials directly threatens ASML's supply chain."
+    },
+    {
+     "index": 20,
+     "isEvent": true,
+     "eventType": "TRADE_RESTRICTION",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A German coatings supplier critical to ASML faces shutdown without Chinese rare earths amid sanctions negotiations.",
+     "reason": "A critical supplier to ASML faces an immediate operational shutdown due to rare earth trade restrictions."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "ASML",
+   "headline": "EU to Lift Sanction on Chinese Firm to Save an ASML Supplier - Bloomberg.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Discusses lifting sanctions to protect a supplier rather than reporting a realized stoppage or delay."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The lifting of a sanction averts disruption rather than causing one."
+    },
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "MEDIUM",
+     "summary": "",
+     "reason": "The headline discusses the lifting of a sanction to save a supplier, rather than an active disruption stopping or delaying supply."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Toyota",
+   "headline": "Toyota Thailand extends production suspensions due to flooding - Bangkok Post",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 17,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Toyota Thailand has extended production suspensions as a result of flooding.",
+     "reason": "Flooding has directly caused Toyota to extend production halts at its facilities in Thailand."
+    },
+    {
+     "index": 7,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Toyota extends production suspensions in Thailand due to ongoing flooding.",
+     "reason": "The headline directly reports that Toyota extended production suspensions due to a natural disaster."
+    },
+    {
+     "index": 11,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Toyota Thailand extended production suspensions due to flooding.",
+     "reason": "Flooding has directly caused an extension of manufacturing suspensions at Toyota's facilities in Thailand."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Toyota",
+   "headline": "Thai floods may hurt PH vehicle supply, Toyota warns - Inquirer.net",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 7,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Toyota warned that floods in Thailand may disrupt vehicle supply to the Philippines.",
+     "reason": "Natural flooding is warned to disrupt vehicle supply for Toyota."
+    },
+    {
+     "index": 4,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Floods in Thailand threaten vehicle supply for Toyota in the Philippines.",
+     "reason": "Flooding is directly reported as threatening Toyota's vehicle supply."
+    },
+    {
+     "index": 18,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Toyota warned that flooding in Thailand could disrupt vehicle supply to the Philippines.",
+     "reason": "Natural disaster in Thailand is warned to threaten Toyota's vehicle supply chains."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Toyota",
+   "headline": "Floods halt over 10 auto-parts plants with Oct 12 restart expected - Nation Thailand",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 8,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "HIGH",
+     "confidence": "MEDIUM",
+     "summary": "Floods have halted operations across more than 10 auto-parts manufacturing plants with restarts expected by October 12.",
+     "reason": "Reports flood-induced production halts across multiple auto-parts facilities impacting automotive supply chains."
+    },
+    {
+     "index": 3,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "MEDIUM",
+     "confidence": "MEDIUM",
+     "summary": "Floods have halted operations at more than 10 auto-parts manufacturing plants with restarts expected around October 12.",
+     "reason": "Floods halting multiple component plants directly disrupts the automotive supply chain."
+    },
+    {
+     "index": 19,
+     "isEvent": true,
+     "eventType": "NATURAL_DISASTER",
+     "severity": "HIGH",
+     "confidence": "MEDIUM",
+     "summary": "Floods halted operations at over ten auto-parts suppliers until expected October 12 restart.",
+     "reason": "Flooding halted over 10 auto-parts manufacturing plants, impacting auto industry supply lines including Toyota."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Ford",
+   "headline": "Ford Gets F-150 Production Moving Again, But Supplier Woes Will Dent Q3 Sales - Yahoo Finance",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 5,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Ford's Q3 sales are expected to be dented due to ongoing supplier issues affecting F-150 production.",
+     "reason": "The headline explicitly states that supplier woes will dent Q3 sales."
+    },
+    {
+     "index": 10,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Supplier issues are impacting Ford's Q3 sales despite resuming F-150 production.",
+     "reason": "Supplier woes are explicitly reported to dent sales, indicating an ongoing supply chain impact."
+    },
+    {
+     "index": 7,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Ford's sales are being impacted by ongoing supplier problems despite restarting truck assembly.",
+     "reason": "The headline states that supplier issues are actively harming sales."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Boeing",
+   "headline": "Exclusive-Boeing supplier dispute has halted 777 freighter production for two months, sources say - AOL.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 2,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A supplier dispute has halted Boeing 777 freighter production for two months.",
+     "reason": "The headline explicitly states that a supplier dispute has halted aircraft production for two months."
+    },
+    {
+     "index": 8,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A supplier dispute has halted Boeing 777 freighter production for two months.",
+     "reason": "The headline reports an active production halt on Boeing 777 freighters caused by a supplier dispute."
+    },
+    {
+     "index": 13,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "A supplier dispute has halted Boeing's 777 freighter production for two months.",
+     "reason": "A dispute with a supplier has directly stopped production of 777 freighters."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Stellantis",
+   "headline": "Stellantis Q3 shipments fall 1%, weighed down by North America production halt By Reuters - Investing.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 16,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Stellantis Q3 shipments fell due to a production halt in North America.",
+     "reason": "Explicitly reports a production halt in North America that directly reduced shipments."
+    },
+    {
+     "index": 20,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "LOW",
+     "confidence": "HIGH",
+     "summary": "Stellantis Q3 shipments fell 1% due to a North America production halt.",
+     "reason": "The headline explicitly links fallen shipments to a production halt affecting Stellantis."
+    },
+    {
+     "index": 9,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Stellantis reported lower shipments due to a production halt in North America.",
+     "reason": "The headline explicitly mentions a North America production halt that weighed down shipments."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Tesla",
+   "headline": "Tesla Suspends Orders for Cheaper Model 3 Cars Until March - Le Guide de l'auto",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 10,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Tesla has suspended orders for cheaper Model 3 vehicles until March.",
+     "reason": "Tesla has halted taking orders/sales for a vehicle model for an extended period."
+    },
+    {
+     "index": 16,
+     "isEvent": true,
+     "eventType": "OTHER_DISRUPTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Tesla has suspended orders for cheaper Model 3 vehicles until March.",
+     "reason": "Suspending vehicle orders prevents the sale of goods."
+    },
+    {
+     "index": 10,
+     "isEvent": true,
+     "eventType": "OTHER_DISRUPTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Tesla has suspended orders for cheaper Model 3 vehicles until March.",
+     "reason": "Tesla has halted sales/orders for specific vehicles, directly impacting the selling of goods."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Logitech",
+   "headline": "Logitech Stocks Decline 11.12% With a Holiday Supply Disruption Forecast - Yahoo Finance",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 17,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Logitech faces forecasted holiday supply disruptions that contributed to an 11.12% stock decline.",
+     "reason": "The headline explicitly forecasts a supply disruption for Logitech over the holiday period."
+    },
+    {
+     "index": 2,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Logitech forecasts holiday supply disruptions impacting its operations and stock value.",
+     "reason": "The headline explicitly states a holiday supply disruption is forecast for the company."
+    },
+    {
+     "index": 2,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "MEDIUM",
+     "summary": "Logitech faces an expected holiday supply disruption.",
+     "reason": "The headline explicitly highlights an anticipated supply disruption impacting the company."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Jaguar Land Rover",
+   "headline": "One Year on From the Jaguar Land Rover Attack. Mind the Gap - - Enterprise Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 8,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is retrospective commentary looking back one year after a past attack."
+    },
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a retrospective commentary on a past cyberattack from a year ago."
+    },
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a retrospective commentary reflecting on a cyberattack that occurred a year ago."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Jaguar Land Rover",
+   "headline": "Jaguar Land Rover cyber-attack was state-sponsored, former minister admits - The Telegraph",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Discusses past attribution of a cyber-attack by a former minister without mentioning current production or delivery disruption."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to commentary on a past cyber-attack rather than an ongoing disruption to production or supply."
+    },
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This refers to commentary regarding a past cyberattack rather than a newly ongoing operational disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Luxshare",
+   "headline": "Apple’s Chinese supplier Luxshare downplays impact of U.S. patent probe - Investing.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A patent probe is legal noise unless the headline confirms production or sales are disrupted."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A patent investigation without reported impact on production or deliveries is noise."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Patent probes and disputes are noise unless production or shipments are confirmed to be halted."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung",
+   "headline": "Court Halts Samsung Biologics Union Strike Over Key Processes - 조선일보",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A strike that has been halted or blocked by a court does not represent an ongoing disruption."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The strike was halted by a court, making it a blocked event which is noise."
+    },
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The strike was halted by a court, meaning the disruption was blocked."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung",
+   "headline": "Court curbs Samsung Biologics union's second strike, expanding ban to 9 processes - 헤럴드경제",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The court restricted and banned the union strike across key processes, averting or blocking the disruption."
+    },
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A strike action that has been curbed and banned by court order is considered a blocked event."
+    },
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A court curbed the union strike and banned it across key processes, averting the disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "NVIDIA",
+   "headline": "Banned Nvidia GPUs spotted powering telecom, cloud workloads in China: report - SDxCentral",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Reports of banned chips being used in China describe unauthorized end-use, not a disruption to Nvidia's operations or supply chain."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Reports of unauthorized or banned GPUs in use do not describe a disruption stopping or delaying NVIDIA's operations."
+    },
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This reports product sightings and sanctions scrutiny without mentioning a direct supply disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "NVIDIA",
+   "headline": "Taiwan to criminalize Nvidia AI chip smuggling to China - Asia Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline covers government criminalization of illegal smuggling, with no direct disruption stated to Nvidia's legal production or supply."
+    },
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline covers legislative or regulatory moves against smuggling rather than a disruption to NVIDIA's legal production or supply chain."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Criminalizing smuggling acts is a legal/regulatory policy move not reporting an active disruption to Nvidia's legitimate operations."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "NVIDIA",
+   "headline": "Nvidia’s China AI Chip Share Drops to 34% as Huawei Gains Ground - Mexico Business News",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Discusses market share loss to competitors, which constitutes general business performance commentary."
+    },
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Changes in market share due to competitor actions are market commentary rather than a disruption event."
+    },
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Market share changes and competitive dynamics are market noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Micron",
+   "headline": "Micron Says a Chinese Rival Poached Its Engineers, Then Sued It With Its Own Technology - Yahoo Finance",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Lawsuits and intellectual property disputes are noise unless an operational stoppage is specified."
+    },
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A dispute regarding employee poaching and intellectual property is noise."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Lawsuits, intellectual property theft, and poaching disputes are classified as noise unless direct operational disruption is noted."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "ASML",
+   "headline": "ASML’s chip equipment sales to China soar 109% despite US export curb push - South China Morning Post",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline reports strong sales growth, which is general sales/financial performance noise."
+    },
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a sales report showing growth despite export controls, representing routine commercial news."
+    },
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This covers strong sales figures and general trade policy commentary without reporting a disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "ASML",
+   "headline": "Ahead of Earnings, Is ASML Stock Cheap, Expensive, or Fairly Valued? - Morningstar",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is stock analysis and commentary ahead of earnings, which is noise."
+    },
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock valuation discussions ahead of earnings are financial commentary."
+    },
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock valuation analysis and earnings commentary are noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Amazon",
+   "headline": "Fires Arrive in the Amazon Rainforest - NASA Science (.gov)",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the geographical Amazon rainforest, not Amazon the company."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the Amazon Rainforest rather than Amazon the company."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the Amazon geographic rainforest, not Amazon the company."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Amazon",
+   "headline": "Amazon rainforest fires surge as El Niño fuels a dangerous drought - Earth.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Refers to the Amazon geographic rainforest and fires, not Amazon the corporation."
+    },
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The article refers to the Amazon geographic rainforest, not the company Amazon."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the Amazon rainforest, not Amazon.com Inc."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Amazon",
+   "headline": "Amazon Fires Choke Manaus as a NASA Scientist Calls the Rainforest the Second Domino in an El Niño Fire Chain - Nature World News",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the Amazon rainforest, not Amazon.com Inc."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the Amazon rainforest rather than Amazon the corporation."
+    },
+    {
+     "index": 8,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to the Amazon rainforest, not the corporation Amazon."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Apple",
+   "headline": "Late April frost costs Maryland farm $1 million in lost apple, peach crops - CBS News",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Refers to the fruit apple affected by frost at a farm, not Apple the company."
+    },
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to agricultural apple crops rather than Apple Inc."
+    },
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The article is about agricultural fruit crops and does not relate to Apple Inc."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Apple",
+   "headline": "Pennsylvania loses nearly 60% of apple crop to spring frost - FreshPlaza",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline is about agricultural apple crops, not Apple Inc."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to agricultural apple crops, not Apple Inc."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to agricultural apple crops, not Apple Inc."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Apple",
+   "headline": "Turkish apples gain ground in India as rival supply faces disruptions - FreshPlaza",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses fruit production and market dynamics, not the consumer electronics company Apple."
+    },
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to agricultural produce rather than Apple Inc."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline concerns agricultural fruit, not Apple the tech company."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Intel",
+   "headline": "US threatens to suspend intel sharing, weapons purchases if Ukraine continues Russia energy strikes, sources say - CNN",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses military intelligence sharing rather than the company Intel."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to government intelligence sharing rather than Intel Corporation."
+    },
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to military intelligence sharing, not the semiconductor company Intel."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Intel",
+   "headline": "CIA Continues Intel and Warning Feeds to Ukraine - Kyiv Post",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses military intelligence feeds to Ukraine, not Intel the semiconductor corporation."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to military intelligence feeds rather than Intel Corporation."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline refers to military intelligence, not Intel Corporation."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Target",
+   "headline": "Saudi strikes kill 11 in Yemen as Houthi missiles target Saudi cities - South China Morning Post",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline uses 'target' as a verb regarding geopolitical conflict, unrelated to Target Corporation."
+    },
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The term target is used as a verb and does not refer to the retailer Target."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The word 'target' is used as a verb in a geopolitical conflict, unrelated to the retail company Target."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Micron",
+   "headline": "Best Backpacking Water Filters of 2026 - GearLab",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A consumer product review article concerning water filters, completely unrelated to Micron."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Micron refers to a unit of measurement for water filter pore size, not Micron Technology."
+    },
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a product review article about water filters (referencing micron ratings), completely unrelated to the company Micron."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung",
+   "headline": "Samsung Galaxy S26 hacked three more times at Pwn2Own Ireland - BleepingComputer",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A hacking demonstration at a security competition does not disrupt the manufacturing, shipping, or selling of goods."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a security research contest (Pwn2Own) hacking demonstration and does not impact manufacturing, supply, or operations."
+    },
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Demonstrations at a hacking competition (Pwn2Own) do not indicate a disruption to Samsung's production or supply chain."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung",
+   "headline": "Attackers infect millions of Android phones with fake Samsung app - CISO Mag",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Malware targeting end-user Android devices does not disrupt Samsung's manufacturing, supply chain, or sales operations."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Malware impersonating a Samsung app affecting consumers does not affect Samsung's ability to produce, buy, or sell goods."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Malware impersonating Samsung apps on consumer devices does not disrupt Samsung's operations or supply chain."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "TSMC",
+   "headline": "Musk's Terafab plan poses no short-term threat to TSMC: Analyst - Focus Taiwan",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Analyst commentary regarding competitive threats is routine market commentary and not an operational disruption."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Analyst opinion stating an absence of threat is commentary rather than an event."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is analyst commentary regarding competitive dynamics."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "GlobalFoundries",
+   "headline": "GlobalFoundries to open 2 new chip plants in New York with $21 billion in financing from Japan - AP News",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Announces plans to open new plants and secure financing, representing business expansion rather than disruption."
+    },
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Announcing the opening of new chip fabrication plants is business expansion, not a disruption."
+    },
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is an announcement regarding facility expansion and financing."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "GlobalFoundries",
+   "headline": "GlobalFoundries falls after Trump administration doubles its equity stake in chipmaker - Yahoo Finance",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Focuses on share price movements and government equity stakes, which is financial noise."
+    },
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline focuses on stock price movements and government equity stakes, which is financial noise."
+    },
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock price movements and equity stake adjustments are financial noise without direct supply chain disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Amkor",
+   "headline": "Amkor Q3 Earnings Miss Estimates Amid Communications Weakness - TradingView",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Quarterly earnings reports and missing estimates are financial noise."
+    },
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Earnings misses and financial results without reported disruption to production or supply are noise."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Earnings reports and financial performance are considered noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Amkor",
+   "headline": "Customers line up at Amkor's expanded AZ chip packaging facility - The Business Journals",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Reports business demand and expansion at a facility, not an operational disruption or supply stoppage."
+    },
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Reports positive customer demand and capacity expansion rather than a disruption."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This covers business demand and facility expansion rather than a disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Boeing",
+   "headline": "Crisis Averted: Boeing Strike Called Off Thanks To New Pay Deal, Saving 777X Certification - Simple Flying",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The strike was called off and averted, meaning no actual supply-chain disruption took place."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline states the strike was called off, meaning the potential disruption was averted."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The strike was called off and averted, meaning no active disruption occurred."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Boeing",
+   "headline": "Boeing engineers, technical workers approve contract after rejecting first offer - World Socialist Web Site",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The approval of a contract averts labor action and does not disrupt operations."
+    },
+    {
+     "index": 2,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Workers approved a contract, indicating labour peace rather than an active disruption."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Workers approved a contract, resolving the dispute rather than causing a disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Foxconn",
+   "headline": "Foxconn still invested in shifting GM plant to data center components - WKBN.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses general investment strategy and business plans without mentioning any disruption to operations."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses general business investment and plant transition plans, not a supply chain disruption."
+    },
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "General business commentary and strategic investment plans do not indicate an active supply chain disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Foxconn",
+   "headline": "Foxconn buys $727 million stake in Mitsubishi EV parts biz - The Economic Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Acquiring a stake in a business is an investment/business expansion, not an operational disruption."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "An equity investment or business acquisition is noise regarding supply chain disruption."
+    },
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is an investment and business acquisition with no reported disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Tesla",
+   "headline": "Tesla Just Unveiled Its Flying Car. History Says It Might Not Work Out. - Popular Mechanics",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A product unveiling accompanied by opinion commentary is classified as noise."
+    },
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Product unveils and general commentary are considered noise."
+    },
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Product launches, unveils, and commentary on potential future viability are noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Tesla",
+   "headline": "Explainer | Why would Musk merge SpaceX and Tesla? - The Economic Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Speculative commentary regarding a potential corporate merger without operational impact."
+    },
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Speculative commentary about a potential corporate merger is not an operational disruption."
+    },
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Speculative commentary regarding a corporate merger is noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Ford",
+   "headline": "Ford third-quarter core profit rises to $2.7 billion as commodity costs climb - qz.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Quarterly earnings results and general commodity cost notes are noise."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is an earnings report with commodity cost commentary, which is classified as noise."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is routine quarterly earnings and financial reporting."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Ford",
+   "headline": "Finally, Ford Is Free of the Overhang That Caused It to Lose Billions - The Motley Fool",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Presents retrospective commentary on financial performance and overhang relief."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Retrospective commentary regarding past financial overhangs is noise."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "General financial commentary and stock analysis do not describe an active supply chain disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Novelis",
+   "headline": "Novelis Produces First Coil at Greenfield Aluminum Rolling and Recycling Plant in Alabama - Yahoo Finance",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The launch or initial production at a new plant is general business operations, not a disruption."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Producing the first coil at a new facility is an operational milestone, not a disruption."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This announces a regular production milestone and new plant progress."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "SK Hynix",
+   "headline": "SK Hynix Sinks 4% as Seoul Selloff Revives AI Spending Fears; SanDisk Drops 3%, Micron Eases - 24/7 Wall St.",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 8,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Share price drops and market selloffs constitute noise under the screening guidelines."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock price declines and market selloffs are financial noise."
+    },
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This reports stock market declines and general investor sentiment."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "SK Hynix",
+   "headline": "Micron union in Taiwan to launch one-day strike as bonus dispute escalates - Reuters",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The event is a strike at Micron, not at the named company SK Hynix."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline describes an event at Micron, not the named company SK Hynix."
+    },
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The strike involves Micron's union in Taiwan, not the named company SK Hynix."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung",
+   "headline": "Micron Facing Labor Dispute Over Performance-Based Bonuses, Echoing Samsung and SK Hynix - SBS 뉴스",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses a labor dispute at Micron while merely referencing Samsung, with no reported disruption to Samsung."
+    },
+    {
+     "index": 10,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The main subject experiencing the labor dispute is Micron, and there is no reported disruption to Samsung."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline is primarily about Micron's labor dispute and does not report a current operational disruption at Samsung."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Tesla",
+   "headline": "Stellantis Q3 shipments fall 1%, weighed down by North America production halt By Reuters - Investing.com",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline concerns Stellantis production and shipments, not the named company Tesla."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses Stellantis rather than the named company Tesla."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses Stellantis rather than the named company Tesla."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Bosch",
+   "headline": "Toyota Thailand extends production suspensions due to flooding - Bangkok Post",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The event concerns Toyota Thailand rather than the named company Bosch."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The named company is Bosch, but the headline discusses Toyota's production suspensions without mentioning Bosch."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline reports a production suspension at Toyota, not named company Bosch, with no stated impact on Bosch."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "NVIDIA",
+   "headline": "Four dead after collapse at TSMC Kaohsiung site - Taipei Times",
+   "set": "audit",
+   "fetched": "Google News, 3 November 2026",
+   "answer": [
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Reports a construction accident at a TSMC site without stating that Nvidia's production or supply is disrupted."
+    },
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The incident occurred at TSMC and the headline does not state that NVIDIA or its supply is affected."
+    },
+    {
+     "index": 8,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The accident occurred at TSMC, with no mention of direct impact on named company Nvidia."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Micron",
+   "headline": "Micron Suspends Work On $4.5bn Taiwan Plant Amid Labour Row - Silicon UK",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 8,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Micron has suspended work on its 4.5 billion dollar plant in Taiwan due to a labour dispute.",
+     "reason": "Micron has directly suspended work at a major manufacturing facility due to a labour row."
+    },
+    {
+     "index": 13,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Micron suspended work on a $4.5 billion Taiwan plant due to a labour dispute.",
+     "reason": "Work has been actively suspended at a major facility due to a labour dispute."
+    },
+    {
+     "index": 8,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Micron halted work on its Taiwan facility due to a labor dispute.",
+     "reason": "Work on a major facility has been suspended due to an active labor dispute."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Samsung Biologics",
+   "headline": "Samsung Biologics union pulls quality staff in strike, then warns company to maintain standards - 헤럴드경제",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 12,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Samsung Biologics union withdrew quality control staff during a strike, raising potential quality and compliance concerns.",
+     "reason": "A strike involving quality personnel at a biologics manufacturing company presents an active labour action affecting operations."
+    },
+    {
+     "index": 8,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Samsung Biologics union pulls quality staff during an ongoing strike.",
+     "reason": "A strike involving the withdrawal of quality staff represents an active labor disruption impacting production operations."
+    },
+    {
+     "index": 5,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Samsung Biologics union members, including quality staff, went on strike.",
+     "reason": "A strike involving quality assurance personnel directly threatens biopharmaceutical production continuity and standards."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Stellantis",
+   "headline": "Stellantis Extends Production Pause for Fiat 500 - Manufacturing.net",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 15,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Stellantis has extended a production pause for the Fiat 500.",
+     "reason": "The headline reports an active production halt for a specific vehicle line."
+    },
+    {
+     "index": 9,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Stellantis has extended its production pause for the Fiat 500.",
+     "reason": "An extended production pause directly halts vehicle manufacturing."
+    },
+    {
+     "index": 4,
+     "isEvent": true,
+     "eventType": "PRODUCTION_STOP",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Stellantis has extended a production pause for the Fiat 500.",
+     "reason": "The headline directly reports an ongoing halt to vehicle production."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "POSCO",
+   "headline": "POSCO Union Rejects Wage Deal with Re-strike Looming - Businesskorea",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 19,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "POSCO's union rejected a wage deal, raising the prospect of an imminent re-strike.",
+     "reason": "Reports a wage rejection and looming strike action that threatens manufacturing operations at POSCO."
+    },
+    {
+     "index": 15,
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "POSCO's union rejected a wage deal, raising the prospect of a re-strike.",
+     "reason": "A rejected wage deal with a looming strike indicates imminent labour disruption risks."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The strike is only looming and has not yet disrupted operations or production."
+    }
+   ]
+  },
+  {
+   "label": "E",
+   "company": "Samsung Electronics",
+   "headline": "Samsung (SSNLF) and SK Hynix Compete for EUV Lithography Machines Amid Supply Shortages - GuruFocus",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 9,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Samsung faces supply shortages of EUV lithography machines as it competes for equipment.",
+     "reason": "The headline explicitly notes equipment supply shortages affecting Samsung's acquisition of key manufacturing tools."
+    },
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Industry competition for equipment amid shortages represents general market commentary rather than a specific operational disruption."
+    },
+    {
+     "index": 5,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Samsung and SK Hynix are competing for EUV lithography machines amid equipment supply shortages.",
+     "reason": "The headline explicitly reports supply shortages of critical EUV lithography manufacturing equipment."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Toyota",
+   "headline": "Stellantis Extends Production Pause for Fiat 500 - Manufacturing.net",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline describes an event at Stellantis, with no mention of an effect on Toyota."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline reports a production pause at Stellantis and does not mention Toyota or its supply chain."
+    },
+    {
+     "index": 8,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline pertains to Stellantis and Fiat, not the named company Toyota."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung Electronics",
+   "headline": "POSCO Union Rejects Wage Deal with Re-strike Looming - Businesskorea",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 9,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Reports on labor negotiations at POSCO without stating any supply impact on Samsung Electronics."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The labor dispute involves POSCO and the headline does not state any impact on Samsung Electronics or its supply chain."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "The headline discusses a labor dispute at POSCO without specifying any direct supply chain impact on Samsung Electronics."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "NVIDIA",
+   "headline": "Nvidia Opens Investigation Into Jensen Huang’s Relationship With Chinese Spy - The New York Times",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "An internal investigation into leadership ties does not explicitly disrupt production or sales and is considered noise."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "An internal corporate investigation does not indicate a disruption to manufacturing, buying, or shipping goods."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "An internal investigation into leadership is corporate noise without reported supply or production impact."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "NVIDIA",
+   "headline": "Nvidia's stock slides as questions swirl around Jensen Huang's future as CEO - CBS News",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Covers stock price decline and leadership speculation, which is classified as noise."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock performance and leadership speculation do not report a supply chain disruption."
+    },
+    {
+     "index": 7,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock movement and leadership speculation are considered noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Ford Motor",
+   "headline": "NHTSA opens probe into 1.2 million Ford vehicles over airbag deployment - Reuters",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A regulatory investigation into vehicles is noise unless the headline indicates production, supply, or sales have been halted."
+    },
+    {
+     "index": 8,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A regulatory safety investigation without a stated recall or halt in production is noise."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "An investigation or regulatory probe without an explicit production halt or recall disruption is noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Ford Motor",
+   "headline": "2027 Ford F-150 Debuts With A Bigger Base Engine And More V8 Options - Motor1.com",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a routine product launch announcement, which is considered noise."
+    },
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a standard product debut announcement and represents general marketing noise."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A product debut and vehicle specifications are product launch noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Boeing",
+   "headline": "Boeing Retirees Face 400% Health Premium Hike in 2027 - Hoodline",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Changes to retiree health premiums do not affect Boeing's production, manufacturing, or supply chain operations."
+    },
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Changes to retiree health insurance premiums are noise and do not disrupt Boeing's manufacturing or supply chain."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Retiree health insurance premium increases do not disrupt Boeing's manufacturing or supply chain operations."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Boeing",
+   "headline": "After crash, where do lawsuits against UPS, Boeing and others stand? | Exclusive - The Courier-Journal",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Discussions and updates regarding lawsuits constitute legal noise without reported operational disruption."
+    },
+    {
+     "index": 19,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Legal lawsuits after an accident are noise without an explicit impact on production or sales."
+    },
+    {
+     "index": 15,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Lawsuits following a past crash are legal noise without mention of ongoing operational disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "TSMC",
+   "headline": "TSMC denies exploring 3D DRAM at Nvidia's request — advanced memory tech is still years from market viability - Tom's Hardware",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "TSMC denying plans to develop a specific technology is corporate commentary, not an operational delay or disruption."
+    },
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a denial of future technology exploration rumors and commentary, not a supply chain disruption."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "TSMC denying exploration of a memory technology is general commentary and development news, not a disruption."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "TSMC",
+   "headline": "Taiwan Stocks Rally Nearly 5% as TSMC Leads Semiconductor Gains - TOKENPOST",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 4,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock market performance and market commentary are treated as noise."
+    },
+    {
+     "index": 12,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "General stock market commentary and share price movements are classified as noise."
+    },
+    {
+     "index": 6,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is general commentary on stock market gains and share prices."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Micron",
+   "headline": "Micron Has Lost Over 40% Since June. Where Does Its Price Target Stand Now? - 24/7 Wall St.",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Addresses stock price drops and analyst price targets, which are noise."
+    },
+    {
+     "index": 16,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Analysis of share price drops and price targets is financial commentary."
+    },
+    {
+     "index": 17,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock market performance, share prices, and price targets are noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Intel",
+   "headline": "Intel Stock Faces a New Threat That No One Saw Coming - Barchart.com",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Vague commentary about stock performance and unstated threats is financial noise."
+    },
+    {
+     "index": 18,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Generic stock market threat analysis is noise."
+    },
+    {
+     "index": 5,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "General stock commentary and speculation is financial noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Toyota",
+   "headline": "Toyota Motor North America names CEO - WardsAuto",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Leadership and executive appointment changes are noise."
+    },
+    {
+     "index": 14,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "An executive leadership appointment is noise unless production or sales are reported as affected."
+    },
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A routine leadership or executive appointment is noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Tesla",
+   "headline": "Why is Tesla stock rallying today? - Investing.com",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock market price movements and commentary are considered noise."
+    },
+    {
+     "index": 13,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock price rallies and financial market movements are noise."
+    },
+    {
+     "index": 11,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "Stock price commentary is market noise."
+    }
+   ]
+  },
+  {
+   "label": "N",
+   "company": "Samsung Electronics",
+   "headline": "Samsung Display Expands Challenge to All Six NeoLayer Patents - SammyGuru",
+   "set": "new",
+   "fetched": "Google News, 9 November 2026",
+   "answer": [
+    {
+     "index": 20,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "A patent challenge is an intellectual property legal dispute and is considered noise."
+    },
+    {
+     "index": 3,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a patent challenge dispute, which is classified as noise without reported operational disruption."
+    },
+    {
+     "index": 1,
+     "isEvent": false,
+     "eventType": "",
+     "severity": "",
+     "confidence": "HIGH",
+     "summary": "",
+     "reason": "This is a patent dispute with no reported impact on production, supply, or sales."
+    }
+   ]
+  }
+ ]
+}
