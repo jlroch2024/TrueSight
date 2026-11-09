@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -32,7 +31,6 @@ public class AnalysisJob {
     private final SupplierReader suppliers;
     private final FigureService figures;
     private final NameSearchJob nameSearches;
-    private final ConcurrentHashMap<Long, Object> reportLocks = new ConcurrentHashMap<>();
 
     public AnalysisJob(AnalysisService analysis, SecondCheckPassService secondChecks,
                        @Qualifier("analysisExecutor") Executor analysisExecutor,
@@ -99,10 +97,8 @@ public class AnalysisJob {
         try {
             Long reportId = analysis.reportToSecondCheck(holdingId);
             if (reportId == null) return;
-            // Two holdings of one company share a report: the second to arrive finds nothing left to check.
-            synchronized (reportLocks.computeIfAbsent(reportId, ignored -> new Object())) {
-                secondChecks.check(reportId);
-            }
+            // Two holdings of one company share a report: only one job, on any server, checks it at a time.
+            secondChecks.checkOnce(reportId);
         } catch (RuntimeException failure) {
             log.warn("The second check for holding {} could not be made. The analyst-run pass will ask again.",
                     holdingId, failure);

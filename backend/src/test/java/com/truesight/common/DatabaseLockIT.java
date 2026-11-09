@@ -31,6 +31,7 @@ import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.SecondCheckPassService;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
 import com.truesight.support.Examples;
@@ -76,6 +77,7 @@ class DatabaseLockIT {
     @Autowired DatabaseLock lock;
     @Autowired AnalysisService analysis;
     @Autowired NewsAssessor assessor;
+    @Autowired SecondCheckPassService secondChecks;
     @Autowired RecommendationWriter writer;
     @Autowired CompanyDirectory directory;
     @Autowired PortfolioRepository portfolios;
@@ -210,6 +212,31 @@ class DatabaseLockIT {
 
         assertThat(asked).hasValue(1);
         assertThat(recommendations.findByArticleIdIn(List.of(article.getId()))).hasSize(1);
+    }
+
+    @Test
+    void twoJobsCheckingOneReportAtOnceJudgeItOnce() throws Exception {
+        String ticker = fakeFiler();
+        when(gemini.generate(any(AiRequest.class))).thenAnswer(call -> recorded(call.getArgument(0)));
+        Holding holding = analysing(ticker);
+        analysis.analyze(holding.getId());
+        Long companyId = holdings.findById(holding.getId()).orElseThrow().getCompanyId();
+        Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(companyId).orElseThrow().getId();
+        AtomicInteger asked = new AtomicInteger();
+        when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(call -> {
+            asked.incrementAndGet();
+            Thread.sleep(50);
+            throw new GeminiClient.GeminiException("Not answered in this test.", null);
+        });
+
+        // Every call fails, so the verdicts stay empty and the same questions can be asked again: first by one job alone.
+        secondChecks.checkOnce(reportId);
+        int alone = asked.getAndSet(0);
+
+        together(() -> secondChecks.checkOnce(reportId), () -> secondChecks.checkOnce(reportId));
+
+        assertThat(alone).isPositive();
+        assertThat(asked).hasValue(alone);
     }
 
     /** A filer the fake SEC knows, under a ticker no other test uses, whose 10-K is NVIDIA's real one. */
