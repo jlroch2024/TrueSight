@@ -118,6 +118,44 @@ class HistoryTimelineTest {
         assertThat(years.get(0).relationships()).hasSize(1);
     }
 
+    @Test
+    void aCompanyTheNewerReportStillNamesIsNotListedNotGoneAndKeepsTheSentenceThatLastStatedIt() {
+        List<HistoryResponse.Year> years = HistoryTimeline.years(List.of(
+                report(COMPANY, "2025-02-26", supplier(TSMC)), report(COMPANY, "2026-02-25")), (source, company) -> true);
+
+        HistoryResponse.Year later = years.get(1);
+        assertThat(later.gone()).isEmpty();
+        assertThat(later.relationships()).singleElement().satisfies(entry -> {
+            assertThat(entry.change()).isEqualTo(HistoryResponse.Change.NOT_LISTED);
+            assertThat(entry.filingDate()).isEqualTo(LocalDate.parse("2025-02-26"));
+        });
+    }
+
+    @Test
+    void aCompanyTheNewerReportNoLongerNamesIsGone() {
+        List<HistoryResponse.Year> years = HistoryTimeline.years(List.of(
+                report(COMPANY, "2025-02-26", supplier(TSMC)), report(COMPANY, "2026-02-25")), (source, company) -> false);
+
+        assertThat(years.get(1).gone()).containsExactly("1-2-SUPPLIER");
+        assertThat(years.get(1).relationships()).isEmpty();
+    }
+
+    @Test
+    void aNotListedRelationshipCarriesOnWhileLaterReportsStillNameItAndIsGoneOnceOneDoesNot() {
+        List<HistoryResponse.Year> years = HistoryTimeline.years(List.of(
+                report(COMPANY, "2024-02-21", supplier(TSMC)), report(COMPANY, "2025-02-26"), report(COMPANY, "2026-02-25")),
+                (source, company) -> source.filingDate().getYear() == 2025);
+
+        assertThat(years.get(1).relationships().getFirst().change()).isEqualTo(HistoryResponse.Change.NOT_LISTED);
+        assertThat(years.get(2).relationships()).isEmpty();
+        assertThat(years.get(2).gone()).containsExactly("1-2-SUPPLIER");
+    }
+
+    @Test
+    void aNameBecomesAWholeWordPatternWithItsPunctuationTakenLiterally() {
+        assertThat(HistoryService.wholeWords("AT&T  Inc.")).isEqualTo("\\yAT\\&T\\s+Inc\\.\\y");
+    }
+
     private static HistoryTimeline.Source report(long company, String filed, HistoryTimeline.Edge... edges) {
         return new HistoryTimeline.Source(company, LocalDate.parse(filed), "https://example.com/" + filed,
                 List.of(edges));

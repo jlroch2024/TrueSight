@@ -2,6 +2,7 @@ package com.truesight.history;
 
 import com.truesight.common.ApiException;
 import com.truesight.company.CompanyDisplayNames;
+import com.truesight.company.CompanyNameRepository;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
@@ -13,16 +14,19 @@ import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.ReviewStatus;
 import com.truesight.report.ReportInfo;
+import com.truesight.report.ReportRepository;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The SEC Filing Timeline: reads a portfolio's holdings' earlier annual reports on request, and shows how the
@@ -44,11 +48,13 @@ public class HistoryService {
     private final CompanyRepository companyRecords;
     private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
+    private final CompanyNameRepository companyNames;
+    private final ReportRepository reports;
 
     HistoryService(PortfolioRepository portfolios, HoldingRepository holdings, RelationshipRepository relationships,
                    PastRelationshipRepository pastRelationships, HistoryReads reads, HistoryProgress progress,
                    HistoryJob job, CompanyRepository companyRecords, CompanyDisplayNames displayNames,
-                   CurrentUser currentUser) {
+                   CurrentUser currentUser, CompanyNameRepository companyNames, ReportRepository reports) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
@@ -59,6 +65,8 @@ public class HistoryService {
         this.companyRecords = companyRecords;
         this.displayNames = displayNames;
         this.currentUser = currentUser;
+        this.companyNames = companyNames;
+        this.reports = reports;
     }
 
     /** Starts reading every holding's missing earlier reports in the background. */
@@ -98,8 +106,13 @@ public class HistoryService {
         }
 
         Map<Long, List<HistoryTimeline.Edge>> edgesByReport = new HashMap<>();
+        // An analyst's rejection of a link in a report is a decision: it is never carried as merely not listed.
+        Set<String> rejected = new HashSet<>();
         for (Relationship relationship : relationships.findByReportIdIn(latestIds)) {
-            if (relationship.getReviewStatus() == ReviewStatus.REJECTED) continue;
+            if (relationship.getReviewStatus() == ReviewStatus.REJECTED) {
+                rejected.add(relationship.getReportId() + "-" + relationship.getCounterpartyId());
+                continue;
+            }
             edgesByReport.computeIfAbsent(relationship.getReportId(), id -> new ArrayList<>())
                     .add(new HistoryTimeline.Edge(relationship.getCounterpartyId(), relationship.getType(),
                             relationship.getProvides(), relationship.getEvidence()));
@@ -110,11 +123,13 @@ public class HistoryService {
                             past.getEvidence()));
         }
         List<HistoryTimeline.Source> sources = shown.stream()
-                .map(report -> new HistoryTimeline.Source(report.getCompanyId(), report.getFilingDate(),
+                .map(report -> new HistoryTimeline.Source(report.getId(), report.getCompanyId(), report.getFilingDate(),
                         report.getUrl(), edgesByReport.getOrDefault(report.getId(), List.of())))
                 .toList();
 
-        List<HistoryResponse.Year> years = HistoryTimeline.years(sources);
+        List<HistoryResponse.Year> years = HistoryTimeline.years(sources,
+                (source, companyId) -> !rejected.contains(source.reportId() + "-" + companyId)
+                        && reportNames(source.reportId(), companyId));
         Set<Long> named = new LinkedHashSet<>();
         years.forEach(year -> year.relationships().forEach(entry -> {
             named.add(entry.companyId());
@@ -129,6 +144,25 @@ public class HistoryService {
         return new HistoryResponse(state.status(), state.reason(),
                 state.status() == HistoryStatus.IDLE ? null : new HistoryResponse.Progress(state.done(), state.total()),
                 unread, unreadHoldings, companyIds.size(), years, companies);
+    }
+
+    /** Whether the report's own text has any name the company is known by, as whole words. */
+    private boolean reportNames(Long reportId, Long companyId) {
+        Set<String> names = new LinkedHashSet<>();
+        companyRecords.findById(companyId).ifPresent(company -> {
+            names.add(company.getName());
+            names.add(displayNames.of(company));
+        });
+        companyNames.findByCompanyId(companyId).forEach(name -> names.add(name.getName()));
+        String pattern = names.stream().filter(name -> name != null && !name.isBlank())
+                .map(HistoryService::wholeWords).collect(Collectors.joining("|"));
+        return !pattern.isEmpty() && reports.textMatches(reportId, pattern);
+    }
+
+    /** A name as a PostgreSQL pattern: its punctuation taken literally, any spacing, and whole words only. */
+    static String wholeWords(String name) {
+        String literal = name.strip().replaceAll("([^\\p{L}\\p{N}\\s])", "\\\\$1").replaceAll("\\s+", "\\\\s+");
+        return "\\y" + literal + "\\y";
     }
 
     private int unreadOf(Long portfolioId) {

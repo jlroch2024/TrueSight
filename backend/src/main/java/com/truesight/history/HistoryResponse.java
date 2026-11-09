@@ -26,7 +26,7 @@ public record HistoryResponse(HistoryStatus status, String reason, Progress prog
 
     /**
      * What the portfolio's holdings' reports named as of the end of one year, and what they named the year before and
-     * no longer do ({@code gone}, as keys).
+     * no longer do, with the company no longer in the newer report at all ({@code gone}, as keys).
      */
     public record Year(int year, List<Entry> relationships, List<String> gone) {
     }
@@ -40,9 +40,14 @@ public record HistoryResponse(HistoryStatus status, String reason, Progress prog
                         String evidence, String reportUrl, LocalDate filingDate, Change change) {
     }
 
-    /** Named the year before too ({@code KEPT}), or not ({@code NEW}). */
+    /**
+     * Named the year before too ({@code KEPT}), or not ({@code NEW}). {@code NOT_LISTED}: this year's report still names
+     * the company, but the AI did not list the relationship, so it is carried with the sentence and report that last
+     * stated it, and is not counted as gone.
+     */
     public enum Change {
         NEW,
-        KEPT
+        KEPT,
+        NOT_LISTED
     }
 }
