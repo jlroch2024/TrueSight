@@ -23,6 +23,7 @@ export const concentrationApi = {
 /** One party's figure in the latest year, with its share in each year the report tags, oldest first. */
 export type Dependence = {
   key: string;
+  label: string;
   counterparty: CompanySummary | null;
   kind: 'CUSTOMER' | 'SUPPLIER';
   measure: 'REVENUE' | 'PURCHASES';
@@ -44,6 +45,7 @@ export function dependenceOf(figures: Concentration[]): Dependence[] {
     .filter((figure) => figure.periodEnd === latest)
     .map((figure) => ({
       key: keyOf(figure),
+      label: figure.label,
       counterparty: figure.counterparty,
       kind: figure.kind,
       measure: figure.measure as 'REVENUE' | 'PURCHASES',
@@ -55,6 +57,16 @@ export function dependenceOf(figures: Concentration[]): Dependence[] {
         .map((other) => Number(other.share)),
     }))
     .sort((one, other) => other.share - one.share);
+}
+
+/**
+ * Who a figure is about, in words: the company it names, "One Customer" or "One Supplier" for an anonymous one
+ * ("Customer A"), and the filing's own words for a group ("Ten Largest Customers"), which is not one company.
+ */
+export function partyName(item: Pick<Dependence, 'counterparty' | 'kind' | 'label'>): string {
+  if (item.counterparty) return item.counterparty.displayName;
+  if (/(customers|suppliers|distributors|vendors|others|largest|top)/i.test(item.label)) return item.label;
+  return item.kind === 'CUSTOMER' ? 'One Customer' : 'One Supplier';
 }
 
 /** A share as a whole percentage: 0.91 becomes "91%". */

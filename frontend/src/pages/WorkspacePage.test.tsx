@@ -1056,6 +1056,7 @@ describe('the dependency figures', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     serving(() => new Response(JSON.stringify([
       figure('Customer A', null, 'REVENUE', 0.3, '2026-03-28'),
+      figure('Ten Largest Customers', null, 'REVENUE', 0.96, '2026-03-28'),
       figure('Apple, Inc.', apple, 'REVENUE', 0.91, '2026-03-28'),
       figure('Apple, Inc.', apple, 'REVENUE', 0.89, '2025-03-29'),
       figure('Apple, Inc.', apple, 'REVENUE', 0.87, '2024-03-30'),
@@ -1068,6 +1069,7 @@ describe('the dependency figures', () => {
     expect(section).toHaveTextContent('Apple, 91% of Revenue');
     expect(section).toHaveTextContent('87% → 89% → 91%');
     expect(section).toHaveTextContent('One Customer, 30% of Revenue');
+    expect(section).toHaveTextContent('Ten Largest Customers, 96% of Revenue');
     expect(section).not.toHaveTextContent('39%');
     expect(section.textContent!.indexOf('Apple')).toBeLessThan(section.textContent!.indexOf('One Customer'));
     await userEvent.click(within(section).getAllByRole('button', { name: 'Show Filing' })[0]!);

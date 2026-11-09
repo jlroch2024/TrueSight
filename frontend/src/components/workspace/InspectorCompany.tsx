@@ -4,7 +4,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, CircleDashed, Clock, FileText, Octagon, Package, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useState } from 'react';
-import { type Concentration, concentrationApi, dependenceOf, measureLabel, percent } from '../../api/concentrations';
+import { type Concentration, concentrationApi, dependenceOf, measureLabel, partyName, percent } from '../../api/concentrations';
 import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, formatDate, openInNewTab, titleCase } from '../../format';
@@ -256,7 +256,7 @@ function Dependence({
         Dependence
       </h3>
       {shown.map((item) => {
-        const words = `${item.counterparty ? item.counterparty.displayName : item.kind === 'CUSTOMER' ? 'One Customer' : 'One Supplier'}, ${percent(item.share)} of ${measureLabel(item.measure)}`;
+        const words = `${partyName(item)}, ${percent(item.share)} of ${measureLabel(item.measure)}`;
         const onGraph = item.counterparty && view.nodes.some((node) => node.id === String(item.counterparty!.id));
         return (
           <div key={item.key} className="dependence">
