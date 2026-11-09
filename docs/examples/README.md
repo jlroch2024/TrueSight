@@ -566,3 +566,5 @@ though the first AI's description of what is sold is wrong.
 
 `SecondCheckTest` fails when `SecondCheck.PROMPT` changes without being measured again. To measure, from the repository
 root: `python docs/examples/measure_second_check.py`.
+
+**Labels checked 10 November 2026.** Claude re-read all 62 claims against their passages. It wrote these labels too, in an earlier session, so this is a second reading rather than an independent one; the product owner accepted that in place of a teammate, as the team had none free to do it. It agrees with all 62, including two it looked at hardest: Broadcom and Amkor, where the passage names Amkor in the sentence after the quote, and TSMC and VIS, whose past-tense agreement is followed by 2025 purchases.
