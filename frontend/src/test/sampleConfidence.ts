@@ -8,5 +8,6 @@ export const UNREVIEWED_CONFIDENCE: Confidence = {
     { text: 'Not Yet Reviewed', effect: 'NONE' },
     { text: 'Quote Match Not Recorded', effect: 'NONE' },
     { text: 'Not Yet Second-Checked', effect: 'NONE' },
+    { text: 'Only One Report Names It', effect: 'NONE' },
   ],
 };
