@@ -1,6 +1,7 @@
 package com.truesight.portfolio;
 
 import com.truesight.common.ApiException;
+import com.truesight.common.DatabaseLock;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.config.WorkRecovery;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class AnalysisService {
@@ -32,11 +34,12 @@ public class AnalysisService {
     private final SupplierReader suppliers;
     private final WorkRecovery recovery;
     private final WorkerHeartbeat heartbeat;
+    private final DatabaseLock lock;
 
     public AnalysisService(PortfolioRepository portfolios, HoldingRepository holdings, CurrentUser currentUser,
                           CompanyRepository companyRepository, ReportRepository reports,
                           ReportReading reading, ReportReader reportReader, SupplierReader suppliers,
-                          WorkRecovery recovery, WorkerHeartbeat heartbeat) {
+                          WorkRecovery recovery, WorkerHeartbeat heartbeat, DatabaseLock lock) {
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.currentUser = currentUser;
@@ -47,6 +50,7 @@ public class AnalysisService {
         this.suppliers = suppliers;
         this.recovery = recovery;
         this.heartbeat = heartbeat;
+        this.lock = lock;
     }
 
     /**
@@ -142,6 +146,8 @@ public class AnalysisService {
     public void analyze(Long holdingId) {
         Holding holding = holdings.findById(holdingId).orElse(null);
         if (holding == null) return;
+        // Across every server, one company is read at a time: a holding and a supplier of one ticker share this key.
+        lock.lock(analysisKey(holding.getTicker()));
         if (holding.getStatus() != HoldingStatus.ANALYSING) return;
         // Nothing but the figures is missing: AnalysisJob reads those afterwards. The SEC is not asked anything here,
         // so a Done holding can never turn Failed because the SEC is out while its figures are fetched.
@@ -188,9 +194,9 @@ public class AnalysisService {
         return holdings.findById(holdingId).map(Holding::getCompanyId).orElse(null);
     }
 
-    @Transactional(readOnly = true)
-    public String tickerFor(Long holdingId) {
-        return holdings.findById(holdingId).map(Holding::getTicker).orElse(holdingId.toString());
+    /** The {@link DatabaseLock} key for reading one company's report, whichever job is reading it. */
+    public static String analysisKey(String ticker) {
+        return "analysis:" + ticker.toUpperCase(Locale.ROOT);
     }
 
     private void requirePortfolio(Long portfolioId) {

@@ -47,7 +47,7 @@ class AnalysisServiceTest {
         RelationshipFinder relationshipFinder = mock(RelationshipFinder.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
                 new ReportReading(aiCalls, relationships), new ReportReader(sec, companies, reports, relationshipFinder),
-                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class), mock(com.truesight.common.DatabaseLock.class));
 
         Holding holding = new Holding(7L, "ASML", BigDecimal.TEN);
         holding.setStatus(HoldingStatus.ANALYSING);
@@ -94,7 +94,7 @@ class AnalysisServiceTest {
         ReportReading reading = mock(ReportReading.class);
         AnalysisService service = new AnalysisService(portfolios, holdings, currentUser, companyRepository, reports,
                 reading, new ReportReader(sec, companies, reports, relationshipFinder), mock(SupplierReader.class),
-                mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
+                mock(WorkRecovery.class), mock(WorkerHeartbeat.class), mock(com.truesight.common.DatabaseLock.class));
 
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
@@ -176,7 +176,7 @@ class AnalysisServiceTest {
             when(holdings.findByPortfolioIdOrderByTickerAsc(7L)).thenReturn(List.of(done(1L, "CRUS", 101L)));
             service = new AnalysisService(portfolios, holdings, currentUser, mock(CompanyRepository.class), reports,
                     new ReportReading(aiCalls, relationships), mock(ReportReader.class), mock(SupplierReader.class),
-                    mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
+                    mock(WorkRecovery.class), mock(WorkerHeartbeat.class), mock(com.truesight.common.DatabaseLock.class));
         }
 
         Report reportWithText(Long id, String form, String text) {
@@ -218,7 +218,7 @@ class AnalysisServiceTest {
                 mock(CompanyRepository.class), reports, reading,
                 new ReportReader(mock(SecClient.class), mock(CompanyDirectory.class), reports,
                         mock(RelationshipFinder.class)),
-                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class));
+                mock(SupplierReader.class), mock(WorkRecovery.class), mock(WorkerHeartbeat.class), mock(com.truesight.common.DatabaseLock.class));
         when(currentUser.id()).thenReturn(41L);
         when(portfolios.findByIdAndUserId(7L, 41L)).thenReturn(Optional.of(new Portfolio(41L, "Test")));
         Holding unread = new Holding(7L, "CRUS", BigDecimal.TEN);

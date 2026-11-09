@@ -1,10 +1,12 @@
 package com.truesight.report;
 
+import com.truesight.common.DatabaseLock;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.company.ReportStatus;
 import com.truesight.config.WorkerHeartbeat;
 import com.truesight.news.NewsCheckService;
+import com.truesight.portfolio.AnalysisService;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
@@ -53,16 +55,18 @@ public class SupplierReader {
     private final ReportRepository reports;
     private final ReportReader reportReader;
     private final WorkerHeartbeat heartbeat;
+    private final DatabaseLock lock;
 
     public SupplierReader(HoldingRepository holdings, RelationshipRepository relationships,
                           CompanyRepository companies, ReportRepository reports, ReportReader reportReader,
-                          WorkerHeartbeat heartbeat) {
+                          WorkerHeartbeat heartbeat, DatabaseLock lock) {
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
         this.reports = reports;
         this.reportReader = reportReader;
         this.heartbeat = heartbeat;
+        this.lock = lock;
     }
 
     /**
@@ -114,6 +118,8 @@ public class SupplierReader {
             return;
         }
         supplier.setReportWorkerId(heartbeat.id());
+        // Locked like a holding of the same ticker, so the same company is never read twice at once, on any server.
+        lock.lock(AnalysisService.analysisKey(supplier.getTicker() == null ? "company-" + companyId : supplier.getTicker()));
         try {
             Company filer = supplier.getTicker() == null ? null : reportReader.companyFor(supplier.getTicker());
             if (filer == null || !reportReader.read(filer)) {
@@ -143,12 +149,6 @@ public class SupplierReader {
     public void fail(Long companyId) {
         companies.findById(companyId).ifPresent(company ->
                 record(company, ReportStatus.FAILED, "The annual report could not be processed."));
-    }
-
-    /** The supplier's ticker, which {@code AnalysisJob} locks on so it is never read twice at once; null if none. */
-    @Transactional(readOnly = true)
-    public String tickerOf(Long companyId) {
-        return companies.findById(companyId).map(Company::getTicker).orElse(null);
     }
 
     /**

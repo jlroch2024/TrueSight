@@ -31,7 +31,6 @@ class AnalysisJobTest {
     @Test
     void analyzesManyHoldingsConcurrentlyUpToTheExecutorLimit() throws Exception {
         AnalysisService analysis = mock(AnalysisService.class);
-        when(analysis.tickerFor(anyLong())).thenAnswer(call -> "TICKER-" + call.getArgument(0));
         AtomicInteger running = new AtomicInteger();
         AtomicInteger maximum = new AtomicInteger();
         CountDownLatch firstFourStarted = new CountDownLatch(4);
@@ -68,54 +67,8 @@ class AnalysisJobTest {
     }
 
     @Test
-    void serializesAnalysisOfTheSameCompanyAcrossPortfolioJobs() throws Exception {
-        AnalysisService analysis = mock(AnalysisService.class);
-        CountDownLatch tickersLookedUp = new CountDownLatch(2);
-        when(analysis.tickerFor(anyLong())).thenAnswer(call -> {
-            tickersLookedUp.countDown();
-            return "SHARED";
-        });
-        AtomicInteger running = new AtomicInteger();
-        AtomicInteger maximum = new AtomicInteger();
-        CountDownLatch firstAnalysisStarted = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        doAnswer(call -> {
-            int active = running.incrementAndGet();
-            maximum.accumulateAndGet(active, Math::max);
-            firstAnalysisStarted.countDown();
-            try {
-                if (!release.await(5, TimeUnit.SECONDS)) throw new AssertionError("Timed out waiting for release");
-            } finally {
-                running.decrementAndGet();
-            }
-            return null;
-        }).when(analysis).analyze(anyLong());
-
-        ExecutorService workers = Executors.newFixedThreadPool(4);
-        ExecutorService portfolios = Executors.newFixedThreadPool(2);
-        try {
-            AnalysisJob job = new AnalysisJob(analysis, secondChecks, workers, mock(HighlightJob.class), mock(SupplierReader.class), mock(FigureService.class), mock(NameSearchJob.class));
-            Future<?> firstPortfolio = portfolios.submit(() -> job.run(List.of(1L)));
-            Future<?> secondPortfolio = portfolios.submit(() -> job.run(List.of(2L)));
-
-            assertThat(tickersLookedUp.await(3, TimeUnit.SECONDS)).isTrue();
-            assertThat(firstAnalysisStarted.await(3, TimeUnit.SECONDS)).isTrue();
-            Thread.sleep(100);
-            assertThat(maximum.get()).isEqualTo(1);
-            release.countDown();
-            firstPortfolio.get(5, TimeUnit.SECONDS);
-            secondPortfolio.get(5, TimeUnit.SECONDS);
-        } finally {
-            release.countDown();
-            portfolios.shutdownNow();
-            workers.shutdownNow();
-        }
-    }
-
-    @Test
     void aSingleWorkerKeepsAnalysisSequential() throws Exception {
         AnalysisService analysis = mock(AnalysisService.class);
-        when(analysis.tickerFor(anyLong())).thenAnswer(call -> "TICKER-" + call.getArgument(0));
         AtomicInteger running = new AtomicInteger();
         AtomicInteger maximum = new AtomicInteger();
         doAnswer(call -> {
@@ -140,7 +93,6 @@ class AnalysisJobTest {
     @Test
     void startsTheHighlightsPassOnceAHoldingsRelationshipsAreSaved() {
         AnalysisService analysis = mock(AnalysisService.class);
-        when(analysis.tickerFor(anyLong())).thenReturn("NVDA");
         HighlightJob highlights = mock(HighlightJob.class);
         ExecutorService workers = Executors.newSingleThreadExecutor();
         try {
@@ -157,11 +109,8 @@ class AnalysisJobTest {
     @Test
     void readsTheSuppliersOneByOneOnlyAfterTheHoldingIsAnalysed() throws Exception {
         AnalysisService analysis = mock(AnalysisService.class);
-        when(analysis.tickerFor(1L)).thenReturn("AMD");
         SupplierReader suppliers = mock(SupplierReader.class);
         when(suppliers.waitingFor(1L)).thenReturn(List.of(21L, 22L));
-        when(suppliers.tickerOf(21L)).thenReturn("TSM");
-        when(suppliers.tickerOf(22L)).thenReturn(null);
         CountDownLatch bothRead = new CountDownLatch(2);
         doAnswer(call -> {
             bothRead.countDown();
@@ -185,10 +134,8 @@ class AnalysisJobTest {
     @Test
     void aSupplierThatCannotBeReadIsMarkedFailedAndTheNextIsStillRead() throws Exception {
         AnalysisService analysis = mock(AnalysisService.class);
-        when(analysis.tickerFor(1L)).thenReturn("AMD");
         SupplierReader suppliers = mock(SupplierReader.class);
         when(suppliers.waitingFor(1L)).thenReturn(List.of(21L, 22L));
-        when(suppliers.tickerOf(anyLong())).thenReturn("TSM");
         doThrow(new IllegalStateException("The transaction could not be saved.")).when(suppliers).read(21L);
         CountDownLatch secondRead = new CountDownLatch(1);
         doAnswer(call -> {

@@ -6,12 +6,14 @@ import com.truesight.ai.AiCallRepository;
 import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
+import com.truesight.common.DatabaseLock;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyDisplayNames;
 import com.truesight.company.CompanyName;
 import com.truesight.company.CompanyNameRepository;
 import com.truesight.company.CompanyRepository;
+import com.truesight.portfolio.AnalysisService;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
@@ -98,12 +100,13 @@ public class NameSearcher {
     private final GeminiAnswer answers;
     private final SecClient sec;
     private final ReadingLimit readingLimit;
+    private final DatabaseLock lock;
 
     public NameSearcher(HoldingRepository holdings, CompanyRepository companies, CompanyNameRepository companyNames,
                         CompanyDirectory directory, CompanyDisplayNames displayNames, ReportRepository reports,
                         RelationshipRepository relationships, NameSearchRepository searches, AiCallRepository aiCalls,
                         AiCallLog calls, GeminiClient gemini, GeminiAnswer answers, SecClient sec,
-                        ReadingLimit readingLimit) {
+                        ReadingLimit readingLimit, DatabaseLock lock) {
         this.holdings = holdings;
         this.companies = companies;
         this.companyNames = companyNames;
@@ -118,6 +121,7 @@ public class NameSearcher {
         this.answers = answers;
         this.sec = sec;
         this.readingLimit = readingLimit;
+        this.lock = lock;
     }
 
     /**
@@ -194,6 +198,8 @@ public class NameSearcher {
         if (company.getId().equals(holder.companyId())) {
             return null;
         }
+        // Held with the key that reading this company's whole report takes, so the two cannot store its report twice.
+        lock.lock(AnalysisService.analysisKey(company.getTicker() == null ? "company-" + company.getId() : company.getTicker()));
         Report report = reportOf(company, hit);
         if (readFor(holder, report)) {
             return null;

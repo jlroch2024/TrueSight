@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.truesight.ai.AiAnswer;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
+import com.truesight.common.DatabaseLock;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
@@ -15,12 +16,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /** Writes one analyst-reviewed research suggestion for each newly alerted event. */
@@ -49,12 +51,14 @@ public class RecommendationWriter implements NewsCheckStep {
     private final RelationshipRepository relationships;
     private final GeminiClient gemini;
     private final ObjectMapper mapper;
-    private final ConcurrentHashMap<String, Object> eventLocks = new ConcurrentHashMap<>();
+    private final DatabaseLock lock;
+    private final TransactionTemplate transaction;
 
     public RecommendationWriter(NewsArticleRepository articles, NewsAssessmentRepository assessments,
                                AlertRepository alerts, RecommendationRepository recommendations,
                                CompanyRepository companies, RelationshipRepository relationships,
-                               GeminiClient gemini, ObjectMapper mapper) {
+                               GeminiClient gemini, ObjectMapper mapper, DatabaseLock lock,
+                               PlatformTransactionManager transactions) {
         this.articles = articles;
         this.assessments = assessments;
         this.alerts = alerts;
@@ -63,6 +67,8 @@ public class RecommendationWriter implements NewsCheckStep {
         this.relationships = relationships;
         this.gemini = gemini;
         this.mapper = mapper;
+        this.lock = lock;
+        this.transaction = transactions == null ? null : new TransactionTemplate(transactions);
     }
 
     @Override
@@ -75,17 +81,17 @@ public class RecommendationWriter implements NewsCheckStep {
         for (NewsArticle article : articles.findAllById(articleIds)) {
             NewsAssessment assessment = judgment.get(article.getId());
             if (assessment == null) continue;
-            // One lock per event (company and type), so two news checks at once still write only one suggestion.
+            // One lock per event (company and type), across every server, so two news checks write only one suggestion.
             String eventKey = article.getCompanyId() + ":" + assessment.getEventType();
-            synchronized (eventLocks.computeIfAbsent(eventKey, ignored -> new Object())) {
-                try {
-                    if (eventHasSuggestion(article)) continue;
-                    recommendations.save(write(article, assessment));
-                } catch (RuntimeException failure) {
-                    // Recommendation generation must never fail the news check; absence makes this event eligible next time.
-                    log.warn("Could not write a recommendation for article {}. It will be retried on the next news check.",
-                            article.getId(), failure);
-                }
+            try {
+                transaction.executeWithoutResult(status -> {
+                    lock.lock("event:" + eventKey);
+                    if (!eventHasSuggestion(article)) recommendations.save(write(article, assessment));
+                });
+            } catch (RuntimeException failure) {
+                // Recommendation generation must never fail the news check; absence makes this event eligible next time.
+                log.warn("Could not write a recommendation for article {}. It will be retried on the next news check.",
+                        article.getId(), failure);
             }
         }
     }

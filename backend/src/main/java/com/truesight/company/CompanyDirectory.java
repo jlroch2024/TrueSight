@@ -1,7 +1,11 @@
 package com.truesight.company;
 
+import com.truesight.common.DatabaseLock;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,10 +57,16 @@ public class CompanyDirectory {
 
     private final CompanyRepository companies;
     private final CompanyNameRepository names;
+    private final DatabaseLock lock;
+    private final TransactionTemplate shortTransaction;
 
-    public CompanyDirectory(CompanyRepository companies, CompanyNameRepository names) {
+    public CompanyDirectory(CompanyRepository companies, CompanyNameRepository names, DatabaseLock lock,
+                            PlatformTransactionManager transactions) {
         this.companies = companies;
         this.names = names;
+        this.lock = lock;
+        this.shortTransaction = new TransactionTemplate(transactions);
+        this.shortTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /**
@@ -70,6 +80,17 @@ public class CompanyDirectory {
      */
     @Transactional
     public Company findOrCreate(String name, String cik, String ticker, Collection<String> otherNames) {
+        // Analyses of different companies run at once and often name the same new supplier. The directory is changed in
+        // a short transaction of its own, one at a time on every server, so they can never create a company twice, and
+        // the analysis holding this transaction open for minutes never holds the lock.
+        Long id = shortTransaction.execute(status -> {
+            lock.lock("company-directory");
+            return findOrCreateNow(name, cik, ticker, otherNames).getId();
+        });
+        return companies.findById(id).orElseThrow();
+    }
+
+    private Company findOrCreateNow(String name, String cik, String ticker, Collection<String> otherNames) {
         List<String> allNames = new ArrayList<>();
         allNames.add(name);
         otherNames.stream().filter(n -> n != null && !n.isBlank()).forEach(allNames::add);

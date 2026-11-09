@@ -4,19 +4,20 @@ import com.truesight.ai.AiAnswer;
 import com.truesight.ai.AiCallLog;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
+import com.truesight.common.DatabaseLock;
 import com.truesight.relationship.GeminiClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -99,19 +100,21 @@ public class NewsAssessor implements NewsCheckStep {
     private final Executor batchExecutor;
     private final NewsAssessmentReader reader = new NewsAssessmentReader();
 
-    // The articles some news check is judging now. Two portfolios sharing a company must not judge the same article at
-    // the same moment, but they need not wait for each other: each takes the articles it can claim and carries on.
-    private final ConcurrentHashMap<Long, Object> articleLocks = new ConcurrentHashMap<>();
+    private final DatabaseLock lock;
+    private final TransactionTemplate transaction;
 
     public NewsAssessor(NewsCheckService newsCheck, NewsArticleRepository articles,
                         NewsAssessmentRepository assessments, GeminiClient gemini, AiCallLog calls,
-                        @Qualifier("newsBatchExecutor") Executor batchExecutor) {
+                        @Qualifier("newsBatchExecutor") Executor batchExecutor,
+                        DatabaseLock lock, PlatformTransactionManager transactions) {
         this.newsCheck = newsCheck;
         this.articles = articles;
         this.assessments = assessments;
         this.gemini = gemini;
         this.calls = calls;
         this.batchExecutor = batchExecutor;
+        this.lock = lock;
+        this.transaction = new TransactionTemplate(transactions);
     }
 
     @Override
@@ -121,35 +124,37 @@ public class NewsAssessor implements NewsCheckStep {
                         (first, second) -> first));
         if (names.isEmpty()) return;
 
-        List<NewsArticle> unjudged = articles.findUnassessedByCompanyIdIn(names.keySet());
-        // Claim what no other check is judging; an article another check has claimed is its to judge, not ours.
-        Set<Long> claimed = new HashSet<>();
-        for (NewsArticle article : unjudged) {
-            if (articleLocks.putIfAbsent(article.getId(), article) == null) claimed.add(article.getId());
+        // In order of id, so that two batches taking their articles' locks never wait on each other in a circle.
+        List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(names.keySet()).stream()
+                .sorted(Comparator.comparing(NewsArticle::getId))
+                .toList();
+        List<CompletableFuture<Void>> tasks = new ArrayList<>();
+        for (int start = 0; start < waiting.size(); start += BATCH_SIZE) {
+            List<NewsArticle> batch = List.copyOf(waiting.subList(start, Math.min(start + BATCH_SIZE, waiting.size())));
+            tasks.add(CompletableFuture.runAsync(() -> judge(batch, names), batchExecutor));
         }
+        // The steps after this one (alerts) need these judgments to be saved before they run.
         try {
-            if (claimed.isEmpty()) return;
-            // Another check may have judged some of them between that read and the claim: read again.
-            List<NewsArticle> waiting = articles.findUnassessedByCompanyIdIn(names.keySet()).stream()
-                    .filter(article -> claimed.contains(article.getId()))
-                    .toList();
-            List<CompletableFuture<Void>> tasks = new ArrayList<>();
-            for (int start = 0; start < waiting.size(); start += BATCH_SIZE) {
-                List<NewsArticle> batch = List.copyOf(waiting.subList(start, Math.min(start + BATCH_SIZE, waiting.size())));
-                tasks.add(CompletableFuture.runAsync(
-                        () -> save(batch, ask(prompt(batch, names), batch.size())), batchExecutor));
-            }
-            // Waits only for the batches this check started, never for an article another check has claimed: the
-            // steps after this one (alerts) need this check's own judgments to be saved before they run.
-            try {
-                CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
-            } catch (CompletionException exception) {
-                if (exception.getCause() instanceof RuntimeException cause) throw cause;
-                throw exception;
-            }
-        } finally {
-            claimed.forEach(articleLocks::remove);
+            CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new)).join();
+        } catch (CompletionException exception) {
+            if (exception.getCause() instanceof RuntimeException cause) throw cause;
+            throw exception;
         }
+    }
+
+    /**
+     * Judges one batch, holding each article's lock across every server until the judgments are saved, so an article
+     * two news checks share is judged once. The locks are tried, never waited for: an article another check is judging
+     * is that check's to judge, so two checks never hold each other up. What is already judged is left out.
+     */
+    private void judge(List<NewsArticle> batch, Map<Long, String> names) {
+        transaction.executeWithoutResult(status -> {
+            List<NewsArticle> unjudged = batch.stream()
+                    .filter(article -> lock.tryLock("article:" + article.getId()))
+                    .filter(article -> !assessments.existsByArticleId(article.getId()))
+                    .toList();
+            if (!unjudged.isEmpty()) save(unjudged, ask(prompt(unjudged, names), unjudged.size()));
+        });
     }
 
     /** The prompt for one batch: each headline numbered from 1, after the name of the company it was found for. */

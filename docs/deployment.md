@@ -174,13 +174,16 @@ gcloud run deploy truesight --source . --region asia-southeast1 --allow-unauthen
   --add-cloudsql-instances=truesight-509715:asia-southeast1:truesight-db `
   --set-env-vars="SPRING_PROFILES_ACTIVE=prod,DATABASE_URL=jdbc:postgresql:///truesight?cloudSqlInstance=truesight-509715:asia-southeast1:truesight-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DATABASE_USERNAME=truesight,GEMINI_MODEL=gemini-3.8-flash,SEC_USER_AGENT=TrueSight contact@truesight.com" `
   --set-secrets="DATABASE_PASSWORD=DATABASE_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" `
-  --memory=1Gi --max-instances=3 --no-cpu-throttling --min-instances=1
+  --memory=1Gi --max-instances=1 --no-cpu-throttling --min-instances=1
 ```
 
 - `--allow-unauthenticated` lets anyone open the site. TrueSight's own log-in protects the data.
 - `DATABASE_URL` names Google's Cloud SQL connector (in `pom.xml`), which reaches the database through Cloud Run's
   Cloud SQL connection using the app's identity. It holds no password.
-- `--max-instances=3` keeps the small database from running out of connections, and caps the cost.
+- `--max-instances=1` makes the SEC's 10 requests a second and Google News's one true with no shared pacing: both are
+  paced in one server's memory. One server handles a course demo's traffic, and it keeps the small database from running
+  out of connections. Two servers still overlap for a moment during a deploy, so work that must not be done twice is
+  guarded by database locks (`DatabaseLock`).
 - `--no-cpu-throttling` keeps the CPU between requests. Cloud Run's default stops it when no request is running, which
   would stall background analysis and news checks and stop the server's 30-second renewal in the `workers` table, so
   its running work would be taken for interrupted.
@@ -190,7 +193,7 @@ gcloud run deploy truesight --source . --region asia-southeast1 --allow-unauthen
 A service that is already running does not need the first deploy again. Change it once with:
 
 ```powershell
-gcloud run services update truesight --region asia-southeast1 --no-cpu-throttling --min-instances=1
+gcloud run services update truesight --region asia-southeast1 --max-instances=1 --no-cpu-throttling --min-instances=1
 ```
 
 It prints the live link when it finishes. Open it, sign up and log in, and check `/swagger-ui.html`.
