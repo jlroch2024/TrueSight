@@ -356,7 +356,8 @@ class NameSearchIT {
     private void storeAReadReportFor(Company company) {
         Report report = reports.save(new Report(company.getId(), "10-K", "ts226-crus", LocalDate.parse("2026-05-21"),
                 "https://www.sec.gov/Archives/edgar/data/772406/ts226-crus.htm", "Test report text."));
-        AiRequest read = new AiRequest(AiPurpose.FIND_RELATIONSHIPS, "Test prompt.", report.getId(), "Test prompt.");
+        AiRequest read = new AiRequest(AiPurpose.FIND_RELATIONSHIPS, "Test prompt.", report.getId(),
+                AiRequest.reportMarker(report.getId(), report.getText()));
         Long callId = aiCallLog.record(read, "test-model", "[]", AiOutcome.ANSWERED, null, Instant.now(), 1);
         aiCallLog.attachReport(callId, report.getId());
         aiCallLog.finish(callId, 0, 0);
