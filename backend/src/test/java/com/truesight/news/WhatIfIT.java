@@ -12,6 +12,7 @@ import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
+import com.truesight.relationship.SecondCheckVerdict;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.support.IntegrationTest;
@@ -216,6 +217,32 @@ class WhatIfIT {
         whatIf(portfolio, stopped, email)
                 .andExpect(jsonPath("$.holdings", hasSize(1)))
                 .andExpect(jsonPath("$.holdings[0].ticker").value("T2"));
+    }
+
+    @Test
+    void anUnreviewedDoubtedRelationshipIsLeftOut() throws Exception {
+        sToT1.setSecondCheck(SecondCheckVerdict.DOUBTS);
+        relationships.save(sToT1);
+        Portfolio portfolio = portfolio(email);
+        hold(portfolio, "T1", t1, "30");
+        hold(portfolio, "T2", t2, "12.5");
+
+        whatIf(portfolio, stopped, email)
+                .andExpect(jsonPath("$.holdings", hasSize(1)))
+                .andExpect(jsonPath("$.holdings[0].ticker").value("T2"));
+    }
+
+    @Test
+    void anApprovedRelationshipTheSecondCheckDoubtedIsKept() throws Exception {
+        sToT1.setSecondCheck(SecondCheckVerdict.DOUBTS);
+        sToT1.setReviewStatus(ReviewStatus.APPROVED);
+        relationships.save(sToT1);
+        Portfolio portfolio = portfolio(email);
+        hold(portfolio, "T1", t1, "30");
+
+        whatIf(portfolio, stopped, email)
+                .andExpect(jsonPath("$.holdings", hasSize(1)))
+                .andExpect(jsonPath("$.holdings[0].ticker").value("T1"));
     }
 
     @Test

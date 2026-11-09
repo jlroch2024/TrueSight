@@ -11,6 +11,7 @@ import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
 import com.truesight.relationship.ReviewStatus;
+import com.truesight.relationship.SecondCheckVerdict;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.support.Examples;
@@ -380,6 +381,94 @@ class AlertBuilderIT {
     }
 
     // ---- building the test data ----
+
+    // ---- Doubted Links Raise No Alerts ----------------------------------------------------------------------------
+
+    @Test
+    void anEventAtACompanyLinkedOnlyByAnUnreviewedDoubtedLinkRaisesNoAlert() {
+        doubted(supplier(nvidia, tsmc));
+        Portfolio portfolio = portfolio();
+        hold(portfolio, nvidia, "60");
+        event(tsmc);
+
+        alertBuilder.run(portfolio.getId());
+
+        assertThat(alerts.findByPortfolioId(portfolio.getId())).isEmpty();
+    }
+
+    @Test
+    void theSameDoubtedLinkApprovedRaisesTheAlertAtTheNextNewsCheck() {
+        Relationship link = doubted(supplier(nvidia, tsmc));
+        Portfolio portfolio = portfolio();
+        hold(portfolio, nvidia, "60");
+        NewsArticle event = event(tsmc);
+        alertBuilder.run(portfolio.getId());
+        assertThat(alerts.findByPortfolioId(portfolio.getId())).isEmpty();
+
+        link.setReviewStatus(ReviewStatus.APPROVED);
+        relationships.save(link);
+        alertBuilder.run(portfolio.getId());
+
+        assertThat(alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId())).isPresent();
+    }
+
+    @Test
+    void theSameLinkWithNoSecondCheckOrAnAgreesRaisesTheAlert() {
+        supplier(nvidia, tsmc);
+        Portfolio noCheck = portfolio();
+        hold(noCheck, nvidia, "60");
+        Company amd = company("AMD");
+        Relationship agreed = supplier(amd, tsmc);
+        agreed.setSecondCheck(SecondCheckVerdict.AGREES);
+        relationships.save(agreed);
+        Portfolio agrees = portfolio();
+        hold(agrees, amd, "40");
+        event(tsmc);
+
+        alertBuilder.run(noCheck.getId());
+        alertBuilder.run(agrees.getId());
+
+        assertThat(alerts.findByPortfolioId(noCheck.getId())).hasSize(1);
+        assertThat(alerts.findByPortfolioId(agrees.getId())).hasSize(1);
+    }
+
+    @Test
+    void aHoldingReachedByBothADoubtedLinkAndAGoodOneIsReachedThroughTheGoodOne() {
+        doubted(supplier(nvidia, tsmc));
+        Relationship good = relationship(tsmc, nvidia, RelationshipType.CUSTOMER);
+        Portfolio portfolio = portfolio();
+        Holding holding = hold(portfolio, nvidia, "60");
+        NewsArticle event = event(tsmc);
+
+        alertBuilder.run(portfolio.getId());
+
+        Alert alert = alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId()).orElseThrow();
+        assertThat(alertHoldings.findByAlertId(alert.getId()))
+                .extracting(AlertHolding::getHoldingId, AlertHolding::getRelationshipId)
+                .containsExactly(tuple(holding.getId(), good.getId()));
+    }
+
+    @Test
+    void theDoubtedLinkStaysAndAnAlertRaisedBeforeTheDoubtStays() {
+        Relationship link = supplier(nvidia, tsmc);
+        Portfolio portfolio = portfolio();
+        hold(portfolio, nvidia, "60");
+        NewsArticle event = event(tsmc);
+        alertBuilder.run(portfolio.getId());
+        assertThat(alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId())).isPresent();
+
+        doubted(link);
+        alertBuilder.run(portfolio.getId());
+
+        assertThat(alerts.findByPortfolioIdAndArticleId(portfolio.getId(), event.getId())).isPresent();
+        assertThat(relationships.findById(link.getId())).isPresent();
+    }
+
+    private Relationship doubted(Relationship relationship) {
+        relationship.setSecondCheck(SecondCheckVerdict.DOUBTS);
+        relationship.setSecondCheckReason("Reads as Not Stated. Set by the test.");
+        return relationships.save(relationship);
+    }
 
     private Company company(String name) {
         return companyDirectory.findOrCreate(name + " Alert Test " + suffix, null, null, List.of());
