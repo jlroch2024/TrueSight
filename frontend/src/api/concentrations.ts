@@ -65,7 +65,7 @@ export function dependenceOf(figures: Concentration[]): Dependence[] {
  */
 export function partyName(item: Pick<Dependence, 'counterparty' | 'kind' | 'label'>): string {
   if (item.counterparty) return item.counterparty.displayName;
-  if (/(customers|suppliers|distributors|vendors|others|largest|top)/i.test(item.label)) return item.label;
+  if (/(^|[^a-z])(customers|suppliers|distributors|vendors|others|largest|top)([^a-z]|$)/i.test(item.label)) return item.label;
   return item.kind === 'CUSTOMER' ? 'One Customer' : 'One Supplier';
 }
 
