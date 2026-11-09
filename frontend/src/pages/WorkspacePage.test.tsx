@@ -1033,6 +1033,30 @@ describe('Check News', () => {
 
 // ---- 3. The Alerts tab ---------------------------------------------------------------------------------------------
 
+describe('a relationship both reports name', () => {
+  it('showsBothSentencesEachOpeningItsOwnReport', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const relationship = sample[0]!;
+    const other = {
+      id: 999,
+      evidence: 'Direct sales to Apple and Qualcomm accounted for 29.8% and 11.1% of our net sales.',
+      report: { form: '10-K', filingDate: '2026-02-20', url: 'https://www.sec.gov/other-report.htm' },
+    };
+    backend.relationships = [{ ...relationship, agreesWith: other }, ...backend.relationships.slice(1)];
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Link 1' }));
+
+    expect(within(inspector()).getByRole('heading', { name: `Also in ${relationship.counterparty.displayName}’s Report` })).toBeInTheDocument();
+    expect(within(inspector()).getByText(/Direct sales to Apple and Qualcomm/)).toBeInTheDocument();
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Show in Report' }));
+    expect(open).toHaveBeenLastCalledWith(showInReportUrl(relationship.report.url, relationship.evidence), '_blank', 'noopener,noreferrer');
+    await userEvent.click(within(inspector()).getByRole('button', { name: `Show in ${relationship.counterparty.displayName}’s Report` }));
+    expect(open).toHaveBeenLastCalledWith(showInReportUrl(other.report.url, other.evidence), '_blank', 'noopener,noreferrer');
+  });
+});
+
 describe('the Alerts tab', () => {
   const open = () => sampleAlert({ id: 1, headline: 0, holdings: [tsmcSuppliesNvidia(1, 1)] });
   const closed = () => sampleAlert({ id: 2, headline: 1, severity: 'LOW', status: 'DISMISSED', holdings: [tsmcSuppliesNvidia(1, 1)] });

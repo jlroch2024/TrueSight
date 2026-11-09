@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 import java.util.List;
 
 import static com.truesight.support.FakeAi.answer;
@@ -94,7 +95,7 @@ class RelationshipConfidenceIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(7)))
                 .andExpect(jsonPath("$[*].confidence.level", everyItem(is("HIGH"))))
-                .andExpect(jsonPath("$[0].confidence.reasons", hasSize(3)))
+                .andExpect(jsonPath("$[0].confidence.reasons", hasSize(4)))
                 .andExpect(jsonPath("$[0].confidence.reasons[0].text").value("Not Yet Reviewed"))
                 .andExpect(jsonPath("$[0].confidence.reasons[0].effect").value("NONE"))
                 .andExpect(jsonPath("$[0].confidence.reasons[1].text").value("Strong Quote Match (100%)"))
@@ -139,6 +140,49 @@ class RelationshipConfidenceIT {
     }
 
     /** Makes a portfolio holding NVIDIA, presses Analyse, and waits for the holding to be Done. */
+    // ---- Both Reports Name It ------------------------------------------------------------------------------------
+
+    @Test
+    void qualcommsAndAmkorsOwnReportsAgreeSoBothRiseAndEachCarriesTheOthersSentence() throws Exception {
+        String qualcommSays = "Our primary semiconductor assembly and test suppliers are Advanced Semiconductor Engineering, "
+                + "Amkor Technology, Siliconware Precision Industries and STATSChipPAC.";
+        String amkorSays = "Direct sales to Apple and Qualcomm accounted for 29.8% and 11.1% of our net sales, respectively, "
+                + "for the year ended December 31, 2025.";
+        assertThat(Examples.qualcomm10K()).contains(qualcommSays);
+        assertThat(Examples.amkor10K()).contains(amkorSays);
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        Company qualcomm = companyDirectory.findOrCreate("Qualcomm Test " + suffix, null, null, List.of());
+        Company amkor = companyDirectory.findOrCreate("Amkor Test " + suffix, null, null, List.of());
+        Report qualcommReport = reports.save(new Report(qualcomm.getId(), "10-K", "q-" + suffix, LocalDate.parse("2025-11-05"),
+                "https://www.sec.gov/qualcomm", Examples.qualcomm10K()));
+        Report amkorReport = reports.save(new Report(amkor.getId(), "10-K", "a-" + suffix, LocalDate.parse("2026-02-20"),
+                "https://www.sec.gov/amkor", Examples.amkor10K()));
+        Relationship inQualcomms = new Relationship(qualcommReport.getId(), qualcomm.getId(), amkor.getId(),
+                RelationshipType.SUPPLIER, "assembly and test", qualcommSays);
+        inQualcomms.setQuoteMatch(new BigDecimal("1.000"));
+        relationships.save(inQualcomms);
+        Relationship inAmkors = new Relationship(amkorReport.getId(), amkor.getId(), qualcomm.getId(),
+                RelationshipType.CUSTOMER, "assembly and test", amkorSays);
+        relationships.save(inAmkors);
+        String email = "confidence-both-" + suffix + "@example.com";
+        Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "Both Reports"));
+        Holding holding = new Holding(portfolio.getId(), "QTST", new BigDecimal("10"));
+        holding.setCompanyId(qualcomm.getId());
+        holding.setStatus(HoldingStatus.DONE);
+        holdings.save(holding);
+
+        mockMvc.perform(get("/api/portfolios/{id}/relationships", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].confidence.level").value("HIGH"))
+                .andExpect(jsonPath("$[0].confidence.reasons[3].text").value("Both Reports Name It"))
+                .andExpect(jsonPath("$[0].confidence.reasons[3].effect").value("RAISES"))
+                .andExpect(jsonPath("$[0].agreesWith.id").value(inAmkors.getId()))
+                .andExpect(jsonPath("$[0].agreesWith.evidence").value(amkorSays))
+                .andExpect(jsonPath("$[0].agreesWith.report.url").value("https://www.sec.gov/amkor"));
+    }
+
     private Portfolio analyse(String email) throws Exception {
         Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "Confidence " + System.nanoTime()));
         holdings.save(new Holding(portfolio.getId(), "NVDA", new BigDecimal("100")));

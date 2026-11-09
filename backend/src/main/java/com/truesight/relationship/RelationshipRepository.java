@@ -21,6 +21,9 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     boolean existsByReportId(Long reportId);
 
+    /** Every relationship whose company is one of these, and whose counterparty is one of those: what {@link Agreement} reads. */
+    List<Relationship> findByCompanyIdInAndCounterpartyIdIn(Collection<Long> companyIds, Collection<Long> counterpartyIds);
+
     /** Whether the report has a relationship found this way: by reading the whole report, or by a name search. */
     boolean existsByReportIdAndFoundBy(Long reportId, FoundBy foundBy);
 

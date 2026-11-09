@@ -8,6 +8,7 @@ import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
+import com.truesight.relationship.Agreement;
 import com.truesight.relationship.RelationshipConfidence;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
@@ -45,12 +46,15 @@ public class AlertService {
     private final CompanyDisplayNames displayNames;
     private final RecommendationRepository recommendations;
     private final CurrentUser currentUser;
+    private final Agreement agreement;
 
     public AlertService(PortfolioRepository portfolios, AlertRepository alerts,
                         AlertHoldingRepository alertHoldings, HoldingRepository holdings,
                         RelationshipRepository relationships, CompanyRepository companies,
                         CompanyDisplayNames displayNames, RecommendationRepository recommendations,
-                        CurrentUser currentUser) {
+                        CurrentUser currentUser,
+                        Agreement agreement) {
+        this.agreement = agreement;
         this.portfolios = portfolios;
         this.alerts = alerts;
         this.alertHoldings = alertHoldings;
@@ -143,7 +147,7 @@ public class AlertService {
                         rows.stream().map(row -> row.article().getId()).distinct().toList())
                 .stream().collect(Collectors.toMap(Recommendation::getArticleId, Function.identity()));
         return new PageData(portfolioHoldings, holdingById, relationshipById, companyById, reachedByAlert,
-                recommendationByArticle);
+                recommendationByArticle, agreement.of(relationshipById.values()).keySet());
     }
 
     private AlertEventResponse eventResponse(List<AlertRow> rows, PageData data) {
@@ -231,7 +235,7 @@ public class AlertService {
                     holding.getId(), holding.getTicker(), holding.getWeight(), false,
                     nameOf(data.companyById().get(supplierId(relationship))), null,
                     nameOf(data.companyById().get(customerId(relationship))),
-                    relationship.getReviewStatus(), relationship.getId(), RelationshipConfidence.of(relationship),
+                    relationship.getReviewStatus(), relationship.getId(), confidenceOf(relationship, data),
                     null), null);
         }
         Relationship second = data.relationshipById().get(found.getSecondRelationshipId());
@@ -242,8 +246,12 @@ public class AlertService {
                 nameOf(data.companyById().get(customerId(relationship))),
                 nameOf(data.companyById().get(customerId(second))),
                 weaker(relationship.getReviewStatus(), second.getReviewStatus()), relationship.getId(),
-                weaker(RelationshipConfidence.of(relationship), RelationshipConfidence.of(second)),
+                weaker(confidenceOf(relationship, data), confidenceOf(second, data)),
                 second.getId()), second.getId());
+    }
+
+    private static RelationshipConfidence confidenceOf(Relationship relationship, PageData data) {
+        return RelationshipConfidence.of(relationship, data.bothReportsNameIt().contains(relationship.getId()));
     }
 
     private AlertResponse.ReachedHolding singleReachedHolding(AlertHolding found, PageData data) {
@@ -349,9 +357,9 @@ public class AlertService {
     private record PageData(List<Holding> portfolioHoldings, Map<Long, Holding> holdingById,
                             Map<Long, Relationship> relationshipById, Map<Long, Company> companyById,
                             Map<Long, List<AlertHolding>> reachedByAlert,
-                            Map<Long, Recommendation> recommendationByArticle) {
+                            Map<Long, Recommendation> recommendationByArticle, Set<Long> bothReportsNameIt) {
         static PageData empty(List<Holding> portfolioHoldings) {
-            return new PageData(portfolioHoldings, Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
+            return new PageData(portfolioHoldings, Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of());
         }
     }
 }

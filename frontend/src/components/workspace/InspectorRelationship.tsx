@@ -124,6 +124,36 @@ export function RelationshipView({
         </button>
       </div>
 
+      {relationship.agreesWith && (
+        <section className="insp-section" aria-label="Also in the Other Report">
+          <h3>
+            <span className="h3-mark" />
+            Also in {relationship.counterparty.displayName}’s Report
+          </h3>
+          <HighlightedQuote
+            text={relationship.agreesWith.evidence}
+            highlights={[]}
+            companyColour={view.colourOf.get(String(relationship.counterparty.id))}
+          >
+            <footer>
+              <FileText size={13} />
+              From {relationship.counterparty.displayName}’s {relationship.agreesWith.report.form}, Filed {formatDate(relationship.agreesWith.report.filingDate)}
+            </footer>
+          </HighlightedQuote>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn small"
+              aria-label={`Show in ${relationship.counterparty.displayName}’s Report`}
+              onClick={() => openInNewTab(showInReportUrl(relationship.agreesWith!.report.url, relationship.agreesWith!.evidence))}
+            >
+              <ExternalLink size={15} />
+              Show in Report
+            </button>
+          </div>
+        </section>
+      )}
+
       {relationship.criticality && relationship.criticalityEvidence && (
         <section className="insp-section" aria-label="How Critical">
           <h3>

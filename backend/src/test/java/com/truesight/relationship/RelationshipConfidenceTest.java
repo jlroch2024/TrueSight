@@ -25,47 +25,50 @@ class RelationshipConfidenceTest {
     void anApprovedRelationshipIsHighBecauseAnAnalystApprovedIt() {
         Relationship approved = relationship(ReviewStatus.APPROVED, null, null, null);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(approved);
+        RelationshipConfidence confidence = RelationshipConfidence.of(approved, false);
 
         assertThat(confidence.level()).isEqualTo(Level.HIGH);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("An Analyst Approved It", Effect.RAISES),
                 new Reason("Quote Match Not Recorded", Effect.NONE),
-                new Reason("Not Yet Second-Checked", Effect.NONE));
+                new Reason("Not Yet Second-Checked", Effect.NONE),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void approvalOutweighsASecondCheckDoubt() {
         Relationship approved = relationship(ReviewStatus.APPROVED, "0.900", SecondCheckVerdict.DOUBTS, DOUBT);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(approved);
+        RelationshipConfidence confidence = RelationshipConfidence.of(approved, false);
 
         assertThat(confidence.level()).isEqualTo(Level.HIGH);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("An Analyst Approved It", Effect.RAISES),
                 new Reason("Partial Quote Match (90%)", Effect.NONE),
-                new Reason("Second Check Doubts: " + DOUBT, Effect.NONE));
+                new Reason("Second Check Doubts: " + DOUBT, Effect.NONE),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void anUnreviewedRelationshipWithAStrongMatchAndAnAgreeingSecondCheckIsHigh() {
         Relationship strong = relationship(ReviewStatus.UNREVIEWED, "1.000", SecondCheckVerdict.AGREES, null);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(strong);
+        RelationshipConfidence confidence = RelationshipConfidence.of(strong, false);
 
         assertThat(confidence.level()).isEqualTo(Level.HIGH);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("Not Yet Reviewed", Effect.NONE),
                 new Reason("Strong Quote Match (100%)", Effect.RAISES),
-                new Reason("Second Check Agrees", Effect.RAISES));
+                new Reason("Second Check Agrees", Effect.RAISES),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void aMatchOfExactly95PercentIsStrong() {
         Relationship strong = relationship(ReviewStatus.UNREVIEWED, "0.950", SecondCheckVerdict.AGREES, null);
 
-        assertThat(RelationshipConfidence.of(strong).level()).isEqualTo(Level.HIGH);
-        assertThat(RelationshipConfidence.of(strong).reasons()).contains(
+        assertThat(RelationshipConfidence.of(strong, false).level()).isEqualTo(Level.HIGH);
+        assertThat(RelationshipConfidence.of(strong, false).reasons()).contains(
                 new Reason("Strong Quote Match (95%)", Effect.RAISES));
     }
 
@@ -73,20 +76,21 @@ class RelationshipConfidenceTest {
     void anUnreviewedRelationshipTheSecondCheckDoubtsIsLowWithTheDoubtsReason() {
         Relationship doubted = relationship(ReviewStatus.UNREVIEWED, "1.000", SecondCheckVerdict.DOUBTS, DOUBT);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(doubted);
+        RelationshipConfidence confidence = RelationshipConfidence.of(doubted, false);
 
         assertThat(confidence.level()).isEqualTo(Level.LOW);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("Not Yet Reviewed", Effect.NONE),
                 new Reason("Strong Quote Match (100%)", Effect.NONE),
-                new Reason("Second Check Doubts: " + DOUBT, Effect.LOWERS));
+                new Reason("Second Check Doubts: " + DOUBT, Effect.LOWERS),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void aDoubtWithNoReasonSaysOnlyThatItDoubts() {
         Relationship doubted = relationship(ReviewStatus.UNREVIEWED, null, SecondCheckVerdict.DOUBTS, null);
 
-        assertThat(RelationshipConfidence.of(doubted).reasons()).contains(
+        assertThat(RelationshipConfidence.of(doubted, false).reasons()).contains(
                 new Reason("Second Check Doubts", Effect.LOWERS));
     }
 
@@ -95,34 +99,36 @@ class RelationshipConfidenceTest {
         // 22 of the TSMC sentence's 24 words, as QuoteCheckerTest finds; recorded rounded down to 0.916.
         Relationship partial = relationship(ReviewStatus.UNREVIEWED, "0.916", SecondCheckVerdict.AGREES, null);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(partial);
+        RelationshipConfidence confidence = RelationshipConfidence.of(partial, false);
 
         assertThat(confidence.level()).isEqualTo(Level.MEDIUM);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("Not Yet Reviewed", Effect.NONE),
                 new Reason("Partial Quote Match (91%)", Effect.NONE),
-                new Reason("Second Check Agrees", Effect.NONE));
+                new Reason("Second Check Agrees", Effect.NONE),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void aStrongMatchNotYetSecondCheckedIsMedium() {
         Relationship unchecked = relationship(ReviewStatus.UNREVIEWED, "1.000", null, null);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(unchecked);
+        RelationshipConfidence confidence = RelationshipConfidence.of(unchecked, false);
 
         assertThat(confidence.level()).isEqualTo(Level.MEDIUM);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("Not Yet Reviewed", Effect.NONE),
                 new Reason("Strong Quote Match (100%)", Effect.NONE),
-                new Reason("Not Yet Second-Checked", Effect.NONE));
+                new Reason("Not Yet Second-Checked", Effect.NONE),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void aShareJustUnder95PercentReadsAs94NotAs95() {
         Relationship justUnder = relationship(ReviewStatus.UNREVIEWED, "0.949", SecondCheckVerdict.AGREES, null);
 
-        assertThat(RelationshipConfidence.of(justUnder).level()).isEqualTo(Level.MEDIUM);
-        assertThat(RelationshipConfidence.of(justUnder).reasons()).contains(
+        assertThat(RelationshipConfidence.of(justUnder, false).level()).isEqualTo(Level.MEDIUM);
+        assertThat(RelationshipConfidence.of(justUnder, false).reasons()).contains(
                 new Reason("Partial Quote Match (94%)", Effect.NONE));
     }
 
@@ -133,11 +139,11 @@ class RelationshipConfidenceTest {
         Relationship doubted = relationship(ReviewStatus.UNREVIEWED, null, SecondCheckVerdict.DOUBTS, DOUBT);
         Relationship approved = relationship(ReviewStatus.APPROVED, null, SecondCheckVerdict.DOUBTS, DOUBT);
 
-        assertThat(RelationshipConfidence.of(agreed).level()).isEqualTo(Level.MEDIUM);
-        assertThat(RelationshipConfidence.of(agreed).reasons()).contains(
+        assertThat(RelationshipConfidence.of(agreed, false).level()).isEqualTo(Level.MEDIUM);
+        assertThat(RelationshipConfidence.of(agreed, false).reasons()).contains(
                 new Reason("Quote Match Not Recorded", Effect.NONE));
-        assertThat(RelationshipConfidence.of(doubted).level()).isEqualTo(Level.LOW);
-        assertThat(RelationshipConfidence.of(approved).level()).isEqualTo(Level.HIGH);
+        assertThat(RelationshipConfidence.of(doubted, false).level()).isEqualTo(Level.LOW);
+        assertThat(RelationshipConfidence.of(approved, false).level()).isEqualTo(Level.HIGH);
     }
 
     /** An alert made before the rejection still lists the path, so a rejected link must never read as confident. */
@@ -145,26 +151,28 @@ class RelationshipConfidenceTest {
     void aRejectedRelationshipIsLowEvenWithAStrongMatchAndAnAgreeingSecondCheck() {
         Relationship rejected = relationship(ReviewStatus.REJECTED, "1.000", SecondCheckVerdict.AGREES, null);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(rejected);
+        RelationshipConfidence confidence = RelationshipConfidence.of(rejected, false);
 
         assertThat(confidence.level()).isEqualTo(Level.LOW);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("An Analyst Rejected It", Effect.LOWERS),
                 new Reason("Strong Quote Match (100%)", Effect.NONE),
-                new Reason("Second Check Agrees", Effect.NONE));
+                new Reason("Second Check Agrees", Effect.NONE),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     @Test
     void aRejectionIsTheReasonThatLowersItWhenTheSecondCheckDoubtsToo() {
         Relationship rejected = relationship(ReviewStatus.REJECTED, null, SecondCheckVerdict.DOUBTS, DOUBT);
 
-        RelationshipConfidence confidence = RelationshipConfidence.of(rejected);
+        RelationshipConfidence confidence = RelationshipConfidence.of(rejected, false);
 
         assertThat(confidence.level()).isEqualTo(Level.LOW);
         assertThat(confidence.reasons()).containsExactly(
                 new Reason("An Analyst Rejected It", Effect.LOWERS),
                 new Reason("Quote Match Not Recorded", Effect.NONE),
-                new Reason("Second Check Doubts: " + DOUBT, Effect.NONE));
+                new Reason("Second Check Doubts: " + DOUBT, Effect.NONE),
+                new Reason("Only One Report Names It", Effect.NONE));
     }
 
     /** The sample the website's tests use is in the API's exact shape, so its confidences follow the same rule. */
@@ -173,7 +181,7 @@ class RelationshipConfidenceTest {
         JsonNode sample = JsonMapper.builder().build().readTree(Examples.relationships());
         for (JsonNode found : sample) {
             RelationshipConfidence expected = RelationshipConfidence.of(
-                    relationship(ReviewStatus.valueOf(found.path("reviewStatus").asText()), null, null, null));
+                    relationship(ReviewStatus.valueOf(found.path("reviewStatus").asText()), null, null, null), false);
             JsonNode confidence = found.path("confidence");
             assertThat(confidence.path("level").asText()).isEqualTo(expected.level().name());
             assertThat(confidence.path("reasons")).hasSize(expected.reasons().size());
@@ -184,6 +192,42 @@ class RelationshipConfidenceTest {
                         .isEqualTo(expected.reasons().get(i).effect().name());
             }
         }
+    }
+
+    // ---- Both Reports Name It ------------------------------------------------------------------------------------
+
+    @Test
+    void bothReportsNamingItRaisesLowToMediumAndMediumToHigh() {
+        Relationship doubted = relationship(ReviewStatus.UNREVIEWED, "1.000", SecondCheckVerdict.DOUBTS, DOUBT);
+        Relationship unchecked = relationship(ReviewStatus.UNREVIEWED, "1.000", null, null);
+
+        assertThat(RelationshipConfidence.of(doubted, false).level()).isEqualTo(Level.LOW);
+        assertThat(RelationshipConfidence.of(doubted, true).level()).isEqualTo(Level.MEDIUM);
+        assertThat(RelationshipConfidence.of(unchecked, false).level()).isEqualTo(Level.MEDIUM);
+        RelationshipConfidence raised = RelationshipConfidence.of(unchecked, true);
+        assertThat(raised.level()).isEqualTo(Level.HIGH);
+        assertThat(raised.reasons()).contains(new Reason("Both Reports Name It", Effect.RAISES));
+    }
+
+    @Test
+    void aRelationshipOnlyOneReportNamesKeepsItsLevelAndSaysSo() {
+        Relationship unchecked = relationship(ReviewStatus.UNREVIEWED, "1.000", null, null);
+
+        RelationshipConfidence confidence = RelationshipConfidence.of(unchecked, false);
+
+        assertThat(confidence.level()).isEqualTo(Level.MEDIUM);
+        assertThat(confidence.reasons()).contains(new Reason("Only One Report Names It", Effect.NONE));
+    }
+
+    @Test
+    void approvedIsHighAndRejectedIsLowWhateverTheOtherReportSays() {
+        Relationship approved = relationship(ReviewStatus.APPROVED, "1.000", null, null);
+        Relationship rejected = relationship(ReviewStatus.REJECTED, "1.000", null, null);
+
+        assertThat(RelationshipConfidence.of(approved, true).level()).isEqualTo(Level.HIGH);
+        assertThat(RelationshipConfidence.of(rejected, true).level()).isEqualTo(Level.LOW);
+        assertThat(RelationshipConfidence.of(rejected, true).reasons())
+                .contains(new Reason("Both Reports Name It", Effect.NONE));
     }
 
     private static Relationship relationship(ReviewStatus review, String quoteMatch, SecondCheckVerdict secondCheck,

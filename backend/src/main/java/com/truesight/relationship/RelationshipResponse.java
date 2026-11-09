@@ -22,6 +22,9 @@ import java.util.List;
  *
  * <p>{@code highlights} are the words that matter in the evidence, in the order they appear (see
  * {@link HighlightFinder}). Empty when there are none.
+ *
+ * <p>{@code agreesWith} is the same relationship as the other company's own report states it (see {@link Agreement}), or
+ * null when only this report names it.
  */
 public record RelationshipResponse(
         Long id,
@@ -39,7 +42,12 @@ public record RelationshipResponse(
         Instant reviewedAt,
         String reviewNote,
         RelationshipConfidence confidence,
-        List<Highlight> highlights) {
+        List<Highlight> highlights,
+        AgreesWith agreesWith) {
+
+    /** The other company's report saying the same thing: its relationship, its own sentence and that report. */
+    public record AgreesWith(Long id, String evidence, ReportSummary report) {
+    }
 
     public record CompanySummary(Long id, String name, String displayName, String ticker) {
     }

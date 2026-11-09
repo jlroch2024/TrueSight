@@ -268,6 +268,33 @@ class AlertsIT {
 
     /** A chain is as strong as its weakest link, whichever of the two it is. */
     @Test
+    void howItReachesYouShowsTheLevelBothReportsRaisedAndSaysWhy() throws Exception {
+        String email = "alerts-both-reports@example.com";
+        Portfolio portfolio = portfolio(email);
+        Holding holding = hold(portfolio, nvidia, "40");
+        Report tsmcReport = reports.save(new Report(tsmc.getId(), "20-F",
+                "A-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20),
+                LocalDate.parse("2026-04-10"), "https://www.sec.gov/", Examples.nvidia10K()));
+        relationships.save(new Relationship(tsmcReport.getId(), tsmc.getId(), nvidia.getId(),
+                RelationshipType.CUSTOMER, "semiconductor wafers", EVIDENCE));
+        NewsArticle article = article(tsmc, TSMC_BOMBSHELL_YAHOO, YAHOO_FINANCE);
+        event(article, Severity.HIGH, Confidence.HIGH);
+        Alert alert = alert(portfolio, article, "40", AlertStatus.NEW);
+        alertHoldings.save(new AlertHolding(alert.getId(), holding.getId(), tsmcSuppliesNvidia.getId()));
+
+        try {
+            mockMvc.perform(get("/api/portfolios/{id}/alerts", portfolio.getId())
+                            .header("Authorization", logins.bearer(email)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.level").value("HIGH"))
+                    .andExpect(jsonPath("$.alerts[0].holdings[0].confidence.reasons[3].text").value("Both Reports Name It"));
+        } finally {
+            // TSMC is shared by every test here: its report, and with it this link, must not raise theirs.
+            reports.delete(tsmcReport);
+        }
+    }
+
+    @Test
     void anIndirectHoldingCarriesTheWeakerConfidenceOfItsTwoRelationships() throws Exception {
         String email = "alerts-indirect-confidence@example.com";
         Portfolio portfolio = portfolio(email);

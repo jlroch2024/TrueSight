@@ -109,6 +109,16 @@ public final class Examples {
     }
 
     /** Claims labelled by hand, with Gemini's real readings and the prompt they measured. */
+    /** Qualcomm's 10-K filed in 2025, which names Amkor as a supplier, as plain text, one paragraph per line. */
+    public static String qualcomm10K() {
+        return read("qualcomm-10k.txt");
+    }
+
+    /** Amkor's 10-K filed 2026-02-20, which names Qualcomm as a customer, as plain text, one paragraph per line. */
+    public static String amkor10K() {
+        return read("amkor-10k.txt");
+    }
+
     public static JsonNode secondCheckJudge() {
         return JsonMapper.builder().build().readTree(read("second-check-judge.json"));
     }

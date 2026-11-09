@@ -30,8 +30,12 @@ export type GraphEdge = {
   summary: string;
 };
 
+const CONFIDENCE_RANK = { HIGH: 2, MEDIUM: 1, LOW: 0 } as const;
+
 /**
- * One node per company, one edge per relationship, the arrow pointing from supplier to customer.
+ * One node per company, one edge per supplier-to-customer pair, the arrow pointing from supplier to customer. When both
+ * companies' reports state the same link the edge is the relationship with the higher confidence, so two are never drawn
+ * on top of each other.
  *
  * A relationship's {@code company} is the company whose report named it: a holding, or a holding's supplier, whose own
  * report names who supplies it. So a node is a holding only when one of the portfolio's holdings is that company. A
@@ -62,7 +66,8 @@ export function buildGraphElements(
     });
   }
 
-  const edges: GraphEdge[] = relationships.map((relationship) => {
+  const byPair = new Map<string, { edge: GraphEdge; rank: number }>();
+  for (const relationship of relationships) {
     const companyId = String(relationship.company.id);
     const counterpartyId = String(relationship.counterparty.id);
     upsert(companyId, relationship.company, false);
@@ -72,16 +77,24 @@ export function buildGraphElements(
     // CUSTOMER: the counterparty buys from the company, so the arrow runs company -> counterparty.
     const [source, target] =
       relationship.type === 'SUPPLIER' ? [counterpartyId, companyId] : [companyId, counterpartyId];
-    return {
-      id: `relationship-${relationship.id}`,
-      source,
-      target,
-      relationshipId: relationship.id,
-      reviewStatus: relationship.reviewStatus,
-      criticality: relationship.criticality,
-      summary: relationshipSummary(relationship),
-    };
-  });
+    const pair = `${source}>${target}`;
+    const rank = CONFIDENCE_RANK[relationship.confidence?.level ?? 'LOW'];
+    const kept = byPair.get(pair);
+    if (kept && kept.rank >= rank) continue;
+    byPair.set(pair, {
+      rank,
+      edge: {
+        id: `relationship-${relationship.id}`,
+        source,
+        target,
+        relationshipId: relationship.id,
+        reviewStatus: relationship.reviewStatus,
+        criticality: relationship.criticality,
+        summary: relationshipSummary(relationship),
+      },
+    });
+  }
+  const edges: GraphEdge[] = [...byPair.values()].map((kept) => kept.edge);
 
   const nodeIdByName = new Map<string, string>();
   for (const node of nodes.values()) nodeIdByName.set(node.name, node.id);

@@ -12,6 +12,8 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `second-check-judge.json` | 62 claims labelled by hand from real annual reports, with the passage and Gemini's real reading of each. See below | The Second Check as a Real Judge |
 | `news-filter-judge.json` | 80 headlines labelled by hand, event or noise, each tagged with its company, with Gemini's real answer in three orders. See below | Fewer False Alarms From the Noise Filter |
 | `measure_news_filter.py` | Sends every headline in `news-filter-judge.json` to Gemini in three orders, saves the answers there, and prints the score | Run by hand after changing Filter Out Noise's prompt |
+| `qualcomm-10k.txt` | The plain text of Qualcomm's 10-K filed in 2025, through `ReportTextExtractor`. It names Amkor Technology as a primary assembly and test supplier | Both Reports Name It, in tests |
+| `amkor-10k.txt` | The plain text of Amkor's 10-K filed 2026-02-20 (https://www.sec.gov/Archives/edgar/data/1047127/000104712726000014/amkr-20251231.htm), through `ReportTextExtractor`. It names Qualcomm as a customer, 11.1% of its 2025 net sales | Both Reports Name It, in tests |
 | `measure_second_check.py` | Sends every claim in `second-check-judge.json` to Gemini, saves the answers there, and prints the score | Run by hand after changing the judge's prompt |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `sec-submissions-nvidia.json` | NVIDIA's filing list from the SEC, unchanged, in the shape the SEC sends it | SEC Filing Timeline, in tests |
