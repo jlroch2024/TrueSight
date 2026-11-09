@@ -1,0 +1,96 @@
+{
+ "_note": "Hand labelled from the filing text on 3 Nov 2026 BEFORE any new Gemini call. in=named inside the section sent; out=named only outside it.",
+ "CRUS": {
+  "name": "CIRRUS LOGIC, INC.",
+  "form": "10-K",
+  "in": {
+   "Apple": "CUSTOMER",
+   "GlobalFoundries": "SUPPLIER",
+   "TSMC": "SUPPLIER",
+   "Advanced Semiconductor Engineering": "SUPPLIER",
+   "Amkor": "SUPPLIER",
+   "STATS ChipPAC": "SUPPLIER"
+  },
+  "out": {
+   "Foxconn": "CUSTOMER",
+   "Luxshare": "CUSTOMER"
+  }
+ },
+ "QCOM": {
+  "name": "QUALCOMM INC/DE",
+  "form": "10-K",
+  "in": {
+   "TSMC": "SUPPLIER",
+   "Samsung": "BOTH",
+   "Global Foundries": "SUPPLIER",
+   "Advanced Semiconductor Engineering": "SUPPLIER",
+   "Amkor": "SUPPLIER",
+   "Siliconware Precision": "SUPPLIER",
+   "STATS": "SUPPLIER",
+   "Apple": "CUSTOMER",
+   "Xiaomi": "CUSTOMER"
+  },
+  "out": {}
+ },
+ "GM": {
+  "name": "General Motors Co",
+  "form": "10-K",
+  "in": {
+   "Ultium": "SUPPLIER"
+  },
+  "out": {
+   "LG Energy": "SUPPLIER"
+  }
+ },
+ "F": {
+  "name": "FORD MOTOR CO",
+  "form": "10-K",
+  "in": {},
+  "out": {
+   "Novelis": "SUPPLIER",
+   "Ford Otosan": "SUPPLIER"
+  }
+ },
+ "AAPL": {
+  "name": "Apple Inc.",
+  "form": "10-K",
+  "in": {},
+  "out": {}
+ },
+ "SONY": {
+  "name": "Sony Group Corp",
+  "form": "20-F",
+  "in": {},
+  "out": {}
+ },
+ "criticality": {
+  "ASML/Carl Zeiss": "SOLE_SOURCE",
+  "F/Ford Otosan (out of section)": "SOLE_SOURCE",
+  "all other labelled links": "none"
+ },
+ "INTC": {
+  "name": "INTEL CORP",
+  "form": "10-K",
+  "in": {
+   "ASML": "SUPPLIER"
+  },
+  "out": {}
+ },
+ "ASML": {
+  "name": "ASML HOLDING NV",
+  "form": "20-F",
+  "in": {
+   "Carl Zeiss SMT": "SUPPLIER"
+  },
+  "out": {}
+ },
+ "TSLA": {
+  "name": "Tesla, Inc.",
+  "form": "10-K",
+  "in": {
+   "Panasonic": "SUPPLIER",
+   "Contemporary Amperex": "SUPPLIER"
+  },
+  "out": {}
+ }
+}
