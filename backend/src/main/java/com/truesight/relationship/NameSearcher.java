@@ -254,6 +254,7 @@ public class NameSearcher {
     /** Records that the holding's company was searched for {@code at}, and how many filings the search gave. */
     @Transactional
     public void record(Long companyId, int filingsFound, Instant at) {
+        lock.lock("name-search:" + companyId); // two searches of one company finishing at once write one row
         NameSearch search = searches.findById(companyId).orElse(null);
         if (search == null) {
             searches.save(new NameSearch(companyId, at, filingsFound));
