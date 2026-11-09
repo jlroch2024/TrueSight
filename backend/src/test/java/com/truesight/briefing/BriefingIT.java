@@ -32,6 +32,10 @@ import com.truesight.relationship.Criticality;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipType;
+import com.truesight.report.Concentration;
+import com.truesight.report.ConcentrationKind;
+import com.truesight.report.ConcentrationMeasure;
+import com.truesight.report.ConcentrationRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.support.IntegrationTest;
@@ -103,6 +107,7 @@ class BriefingIT {
     @Autowired AlertRepository alerts;
     @Autowired AlertHoldingRepository alertHoldings;
     @Autowired RecommendationRepository recommendations;
+    @Autowired ConcentrationRepository concentrations;
 
     private String suffix;
     private String email;
@@ -248,6 +253,25 @@ class BriefingIT {
         assertThat(text).contains(SOLE_SUPPLIER);
         String criticalCounterparty = jsonString(shownRelationships, "$[?(@.criticality == 'SOLE_SOURCE')].counterparty.displayName");
         assertThat(text).contains(criticalCounterparty + " supplies");
+    }
+
+    @Test
+    void theBriefingListsEachHoldingsBiggestNamedDependencyWithItsYearAndFiling() throws Exception {
+        Portfolio portfolio = seedPortfolio();
+        Holding held = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
+        Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(held.getCompanyId()).orElseThrow();
+        Company party = company("Largest Customer Party");
+        concentrations.save(new Concentration(report.getId(), held.getCompanyId(), party.getId(), "Party", ConcentrationKind.CUSTOMER,
+                ConcentrationMeasure.REVENUE, new BigDecimal("0.9100"), null, LocalDate.parse("2026-03-28")));
+
+        String text = text(pdf(portfolio));
+
+        assertThat(text).contains("Biggest Dependencies").contains("91% of Revenue, Fiscal 2026").contains(held.getTicker() + ":");
+    }
+
+    @Test
+    void aBriefingWithNoFiguresHasNoBiggestDependenciesSection() throws Exception {
+        assertThat(text(pdf(seedPortfolio()))).doesNotContain("Biggest Dependencies");
     }
 
     @Test

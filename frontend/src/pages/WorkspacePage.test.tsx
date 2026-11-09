@@ -1764,6 +1764,15 @@ describe('Simulate Disruption', () => {
     );
   });
 
+  it('showsEachLinksFigureWhereTheReportTagsOne', async () => {
+    backend.whatIf = () => tsmcStops({ links: [{ ...sample[0]!, figure: { share: 0.91, measure: 'REVENUE', periodEnd: '2026-01-25' } }, sample[2]!] });
+    renderAt();
+    await openTsmcScenario();
+
+    expect(await within(inspector()).findByText(`91% of ${sample[0]!.company.displayName}’s Revenue, Fiscal 2026`)).toBeInTheDocument();
+    expect(within(inspector()).getAllByText(/of .*’s Revenue, Fiscal/)).toHaveLength(1);
+  });
+
   it('showsTheExposureAsTheReachedHoldingsWeightOrACountWithoutWeights', async () => {
     backend.whatIf = () => tsmcStops();
     const { unmount } = renderAt();
