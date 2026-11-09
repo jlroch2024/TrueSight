@@ -18,7 +18,8 @@ export type HistoryEntry = {
   evidence: string;
   reportUrl: string;
   filingDate: string;
-  change: 'NEW' | 'KEPT';
+  // NOT_LISTED: this year's report still names the company but the AI did not list the link; shown with the last sentence.
+  change: 'NEW' | 'KEPT' | 'NOT_LISTED';
 };
 
 // gone is the keys the year before had that this year does not.

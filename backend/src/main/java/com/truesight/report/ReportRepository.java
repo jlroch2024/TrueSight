@@ -21,6 +21,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     Optional<Report> findByAccessionNumber(String accessionNumber);
 
+    /** Whether this report's own text matches the pattern, in any capitals, without loading the text. */
+    @Query(value = "select exists(select 1 from reports where id = :id and text ~* :pattern)", nativeQuery = true)
+    boolean textMatches(@Param("id") Long id, @Param("pattern") String pattern);
+
     /** The company's newest saved report, if any. */
     Optional<Report> findFirstByCompanyIdOrderByFilingDateDesc(Long companyId);
 

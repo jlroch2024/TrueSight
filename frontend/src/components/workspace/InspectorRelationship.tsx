@@ -241,6 +241,15 @@ export function PastRelationshipView({
         </h2>
       </div>
 
+      {entry.change === 'NOT_LISTED' && (
+        <>
+          <div className="chips">
+            <span className="chip">Not Listed This Year</span>
+          </div>
+          <p className="prose muted">This year’s report still names the company, but the link was not found in it. The sentence below is from the last report that stated it.</p>
+        </>
+      )}
+
       <section className="insp-section" aria-label="Annual Report">
         <h3>
           <span className="h3-mark" />

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiPredicate;
 
 /**
  * Turns the reports read into the year-by-year picture. Pure: it works from what it is given, so it is tested without a
@@ -21,7 +22,8 @@ import java.util.TreeSet;
  * newest report it had filed by the end of that year; a year in which it had filed none shows nothing of it. A
  * relationship is matched from year to year by its key (company, counterparty, type): New if the year before did not
  * have it (every relationship of the first year is New, as nothing came before), Kept if it did. What the year before
- * had and this one does not is listed as gone.
+ * had and this one does not is listed as gone, unless that year's report still names the company: an AI leaving a name
+ * out of its list is not the company leaving the report, so such a relationship is carried as Not Listed.
  */
 final class HistoryTimeline {
 
@@ -29,7 +31,10 @@ final class HistoryTimeline {
     }
 
     /** One report: whose it is, when and where it was filed, and the relationships it names. */
-    record Source(Long companyId, LocalDate filingDate, String reportUrl, List<Edge> edges) {
+    record Source(Long reportId, Long companyId, LocalDate filingDate, String reportUrl, List<Edge> edges) {
+        Source(Long companyId, LocalDate filingDate, String reportUrl, List<Edge> edges) {
+            this(null, companyId, filingDate, reportUrl, edges);
+        }
     }
 
     /** A relationship a report names, with the company the report belongs to left to its {@link Source}. */
@@ -37,6 +42,11 @@ final class HistoryTimeline {
     }
 
     static List<HistoryResponse.Year> years(List<Source> sources) {
+        return years(sources, (source, companyId) -> false);
+    }
+
+    /** @param stillNamed whether this report's own text names this company; asked only of what would otherwise be gone */
+    static List<HistoryResponse.Year> years(List<Source> sources, BiPredicate<Source, Long> stillNamed) {
         if (sources.isEmpty()) return List.of();
         int first = sources.stream().mapToInt(source -> source.filingDate().getYear()).min().orElseThrow();
         int last = sources.stream().mapToInt(source -> source.filingDate().getYear()).max().orElseThrow();
@@ -45,13 +55,12 @@ final class HistoryTimeline {
 
         List<HistoryResponse.Year> years = new ArrayList<>();
         Set<String> before = null;
+        Map<String, HistoryResponse.Entry> lastYear = Map.of();
         for (int year = first; year <= last; year++) {
             LocalDate endOfYear = LocalDate.of(year, 12, 31);
             Map<String, HistoryResponse.Entry> entries = new HashMap<>();
             for (Map.Entry<Long, List<Source>> company : byCompany.entrySet()) {
-                Optional<Source> newest = company.getValue().stream()
-                        .filter(source -> !source.filingDate().isAfter(endOfYear))
-                        .max(Comparator.comparing(Source::filingDate));
+                Optional<Source> newest = newestBy(company.getValue(), endOfYear);
                 if (newest.isEmpty()) continue;
                 for (Edge edge : newest.get().edges()) {
                     String key = company.getKey() + "-" + edge.counterpartyId() + "-" + edge.type();
@@ -63,19 +72,36 @@ final class HistoryTimeline {
                                     ? HistoryResponse.Change.KEPT : HistoryResponse.Change.NEW));
                 }
             }
+            Set<String> gone = new TreeSet<>();
+            if (before != null) {
+                for (String key : before) {
+                    if (entries.containsKey(key)) continue;
+                    HistoryResponse.Entry previous = lastYear.get(key);
+                    Optional<Source> newest = newestBy(byCompany.getOrDefault(previous.companyId(), List.of()), endOfYear);
+                    if (newest.isPresent() && stillNamed.test(newest.get(), previous.counterpartyId())) {
+                        entries.put(key, new HistoryResponse.Entry(key, previous.companyId(), previous.counterpartyId(), previous.type(),
+                                previous.provides(), previous.evidence(), previous.reportUrl(), previous.filingDate(),
+                                HistoryResponse.Change.NOT_LISTED));
+                    } else {
+                        gone.add(key);
+                    }
+                }
+            }
             List<HistoryResponse.Entry> ordered = entries.values().stream()
                     .sorted(Comparator.comparing(HistoryResponse.Entry::companyId)
                             .thenComparing(HistoryResponse.Entry::counterpartyId)
                             .thenComparing(entry -> entry.type().name()))
                     .toList();
-            Set<String> gone = new TreeSet<>();
-            if (before != null) {
-                gone.addAll(before);
-                gone.removeAll(entries.keySet());
-            }
             years.add(new HistoryResponse.Year(year, ordered, List.copyOf(gone)));
             before = new HashSet<>(entries.keySet());
+            lastYear = entries;
         }
         return years;
+    }
+
+    private static Optional<Source> newestBy(List<Source> sources, LocalDate endOfYear) {
+        return sources.stream()
+                .filter(source -> !source.filingDate().isAfter(endOfYear))
+                .max(Comparator.comparing(Source::filingDate));
     }
 }

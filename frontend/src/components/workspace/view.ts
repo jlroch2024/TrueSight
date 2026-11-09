@@ -172,7 +172,7 @@ export function namedIn(history: History, companyId: number) {
     .map(({ role, type }) => ({
       role,
       years: history.years
-        .filter((year) => year.relationships.some((entry) => entry.counterpartyId === companyId && entry.type === type))
+        .filter((year) => year.relationships.some((entry) => entry.counterpartyId === companyId && entry.type === type && entry.change !== 'NOT_LISTED'))
         .map((year) => year.year),
     }))
     .filter((named) => named.years.length > 0);

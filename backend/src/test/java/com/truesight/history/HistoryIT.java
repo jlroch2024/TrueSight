@@ -190,15 +190,23 @@ class HistoryIT {
                 .andExpect(jsonPath("$.years[1].relationships[?(@.change == 'KEPT')].key",
                         containsInAnyOrder(both(earlier, oldest))))
                 .andExpect(jsonPath("$.years[1].gone", containsInAnyOrder(minus(oldest, earlier))))
-                // The latest report has one relationship in the graph; the rest of the year before are gone.
-                .andExpect(jsonPath("$.years[2].relationships", hasSize(1)))
-                .andExpect(jsonPath("$.years[2].relationships[0].key").value(latest))
-                .andExpect(jsonPath("$.years[2].relationships[0].change").value(earlier.contains(latest) ? "KEPT" : "NEW"))
-                .andExpect(jsonPath("$.years[2].gone", containsInAnyOrder(minus(earlier, Set.of(latest)))))
+                // The latest report has one relationship in the graph. What its real text still names of the rest of the
+                // year before is Not Listed; only what it no longer names is gone.
+                .andExpect(jsonPath("$.years[2].relationships[?(@.key == '" + latest + "')].change")
+                        .value(earlier.contains(latest) ? "KEPT" : "NEW"))
+                .andExpect(jsonPath("$.years[2].relationships[?(@.change == 'NOT_LISTED')].key",
+                        everyItem(org.hamcrest.Matchers.in(List.of(minus(earlier, Set.of(latest)))))))
+                .andExpect(jsonPath("$.years[2].gone", everyItem(org.hamcrest.Matchers.in(List.of(minus(earlier, Set.of(latest)))))))
                 // Every company a year names comes with its names, so a dropped supplier can still be drawn.
                 .andExpect(jsonPath("$.companies[*].id", hasItem(Integer.valueOf(
                         latest.substring(0, latest.indexOf('-'))))))
                 .andExpect(jsonPath("$.companies[?(@.displayName == null)]", hasSize(0)));
+
+        String body = history().andReturn().getResponse().getContentAsString();
+        List<String> notListed = com.jayway.jsonpath.JsonPath.read(body, "$.years[2].relationships[?(@.change == 'NOT_LISTED')].key");
+        List<String> gone = com.jayway.jsonpath.JsonPath.read(body, "$.years[2].gone");
+        assertThat(notListed).isNotEmpty();
+        assertThat(notListed.size() + gone.size()).isEqualTo(minus(earlier, Set.of(latest)).length);
     }
 
     @Test
@@ -208,9 +216,11 @@ class HistoryIT {
         Relationship rejected = relationships.findByReportIdOrderByIdAsc(filed.latest().getId()).get(0);
         rejected.setReviewStatus(ReviewStatus.REJECTED);
         relationships.save(rejected);
+        String rejectedKey = filed.company().getId() + "-" + rejected.getCounterpartyId() + "-" + rejected.getType();
         load();
 
-        history().andExpect(jsonPath("$.years[2].relationships", hasSize(0)));
+        // Nothing is shown for it: not as this year's, and not carried as merely not listed.
+        history().andExpect(jsonPath("$.years[2].relationships[?(@.key == '" + rejectedKey + "')]", hasSize(0)));
     }
 
     @Test
