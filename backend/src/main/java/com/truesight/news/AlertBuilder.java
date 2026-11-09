@@ -6,7 +6,6 @@ import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
-import com.truesight.relationship.ReviewStatus;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -114,7 +113,7 @@ public class AlertBuilder implements NewsCheckStep {
         List<Relationship> links = relationships.findByCompanyIdInOrCounterpartyIdIn(
                         relevantCompanies, relevantCompanies)
                 .stream()
-                .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
+                .filter(Relationship::countsForAlerts)
                 .toList();
 
         for (NewsArticle article : found) {

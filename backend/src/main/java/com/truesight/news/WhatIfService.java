@@ -11,7 +11,6 @@ import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.RelationshipResponse;
 import com.truesight.relationship.RelationshipService;
-import com.truesight.relationship.ReviewStatus;
 import com.truesight.user.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,7 +71,7 @@ public class WhatIfService {
         Set<Long> relevant = Stream.concat(held.stream().map(Holding::getCompanyId), Stream.of(companyId))
                 .collect(Collectors.toSet());
         List<Relationship> links = relationships.findByCompanyIdInOrCounterpartyIdIn(relevant, relevant).stream()
-                .filter(relationship -> relationship.getReviewStatus() != ReviewStatus.REJECTED)
+                .filter(Relationship::countsForAlerts)
                 .toList();
 
         Map<Holding, Reach.Path> reached = Reach.reached(companyId, held, links, Reach.Direction.DOWNSTREAM);

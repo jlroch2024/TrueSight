@@ -11,7 +11,6 @@ import com.truesight.company.CompanyRepository;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.relationship.Relationship;
 import com.truesight.relationship.RelationshipRepository;
-import com.truesight.relationship.ReviewStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -111,7 +110,7 @@ public class RecommendationWriter implements NewsCheckStep {
         String companyName = company == null ? "the company" : company.getName();
         List<Relationship> links = relationships.findByCompanyIdInOrCounterpartyIdIn(
                         Set.of(article.getCompanyId()), Set.of(article.getCompanyId())).stream()
-                .filter(link -> link.getReviewStatus() != ReviewStatus.REJECTED).toList();
+                .filter(Relationship::countsForAlerts).toList();
         Set<Long> relatedIds = links.stream().map(link -> link.getCompanyId().equals(article.getCompanyId())
                 ? link.getCounterpartyId() : link.getCompanyId()).collect(Collectors.toSet());
         String related = companies.findAllById(relatedIds).stream().map(Company::getName).distinct().limit(30)

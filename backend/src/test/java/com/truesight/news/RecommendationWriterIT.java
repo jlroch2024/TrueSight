@@ -6,6 +6,12 @@ import com.truesight.company.CompanyDirectory;
 import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.Relationship;
+import com.truesight.relationship.RelationshipRepository;
+import com.truesight.relationship.RelationshipType;
+import com.truesight.relationship.SecondCheckVerdict;
+import com.truesight.report.Report;
+import com.truesight.report.ReportRepository;
 import com.truesight.support.Examples;
 import com.truesight.support.FakeAi;
 import com.truesight.support.IntegrationTest;
@@ -19,6 +25,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +40,8 @@ import static org.mockito.Mockito.when;
 @IntegrationTest
 class RecommendationWriterIT {
     @Autowired RecommendationWriter writer;
+    @Autowired RelationshipRepository relationships;
+    @Autowired ReportRepository reports;
     @Autowired TestLogins logins;
     @Autowired PortfolioRepository portfolios;
     @Autowired CompanyDirectory companyDirectory;
@@ -150,6 +159,34 @@ class RecommendationWriterIT {
         verify(gemini, times(2)).generate(any(AiRequest.class), any());
         assertThat(recommendations.findByArticleId(first.getId())).isPresent();
         assertThat(recommendations.findByArticleId(second.getId())).isPresent();
+    }
+
+    @Test
+    void aSuggestionsRelatedCompaniesLeaveOutADoubtedLink() {
+        Event event = event();
+        Portfolio portfolio = portfolio();
+        alerts.save(new Alert(portfolio.getId(), event.article().getId(), BigDecimal.TEN));
+        Company good = company();
+        Company wrong = company();
+        link(event.article().getCompanyId(), good, null);
+        link(event.article().getCompanyId(), wrong, SecondCheckVerdict.DOUBTS);
+        when(gemini.generate(any(), any())).thenReturn(FakeAi.answer(Examples.geminiRecommendation()));
+
+        writer.run(portfolio.getId());
+
+        ArgumentCaptor<AiRequest> request = ArgumentCaptor.forClass(AiRequest.class);
+        verify(gemini).generate(request.capture(), any());
+        assertThat(request.getValue().prompt()).contains(good.getName()).doesNotContain(wrong.getName());
+    }
+
+    private void link(Long companyId, Company counterparty, SecondCheckVerdict verdict) {
+        String accession = "T-" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        Report report = reports.save(new Report(companyId, "10-K", accession, LocalDate.parse("2026-02-25"),
+                "https://www.sec.gov/", "Set by the test: the report's text is not used."));
+        Relationship relationship = new Relationship(report.getId(), companyId, counterparty.getId(),
+                RelationshipType.SUPPLIER, "parts", "Set by the test.");
+        relationship.setSecondCheck(verdict);
+        relationships.save(relationship);
     }
 
     private Company company() {

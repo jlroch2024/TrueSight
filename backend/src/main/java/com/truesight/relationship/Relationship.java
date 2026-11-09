@@ -161,6 +161,15 @@ public class Relationship {
     }
 
     public ReviewStatus getReviewStatus() { return reviewStatus; }
+
+    /**
+     * Whether this link can carry a disruption to a holding: not Rejected, and not an Unreviewed link the second check
+     * doubts. An analyst's Approved outweighs a doubt; a link with no check yet, or whose check failed, still counts.
+     */
+    public boolean countsForAlerts() {
+        return reviewStatus != ReviewStatus.REJECTED
+                && !(reviewStatus == ReviewStatus.UNREVIEWED && secondCheck == SecondCheckVerdict.DOUBTS);
+    }
     public Long getReviewedBy() { return reviewedBy; }
     public Instant getReviewedAt() { return reviewedAt; }
     public String getReviewNote() { return reviewNote; }
