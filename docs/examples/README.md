@@ -569,7 +569,6 @@ though the first AI's description of what is sold is wrong.
 `SecondCheckTest` fails when `SecondCheck.PROMPT` changes without being measured again. To measure, from the repository
 root: `python docs/examples/measure_second_check.py`.
 
-<<<<<<< HEAD
 ## How Filter Out Noise Is Measured
 
 `news-filter-judge.json` measures Filter Out Noise's prompt on real headlines. Each entry has its hand `label` (`E` an event,
@@ -596,6 +595,4 @@ headline and the sanction on an ASML supplier are missed in every order, as the 
 
 **Labels.** The 60 were written in the audit and the 20 new ones while building this story, all by Claude. Claude re-read all 80 on 10 November 2026, from the headline and company alone. That is a second reading and not an independent one; the product owner accepted it in place of a teammate, as the team had none free to do it. It agrees with 79. The exception is "Floods halt over 10 auto-parts plants with Oct 12 restart expected" tagged Toyota: the headline does not name Toyota, so under the new sentence it reads as noise. It keeps its label E, because the story was measured on it and changing a label after seeing the answers would flatter nothing but the score.
 team has checked them yet.** The name of whoever does belongs here.
-=======
 **Labels checked 10 November 2026.** Claude re-read all 62 claims against their passages. It wrote these labels too, in an earlier session, so this is a second reading rather than an independent one; the product owner accepted that in place of a teammate, as the team had none free to do it. It agrees with all 62, including two it looked at hardest: Broadcom and Amkor, where the passage names Amkor in the sentence after the quote, and TSMC and VIS, whose past-tense agreement is followed by 2025 purchases.
->>>>>>> TS-234-The-Second-Check-as-a-Real-Judge
