@@ -217,6 +217,16 @@ class ReadingLimitIT {
         assertThat(readingLimit.reached()).isTrue();
     }
 
+    @Test
+    void aNameSearchCallCountsTowardsTheLimit() {
+        recordCalls(2, AiPurpose.NAME_SEARCH, AiOutcome.ANSWERED, Instant.now());
+        assertThat(readingLimit.reached()).isFalse();
+
+        recordCalls(1, AiPurpose.NAME_SEARCH, AiOutcome.ANSWERED, Instant.now());
+
+        assertThat(readingLimit.reached()).isTrue();
+    }
+
     // ---- criterion 7: a supplier's or an earlier report past the limit is left unread ----------------------------
 
     @Test

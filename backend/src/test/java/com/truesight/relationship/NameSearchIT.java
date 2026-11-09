@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -42,6 +43,8 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
@@ -51,7 +54,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Find Who Names My Holding, criteria 1 to 6 and 8, through a real Analyse.
+ * Find Who Names My Holding, criteria 1 to 6 and 8, through a real Analyse; and, from the review, that a filing the AI
+ * fails on, or the day's limit on reading reports, leaves the search unrecorded so a later Analyse carries on.
  *
  * <p>The holding is Cirrus Logic. The fake SEC answers its name search with the SEC's real, unchanged answer for
  * "Cirrus Logic" ({@code docs/examples/sec-search-cirrus-logic.json}), and serves CEVA's real 10-K
@@ -87,6 +91,8 @@ class NameSearchIT {
 
     @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
+    /** The real limit, which tests never reach ({@code application-test.yml}), unless a test makes it refuse. */
+    @MockitoSpyBean ReadingLimit readingLimit;
 
     private List<SecClient.SecSearchHit> hits;
     private Company cirrus;
@@ -269,6 +275,52 @@ class NameSearchIT {
         await(() -> searches.findById(cirrus.getId()).isPresent());
         verify(sec, times(2)).searchAnnualReports(anyString(), any(), any());
         assertThat(holdingOf(portfolio).getStatus()).isEqualTo(HoldingStatus.DONE);
+    }
+
+    // ---- an AI failure, and the day's limit, from the review --------------------------------------------------------
+
+    @Test
+    void aFilingTheAiFailsOnLeavesTheSearchUnrecordedAndTheNextAnalyseSendsItAgainWithoutDownloadingAnything()
+            throws Exception {
+        doThrow(new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null))
+                .doReturn(answer(Examples.geminiNameSearchCeva()))
+                .when(gemini).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());
+        String email = "name-search-ai-fails@example.com";
+        Portfolio portfolio = portfolioHolding(email, HoldingStatus.DONE);
+
+        analyse(email, portfolio);
+        verify(gemini, timeout(5_000)).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());
+        verify(sec, timeout(5_000).times(11)).download(anyString()); // the other filings are still read
+        Thread.sleep(300);
+        assertThat(searches.findById(cirrus.getId())).isEmpty();
+        assertThat(holdingOf(portfolio).getStatus()).isEqualTo(HoldingStatus.DONE);
+
+        analyse(email, portfolio);
+        await(() -> searches.findById(cirrus.getId()).isPresent());
+        verify(gemini, times(2)).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());
+        verify(sec, times(11)).download(anyString()); // every report was stored the first time, CEVA's included
+        Long ceva = companies.findByCik(CEVA_CIK).orElseThrow().getId();
+        assertThat(relationships.findByCompanyIdIn(List.of(ceva)))
+                .extracting(Relationship::getCounterpartyId).containsExactly(cirrus.getId());
+    }
+
+    @Test
+    void pastTheDaysReadingLimitNoFilingIsSentToTheAiAndTheSearchIsNotRecordedUntilThereIsRoom() throws Exception {
+        doThrow(new ReadingLimit.ReachedException()).when(readingLimit).requireRoom();
+        String email = "name-search-limit@example.com";
+        Portfolio portfolio = portfolioHolding(email, HoldingStatus.DONE);
+
+        analyse(email, portfolio);
+        verify(readingLimit, timeout(5_000)).requireRoom();
+        Thread.sleep(300);
+        verify(gemini, never()).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());
+        assertThat(searches.findById(cirrus.getId())).isEmpty();
+        assertThat(holdingOf(portfolio).getStatus()).isEqualTo(HoldingStatus.DONE);
+
+        doCallRealMethod().when(readingLimit).requireRoom(); // the next day
+        analyse(email, portfolio);
+        await(() -> searches.findById(cirrus.getId()).isPresent());
+        verify(gemini, times(1)).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());
     }
 
     // ---- helpers -------------------------------------------------------------------------------------------------

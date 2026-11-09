@@ -15,8 +15,9 @@ import java.util.List;
  * set) are sent to Gemini in a day, counted across the whole app, whoever started them.
  *
  * <p>It counts the AI Audit Trail ({@code ai_calls}), so there is no table of its own and the count holds across
- * servers. What counts is {@code FIND_RELATIONSHIPS} (a holding's or a supplier's report) and {@code TIMELINE} (an
- * earlier report) calls that started since midnight UTC, however they ended: a failed call may have cost money.
+ * servers. What counts is {@code FIND_RELATIONSHIPS} (a holding's or a supplier's report), {@code TIMELINE} (an
+ * earlier report) and {@code NAME_SEARCH} (another company's report read for the passages naming a holding, up to 25
+ * for each holding) calls that started since midnight UTC, however they ended: a failed call may have cost money.
  * News and second checks do not count, because they are small and stopping them would hide alerts. A report already
  * read is never sent again, so it never counts either.
  *
@@ -30,7 +31,8 @@ public class ReadingLimit {
             "TrueSight has read as many new reports as it can today. Press Analyse again tomorrow.";
 
     /** The calls that read a report. */
-    private static final List<AiPurpose> READS = List.of(AiPurpose.FIND_RELATIONSHIPS, AiPurpose.TIMELINE);
+    private static final List<AiPurpose> READS =
+            List.of(AiPurpose.FIND_RELATIONSHIPS, AiPurpose.TIMELINE, AiPurpose.NAME_SEARCH);
 
     private final AiCallRepository calls;
     private final int limit;

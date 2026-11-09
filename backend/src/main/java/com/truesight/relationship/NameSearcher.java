@@ -97,11 +97,13 @@ public class NameSearcher {
     private final GeminiClient gemini;
     private final GeminiAnswer answers;
     private final SecClient sec;
+    private final ReadingLimit readingLimit;
 
     public NameSearcher(HoldingRepository holdings, CompanyRepository companies, CompanyNameRepository companyNames,
                         CompanyDirectory directory, CompanyDisplayNames displayNames, ReportRepository reports,
                         RelationshipRepository relationships, NameSearchRepository searches, AiCallRepository aiCalls,
-                        AiCallLog calls, GeminiClient gemini, GeminiAnswer answers, SecClient sec) {
+                        AiCallLog calls, GeminiClient gemini, GeminiAnswer answers, SecClient sec,
+                        ReadingLimit readingLimit) {
         this.holdings = holdings;
         this.companies = companies;
         this.companyNames = companyNames;
@@ -115,6 +117,7 @@ public class NameSearcher {
         this.gemini = gemini;
         this.answers = answers;
         this.sec = sec;
+        this.readingLimit = readingLimit;
     }
 
     /**
@@ -181,7 +184,8 @@ public class NameSearcher {
      *
      * @return the report's id if a relationship was saved (for the second check), otherwise null
      * @throws SecClient.SecAccessException if the filing cannot be downloaded
-     * @throws GeminiClient.GeminiException if the AI fails
+     * @throws ReadingLimit.ReachedException if the day's limit on reading reports is reached: nothing is sent
+     * @throws GeminiClient.GeminiException if the AI fails, or its answer cannot be read
      */
     // An AI failure must not undo the work before it: the downloaded report stays stored.
     @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
@@ -204,13 +208,15 @@ public class NameSearcher {
                 prompt(company.getName(), report.getForm(), holder.displayName(), passages), report.getId(),
                 prompt(company.getName(), report.getForm(), holder.displayName(),
                         List.of(AiRequest.reportMarker(report.getId(), passageText))));
+        // Counted by the day's limit on reading reports, as every report sent to the AI is. Past it, nothing is sent.
+        readingLimit.requireRoom();
         AiAnswer answer = gemini.generate(request, RESPONSE_SCHEMA);
         List<GeminiAnswer.NameSearchFound> found;
         try {
             found = answers.readNameSearch(answer.text());
         } catch (GeminiAnswer.UnreadableAnswerException exception) {
-            calls.unreadable(answer.callId()); // not counted as read: the next search asks again
-            return null;
+            calls.unreadable(answer.callId()); // not counted as read: the search is not recorded, and asks again
+            throw new GeminiClient.GeminiException(exception.getMessage(), exception);
         }
 
         QuoteChecker checker = new QuoteChecker(report.getText());
