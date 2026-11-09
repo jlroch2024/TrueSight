@@ -128,6 +128,20 @@ public class RelationshipFinder {
         findIn(report, company, false);
     }
 
+    /**
+     * Whether the whole report has been read: it has a relationship found by reading it, or a completed answer to the
+     * relationship prompt. A report a name search read only passages of has not.
+     */
+    @Transactional(readOnly = true)
+    public boolean isRead(Long reportId) {
+        return relationships.existsByReportIdAndFoundBy(reportId, FoundBy.REPORT) || answered(reportId);
+    }
+
+    private boolean answered(Long reportId) {
+        return aiCalls.existsByReportIdAndPurposeAndOutcomeAndKeptIsNotNull(
+                reportId, AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED);
+    }
+
     /** Reassesses once when the saved report text was refreshed from its SEC filing. */
     @Transactional(noRollbackFor = GeminiClient.GeminiException.class)
     public void findIn(Report report, Company company, boolean textWasRefreshed) {

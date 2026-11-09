@@ -103,6 +103,24 @@ public final class Examples {
         return read("gemini-highlights-quotes.txt").lines().toList();
     }
 
+    /**
+     * The SEC full-text search's real, unchanged answer for "Cirrus Logic" in 10-Ks and 20-Fs filed from 8 August 2025
+     * to 8 November 2026: 23 files, Cirrus Logic's own report and exhibits among them.
+     */
+    public static String secSearchCirrusLogic() {
+        return read("sec-search-cirrus-logic.json");
+    }
+
+    /** CEVA's 10-K filed 2026-02-27, one of that search's hits, as plain text, one paragraph per line. */
+    public static String ceva10K() {
+        return read("ceva-10k.txt");
+    }
+
+    /** Gemini's real, unchanged answer to the name search prompt for the passages of {@link #ceva10K()} naming Cirrus Logic. */
+    public static String geminiNameSearchCeva() {
+        return read("gemini-name-search-ceva.json");
+    }
+
     /** A real Google News RSS response for the TSMC search used by Sprint 2. */
     public static String googleNewsTsmc() {
         return read("google-news-tsmc.xml");

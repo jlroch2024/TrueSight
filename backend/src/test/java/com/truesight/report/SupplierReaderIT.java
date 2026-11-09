@@ -1,5 +1,7 @@
 package com.truesight.report;
 
+import com.truesight.ai.AiCallLog;
+import com.truesight.ai.AiOutcome;
 import com.truesight.ai.AiPurpose;
 import com.truesight.ai.AiRequest;
 import com.truesight.company.Company;
@@ -84,6 +86,7 @@ class SupplierReaderIT {
     @Autowired RelationshipRepository relationships;
     @Autowired GeminiAnswer answers;
     @Autowired SupplierReader supplierReader;
+    @Autowired AiCallLog aiCallLog;
 
     @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
@@ -169,9 +172,14 @@ class SupplierReaderIT {
 
     @Test
     void aSupplierWhoseReportIsAlreadyStoredIsNotDownloadedOrSentToGeminiAgain() throws Exception {
+        // Stored and read whole before: Gemini's answer for it was recorded, with nothing kept.
         Company sanmina = directory.findOrCreate("SANMINA CORP", "0000897723", "SANM", List.of());
-        reports.save(new Report(sanmina.getId(), "10-K", "ts217-sanm-stored", LocalDate.parse("2026-02-25"),
+        Report stored = reports.save(new Report(sanmina.getId(), "10-K", "ts217-sanm-stored", LocalDate.parse("2026-02-25"),
                 urlOf("SANM"), Examples.nvidia10K()));
+        AiRequest read = new AiRequest(AiPurpose.FIND_RELATIONSHIPS, "Test prompt.", stored.getId(), "Test prompt.");
+        Long callId = aiCallLog.record(read, "test-model", "[]", AiOutcome.ANSWERED, null, java.time.Instant.now(), 1);
+        aiCallLog.attachReport(callId, stored.getId());
+        aiCallLog.finish(callId, 0, 0);
 
         analyse("suppliers-stored@example.com");
         analyse("suppliers-stored-again@example.com"); // and every supplier read by the first is stored now

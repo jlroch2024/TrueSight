@@ -54,6 +54,9 @@ truesight:
     # holding that needs a report read says Failed, and Analyse tries again tomorrow. A brake on what reading costs;
     # lower it if Gemini's prices rise (they double on 1 January 2027).
     daily-report-limit: ${AI_DAILY_REPORT_LIMIT:100}
+    # The most filings' passages a name search sends to Gemini in a day, across the whole app. Past it the search stops
+    # and a later Analyse carries on. Kept apart from the reports: each call costs about a twentieth of a report's.
+    daily-name-search-limit: ${AI_DAILY_NAME_SEARCH_LIMIT:500}
   # The emails that are Analysts, comma-separated, any capitalisation (see AnalystEmails). Not a secret.
   analyst-emails: ${ANALYST_EMAILS:}
   sec:

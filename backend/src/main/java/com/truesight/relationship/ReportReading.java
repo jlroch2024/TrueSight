@@ -18,7 +18,8 @@ import java.util.regex.Pattern;
  * ({@code [report 12: 107 characters]}). A call with no marker counts as not read. A report read from too little text
  * (a contents page) is read again, once: the new call is given today's text, so it then counts as read.
  *
- * <p>A report with relationships and no recorded call at all was read before calls were recorded, and is left as it is.
+ * <p>A report with relationships found by reading it and no recorded call at all was read before calls were recorded, and
+ * is left as it is. One a name search stored has only read passages, so it has not been read.
  */
 @Component
 public class ReportReading {
@@ -38,7 +39,7 @@ public class ReportReading {
                 report.getId(), AiPurpose.FIND_RELATIONSHIPS, AiOutcome.ANSWERED);
         if (calls.isEmpty()) {
             return !aiCalls.existsByReportIdAndPurpose(report.getId(), AiPurpose.FIND_RELATIONSHIPS)
-                    && relationships.existsByReportId(report.getId());
+                    && relationships.existsByReportIdAndFoundBy(report.getId(), FoundBy.REPORT);
         }
         long today = ReportSection.forAi(report.getForm(), report.getText()).length();
         return calls.stream().anyMatch(call -> charactersSent(call, report.getId()) * 2 >= today);

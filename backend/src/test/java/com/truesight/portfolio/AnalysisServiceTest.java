@@ -7,6 +7,7 @@ import com.truesight.ai.AiPurpose;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.company.CompanyRepository;
+import com.truesight.relationship.FoundBy;
 import com.truesight.relationship.RelationshipFinder;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.config.WorkRecovery;
@@ -128,7 +129,7 @@ class AnalysisServiceTest {
     void aDoneHoldingWhoseReportHasRelationshipsButWasReadFromAContentsPageIsAnalysedAgain() {
         Fixture fixture = new Fixture();
         Report report = fixture.reportWithText(601L, "10-K", "Item 1. Business\n" + "Our supplier is Example.\n".repeat(400));
-        when(fixture.relationships.existsByReportId(601L)).thenReturn(true);
+        when(fixture.relationships.existsByReportIdAndFoundBy(601L, com.truesight.relationship.FoundBy.REPORT)).thenReturn(true);
         fixture.answered(601L, "TEXT:\n" + "[report 601: 107 characters]");
 
         assertThat(fixture.service.start(7L)).containsExactly(1L);
@@ -139,7 +140,7 @@ class AnalysisServiceTest {
         Fixture fixture = new Fixture();
         String text = "Our supplier is Example.\n".repeat(400);
         Report report = fixture.reportWithText(602L, "10-K", text);
-        when(fixture.relationships.existsByReportId(602L)).thenReturn(false);
+        when(fixture.relationships.existsByReportIdAndFoundBy(602L, com.truesight.relationship.FoundBy.REPORT)).thenReturn(false);
         int today = com.truesight.relationship.ReportSection.forAi("10-K", text).length();
         fixture.answered(602L, "TEXT:\n" + "[report 602: " + (today / 2) + " characters]");
 
@@ -155,7 +156,7 @@ class AnalysisServiceTest {
 
         Fixture beforeCallsWereRecorded = new Fixture();
         beforeCallsWereRecorded.reportWithText(604L, "10-K", "Our supplier is Example.");
-        when(beforeCallsWereRecorded.relationships.existsByReportId(604L)).thenReturn(true);
+        when(beforeCallsWereRecorded.relationships.existsByReportIdAndFoundBy(604L, com.truesight.relationship.FoundBy.REPORT)).thenReturn(true);
         assertThat(beforeCallsWereRecorded.service.start(7L)).isEmpty();
     }
 

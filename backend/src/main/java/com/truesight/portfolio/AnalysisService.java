@@ -80,6 +80,14 @@ public class AnalysisService {
         return toAnalyse.stream().map(Holding::getId).toList();
     }
 
+    /** The portfolio's holdings that are Done, and so not being analysed now. */
+    @Transactional(readOnly = true)
+    public List<Long> doneHoldingIds(Long portfolioId) {
+        requirePortfolio(portfolioId);
+        return holdings.findByPortfolioIdAndStatusOrderByTickerAsc(portfolioId, HoldingStatus.DONE).stream()
+                .map(Holding::getId).toList();
+    }
+
     /**
      * Sets Waiting the unread suppliers of the portfolio's Done holdings that are not being analysed now (those are
      * queued with their holding's own analysis), and returns their company ids: a supplier whose server stopped

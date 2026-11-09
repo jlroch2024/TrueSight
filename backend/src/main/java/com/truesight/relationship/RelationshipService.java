@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
 
 /**
  * Lists the relationships for a portfolio's holdings. Relationships belong to reports, not portfolios, so these are
- * the relationships found in the reports of the companies the portfolio holds, and those that name who supplies the
- * holdings' suppliers.
+ * the relationships found in the reports of the companies the portfolio holds, those in other companies' reports that
+ * name a holding, and those that name who supplies the holdings' suppliers.
  */
 @Service
 public class RelationshipService {
@@ -74,6 +74,8 @@ public class RelationshipService {
         Set<Long> heldSuppliers = suppliers.suppliersOf(held);
         Map<Long, Relationship> byId = new LinkedHashMap<>();
         relationships.findByCompanyIdIn(held).forEach(r -> byId.put(r.getId(), r));
+        // Other companies' reports that name a holding as their supplier or customer, such as a name search finds.
+        relationships.findByCounterpartyIdIn(held).forEach(r -> byId.putIfAbsent(r.getId(), r));
         if (!heldSuppliers.isEmpty()) {
             relationships.findByCompanyIdInOrCounterpartyIdIn(heldSuppliers, heldSuppliers).stream()
                     .filter(r -> heldSuppliers.contains(NewsCheckService.customerId(r)))
@@ -114,6 +116,7 @@ public class RelationshipService {
                     r.getProvides(),
                     r.getEvidence(),
                     r.getSource(),
+                    r.getFoundBy(),
                     r.getCriticality(),
                     r.getCriticalityEvidence(),
                     new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()),

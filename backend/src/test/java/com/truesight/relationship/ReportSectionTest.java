@@ -78,6 +78,52 @@ class ReportSectionTest {
                 .isEqualTo("Our components ship in quarters.\nOur sole supplier is named here.");
     }
 
+    // ---- Find Who Names My Holding -------------------------------------------------------------------------------
+
+    @Test
+    void thePassagesNamingAHoldingAreThoseInCevasReportThatNameCirrusLogicBesideACustomerWord() {
+        List<String> passages = ReportSection.passagesNaming(Examples.ceva10K(), List.of("Cirrus Logic"), 10, 8_000);
+
+        assertThat(passages).hasSize(1);
+        assertThat(passages.getFirst()).startsWith("We have licensed our IP to hundreds of semiconductor and OEM customers")
+                .contains("Our publicly announced licensees include companies such as Actions, Ambiq, ASPEED");
+        assertThat(Examples.ceva10K().lines()).contains(passages.getFirst());
+    }
+
+    @Test
+    void aPassageNamesTheHoldingByAnyOfItsNamesAsWholeWordsInAnyCapitals() {
+        String text = String.join("\n",
+                "CIRRUS LOGIC, INC. is our largest customer.",
+                "Our customer Cirrus Logicware is a different company.",
+                "Our supplier, Cirrus, sells us parts.");
+
+        assertThat(ReportSection.passagesNaming(text, List.of("Cirrus Logic"), 10, 8_000))
+                .containsExactly("CIRRUS LOGIC, INC. is our largest customer.");
+        // "Cirrus" alone is a whole word in "Cirrus Logicware" too.
+        assertThat(ReportSection.passagesNaming(text, List.of("Cirrus Logic", "Cirrus"), 10, 8_000)).hasSize(3);
+    }
+
+    @Test
+    void aParagraphNamingTheHoldingWithNoSupplierOrCustomerWordIsNoPassage() {
+        String text = String.join("\n",
+                "Our competitors include Analog Devices and Cirrus Logic.",
+                "He previously worked at Cirrus Logic.");
+
+        assertThat(ReportSection.passagesNaming(text, List.of("Cirrus Logic"), 10, 8_000)).isEmpty();
+    }
+
+    @Test
+    void atMostTheGivenNumberOfPassagesAndCharactersAreKeptAsWholeParagraphs() {
+        String text = String.join("\n",
+                "Cirrus Logic is a customer.", "Cirrus Logic is a supplier.", "Cirrus Logic is a customer again.");
+
+        assertThat(ReportSection.passagesNaming(text, List.of("Cirrus Logic"), 2, 8_000))
+                .containsExactly("Cirrus Logic is a customer.", "Cirrus Logic is a supplier.");
+        // 27 characters, then a line break and 27 more is 55: a third paragraph would not fit in 60.
+        assertThat(ReportSection.passagesNaming(text, List.of("Cirrus Logic"), 10, 60))
+                .containsExactly("Cirrus Logic is a customer.", "Cirrus Logic is a supplier.");
+    }
+
     // ---- TS-229: the right part of every report ------------------------------------------------------------------
 
     @Test

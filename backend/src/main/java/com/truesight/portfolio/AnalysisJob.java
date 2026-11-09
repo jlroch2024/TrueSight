@@ -1,6 +1,7 @@
 package com.truesight.portfolio;
 
 import com.truesight.relationship.HighlightJob;
+import com.truesight.relationship.NameSearchJob;
 import com.truesight.relationship.SecondCheckPassService;
 import com.truesight.report.FigureService;
 import com.truesight.report.SupplierReader;
@@ -31,18 +32,21 @@ public class AnalysisJob {
     private final HighlightJob highlights;
     private final SupplierReader suppliers;
     private final FigureService figures;
+    private final NameSearchJob nameSearches;
     private final ConcurrentHashMap<String, Object> companyLocks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Object> reportLocks = new ConcurrentHashMap<>();
 
     public AnalysisJob(AnalysisService analysis, SecondCheckPassService secondChecks,
                        @Qualifier("analysisExecutor") Executor analysisExecutor,
-                       HighlightJob highlights, SupplierReader suppliers, FigureService figures) {
+                       HighlightJob highlights, SupplierReader suppliers, FigureService figures,
+                       NameSearchJob nameSearches) {
         this.analysis = analysis;
         this.secondChecks = secondChecks;
         this.analysisExecutor = analysisExecutor;
         this.highlights = highlights;
         this.suppliers = suppliers;
         this.figures = figures;
+        this.nameSearches = nameSearches;
     }
 
     @Async
@@ -51,6 +55,14 @@ public class AnalysisJob {
                 .map(holdingId -> CompletableFuture.runAsync(() -> analyze(holdingId), analysisExecutor))
                 .toArray(CompletableFuture[]::new);
         CompletableFuture.allOf(tasks).join();
+    }
+
+    /**
+     * Starts the name search of each of these holdings that are Done already, in the background. Each runs only if its
+     * company is due one: never searched, searched over 90 days ago, or its last search failed.
+     */
+    public void searchNames(List<Long> doneHoldingIds) {
+        doneHoldingIds.forEach(nameSearches::run);
     }
 
     /** Reads these suppliers, whose server stopped before they were read (see {@link AnalysisService#restartSuppliers}). */
@@ -71,6 +83,8 @@ public class AnalysisJob {
         if (!waiting.isEmpty()) {
             analysisExecutor.execute(() -> readSuppliers(waiting));
         }
+        // And the other companies' reports that name it, likewise afterwards (if the holding is Done).
+        nameSearches.run(holdingId);
         // The holding's dependency figures, once the work queued above is started. The holding's own transaction has
         // committed, and the figures have one of their own: a failure here loses only the figures.
         Long companyId = analysis.companyIdFor(holdingId);

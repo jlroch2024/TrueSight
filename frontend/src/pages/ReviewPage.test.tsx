@@ -25,6 +25,7 @@ function item(id: number, overrides: Partial<ReviewItem> = {}, type: 'SUPPLIER' 
       provides: 'semiconductor wafers',
       evidence: id === 1 ? sentence : `Evidence ${id}.`,
       source: 'AI',
+      foundBy: 'REPORT',
       confidence: UNREVIEWED_CONFIDENCE,
       highlights: [],
       report: { form: '10-K', filingDate: '2026-02-25', url: `https://www.sec.gov/report-${id}` },
@@ -142,6 +143,18 @@ describe('Review page', () => {
     expect(screen.getByText(sentence)).toBeInTheDocument();
     expect(screen.getByText('10-K, Filed Feb 25, 2026')).toBeInTheDocument();
     expect(screen.getByText('Used by 3 Portfolios')).toBeInTheDocument();
+  });
+
+  it('tags a relationship found by name search, and only that one', async () => {
+    const byName = item(2);
+    fakeBackend(() => [item(1), { ...byName, relationship: { ...byName.relationship, foundBy: 'NAME_SEARCH' } }]);
+
+    renderPage();
+
+    await screen.findByText('Evidence 2.');
+    const tags = screen.getAllByText('Found by Name Search');
+    expect(tags).toHaveLength(1);
+    expect(tags[0]!.closest('.review-card')).toHaveTextContent('Evidence 2.');
   });
 
   it('shows the highlights the API sends on every claim, with the key, and a claim with none plain', async () => {

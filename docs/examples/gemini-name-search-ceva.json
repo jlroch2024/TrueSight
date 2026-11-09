@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "[{\"relationship\":\"CUSTOMER\",\"provides\":\"IP licenses\",\"quote\":\"Our publicly announced licensees include companies such as Actions, Ambiq, ASPEED, ASR Microelectronics, Atmosic, Beken, Bestechnic, boAt, Broadcom, Ceragon, Cirrus Logic, Espressif Systems, ESWIN, Fujifilm, Rockchip, Goodix, Hisense, iCatch Technology, iCOM, InPlay, Intel, Itron, LG Electronics, LifeSignals, ListenAI, MediaTek, Microchip, Nations Technologies, Nextchip, Nordic Semiconductor, Nothing, Novatek, NXP, onsemi, Oticon, Panasonic, Qualcomm, Realtek, Renesas, Rohm, Samsung, SatixFy, Sharp, SiFli, SigmaStar, Socionext, Sony, Sonova, STMicroelectronics, Synaptics, THX, Toshiba, Unisoc, Vatics, Winner Micro, and Yamaha.\"}]",
+            "thoughtSignature": "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"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 350,
+    "candidatesTokenCount": 193,
+    "totalTokenCount": 1446,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 350
+      }
+    ],
+    "thoughtsTokenCount": 903,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "TSXwavTAD-eX0r4PjOTfwAU"
+}

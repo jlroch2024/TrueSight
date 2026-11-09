@@ -36,6 +36,11 @@ public class ReportReader {
         this.relationshipFinder = relationshipFinder;
     }
 
+    /** Whether this report has been read whole, not just the passages a name search read. */
+    public boolean isRead(Long reportId) {
+        return relationshipFinder.isRead(reportId);
+    }
+
     /** The company the SEC knows by this ticker, or null if it knows none. */
     public Company companyFor(String ticker) {
         SecClient.SecCompany secCompany = sec.companyForTicker(ticker);

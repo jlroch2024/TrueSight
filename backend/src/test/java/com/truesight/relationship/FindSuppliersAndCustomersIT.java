@@ -310,6 +310,45 @@ class FindSuppliersAndCustomersIT {
         return Examples.geminiNvidia().replace("final products.\\\"}]\"", "final products.\\\"}\"");
     }
 
+    // ---- Find Who Names My Holding, criterion 7 --------------------------------------------------------------------
+
+    @Test
+    void thePortfolioListsAnotherCompanysRelationshipThatNamesItsHoldingWithTheArrowFromSupplierToCustomer()
+            throws Exception {
+        // A name search for TSMC found it in NVIDIA's report: NVIDIA's own sentence, NVIDIA's relationship.
+        // TSMC as a holding is the SEC's company, with its SEC number, as every holding is.
+        Company tsmc = companyDirectory.findOrCreate("Taiwan Semiconductor Manufacturing Company Limited", "0001046179",
+                "TSM", List.of("TSMC"));
+        Report nvidiaReport = reports.findByAccessionNumber("0001045810-26-000021").orElseThrow();
+        Relationship named = new Relationship(nvidiaReport.getId(), nvidiaReport.getCompanyId(), tsmc.getId(),
+                RelationshipType.SUPPLIER, "semiconductor wafers", TSMC_SENTENCE);
+        named.setFoundBy(FoundBy.NAME_SEARCH);
+        Long namedId = relationships.save(named).getId();
+        String email = "ai-named-by-another@example.com";
+        Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "AI Test " + System.nanoTime()));
+        Holding held = new Holding(portfolio.getId(), "TSM", new BigDecimal("100"));
+        held.setCompanyId(tsmc.getId());
+        held.setStatus(HoldingStatus.DONE);
+        holdings.save(held);
+
+        mockMvc.perform(get("/api/portfolios/{id}/relationships", portfolio.getId())
+                        .header("Authorization", logins.bearer(email)))
+                .andExpect(status().isOk())
+                // Picked out by its id: TSMC is shared, so other tests' reports that name TSMC are listed beside it.
+                .andExpect(jsonPath(byId(namedId), hasSize(1)))
+                .andExpect(jsonPath(byId(namedId) + ".company.name").value("NVIDIA Corporation"))
+                .andExpect(jsonPath(byId(namedId) + ".counterparty.id").value(Math.toIntExact(tsmc.getId()))) // a filter reads ids as int
+                // SUPPLIER: the counterparty, the holding, supplies NVIDIA.
+                .andExpect(jsonPath(byId(namedId) + ".type").value("SUPPLIER"))
+                .andExpect(jsonPath(byId(namedId) + ".foundBy").value("NAME_SEARCH"))
+                .andExpect(jsonPath(byId(namedId) + ".evidence").value(TSMC_SENTENCE));
+    }
+
+    /** The JSON path of the listed relationship with this id. */
+    private static String byId(Long relationshipId) {
+        return "$[?(@.id == " + relationshipId + ")]";
+    }
+
     /** Makes a portfolio holding NVIDIA, presses Analyse, and waits for the holding to reach {@code expected}. */
     // ---- TS-229: a report read from too little text is read again, once --------------------------------------------
 
