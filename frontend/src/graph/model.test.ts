@@ -5,7 +5,7 @@ import { ALERT_COLOUR, buildLiveGraph } from './model';
 import { shareWidth } from './render';
 
 describe('buildLiveGraph', () => {
-  it('carries a link's share, and thickens an arrow from 10% to twice as thick at 100%', () => {
+  it('carries the share of a link, and thickens an arrow from 10% to twice as thick at 100%', () => {
     const nodes: GraphNode[] = [
       { id: 'supplier', name: 'Supplier Corporation', displayName: 'Supplier', ticker: null, isHolding: false, weight: null },
       { id: 'holding', name: 'Holding Corporation', displayName: 'Holding', ticker: 'HOLD', isHolding: true, weight: 100 },
