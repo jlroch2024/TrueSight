@@ -167,12 +167,12 @@ describe('a holding row', () => {
     expect(lines[0]).not.toHaveClass('zero');
   });
 
-  it('saysNothingFoundInFaintTextOnTheTopLineWhenThereAreNeitherSuppliersNorCustomers', () => {
+  it('saysNoneNamedInReportInFaintTextOnTheTopLineWhenThereAreNeitherSuppliersNorCustomers', () => {
     const { container } = renderRow('DONE', 0, 0);
 
     const lines = container.querySelectorAll('.link-line');
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toHaveTextContent('Nothing Found');
+    expect(lines[0]).toHaveTextContent('None Named in Report');
     expect(lines[0]).toHaveClass('faint');
     expect(container).not.toHaveTextContent(/Suppliers|Customers/);
   });

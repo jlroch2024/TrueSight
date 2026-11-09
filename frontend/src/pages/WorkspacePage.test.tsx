@@ -700,6 +700,19 @@ describe('Analyse', () => {
     expect(relationshipReads()).toBe(before);
   });
 
+  it('showsNoneNamedInReportForADoneHoldingWithNoSuppliersOrCustomers', async () => {
+    backend.holdings = [
+      held(NVIDIA, 1),
+      waiting('SONY', 2, { status: 'DONE', companyName: 'Sony Group Corp', companyDisplayName: 'Sony Group' }),
+    ];
+    renderAt();
+
+    await graph();
+    expect(within(row('Sony Group (SONY)')).getByText('None Named in Report')).toBeInTheDocument();
+    expect(within(row('Sony Group (SONY)')).queryByText('Done')).not.toBeInTheDocument();
+    expect(within(row(`${NVIDIA.displayName} (NVDA)`)).queryByText('None Named in Report')).not.toBeInTheDocument();
+  });
+
   it('offersAnalyseWhenThePortfolioHasHoldingsButNoSuppliersOrCustomersYet', async () => {
     backend.holdings = [waiting('NVDA', 1), waiting('AMD', 2)];
     backend.relationships = [];

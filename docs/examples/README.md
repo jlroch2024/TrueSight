@@ -10,6 +10,16 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `gemini-nvidia.json` | One real, unchanged Gemini answer for that 10-K: 7 suppliers, each with a quote | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `gemini-nvidia-criticality.json` | One real, unchanged Gemini answer to the criticality-enabled prompt for that 10-K | Find Suppliers and Customers with AI, in tests, so tests never call Gemini |
 | `sec-submissions-nvidia.json` | NVIDIA's filing list from the SEC, unchanged, in the shape the SEC sends it | SEC Filing Timeline, in tests |
+| `apple-10k.txt` | Apple's 10-K filed 2026-11-03 (https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm), through `ReportTextExtractor`, one paragraph per line. Its Item headings have non-breaking spaces | Read the Right Part of Every Report, in tests |
+| `nike-10k.txt` | Nike's 10-K filed 2026-07-15 (https://www.sec.gov/Archives/edgar/data/320187/000032018726000088/nke-20260531.htm), the same way. Item 1 has sentences that mention "Item 2. Properties" | Read the Right Part of Every Report, in tests |
+| `intel-10k.txt` | Intel's 10-K filed 2026-01-23 (https://www.sec.gov/Archives/edgar/data/50863/000005086326000011/intc-20251227.htm), the same way. Its Item headings are only in a cross-reference index | Read the Right Part of Every Report, in tests |
+| `report-section-filings.json` | For 29 real annual reports (the audit's 29 filings, listed below the table): ticker, form, address, length, the section this design chooses (or "whole"), and every line holding "item" and a number with its position | Read the Right Part of Every Report, in tests |
+| `make_report_section_filings.py` | Makes `report-section-filings.json` from the 29 filings' texts (about 17 MB, not kept here) | Read the Right Part of Every Report |
+| `gemini-crus-contents-page.json`, `gemini-qcom-contents-page.json` | Gemini's real, empty answers on 3 November 2026 for Cirrus Logic and Qualcomm when it was sent only their contents pages (107 and 108 characters). Kept as evidence of the fault | Read the Right Part of Every Report, as evidence |
+| `measure_report_reading.py` | Sends five annual reports (CRUS, QCOM, GM, F, INTC) to Gemini as `ReportSection` really sends them, with the prompt read from `RelationshipFinder.java`, and scores the links against the hand labels in the script. From the audit, unchanged. Run it by hand from the repository root with the audit's texts: `python docs/examples/measure_report_reading.py <folder of <ticker>.txt>`. Never from a test | Read the Right Part of Every Report |
+| `SendSection.java` | Writes what the app would send the AI for one report, using `ReportSection.forAi`. Used by `measure_report_reading.py`. From the audit | Read the Right Part of Every Report |
+| `report-reading-gold.json` | The audit's hand labels (`gold.json`): written from the filing text on 3 November 2026, before any new Gemini call. "in" is named inside the section sent, "out" only outside it. Tesla and ASML were labelled after their links had been seen, so the measurement leaves them out | Read the Right Part of Every Report |
+| `report-reading-judge.json` | Gemini's real answers to that measurement, run on 9 November 2026 | Read the Right Part of Every Report |
 | `nvidia-10k-older.txt` | The plain text of NVIDIA's 10-K filed 2025-02-26 (the one before `nvidia-10k.txt`), one paragraph per line | SEC Filing Timeline, in tests |
 | `gemini-nvidia-older.json` | One real, unchanged Gemini answer for that 10-K to the relationship prompt: 7 relationships, each with a quote | SEC Filing Timeline, in tests, so tests never call Gemini |
 | `nvidia-10k-oldest.txt` | The plain text of NVIDIA's 10-K filed 2024-02-21 (the one before `nvidia-10k-older.txt`), one paragraph per line | SEC Filing Timeline, in tests |
@@ -38,6 +48,20 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `sec-8k-aitx-2026-10-30.htm` | Artificial Intelligence Technology Solutions' real, unchanged 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release (Exhibit 99.1) | Alerts From SEC 8-K Filings: the fall-back headline |
 | `sec-8k-amgen-2026-07-31.htm` | Amgen's real, unchanged 8-K of 31 July 2026 (Item 1.05, Material Cybersecurity Incidents): data taken from its cloud environments | Alerts From SEC 8-K Filings: an Item 1.xx 8-K read and headlined from its own text |
 | `gemini-8k-assessment.json` | Gemini's full, unchanged API response to Filter Out Noise's prompt for the three headlines built from those 8-Ks | Alerts From SEC 8-K Filings, so tests never call Gemini |
+
+**Which filings `report-section-filings.json` holds (TS-229).** The audit's own 29 filings, from its table of 3 November 2026 and the text it saved of each: AAPL, MSFT, AMZN, F, GM, BA, WMT, NKE, INTC, TXN, PFE, CAT, DE, HON, LMT, MU, AMAT, TM, SAP, NVO, BABA, INFY, UL, HMC, SHEL, TSM, SKM, SONY and RIO. Each entry's `address` and `filingDate` say which filing. The story's trial found 21 sections and 8 whole reports; this finds 24 and 5, on purpose. The story's own mention rule rejects "Item 5. Operating and Financial Review **and Prospects**" (the lower-case "and" after the match reads as a sentence), so HMC, SONY and INFY, which the story said failed "for a reason not looked into", fell back to the whole report. `ReportSection` now lets the 20-F end title include "and Prospects", and their sections start and end on their real Item 3 and Item 5 headings. The five that still use the whole report are HON, INTC, RIO, SHEL and UL, as in the story. `ReportSectionTest` checks the Java code against the same rules written again in `make_report_section_filings.py`.
+
+**How well the new text is read (TS-229, AC10).** Measured on real Gemini on 9 November 2026 with `measure_report_reading.py`, on the audit's own texts of five reports, against the audit's hand labels: **17 of 18** labelled links inside the sections were found (needed: at least 15), and **3 of 5** outside them. Samsung is counted once as a supplier and once as a customer.
+
+| Report | Characters sent | Found | Missed |
+|---|---|---|---|
+| Cirrus Logic 10-K | 163,192 | Apple, GlobalFoundries, TSMC, ASE, Amkor, STATS ChipPAC | Foxconn and Luxshare (outside the section, named only in tagged figures: story 47) |
+| Qualcomm 10-K | 183,861 | all 10 (Samsung as supplier and as customer) | none |
+| General Motors 10-K | 199,918 | LG Energy (outside the section) | Ultium Cells (inside it) |
+| Ford 10-K | 199,977 | Novelis, Ford Otosan (both outside the section) | none |
+| Intel 10-K | 199,963 | ASML | none |
+
+About 37,600 tokens in and 6,000 out (with thinking) per report. Ultium Cells is the one miss inside a section: the section alone did find it, so more text is not free of risk, as the story said. Links Gemini gave that the labels do not cover (such as Huawei for Qualcomm, SFA Semicon for Cirrus Logic and TSMC for Intel) are not scored, and have not been checked against the reports.
 
 ## Where It Came From
 

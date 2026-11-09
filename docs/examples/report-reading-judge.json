@@ -1,0 +1,311 @@
+{
+ "inSections": [
+  17,
+  18
+ ],
+ "outsideSections": [
+  3,
+  5
+ ],
+ "reports": {
+  "CRUS": {
+   "charactersSent": 163192,
+   "missed": [
+    "Foxconn",
+    "Luxshare"
+   ],
+   "answer": [
+    {
+     "company": "Apple Inc.",
+     "alsoKnownAs": "",
+     "commonName": "Apple",
+     "ticker": "AAPL",
+     "relationship": "CUSTOMER",
+     "provides": "low-power, high-precision mixed-signal processing components",
+     "quote": "For fiscal years 2026, 2025, and 2024, we had one end customer, Apple Inc., who purchased through multiple contract manufacturers and represented approximately 91 percent, 89 percent, and 87 percent, of the Company’s total net sales, respectively.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "GLOBALFOUNDRIES Inc.",
+     "alsoKnownAs": "GlobalFoundries",
+     "commonName": "GlobalFoundries",
+     "ticker": "GFS",
+     "relationship": "SUPPLIER",
+     "provides": "wafers and wafer fabrication",
+     "quote": "We use a variety of foundries in the production of wafers, primarily supplied by GLOBALFOUNDRIES Inc., (\"GlobalFoundries\") and Taiwan Semiconductor Manufacturing Company, Limited (\"TSMC\").",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Taiwan Semiconductor Manufacturing Company, Limited",
+     "alsoKnownAs": "TSMC",
+     "commonName": "TSMC",
+     "ticker": "TSM",
+     "relationship": "SUPPLIER",
+     "provides": "wafers and wafer fabrication",
+     "quote": "We use a variety of foundries in the production of wafers, primarily supplied by GLOBALFOUNDRIES Inc., (\"GlobalFoundries\") and Taiwan Semiconductor Manufacturing Company, Limited (\"TSMC\").",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Advanced Semiconductor Engineering, Inc.",
+     "alsoKnownAs": "",
+     "commonName": "Advanced Semiconductor Engineering",
+     "ticker": "ASX",
+     "relationship": "SUPPLIER",
+     "provides": "assembly and test services",
+     "quote": "The Company’s primary assembly and test houses include Advanced Semiconductor Engineering, Inc., Amkor Technology, Inc., STATS ChipPAC Pte. Ltd., SFA Semicon Co., Ltd., and Siliconware Precision Industries Co., Ltd.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Amkor Technology, Inc.",
+     "alsoKnownAs": "",
+     "commonName": "Amkor Technology",
+     "ticker": "AMKR",
+     "relationship": "SUPPLIER",
+     "provides": "assembly and test services",
+     "quote": "The Company’s primary assembly and test houses include Advanced Semiconductor Engineering, Inc., Amkor Technology, Inc., STATS ChipPAC Pte. Ltd., SFA Semicon Co., Ltd., and Siliconware Precision Industries Co., Ltd.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "STATS ChipPAC Pte. Ltd.",
+     "alsoKnownAs": "",
+     "commonName": "STATS ChipPAC",
+     "ticker": "",
+     "relationship": "SUPPLIER",
+     "provides": "assembly and test services",
+     "quote": "The Company’s primary assembly and test houses include Advanced Semiconductor Engineering, Inc., Amkor Technology, Inc., STATS ChipPAC Pte. Ltd., SFA Semicon Co., Ltd., and Siliconware Precision Industries Co., Ltd.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "SFA Semicon Co., Ltd.",
+     "alsoKnownAs": "",
+     "commonName": "SFA Semicon",
+     "ticker": "036540.KQ",
+     "relationship": "SUPPLIER",
+     "provides": "assembly and test services",
+     "quote": "The Company’s primary assembly and test houses include Advanced Semiconductor Engineering, Inc., Amkor Technology, Inc., STATS ChipPAC Pte. Ltd., SFA Semicon Co., Ltd., and Siliconware Precision Industries Co., Ltd.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Siliconware Precision Industries Co., Ltd.",
+     "alsoKnownAs": "",
+     "commonName": "Siliconware Precision Industries",
+     "ticker": "",
+     "relationship": "SUPPLIER",
+     "provides": "assembly and test services",
+     "quote": "The Company’s primary assembly and test houses include Advanced Semiconductor Engineering, Inc., Amkor Technology, Inc., STATS ChipPAC Pte. Ltd., SFA Semicon Co., Ltd., and Siliconware Precision Industries Co., Ltd.",
+     "criticality": "",
+     "criticalityQuote": ""
+    }
+   ]
+  },
+  "QCOM": {
+   "charactersSent": 183861,
+   "missed": [],
+   "answer": [
+    {
+     "company": "Taiwan Semiconductor Manufacturing Company",
+     "alsoKnownAs": "TSMC",
+     "commonName": "TSMC",
+     "ticker": "TSM",
+     "relationship": "SUPPLIER",
+     "provides": "foundry services",
+     "quote": "The primary foundry suppliers for our various digital, analog/mixed-signal, RF and PM integrated circuits include Taiwan Semiconductor Manufacturing Company (TSMC), Samsung Electronics and Global Foundries.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Samsung Electronics",
+     "alsoKnownAs": "",
+     "commonName": "Samsung Electronics",
+     "ticker": "005930.KS",
+     "relationship": "SUPPLIER",
+     "provides": "foundry services",
+     "quote": "The primary foundry suppliers for our various digital, analog/mixed-signal, RF and PM integrated circuits include Taiwan Semiconductor Manufacturing Company (TSMC), Samsung Electronics and Global Foundries.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Global Foundries",
+     "alsoKnownAs": "",
+     "commonName": "GlobalFoundries",
+     "ticker": "GFS",
+     "relationship": "SUPPLIER",
+     "provides": "foundry services",
+     "quote": "The primary foundry suppliers for our various digital, analog/mixed-signal, RF and PM integrated circuits include Taiwan Semiconductor Manufacturing Company (TSMC), Samsung Electronics and Global Foundries.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Advanced Semiconductor Engineering",
+     "alsoKnownAs": "",
+     "commonName": "Advanced Semiconductor Engineering",
+     "ticker": "ASX",
+     "relationship": "SUPPLIER",
+     "provides": "semiconductor assembly and test services",
+     "quote": "Our primary semiconductor assembly and test suppliers are Advanced Semiconductor Engineering, Amkor Technology, Siliconware Precision Industries and STATSChipPAC.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Amkor Technology",
+     "alsoKnownAs": "",
+     "commonName": "Amkor Technology",
+     "ticker": "AMKR",
+     "relationship": "SUPPLIER",
+     "provides": "semiconductor assembly and test services",
+     "quote": "Our primary semiconductor assembly and test suppliers are Advanced Semiconductor Engineering, Amkor Technology, Siliconware Precision Industries and STATSChipPAC.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Siliconware Precision Industries",
+     "alsoKnownAs": "",
+     "commonName": "Siliconware Precision Industries",
+     "ticker": "",
+     "relationship": "SUPPLIER",
+     "provides": "semiconductor assembly and test services",
+     "quote": "Our primary semiconductor assembly and test suppliers are Advanced Semiconductor Engineering, Amkor Technology, Siliconware Precision Industries and STATSChipPAC.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "STATSChipPAC",
+     "alsoKnownAs": "",
+     "commonName": "STATS ChipPAC",
+     "ticker": "",
+     "relationship": "SUPPLIER",
+     "provides": "semiconductor assembly and test services",
+     "quote": "Our primary semiconductor assembly and test suppliers are Advanced Semiconductor Engineering, Amkor Technology, Siliconware Precision Industries and STATSChipPAC.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Apple",
+     "alsoKnownAs": "",
+     "commonName": "Apple",
+     "ticker": "AAPL",
+     "relationship": "CUSTOMER",
+     "provides": "MDM (or thin modem) products",
+     "quote": "Apple purchases our MDM (or thin modem) products, which do not include our integrated application processor technology, and which have lower revenue and margin contributions than our combined modem and application processor products.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Samsung",
+     "alsoKnownAs": "",
+     "commonName": "Samsung Electronics",
+     "ticker": "005930.KS",
+     "relationship": "CUSTOMER",
+     "provides": "integrated circuit products",
+     "quote": "Certain of our largest mobile handset customers (for example, Apple, Samsung and Xiaomi) develop their own integrated circuit products, which they have in the past utilized, and/or currently utilize, in certain of their devices.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Xiaomi",
+     "alsoKnownAs": "",
+     "commonName": "Xiaomi",
+     "ticker": "1810.HK",
+     "relationship": "CUSTOMER",
+     "provides": "integrated circuit products",
+     "quote": "Certain of our largest mobile handset customers (for example, Apple, Samsung and Xiaomi) develop their own integrated circuit products, which they have in the past utilized, and/or currently utilize, in certain of their devices.",
+     "criticality": "",
+     "criticalityQuote": ""
+    },
+    {
+     "company": "Huawei",
+     "alsoKnownAs": "",
+     "commonName": "Huawei",
+     "ticker": "",
+     "relationship": "CUSTOMER",
+     "provides": "4G and certain other integrated circuit products",
+     "quote": "For example, in May 2024, the U.S. Department of Commerce revoked the export license under which we previously sold 4G and certain other integrated circuit products to Huawei, which is one of the largest smartphone OEMs in China.",
+     "criticality": "",
+     "criticalityQuote": ""
+    }
+   ]
+  },
+  "GM": {
+   "charactersSent": 199918,
+   "missed": [
+    "Ultium Cells"
+   ],
+   "answer": [
+    {
+     "company": "LGES",
+     "alsoKnownAs": "LG",
+     "commonName": "LG Energy Solution",
+     "ticker": "373220.KS",
+     "relationship": "SUPPLIER",
+     "provides": "battery cells",
+     "quote": "After further investigation into the manufacturing processes at our battery supplier, LGES, and disassembling battery packs, we determined that the risk of battery cell defects was not confined to the initial recall population.",
+     "criticality": "",
+     "criticalityQuote": ""
+    }
+   ]
+  },
+  "F": {
+   "charactersSent": 199977,
+   "missed": [],
+   "answer": [
+    {
+     "company": "Ford Otomotiv Sanayi Anonim Sirketi",
+     "alsoKnownAs": "Ford Otosan",
+     "commonName": "Ford Otosan",
+     "ticker": "FROTO",
+     "relationship": "SUPPLIER",
+     "provides": "Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma",
+     "quote": "Ford Otomotiv Sanayi Anonim Sirketi (“Ford Otosan”) — a joint venture in Türkiye among Ford (41%), the Koc Group of Türkiye (41%), and public investors (18%) that is the sole supplier to us of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe and the sole distributor of Ford vehicles in Türkiye.",
+     "criticality": "SOLE_SOURCE",
+     "criticalityQuote": "Ford Otomotiv Sanayi Anonim Sirketi (“Ford Otosan”) — a joint venture in Türkiye among Ford (41%), the Koc Group of Türkiye (41%), and public investors (18%) that is the sole supplier to us of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe and the sole distributor of Ford vehicles in Türkiye."
+    },
+    {
+     "company": "Novelis Inc.",
+     "alsoKnownAs": "Novelis",
+     "commonName": "Novelis",
+     "ticker": "",
+     "relationship": "SUPPLIER",
+     "provides": "aluminum",
+     "quote": "Novelis is a major aluminum supplier to Ford, and since the initial fire occurred, we have been working closely with Novelis to address the situation and exploring potential alternative sources of aluminum.",
+     "criticality": "",
+     "criticalityQuote": ""
+    }
+   ]
+  },
+  "INTC": {
+   "charactersSent": 199963,
+   "missed": [],
+   "answer": [
+    {
+     "company": "ASML Holding N.V.",
+     "alsoKnownAs": "ASML",
+     "commonName": "ASML",
+     "ticker": "ASML",
+     "relationship": "SUPPLIER",
+     "provides": "EUV lithography tools",
+     "quote": "For example, ASML Holding N.V. (ASML) is currently the sole supplier of EUV lithography tools that we are deploying in our Intel 4, Intel 3, Intel 18A and planned future leading-edge manufacturing process nodes.",
+     "criticality": "SOLE_SOURCE",
+     "criticalityQuote": "For example, ASML Holding N.V. (ASML) is currently the sole supplier of EUV lithography tools that we are deploying in our Intel 4, Intel 3, Intel 18A and planned future leading-edge manufacturing process nodes."
+    },
+    {
+     "company": "TSMC",
+     "alsoKnownAs": "",
+     "commonName": "TSMC",
+     "ticker": "TSM",
+     "relationship": "SUPPLIER",
+     "provides": "foundry manufacturing capacity and tiles",
+     "quote": "We expect to continue to use TSMC and other third-party foundry suppliers for various key tiles in a number of current and future products.",
+     "criticality": "",
+     "criticalityQuote": ""
+    }
+   ]
+  }
+ }
+}
