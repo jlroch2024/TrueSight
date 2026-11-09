@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * How confident TrueSight is about a relationship, High, Medium or Low, and why. Worked out here and nowhere else, from
- * three facts (the See How Confident TrueSight Is story); the website shows it and never works it out itself.
+ * four facts (the See How Confident TrueSight Is story); the website shows it and never works it out itself.
  *
  * <ul>
  *   <li><b>The review:</b> an analyst approved it, or rejected it.</li>
@@ -14,11 +14,13 @@ import java.util.List;
  *       partial below (the quote checker's floor is 85%). Relationships found before the share was recorded have
  *       none.</li>
  *   <li><b>The second check:</b> a second AI agrees or doubts.</li>
+ *   <li><b>The other report:</b> the other company's own report states it too ({@link Agreement}).</li>
  * </ul>
  *
  * <p>The rule: approved is High, and rejected is Low: an analyst's decision outweighs the other two facts. Otherwise, a
- * second-check doubt is Low; a strong match with the second check agreeing is High; anything else is Medium. Every fact
- * is listed as a reason, with the effect it had on the level.
+ * second-check doubt is Low; a strong match with the second check agreeing is High; anything else is Medium. Then, when
+ * no analyst has decided, both reports naming it raises the level one step: Low to Medium, Medium to High. Every fact is
+ * listed as a reason, with the effect it had on the level.
  *
  * <p>Rejected relationships never reach a graph, and new alerts leave them out, but an alert made before the rejection
  * still lists its path, so a rejected link must never read as confident.
@@ -45,7 +47,7 @@ public record RelationshipConfidence(Level level, List<Reason> reasons) {
     public record Reason(String text, Effect effect) {
     }
 
-    public static RelationshipConfidence of(Relationship relationship) {
+    public static RelationshipConfidence of(Relationship relationship, boolean bothReportsNameIt) {
         boolean approved = relationship.getReviewStatus() == ReviewStatus.APPROVED;
         boolean rejected = relationship.getReviewStatus() == ReviewStatus.REJECTED;
         BigDecimal match = relationship.getQuoteMatch();
@@ -73,10 +75,17 @@ public record RelationshipConfidence(Level level, List<Reason> reasons) {
             level = Level.MEDIUM;
         }
 
+        Effect otherReportEffect = Effect.NONE;
+        if (bothReportsNameIt && !approved && !rejected && level != Level.HIGH) {
+            level = level == Level.LOW ? Level.MEDIUM : Level.HIGH;
+            otherReportEffect = Effect.RAISES;
+        }
+
         return new RelationshipConfidence(level, List.of(
                 new Reason(review(relationship.getReviewStatus()), reviewEffect),
                 new Reason(quoteMatch(match, strongMatch), matchEffect),
-                new Reason(secondCheck(secondCheck, relationship.getSecondCheckReason()), secondCheckEffect)));
+                new Reason(secondCheck(secondCheck, relationship.getSecondCheckReason()), secondCheckEffect),
+                new Reason(bothReportsNameIt ? "Both Reports Name It" : "Only One Report Names It", otherReportEffect)));
     }
 
     private static String review(ReviewStatus status) {

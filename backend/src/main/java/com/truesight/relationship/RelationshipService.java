@@ -41,13 +41,16 @@ public class RelationshipService {
     private final ReportRepository reports;
     private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
+    private final Agreement agreement;
     private final SupplierReader suppliers;
 
     public RelationshipService(PortfolioRepository portfolios, HoldingRepository holdings,
                                RelationshipRepository relationships, RelationshipHighlightRepository highlights,
                                CompanyRepository companies, ReportRepository reports,
                                CompanyDisplayNames displayNames,
-                               CurrentUser currentUser, SupplierReader suppliers) {
+                               CurrentUser currentUser, SupplierReader suppliers,
+                               Agreement agreement) {
+        this.agreement = agreement;
         this.portfolios = portfolios;
         this.holdings = holdings;
         this.relationships = relationships;
@@ -98,7 +101,9 @@ public class RelationshipService {
         });
         Map<Long, Company> companyById = companies.findAllById(companyIds).stream()
                 .collect(Collectors.toMap(Company::getId, Function.identity()));
-        Map<Long, Report> reportById = reports.findAllById(found.stream().map(Relationship::getReportId).toList())
+        Map<Long, Relationship> agreeing = agreement.of(found);
+        Map<Long, Report> reportById = reports.findAllById(java.util.stream.Stream.concat(found.stream(), agreeing.values().stream())
+                        .map(Relationship::getReportId).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(Report::getId, Function.identity()));
         Map<Long, List<RelationshipResponse.Highlight>> highlightsById = highlights
                 .findByRelationshipIdInOrderByRelationshipIdAscStartAtAsc(found.stream().map(Relationship::getId).toList())
@@ -108,6 +113,7 @@ public class RelationshipService {
 
         return found.stream().map(r -> {
             Report report = reportById.get(r.getReportId());
+            Relationship other = agreeing.get(r.getId());
             return new RelationshipResponse(
                     r.getId(),
                     summary(companyById.get(r.getCompanyId())),
@@ -119,13 +125,19 @@ public class RelationshipService {
                     r.getFoundBy(),
                     r.getCriticality(),
                     r.getCriticalityEvidence(),
-                    new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl()),
+                    summaryOf(report),
                     r.getReviewStatus(),
                     r.getReviewedAt(),
                     r.getReviewNote(),
-                    RelationshipConfidence.of(r),
-                    highlightsById.getOrDefault(r.getId(), List.of()));
+                    RelationshipConfidence.of(r, other != null),
+                    highlightsById.getOrDefault(r.getId(), List.of()),
+                    other == null ? null : new RelationshipResponse.AgreesWith(other.getId(), other.getEvidence(),
+                            summaryOf(reportById.get(other.getReportId()))));
         }).toList();
+    }
+
+    private static RelationshipResponse.ReportSummary summaryOf(Report report) {
+        return new RelationshipResponse.ReportSummary(report.getForm(), report.getFilingDate(), report.getUrl());
     }
 
     private RelationshipResponse.CompanySummary summary(Company company) {

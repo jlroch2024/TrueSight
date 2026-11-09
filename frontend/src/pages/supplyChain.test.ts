@@ -92,6 +92,24 @@ describe('buildGraphElements', () => {
     expect(tsmcEdges).toHaveLength(5);
   });
 
+  it('draws one arrow for two relationships about the same pair, from the one with the higher confidence', () => {
+    const first = sampleRelationships[0]!;
+    const low = { ...first, id: 901, confidence: { level: 'LOW' as const, reasons: [] } };
+    const high = {
+      ...first,
+      id: 902,
+      company: first.counterparty,
+      counterparty: first.company,
+      type: first.type === 'SUPPLIER' ? ('CUSTOMER' as const) : ('SUPPLIER' as const),
+      confidence: { level: 'HIGH' as const, reasons: [] },
+    };
+
+    const { edges } = buildGraphElements([low, high], []);
+
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.relationshipId).toBe(902);
+  });
+
   it('tells holdings apart from other companies', () => {
     const { nodes } = buildGraphElements(sampleRelationships, sampleHoldings());
 
@@ -390,7 +408,7 @@ describe('review status on graph edges', () => {
       { id: 1, name: 'Example Corp', displayName: 'Example', ticker: 'EX' },
       { id: 2, name: 'Supplier Ltd', displayName: 'Supplier', ticker: null },
     );
-    const unreviewed = { ...approved, id: 32, reviewStatus: 'UNREVIEWED' as const };
+    const unreviewed = { ...approved, id: 32, counterparty: { ...approved.counterparty, id: 3 }, reviewStatus: 'UNREVIEWED' as const };
     const { edges } = buildGraphElements([
       { ...approved, reviewStatus: 'APPROVED', reviewedAt: '2026-10-14T12:00:00Z', reviewNote: 'Checked.' },
       unreviewed,
@@ -404,7 +422,7 @@ describe('review status on graph edges', () => {
     const source = sampleRelationships[15]!;
     const { edges } = buildGraphElements([
       { ...source, criticality: 'SOLE_SOURCE', criticalityEvidence: source.evidence },
-      { ...source, id: source.id + 100, criticality: null, criticalityEvidence: null },
+      { ...source, id: source.id + 100, counterparty: { ...source.counterparty, id: source.counterparty.id + 1000 }, criticality: null, criticalityEvidence: null },
     ], []);
 
     expect(edges).toContainEqual(expect.objectContaining({ relationshipId: source.id, criticality: 'SOLE_SOURCE' }));

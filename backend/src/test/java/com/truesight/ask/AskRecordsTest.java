@@ -81,7 +81,7 @@ class AskRecordsTest {
                 first.type(), first.provides(), first.evidence(), first.source(), first.foundBy(), Criticality.SOLE_SOURCE,
                 "Certain materials are available only from a sole supplier.", first.report(), ReviewStatus.APPROVED,
                 Instant.parse("2026-03-01T09:00:00Z"), "Checked against the filing.", first.confidence(),
-                first.highlights());
+                first.highlights(), null);
 
         AskRecords.Built records = AskRecords.build(AskSample.holdings(), List.of(approved), AskSample.noAlerts());
 

@@ -52,6 +52,8 @@ export type Relationship = {
   reviewNote: string | null;
   confidence: Confidence;
   highlights: Highlight[];
+  // The same relationship as the other company's own report states it; absent or null when only this report names it.
+  agreesWith?: { id: number; evidence: string; report: ReportSummary } | null;
 };
 
 export type CompanyOption = { id: number; name: string; displayName: string };
