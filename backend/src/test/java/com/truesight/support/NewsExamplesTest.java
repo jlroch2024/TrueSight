@@ -33,7 +33,7 @@ class NewsExamplesTest {
         JsonNode response = json.readTree(Examples.geminiNewsAssessment());
         String answer = response.path("candidates").path(0).path("content").path("parts").path(0)
                 .path("text").asText();
-        JsonNode assessments = json.readTree(answer);
+        JsonNode assessments = json.readTree(answer).path("assessments");
 
         assertThat(assessments).hasSize(20);
         for (int index = 0; index < 20; index++) {
@@ -48,7 +48,7 @@ class NewsExamplesTest {
         assertThat(rows.getFirst()).containsExactly("index", "title", "label", "labelled_by");
 
         JsonNode gemini = json.readTree(json.readTree(Examples.geminiNewsAssessment())
-                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asText());
+                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asText()).path("assessments");
         List<List<String>> labels = rows.subList(1, rows.size());
         assertThat(labels).hasSize(20);
         int agreed = 0;

@@ -65,6 +65,7 @@ public class NewsAssessor implements NewsCheckStep {
             - summary: one sentence saying what happened; empty when isEvent is false
             - reason: one sentence explaining your decision
 
+            An event at another company is noise unless the headline says it affects the named company or its supply. A past event, or one that was called off or blocked, is noise.
             Use only the headline. Do not guess facts it does not state. Answer with JSON only.
 
             HEADLINES:
