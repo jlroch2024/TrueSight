@@ -22,7 +22,7 @@ class RecommendationWriterTest {
     @Test
     void readsTheRealRecommendationFromTheGeminiResponseEnvelope() {
         RecommendationWriter writer = new RecommendationWriter(null, null, null, null, null, null, null,
-                JsonMapper.builder().build());
+                JsonMapper.builder().build(), null, null);
 
         assertThat(writer.read(Examples.geminiRecommendation())).isEqualTo(
                 "Monitor updates from Nvidia and its regional distribution partners regarding freight security "

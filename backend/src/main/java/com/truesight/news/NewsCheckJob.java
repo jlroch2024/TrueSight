@@ -1,9 +1,12 @@
 package com.truesight.news;
 
+import com.truesight.common.DatabaseLock;
 import com.truesight.relationship.GeminiClient;
 import com.truesight.report.SecClient;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,7 +15,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Collects news away from the request thread, in three rounds, one shared company at a time: its Google News headlines
@@ -34,13 +36,17 @@ public class NewsCheckJob {
     private final NewsClient news;
     private final SecClient sec;
     private final NewsCheckStepRunner steps;
-    private final ConcurrentHashMap<Long, Object> companyLocks = new ConcurrentHashMap<>();
+    private final DatabaseLock lock;
+    private final TransactionTemplate transaction;
 
-    public NewsCheckJob(NewsCheckService service, NewsClient news, SecClient sec, NewsCheckStepRunner steps) {
+    public NewsCheckJob(NewsCheckService service, NewsClient news, SecClient sec, NewsCheckStepRunner steps,
+                        DatabaseLock lock, PlatformTransactionManager transactions) {
         this.service = service;
         this.news = news;
         this.sec = sec;
         this.steps = steps;
+        this.lock = lock;
+        this.transaction = new TransactionTemplate(transactions);
     }
 
     @Async
@@ -109,10 +115,11 @@ public class NewsCheckJob {
         int attempted = 0;
         int succeeded = 0;
         for (NewsCheckService.NewsCompany company : companies) {
-            synchronized (companyLocks.computeIfAbsent(company.id(), ignored -> new Object())) {
+            Boolean fetched = transaction.execute(status -> {
+                // Across every server, one news check at a time looks a company up; the next finds it just checked.
+                lock.lock("news:" + company.id());
                 Instant now = Instant.now();
-                if (service.wasCheckedWithin(company.id(), now, fresh)) continue;
-                attempted++;
+                if (service.wasCheckedWithin(company.id(), now, fresh)) return null;
                 String searchName = NewsSearchName.of(company.name());
                 try {
                     // The company's own 8-Ks are kept first, so a busy week of headlines never crowds them out, and
@@ -120,12 +127,16 @@ public class NewsCheckJob {
                     List<NewsItem> recent = new ArrayList<>(currentReports(company, now, headlines));
                     recent.addAll(newestRecentItems(news.search(searchName), now, headlines - recent.size()));
                     service.save(company.id(), recent, now);
-                    succeeded++;
+                    return true;
                 } catch (NewsClient.NewsAccessException ignored) {
                     // A failed company stays unchecked so this portfolio, or another one, can try it again.
                     total.failed.add(searchName);
+                    return false;
                 }
-            }
+            });
+            if (fetched == null) continue;
+            attempted++;
+            if (fetched) succeeded++;
         }
         total.attempted += attempted;
         total.succeeded += succeeded;

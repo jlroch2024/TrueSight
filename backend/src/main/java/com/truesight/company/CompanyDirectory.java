@@ -1,7 +1,11 @@
 package com.truesight.company;
 
+import com.truesight.common.DatabaseLock;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,10 +57,16 @@ public class CompanyDirectory {
 
     private final CompanyRepository companies;
     private final CompanyNameRepository names;
+    private final DatabaseLock lock;
+    private final TransactionTemplate shortTransaction;
 
-    public CompanyDirectory(CompanyRepository companies, CompanyNameRepository names) {
+    public CompanyDirectory(CompanyRepository companies, CompanyNameRepository names, DatabaseLock lock,
+                            PlatformTransactionManager transactions) {
         this.companies = companies;
         this.names = names;
+        this.lock = lock;
+        this.shortTransaction = new TransactionTemplate(transactions);
+        this.shortTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     /**
@@ -74,10 +84,35 @@ public class CompanyDirectory {
         allNames.add(name);
         otherNames.stream().filter(n -> n != null && !n.isBlank()).forEach(allNames::add);
 
-        Company company = null;
-        if (cik != null) {
-            company = companies.findByCik(cik).orElse(null);
+        Company company = find(cik, ticker, allNames);
+        if (company == null) {
+            // Analyses of different companies run at once and often name the same new supplier. A new company is created
+            // in a short transaction of its own, one at a time on every server, so it can never be created twice, and the
+            // analysis holding this transaction open for minutes never holds the lock.
+            Long id = shortTransaction.execute(status -> {
+                lock.lock("company-directory");
+                Company again = find(cik, ticker, allNames);
+                return again != null ? again.getId() : companies.save(new Company(name, cik, ticker)).getId();
+            });
+            company = companies.findById(id).orElseThrow();
         }
+        if (company.getCik() == null && cik != null) {
+            company.setCik(cik);
+        }
+        if (company.getTicker() == null && ticker != null) {
+            company.setTicker(ticker);
+        }
+        Long companyId = company.getId();
+        // Names are remembered the same way, so two analyses adding one name cannot clash.
+        shortTransaction.executeWithoutResult(status -> {
+            lock.lock("company-directory");
+            remember(companyId, allNames);
+        });
+        return company;
+    }
+
+    private Company find(String cik, String ticker, List<String> allNames) {
+        Company company = cik == null ? null : companies.findByCik(cik).orElse(null);
         for (int i = 0; company == null && i < allNames.size(); i++) {
             company = names.findByNameKey(nameKey(allNames.get(i)))
                     .flatMap(known -> companies.findById(known.getCompanyId()))
@@ -86,17 +121,6 @@ public class CompanyDirectory {
         if (company == null && ticker != null && !ticker.isBlank()) {
             company = withSameTickerAndAgreeingName(ticker.strip(), cik, allNames);
         }
-        if (company == null) {
-            company = companies.save(new Company(name, cik, ticker));
-        } else {
-            if (company.getCik() == null && cik != null) {
-                company.setCik(cik);
-            }
-            if (company.getTicker() == null && ticker != null) {
-                company.setTicker(ticker);
-            }
-        }
-        remember(company, allNames);
         return company;
     }
 
@@ -157,10 +181,14 @@ public class CompanyDirectory {
 
     /** Stores each name not seen before, so it is matched straight away next time. */
     void remember(Company company, List<String> allNames) {
+        remember(company.getId(), allNames);
+    }
+
+    private void remember(Long companyId, List<String> allNames) {
         for (String name : allNames) {
             String key = nameKey(name);
             if (!names.existsByNameKey(key)) {
-                names.save(new CompanyName(company.getId(), name.trim(), key));
+                names.save(new CompanyName(companyId, name.trim(), key));
             }
         }
     }

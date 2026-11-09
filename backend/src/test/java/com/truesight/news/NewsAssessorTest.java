@@ -57,7 +57,7 @@ class NewsAssessorTest {
 
         ExecutorService oneWorker = Executors.newSingleThreadExecutor();
         try {
-            NewsAssessor assessor = new NewsAssessor(newsCheck, articles, assessments, gemini, calls, oneWorker);
+            NewsAssessor assessor = new NewsAssessor(newsCheck, articles, assessments, gemini, calls, oneWorker, tryLockAlwaysFree(), new com.truesight.support.NoTransactions());
             assessor.run(1L);
 
             assertThat(sample.size()).isGreaterThan(20);
@@ -67,5 +67,11 @@ class NewsAssessorTest {
         } finally {
             oneWorker.shutdownNow();
         }
+    }
+
+    private static com.truesight.common.DatabaseLock tryLockAlwaysFree() {
+        com.truesight.common.DatabaseLock lock = mock(com.truesight.common.DatabaseLock.class);
+        when(lock.tryLock(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        return lock;
     }
 }

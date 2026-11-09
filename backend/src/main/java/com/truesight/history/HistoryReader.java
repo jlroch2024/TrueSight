@@ -1,5 +1,6 @@
 package com.truesight.history;
 
+import com.truesight.common.DatabaseLock;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.portfolio.Holding;
@@ -15,6 +16,8 @@ import com.truesight.report.SecClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,7 +25,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Reads each holding's two previous annual reports: the work behind Load History.
@@ -45,10 +47,12 @@ public class HistoryReader {
     private final RelationshipFinder finder;
     private final HistoryReads reads;
     private final HistoryProgress progress;
-    private final ConcurrentHashMap<Long, Object> companyLocks = new ConcurrentHashMap<>();
+    private final DatabaseLock lock;
+    private final TransactionTemplate transaction;
 
     HistoryReader(HoldingRepository holdings, CompanyRepository companies, ReportRepository reports, SecClient sec,
-                  RelationshipFinder finder, HistoryReads reads, HistoryProgress progress) {
+                  RelationshipFinder finder, HistoryReads reads, HistoryProgress progress, DatabaseLock lock,
+                  PlatformTransactionManager transactions) {
         this.holdings = holdings;
         this.companies = companies;
         this.reports = reports;
@@ -56,6 +60,8 @@ public class HistoryReader {
         this.finder = finder;
         this.reads = reads;
         this.progress = progress;
+        this.lock = lock;
+        this.transaction = new TransactionTemplate(transactions);
     }
 
     /** Reads what is missing for this portfolio, updating its progress as it goes. */
@@ -86,43 +92,46 @@ public class HistoryReader {
         return companyIds;
     }
 
+    /** Two portfolios holding one company, on any server, never store or read one of its reports twice: see the locks. */
     private void readCompany(Long portfolioId, Long companyId) {
-        // Two portfolios holding the same company must not read its reports twice.
-        synchronized (companyLocks.computeIfAbsent(companyId, ignored -> new Object())) {
-            Company company = companies.findById(companyId).orElse(null);
-            if (company == null || company.getCik() == null) return;
-            List<ReportInfo> saved = reads.reportsByCompany(List.of(companyId)).getOrDefault(companyId, List.of());
-            if (saved.isEmpty()) return;
-            ReportInfo latest = saved.get(0);
+        Company company = companies.findById(companyId).orElse(null);
+        if (company == null || company.getCik() == null) return;
+        List<ReportInfo> saved = reads.reportsByCompany(List.of(companyId)).getOrDefault(companyId, List.of());
+        if (saved.isEmpty()) return;
+        ReportInfo latest = saved.get(0);
 
-            List<SecClient.SecFiling> earlier = sec.annualFilings(company.getCik(), HistoryReads.EARLIER + 2).stream()
-                    .filter(filing -> filing.filingDate().isBefore(latest.getFilingDate()))
-                    .limit(HistoryReads.EARLIER)
-                    .toList();
-            // Remembered, so a company with fewer than two earlier reports is not offered again (see HistoryReads).
-            reads.rememberAtTheSec(companyId, earlier.size());
+        List<SecClient.SecFiling> earlier = sec.annualFilings(company.getCik(), HistoryReads.EARLIER + 2).stream()
+                .filter(filing -> filing.filingDate().isBefore(latest.getFilingDate()))
+                .limit(HistoryReads.EARLIER)
+                .toList();
+        // Remembered, so a company with fewer than two earlier reports is not offered again (see HistoryReads).
+        reads.rememberAtTheSec(companyId, earlier.size());
 
-            // Download every report not saved yet before saving any, so the reports saved are always all there are:
-            // that is what lets a company's earlier reports be counted from what is saved (see HistoryReads.expected).
-            Map<SecClient.SecFiling, String> downloaded = new LinkedHashMap<>();
-            for (SecClient.SecFiling filing : earlier) {
-                if (reports.findByAccessionNumber(filing.accessionNumber()).isEmpty()) {
-                    downloaded.put(filing, ReportTextExtractor.extract(sec.download(filing.url())));
-                }
+        // Download every report not saved yet before saving any, so the reports saved are always all there are:
+        // that is what lets a company's earlier reports be counted from what is saved (see HistoryReads.expected).
+        Map<SecClient.SecFiling, String> downloaded = new LinkedHashMap<>();
+        for (SecClient.SecFiling filing : earlier) {
+            if (reports.findByAccessionNumber(filing.accessionNumber()).isEmpty()) {
+                downloaded.put(filing, ReportTextExtractor.extract(sec.download(filing.url())));
             }
-            List<Report> toRead = new ArrayList<>();
-            for (SecClient.SecFiling filing : earlier) {
-                String text = downloaded.get(filing);
-                toRead.add(text == null
-                        ? reports.findByAccessionNumber(filing.accessionNumber()).orElseThrow()
-                        : reports.save(new Report(companyId, filing.form(), filing.accessionNumber(),
-                                filing.filingDate(), filing.url(), text)));
-            }
-            for (Report report : toRead) {
-                if (reads.isRead(report.getId())) continue;
+        }
+        List<Report> toRead = new ArrayList<>();
+        for (SecClient.SecFiling filing : earlier) {
+            toRead.add(transaction.execute(status -> {
+                lock.lock("report:" + filing.accessionNumber());
+                return reports.findByAccessionNumber(filing.accessionNumber())
+                        .orElseGet(() -> reports.save(new Report(companyId, filing.form(), filing.accessionNumber(),
+                                filing.filingDate(), filing.url(), downloaded.get(filing))));
+            }));
+        }
+        for (Report report : toRead) {
+            if (reads.isRead(report.getId())) continue;
+            // findPast asks again whether the report has been read, once it holds the lock.
+            transaction.executeWithoutResult(status -> {
+                lock.lock("past-report:" + report.getId());
                 finder.findPast(report, company);
-                progress.advance(portfolioId);
-            }
+            });
+            progress.advance(portfolioId);
         }
     }
 }
