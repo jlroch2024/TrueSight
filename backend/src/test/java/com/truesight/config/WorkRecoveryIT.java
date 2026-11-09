@@ -168,6 +168,20 @@ class WorkRecoveryIT {
     // ---- criterion 3: a holding whose server has gone is Failed, and Analyse tries it again -----------------------
 
     @Test
+    void theEveryMinuteLookFailsInterruptedWorkWhenItRunsOnItsOwnSchedule() {
+        // Built by hand with the schedule on, and called as the scheduler calls it: from outside any transaction.
+        WorkRecovery onSchedule = new WorkRecovery(holdings, portfolios, companies, supplierReader, heartbeat, true,
+                transactionManager);
+        Portfolio portfolio = portfolio("recovery-on-schedule@example.com");
+        Holding gone = holding(portfolio, "RCV0", HoldingStatus.ANALYSING, null, UUID.randomUUID());
+
+        onSchedule.scheduledRecovery();
+
+        assertThat(holdingNow(gone).getStatus()).isEqualTo(HoldingStatus.FAILED);
+        assertThat(holdingNow(gone).getStatusReason()).isEqualTo(ANALYSIS_INTERRUPTED);
+    }
+
+    @Test
     void aHoldingAnalysingOnAServerThatHasGoneBecomesFailedWithTheReason() {
         Portfolio portfolio = portfolio("recovery-holding-gone@example.com");
         Holding gone = holding(portfolio, "RCV5", HoldingStatus.ANALYSING, null, UUID.randomUUID());

@@ -113,6 +113,10 @@ public class AnalysisService {
                 .orElse(false);
     }
 
+    private boolean onlyFiguresAreMissing(Holding holding) {
+        return needsFigures(holding) && !needsRelationshipAnalysis(holding);
+    }
+
     private boolean needsRelationshipAnalysis(Holding holding) {
         if (holding.getCompanyId() == null) return false;
         Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(holding.getCompanyId()).orElse(null);
@@ -139,6 +143,13 @@ public class AnalysisService {
         Holding holding = holdings.findById(holdingId).orElse(null);
         if (holding == null) return;
         if (holding.getStatus() != HoldingStatus.ANALYSING) return;
+        // Nothing but the figures is missing: AnalysisJob reads those afterwards. The SEC is not asked anything here,
+        // so a Done holding can never turn Failed because the SEC is out while its figures are fetched.
+        if (onlyFiguresAreMissing(holding)) {
+            holding.setStatus(HoldingStatus.DONE);
+            suppliers.queue(holding.getCompanyId());
+            return;
+        }
         try {
             Company company = reportReader.companyFor(holding.getTicker());
             if (company == null) {
