@@ -19,7 +19,7 @@ import java.util.concurrent.Executor;
  *       again.</li>
  *   <li>A filing the AI cannot read is skipped and the others are still read, but the search is not recorded, so the
  *       next Analyse searches again. The filings answered already are not sent again; only the skipped ones are.</li>
- *   <li>Once the day's limit on reading reports is reached ({@link ReadingLimit}), no more filings are sent and the
+ *   <li>Once the day's limit on name searches is reached ({@link ReadingLimit}), no more filings are sent and the
  *       search is not recorded, so a later Analyse carries on from where it stopped.</li>
  *   <li>Two holdings of one company never search at once: the second waits, then finds the search recorded.</li>
  * </ul>
@@ -63,7 +63,7 @@ public class NameSearchJob {
                     }
                 } catch (ReadingLimit.ReachedException limit) {
                     allRead = false;
-                    log.info("The name search for holding {} stopped at the day's limit on reading reports; a later "
+                    log.info("The name search for holding {} stopped at the day's limit on name searches; a later "
                             + "Analyse carries on.", holdingId);
                 }
                 if (allRead) {
@@ -83,7 +83,7 @@ public class NameSearchJob {
      * Reads one filing, then has the second AI check what it found. An AI failure skips only this filing.
      *
      * @return false if the AI failed on it, so the search must not be recorded
-     * @throws ReadingLimit.ReachedException if the day's limit on reading reports is reached: the search stops
+     * @throws ReadingLimit.ReachedException if the day's limit on name searches is reached: the search stops
      */
     private boolean readOne(NameSearcher.Holder holder, SecClient.SecSearchHit hit) {
         Long reportId;

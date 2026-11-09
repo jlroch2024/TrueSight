@@ -67,7 +67,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tests that ran before never leave a count behind that this test would see), and so is what the test saved.
  */
 @IntegrationTest
-@TestPropertySource(properties = "truesight.ai.daily-report-limit=3")
+@TestPropertySource(properties = {"truesight.ai.daily-report-limit=3", "truesight.ai.daily-name-search-limit=3"})
 class ReadingLimitIT {
 
     private static final String REASON = "TrueSight has read as many new reports as it can today. Press Analyse again tomorrow.";
@@ -218,13 +218,21 @@ class ReadingLimitIT {
     }
 
     @Test
-    void aNameSearchCallCountsTowardsTheLimit() {
-        recordCalls(2, AiPurpose.NAME_SEARCH, AiOutcome.ANSWERED, Instant.now());
+    void aNameSearchCallDoesNotUseUpTheDaysReadingOfReports() {
+        recordCalls(5, AiPurpose.NAME_SEARCH, AiOutcome.ANSWERED, Instant.now());
+
         assertThat(readingLimit.reached()).isFalse();
+    }
+
+    @Test
+    void nameSearchesHaveADailyLimitOfTheirOwn() {
+        recordCalls(2, AiPurpose.NAME_SEARCH, AiOutcome.ANSWERED, Instant.now());
+        assertThat(readingLimit.nameSearchesReached()).isFalse();
 
         recordCalls(1, AiPurpose.NAME_SEARCH, AiOutcome.ANSWERED, Instant.now());
 
-        assertThat(readingLimit.reached()).isTrue();
+        assertThat(readingLimit.nameSearchesReached()).isTrue();
+        assertThatThrownBy(() -> readingLimit.requireRoomForNameSearch()).isInstanceOf(ReadingLimit.ReachedException.class);
     }
 
     // ---- criterion 7: a supplier's or an earlier report past the limit is left unread ----------------------------

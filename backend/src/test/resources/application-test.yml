@@ -7,3 +7,4 @@ truesight:
     # its own small one. Calls the other tests put in the audit trail, which the database keeps for the whole run, can
     # then never reach it.
     daily-report-limit: 100000
+    daily-name-search-limit: 100000

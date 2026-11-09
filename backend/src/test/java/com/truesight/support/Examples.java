@@ -234,6 +234,26 @@ public final class Examples {
         return read("README.md");
     }
 
+    /** Apple's 10-K filed 2026-11-03, through ReportTextExtractor: its headings have non-breaking spaces. */
+    public static String apple10K() {
+        return read("apple-10k.txt");
+    }
+
+    /** Nike's 10-K filed 2026-07-15, through ReportTextExtractor: sentences in Item 1 mention "Item 2. Properties". */
+    public static String nike10K() {
+        return read("nike-10k.txt");
+    }
+
+    /** Intel's 10-K filed 2026-01-23, through ReportTextExtractor: its Item headings are only in a cross-reference index. */
+    public static String intel10K() {
+        return read("intel-10k.txt");
+    }
+
+    /** 29 real annual reports' lengths, item lines and chosen sections, from make_report_section_filings.py. */
+    public static String reportSectionFilings() {
+        return read("report-section-filings.json");
+    }
+
     private static String read(String name) {
         try {
             return Files.readString(Path.of("..", "docs", "examples", name), StandardCharsets.UTF_8);

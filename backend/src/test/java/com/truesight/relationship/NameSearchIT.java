@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Find Who Names My Holding, criteria 1 to 6 and 8, through a real Analyse; and, from the review, that a filing the AI
- * fails on, or the day's limit on reading reports, leaves the search unrecorded so a later Analyse carries on.
+ * fails on, or the day's limit on name searches, leaves the search unrecorded so a later Analyse carries on.
  *
  * <p>The holding is Cirrus Logic. The fake SEC answers its name search with the SEC's real, unchanged answer for
  * "Cirrus Logic" ({@code docs/examples/sec-search-cirrus-logic.json}), and serves CEVA's real 10-K
@@ -306,18 +306,18 @@ class NameSearchIT {
 
     @Test
     void pastTheDaysReadingLimitNoFilingIsSentToTheAiAndTheSearchIsNotRecordedUntilThereIsRoom() throws Exception {
-        doThrow(new ReadingLimit.ReachedException()).when(readingLimit).requireRoom();
+        doThrow(new ReadingLimit.ReachedException()).when(readingLimit).requireRoomForNameSearch();
         String email = "name-search-limit@example.com";
         Portfolio portfolio = portfolioHolding(email, HoldingStatus.DONE);
 
         analyse(email, portfolio);
-        verify(readingLimit, timeout(5_000)).requireRoom();
+        verify(readingLimit, timeout(5_000)).requireRoomForNameSearch();
         Thread.sleep(300);
         verify(gemini, never()).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());
         assertThat(searches.findById(cirrus.getId())).isEmpty();
         assertThat(holdingOf(portfolio).getStatus()).isEqualTo(HoldingStatus.DONE);
 
-        doCallRealMethod().when(readingLimit).requireRoom(); // the next day
+        doCallRealMethod().when(readingLimit).requireRoomForNameSearch(); // the next day
         analyse(email, portfolio);
         await(() -> searches.findById(cirrus.getId()).isPresent());
         verify(gemini, times(1)).generate(argThat((AiRequest request) -> request.purpose() == AiPurpose.NAME_SEARCH), anyMap());

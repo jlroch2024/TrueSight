@@ -184,7 +184,7 @@ public class NameSearcher {
      *
      * @return the report's id if a relationship was saved (for the second check), otherwise null
      * @throws SecClient.SecAccessException if the filing cannot be downloaded
-     * @throws ReadingLimit.ReachedException if the day's limit on reading reports is reached: nothing is sent
+     * @throws ReadingLimit.ReachedException if the day's limit on name searches is reached: nothing is sent
      * @throws GeminiClient.GeminiException if the AI fails, or its answer cannot be read
      */
     // An AI failure must not undo the work before it: the downloaded report stays stored.
@@ -208,8 +208,8 @@ public class NameSearcher {
                 prompt(company.getName(), report.getForm(), holder.displayName(), passages), report.getId(),
                 prompt(company.getName(), report.getForm(), holder.displayName(),
                         List.of(AiRequest.reportMarker(report.getId(), passageText))));
-        // Counted by the day's limit on reading reports, as every report sent to the AI is. Past it, nothing is sent.
-        readingLimit.requireRoom();
+        // Name searches have a daily limit of their own. Past it, nothing is sent.
+        readingLimit.requireRoomForNameSearch();
         AiAnswer answer = gemini.generate(request, RESPONSE_SCHEMA);
         List<GeminiAnswer.NameSearchFound> found;
         try {
