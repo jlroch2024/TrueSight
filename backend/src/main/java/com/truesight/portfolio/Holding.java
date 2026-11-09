@@ -111,6 +111,9 @@ public class Holding {
         this.statusReason = null;
     }
 
+    /** Why a holding is Failed when its server stopped before the analysis ended. */
+    public static final String INTERRUPTED_REASON = "The analysis was interrupted. Press Analyse to try again.";
+
     /** Marks the holding Failed, keeping the reason so the website can show it. */
     public void fail(String reason) {
         this.status = HoldingStatus.FAILED;

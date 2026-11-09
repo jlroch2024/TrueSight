@@ -93,7 +93,8 @@ public class HoldingService {
     }
 
     /**
-     * Adds one holding, saved as Waiting. The ticker is made upper-case; one the portfolio already holds is refused.
+     * Adds one holding, saved as Waiting. The ticker is made upper-case; one the portfolio already holds is refused,
+     * and so is any past {@link HoldingCsvReader#MAX_HOLDINGS} holdings.
      * Starting its analysis is the controller's job, after this transaction has been saved.
      */
     @Transactional
@@ -109,6 +110,9 @@ public class HoldingService {
         BigDecimal weight = checkedWeight(request.weight());
         if (holdings.existsByPortfolioIdAndTickerIgnoreCase(portfolioId, ticker)) {
             throw ApiException.conflict(ticker + " is already in this portfolio.");
+        }
+        if (holdings.countByPortfolioId(portfolioId) >= HoldingCsvReader.MAX_HOLDINGS) {
+            throw ApiException.badRequest(HoldingCsvReader.TOO_MANY_HOLDINGS);
         }
         Holding added = holdings.save(new Holding(portfolioId, ticker, weight));
         return toResponse(added, progressOf(holdings.findByPortfolioIdOrderByTickerAsc(portfolioId)));

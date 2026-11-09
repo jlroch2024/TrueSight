@@ -16,7 +16,7 @@ what runs where, how a merge reaches the live site, and every step used to set i
 
 Everything else the app needs is a plain environment variable on the Cloud Run service, not a secret:
 `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `GEMINI_MODEL`, `SEC_USER_AGENT`,
-`LOGO_DEV_TOKEN` and `ANALYST_EMAILS`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the
+`LOGO_DEV_TOKEN`, `ANALYST_EMAILS` and, optionally, `AI_DAILY_REPORT_LIMIT`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the
 browser, which is where the graph's logos are loaded, so it is not a secret. Without it, the graph shows letters
 instead of logos. `ANALYST_EMAILS` is the comma-separated emails that are Analysts (empty means nobody is). It is read
 when the app starts, so change it on the service and let it restart.
@@ -46,6 +46,7 @@ next line. They need the Google Cloud CLI, logged in with `gcloud auth login`.
 | Pause the database to save money (the site stops working) | `gcloud sql instances patch truesight-db --activation-policy=NEVER` |
 | Start it again | `gcloud sql instances patch truesight-db --activation-policy=ALWAYS` |
 | Change a secret, e.g. a new Gemini key | Secret Manager, the secret, **New version**. Then redeploy (merge anything, or re-run the last Deploy) so the app reads it |
+| Change how many reports Gemini may read in a day | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="AI_DAILY_REPORT_LIMIT=50"`. The default is 100, counted across the whole app from midnight UTC; it is a brake on cost, not an invoice (two jobs at once may pass it by a few reports). Past it, a holding that needs a report read says Failed, and Analyse tries it again the next day. A report already read never counts. Gemini's prices double on 1 January 2027, so lower it then. A portfolio is also held to 100 holdings |
 | Set or change the Logo.dev token, for the graph's logos | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="LOGO_DEV_TOKEN=pk_..."`. This starts a new revision with it, keeping every other setting |
 | Add Logo.dev's secret key, for the logos of companies without a ticker (optional) | It is a real secret, so it goes in Secret Manager: `gcloud secrets create LOGO_DEV_SECRET_KEY --data-file=<file holding sk_...>`, then `gcloud secrets add-iam-policy-binding LOGO_DEV_SECRET_KEY --member="serviceAccount:truesight-app@truesight-509715.iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"`, then `gcloud run services update truesight --region asia-southeast1 --update-secrets="LOGO_DEV_SECRET_KEY=LOGO_DEV_SECRET_KEY:latest"`. Without it, those companies show their first letter |
 
@@ -173,13 +174,24 @@ gcloud run deploy truesight --source . --region asia-southeast1 --allow-unauthen
   --add-cloudsql-instances=truesight-509715:asia-southeast1:truesight-db `
   --set-env-vars="SPRING_PROFILES_ACTIVE=prod,DATABASE_URL=jdbc:postgresql:///truesight?cloudSqlInstance=truesight-509715:asia-southeast1:truesight-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DATABASE_USERNAME=truesight,GEMINI_MODEL=gemini-3.8-flash,SEC_USER_AGENT=TrueSight contact@truesight.com" `
   --set-secrets="DATABASE_PASSWORD=DATABASE_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" `
-  --memory=1Gi --max-instances=3
+  --memory=1Gi --max-instances=3 --no-cpu-throttling --min-instances=1
 ```
 
 - `--allow-unauthenticated` lets anyone open the site. TrueSight's own log-in protects the data.
 - `DATABASE_URL` names Google's Cloud SQL connector (in `pom.xml`), which reaches the database through Cloud Run's
   Cloud SQL connection using the app's identity. It holds no password.
 - `--max-instances=3` keeps the small database from running out of connections, and caps the cost.
+- `--no-cpu-throttling` keeps the CPU between requests. Cloud Run's default stops it when no request is running, which
+  would stall background analysis and news checks and stop the server's 30-second renewal in the `workers` table, so
+  its running work would be taken for interrupted.
+- `--min-instances=1` keeps one server always running, so that renewal and the every-minute look for interrupted work
+  never stop. It costs more, because that server is billed all the time.
+
+A service that is already running does not need the first deploy again. Change it once with:
+
+```powershell
+gcloud run services update truesight --region asia-southeast1 --no-cpu-throttling --min-instances=1
+```
 
 It prints the live link when it finishes. Open it, sign up and log in, and check `/swagger-ui.html`.
 

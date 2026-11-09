@@ -3,11 +3,13 @@ package com.truesight.report;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyRepository;
 import com.truesight.company.ReportStatus;
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.news.NewsCheckService;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.ReadingLimit;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.ReviewStatus;
 import org.springframework.stereotype.Service;
@@ -50,28 +52,36 @@ public class SupplierReader {
     private final CompanyRepository companies;
     private final ReportRepository reports;
     private final ReportReader reportReader;
+    private final WorkerHeartbeat heartbeat;
 
     public SupplierReader(HoldingRepository holdings, RelationshipRepository relationships,
-                          CompanyRepository companies, ReportRepository reports, ReportReader reportReader) {
+                          CompanyRepository companies, ReportRepository reports, ReportReader reportReader,
+                          WorkerHeartbeat heartbeat) {
         this.holdings = holdings;
         this.relationships = relationships;
         this.companies = companies;
         this.reports = reports;
         this.reportReader = reportReader;
+        this.heartbeat = heartbeat;
     }
 
     /**
      * Sets the suppliers of a holding's company to Waiting, leaving out every supplier that is never read again (see
-     * the class).
+     * the class), and records this server as their owner. Returns the ids it set Waiting.
      */
     @Transactional
-    public void queue(Long holdingCompanyId) {
-        companies.findAllById(suppliersOf(List.of(holdingCompanyId))).stream()
+    public List<Long> queue(Long holdingCompanyId) {
+        List<Company> queued = companies.findAllById(suppliersOf(List.of(holdingCompanyId))).stream()
                 .filter(company -> company.getReportStatus() == null)
                 // A report a name search stored is still read whole.
                 .filter(company -> !reports.findLatestIdByCompanyId(company.getId()).map(reportReader::isRead).orElse(false))
                 .filter(company -> !holdings.existsByCompanyId(company.getId()))
-                .forEach(company -> record(company, ReportStatus.WAITING, null));
+                .toList();
+        queued.forEach(company -> {
+            record(company, ReportStatus.WAITING, null);
+            company.setReportWorkerId(heartbeat.id());
+        });
+        return queued.stream().map(Company::getId).toList();
     }
 
     /**
@@ -94,7 +104,8 @@ public class SupplierReader {
 
     /**
      * Reads one waiting supplier's annual report, and records how it went. A supplier no longer waiting (read
-     * meanwhile for another holding) is left alone.
+     * meanwhile for another holding) is left alone. One that cannot be read today because the day's limit on
+     * reading reports is reached goes back to no status, as after an interrupted server, and Analyse tries it again.
      */
     @Transactional
     public void read(Long companyId) {
@@ -102,6 +113,7 @@ public class SupplierReader {
         if (supplier == null || supplier.getReportStatus() != ReportStatus.WAITING) {
             return;
         }
+        supplier.setReportWorkerId(heartbeat.id());
         try {
             Company filer = supplier.getTicker() == null ? null : reportReader.companyFor(supplier.getTicker());
             if (filer == null || !reportReader.read(filer)) {
@@ -109,6 +121,13 @@ public class SupplierReader {
                 return;
             }
             record(supplier, ReportStatus.DONE, null);
+        } catch (ReadingLimit.ReachedException limit) {
+            // Over the day's limit on reading reports: the supplier is put back to no status, not Failed, and its report
+            // was not downloaded, so the next Analyse queues it again (see AnalysisService#restartSuppliers). Nothing
+            // here can fail the holding.
+            record(supplier, null, null);
+            supplier.setReportWorkerId(null);
+            return;
         } catch (SecClient.SecAccessException | GeminiClient.GeminiException exception) {
             record(supplier, ReportStatus.FAILED, exception.getMessage());
         } catch (RuntimeException exception) {

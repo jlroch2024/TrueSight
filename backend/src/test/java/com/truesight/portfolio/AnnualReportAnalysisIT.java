@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.company.CompanyDirectory;
 import static org.mockito.ArgumentMatchers.any;
 import static com.truesight.support.FakeAi.answer;
@@ -48,6 +49,7 @@ class AnnualReportAnalysisIT {
             + "Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor "
             + "wafers.";
 
+    @Autowired WorkerHeartbeat heartbeat;
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
     @Autowired PortfolioRepository portfolios;
@@ -266,6 +268,8 @@ class AnnualReportAnalysisIT {
         Portfolio portfolio = portfolioWith(email, "NVDA");
         Holding holding = holdings.findByPortfolioIdOrderByTickerAsc(portfolio.getId()).getFirst();
         holding.setStatus(HoldingStatus.ANALYSING);
+        // Running on this server, so it is not taken for work a restart interrupted.
+        holding.setWorkerId(heartbeat.id());
         holdings.save(holding);
 
         mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId()).header("Authorization", logins.bearer(email)))

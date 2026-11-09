@@ -1,5 +1,6 @@
 package com.truesight.portfolio;
 
+import com.truesight.config.WorkerHeartbeat;
 import com.truesight.company.Company;
 import com.truesight.company.CompanyDirectory;
 import com.truesight.news.Alert;
@@ -49,6 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @IntegrationTest
 class HoldingEditIT {
 
+    @Autowired WorkerHeartbeat heartbeat;
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
     @Autowired PortfolioRepository portfolios;
@@ -197,6 +199,8 @@ class HoldingEditIT {
     void anAnalysisAlreadyRunningIsNotAnErrorAndTheNewHoldingWaitsForTheNextAnalyse() throws Exception {
         Holding running = held("RUNNING", "5");
         running.setStatus(HoldingStatus.ANALYSING);
+        // Running on this server, so it is not taken for work a restart interrupted.
+        running.setWorkerId(heartbeat.id());
         holdings.save(running);
 
         add(me, portfolioId, "{\"ticker\": \"LATER\"}")

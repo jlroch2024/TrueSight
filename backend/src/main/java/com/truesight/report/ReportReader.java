@@ -56,11 +56,14 @@ public class ReportReader {
      *
      * @return false if the company has no 10-K or 20-F
      * @throws SecClient.SecAccessException if the SEC cannot be reached
-     * @throws com.truesight.relationship.GeminiClient.GeminiException if the AI fails
+     * @throws com.truesight.relationship.GeminiClient.GeminiException if the AI fails, or the day's limit on reading
+     *         reports is reached (a {@link com.truesight.relationship.ReadingLimit.ReachedException})
      */
     public boolean read(Company company) {
         Report report = reports.findFirstByCompanyIdOrderByFilingDateDesc(company.getId()).orElse(null);
         if (report == null) {
+            // A report not stored yet has to be sent to the AI once it is: past the day's limit, do not download it.
+            relationshipFinder.requireRoomToRead();
             SecClient.SecFiling filing = sec.latestAnnualFiling(company.getCik());
             if (filing == null) {
                 return false;
