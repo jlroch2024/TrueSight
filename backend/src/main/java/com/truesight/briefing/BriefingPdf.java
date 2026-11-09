@@ -68,6 +68,7 @@ class BriefingPdf {
             holdings(document, data);
             alerts(document, data);
             dependencies(document, data);
+            biggestDependencies(document, data);
             sources(document);
             document.close();
         } catch (DocumentException e) {
@@ -261,6 +262,22 @@ class BriefingPdf {
                 document.add(new Paragraph("From the " + report.form() + " filed " + BriefingText.date(report.filingDate()),
                         fonts.small()));
             }
+        }
+    }
+
+    // 5b. Each holding's largest dependency in its own tagged figures. Nothing is shown when no holding has one.
+    private void biggestDependencies(Document document, BriefingData data) throws DocumentException {
+        if (data.biggest().isEmpty()) return;
+        document.add(new Paragraph(" ", fonts.body()));
+        heading(document, "Biggest Dependencies");
+        for (BriefingData.BiggestDependency figure : data.biggest()) {
+            Paragraph row = new Paragraph();
+            row.setSpacingBefore(6);
+            row.add(new Phrase(figure.holding() + ": " + figure.party() + ", " + figure.percent() + "% of " + figure.measure()
+                    + ", Fiscal " + figure.fiscalYear(), fonts.subheading()));
+            document.add(row);
+            document.add(new Paragraph("From the " + figure.form()
+                    + (figure.filed() == null ? "" : " filed " + BriefingText.date(figure.filed())), fonts.small()));
         }
     }
 

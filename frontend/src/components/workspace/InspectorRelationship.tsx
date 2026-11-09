@@ -3,6 +3,7 @@
 // sentence with Show in Report, and a button for each of the two companies.
 import { ArrowRight, CircleDashed, ExternalLink, FileText, Package, ShieldCheck, UserRoundPen } from 'lucide-react';
 import type { HistoryEntry } from '../../api/history';
+import { measureLabel, percent } from '../../api/concentrations';
 import type { CompanySummary } from '../../api/relationships';
 import { formatDate, openInNewTab, showInReportUrl, titleCase } from '../../format';
 import { NEUTRAL_EDGE } from '../../graph/model';
@@ -95,6 +96,11 @@ export function RelationshipView({
         )}
       </div>
       {approved && relationship.reviewNote && <p className="prose muted review-note">{relationship.reviewNote}</p>}
+      {relationship.figure && (
+        <p className="prose num figure-line">
+          {percent(Number(relationship.figure.share))} of {relationship.company.displayName}’s {measureLabel(relationship.figure.measure)}, Fiscal {relationship.figure.periodEnd.slice(0, 4)}
+        </p>
+      )}
 
       {/* How confident TrueSight is, as the backend works it out (See How Confident TrueSight Is), and why. */}
       <section className="insp-section confidence" aria-label="Confidence">

@@ -8,6 +8,9 @@ import com.truesight.news.NewsCheckService;
 import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.PortfolioRepository;
+import com.truesight.report.Concentration;
+import com.truesight.report.ConcentrationMeasure;
+import com.truesight.report.ConcentrationRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SupplierReader;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,6 +46,7 @@ public class RelationshipService {
     private final CompanyDisplayNames displayNames;
     private final CurrentUser currentUser;
     private final Agreement agreement;
+    private final ConcentrationRepository concentrations;
     private final SupplierReader suppliers;
 
     public RelationshipService(PortfolioRepository portfolios, HoldingRepository holdings,
@@ -49,7 +54,9 @@ public class RelationshipService {
                                CompanyRepository companies, ReportRepository reports,
                                CompanyDisplayNames displayNames,
                                CurrentUser currentUser, SupplierReader suppliers,
-                               Agreement agreement) {
+                               Agreement agreement,
+                               ConcentrationRepository concentrations) {
+        this.concentrations = concentrations;
         this.agreement = agreement;
         this.portfolios = portfolios;
         this.holdings = holdings;
@@ -111,6 +118,8 @@ public class RelationshipService {
                         h -> new RelationshipResponse.Highlight(h.getKind(), h.getStartAt(), h.getEndAt()),
                         Collectors.toList())));
 
+        Map<String, Concentration> figures = latestFigures(found);
+
         return found.stream().map(r -> {
             Report report = reportById.get(r.getReportId());
             Relationship other = agreeing.get(r.getId());
@@ -132,8 +141,34 @@ public class RelationshipService {
                     RelationshipConfidence.of(r, other != null),
                     highlightsById.getOrDefault(r.getId(), List.of()),
                     other == null ? null : new RelationshipResponse.AgreesWith(other.getId(), other.getEvidence(),
-                            summaryOf(reportById.get(other.getReportId()))));
+                            summaryOf(reportById.get(other.getReportId()))),
+                    figure(figures.get(pairKey(r.getReportId(), r.getCounterpartyId(), r.getType().name()))));
         }).toList();
+    }
+
+    /** For each report, counterparty and kind: the latest revenue or purchases figure, revenue first. One query. */
+    private Map<String, Concentration> latestFigures(List<Relationship> found) {
+        Map<String, Concentration> latest = new HashMap<>();
+        if (found.isEmpty()) return latest;
+        Comparator<Concentration> better = Comparator.comparing(Concentration::getPeriodEnd)
+                .thenComparing(figure -> figure.getMeasure() == ConcentrationMeasure.REVENUE)
+                .thenComparing(Concentration::getShare);
+        concentrations.findByReportIdIn(found.stream().map(Relationship::getReportId).collect(Collectors.toSet())).stream()
+                .filter(figure -> figure.getCounterpartyId() != null)
+                .filter(figure -> figure.getMeasure() == ConcentrationMeasure.REVENUE
+                        || figure.getMeasure() == ConcentrationMeasure.PURCHASES)
+                .forEach(figure -> latest.merge(pairKey(figure.getReportId(), figure.getCounterpartyId(), figure.getKind().name()),
+                        figure, (one, other) -> better.compare(one, other) >= 0 ? one : other));
+        return latest;
+    }
+
+    private static String pairKey(Long reportId, Long counterpartyId, String kind) {
+        return reportId + " " + counterpartyId + " " + kind;
+    }
+
+    private static RelationshipResponse.Figure figure(Concentration figure) {
+        return figure == null ? null
+                : new RelationshipResponse.Figure(figure.getShare(), figure.getMeasure(), figure.getPeriodEnd());
     }
 
     private static RelationshipResponse.ReportSummary summaryOf(Report report) {

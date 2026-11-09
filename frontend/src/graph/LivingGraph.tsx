@@ -37,6 +37,7 @@ import {
   ALERT_COLOUR,
   boxOf,
   buildLiveGraph,
+  NEUTRAL_EDGE,
   estimateWidth,
   eventLabel,
 } from './model';
@@ -53,6 +54,7 @@ import {
   mapFrame,
   render,
   renderMinimap,
+  drawArrow,
 } from './render';
 import { Scene } from './scene';
 import './livingGraph.css';
@@ -1370,8 +1372,37 @@ export function LivingGraph({
                 ))}
               </ul>
             )}
-            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0 || fresh) && (
+            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0 || fresh || graph.edges.some((edge) => edge.share != null)) && (
               <ul className="lg-legend" aria-label="Graph key">
+                {graph.edges.some((edge) => edge.share != null) && (
+                  <li>
+                    <KeyMark
+                      className="lg-legend-share"
+                      size={18}
+                      colour={NEUTRAL_EDGE}
+                      draw={(context, dpr) => {
+                        drawArrow(context, {
+                          start: { x: 1, y: 9 },
+                          end: { x: 17, y: 9 },
+                          grow: 1,
+                          strength: 1,
+                          hover: 0,
+                          colour: NEUTRAL_EDGE,
+                          risk: null,
+                          reviewed: true,
+                          critical: false,
+                          share: 1,
+                          flow: 0,
+                          still: true,
+                          now: 0,
+                          k: 1,
+                          dpr,
+                        });
+                      }}
+                    />
+                    Thicker: Bigger Share
+                  </li>
+                )}
                 {fresh && (
                   <li>
                     <KeyMark

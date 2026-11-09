@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"answer\": \"Cirrus Logic supplies components to Apple, which accounted for approximately 91% of Cirrus Logic's total net sales in fiscal 2026, 89% in fiscal 2025, and 87% in fiscal 2024. Please note that this relationship is unreviewed and is reported with medium confidence.\", \"sourceIds\": [\"R1\"]}",
+            "thoughtSignature": "EqsLCqgLAWkUfRN64hDdSD7akJ3sYnH0NyTsCVArq715vSph8t2Qmd5HBYJNHIe+N8WMEFmfbXN313TESuEssqD8aMFTJSAez5gfvfiqs00JMDn/Q5NBjYMp5yPaXF/25zX0DTzVhG7ioi74rH5BiOravj4xspyzN5H1psjv9VbKqGprArw2GBooijM6Hz0PUS851sQoASniELt7ZqxmnjbhDF3ni7xoiim8OV4CA0uho4NwdSdgV8FEFXJ3DBxA9MySUCq2C++RXIIsUTBk9IEGSgjfo9SX7wuevWbtKOrFnh/mReHPpTFvmXoVl6ruX0lwxfxKEDU0sAleWhBBwxSyVtAWI7YxLN9S8wyRtUBhEKb10Lm/jtvx4pEqtmgOZvzHSg1B6b0nRf9Hvqm0i8ZEmFd/Y3uo8vd0gua3m6gcVm0qFkOcbSCJfM2L21ZZ5CoSa1IQyl0rpOq2UokAiFFzr5s7pXfp06N85DwMq11JFYcjjzF0uoY/9DIKgnEhmk/2sEILvXJ8y0yF/GVWIDNqdFl48bIxPZQRLpw9PpN91s4SyAClJt2qkPbUKcxBjPm2IRojrFb21fUz9ECE8zjy8YqLsaQb9RFRr4I4c/RLfx8lWRgOGcXQg9GJK4KrLCaqp/QvdAubds2JhMz/gx+Y7C2+bVVOhjnmPTOdXlI+xafTXOd5W/SQbTsXthkwegyO1OJwkL3PidhV9kVzi+czWn7AVug4Gcs92uGLb/qfWHnzGvBNWNtvRMQ0Vxd5b8aQBjrm9zngy+flV43+1I+dIBgT0nabE66NZblXXDg5N0/dxurrjlylr6X70MABGQ4sMy8rk6YOie3wunNddoloPa1Jm7AohEnqai2/8BLYrKuvaGJWOEmVOHZodhuRqUOAFuN4Qjc2ga1K2yX2Igkbx08W3/LkQG/dSCfnTrE5CMGRQJxWvJ09CDU0hkFK47gwBcU9+vfekktG+C/bbaUs8lQms2pWznwDlunzR7/5SOIJyiMBsTSO27jw8EZPxE9vORkp5RlKJEuD+Ji60Okaz2Sie0PaldehcLYPV05fwdXB+BHzstM3pD0k38ZJBeHQ6h5LMss2JgheCn47WGLUtEYTRohbz6X47Wco8pmqiPoaZU/+KfebgguG5UEs8fnG82hZzYOzcEAKwy/mqauRlqAtVRuKgYyZ+8v5EbQ2xHlmPukx04lxuNDLMmmreRpq+r5xuUdUyRgWkzVlMSsfmvk0HmaQJrsOiHua4BG+PB0WrT5wtQJwXINDMGPoAVMkXYpZOZv9Lm1o8gfw0yhCg8Gy3nfilIuYS0UvCWD+RAHGgn/QZMFook/tSTgMr7hhe6tAPLjF4cPsSqk5N69sVg/JvHNhO5WGJLzVr0Df0K8fxmtDlqbsLPWpNU+79E56/UlT7w3GdNST2zejnRqU2d1r0cXmwluH7eMx7dltftZDjYJJv1YKHhyEgToC5foPOwgqtsXS/R1GgapEh+zkt2exYnMohn2ihQqvx8ChLhoPByU+b7cHTpB0Ce9miDUYsQh5rceyb62n3BgmvLIbZiGl5bxNkC0ZGxJ48kgi8UeUi/jhOyP8SRyqGbNqQoyd9LJaDhviLuIZg6e9lidtNEPr0nmkaNBIRyCrfwi9v736JrymcZVsS8UEtH1OIg2FDViv3vsKygcJxiyaeIKeNvUL6TVhfunjIr/p2TU9k26LZvsGI2I6bASaVQn8k2hW5yRn8scSNVS3wFiUVdS+KKIntuhP8qIsaZf6yv9tBehv0RnGO8YPoDAawxivfB8NTVEcYaT4Byjpvg+GIn6rK4AYo38UiE8IWvGdzLX80MwvB0/j7wHXfcLd86Nv5ke5cy/IJSWmZ6HFD9wntLS1k8/6I1czOEZYTRquHSNsfkQS4RcieljAuqfGv39OtMTHhEnQHW/FiJjiWNk="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 602,
+    "candidatesTokenCount": 85,
+    "totalTokenCount": 1076,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 602
+      }
+    ],
+    "thoughtsTokenCount": 389,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "JvXxatCSF9aB3LUPkeqgsQQ"
+}

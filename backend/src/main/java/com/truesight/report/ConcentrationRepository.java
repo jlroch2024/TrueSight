@@ -10,6 +10,9 @@ public interface ConcentrationRepository extends JpaRepository<Concentration, Lo
 
     List<Concentration> findByReportIdOrderByIdAsc(Long reportId);
 
+    /** Every figure these reports tag. */
+    List<Concentration> findByReportIdIn(Collection<Long> reportIds);
+
     /** The company's figures, newest period first. */
     List<Concentration> findByCompanyIdOrderByPeriodEndDescPeriodStartDescIdAsc(Long companyId);
 

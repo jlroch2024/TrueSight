@@ -55,6 +55,8 @@ export type LiveEdge = {
   critical: boolean;
   colour: string;
   summary: string;
+  // The share the report tags for this link, 0 to 1: an arrow with one is drawn thicker.
+  share?: number | null;
 };
 
 export type LiveGraph = {
@@ -182,6 +184,7 @@ export function buildLiveGraph(
         critical: edge.criticality !== null,
         colour: chains.edges.get(edge.id) ?? NEUTRAL_EDGE,
         summary: edge.summary,
+        share: edge.share ?? null,
       },
     ];
   });

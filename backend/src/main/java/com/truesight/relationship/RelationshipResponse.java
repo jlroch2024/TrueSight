@@ -1,5 +1,7 @@
 package com.truesight.relationship;
 
+import com.truesight.report.ConcentrationMeasure;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +27,8 @@ import java.util.List;
  *
  * <p>{@code agreesWith} is the same relationship as the other company's own report states it (see {@link Agreement}), or
  * null when only this report names it.
+ *
+ * <p>{@code figure} is the latest revenue or purchases share this report tags for the pair, or null: never estimated.
  */
 public record RelationshipResponse(
         Long id,
@@ -43,10 +47,15 @@ public record RelationshipResponse(
         String reviewNote,
         RelationshipConfidence confidence,
         List<Highlight> highlights,
-        AgreesWith agreesWith) {
+        AgreesWith agreesWith,
+        Figure figure) {
 
     /** The other company's report saying the same thing: its relationship, its own sentence and that report. */
     public record AgreesWith(Long id, String evidence, ReportSummary report) {
+    }
+
+    /** A dependency figure from the report's own tags: {@code share} is from 0 to 1. */
+    public record Figure(java.math.BigDecimal share, ConcentrationMeasure measure, java.time.LocalDate periodEnd) {
     }
 
     public record CompanySummary(Long id, String name, String displayName, String ticker) {

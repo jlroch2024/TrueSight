@@ -5,6 +5,7 @@
 // same paths while this is open (see scenarioFocus in view.ts).
 import { ChevronLeft, ChevronRight, CircleDashed, ExternalLink, ShieldCheck } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { measureLabel, percent } from '../../api/concentrations';
 import type { CompanySummary, Relationship } from '../../api/relationships';
 import type { WhatIf, WhatIfHolding } from '../../api/whatIf';
 import { openInNewTab, showInReportUrl, titleCase } from '../../format';
@@ -238,6 +239,11 @@ function PathLink({ link, view, onChoose }: { link: Relationship; view: Workspac
         {supplier.displayName} <ChevronRight size={12} className="path-sep" /> {customer.displayName}
       </span>
       {link.provides && <span className="h-sub">{titleCase(link.provides)}</span>}
+      {link.figure && (
+        <span className="h-sub num">
+          {percent(Number(link.figure.share))} of {link.company.displayName}’s {measureLabel(link.figure.measure)}, Fiscal {link.figure.periodEnd.slice(0, 4)}
+        </span>
+      )}
       <span className="link-labels">
         <ConfidenceTag confidence={link.confidence} />
         <span className="path-unreviewed">

@@ -1033,6 +1033,80 @@ describe('Check News', () => {
 
 // ---- 3. The Alerts tab ---------------------------------------------------------------------------------------------
 
+describe('the dependency figures', () => {
+  const report = { form: '10-K', filingDate: '2026-05-21', url: 'https://www.sec.gov/crus-10k.htm' };
+  const apple = { id: 77, name: 'Apple Inc.', displayName: 'Apple', ticker: 'AAPL' };
+  const figure = (label: string, counterparty: typeof apple | null, measure: string, share: number, periodEnd: string) => ({
+    label, counterparty, kind: 'CUSTOMER', measure, share, periodStart: null, periodEnd, report,
+  });
+
+  function serving(answer: () => Response | Promise<Response>) {
+    const real = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) =>
+      url.includes('/concentrations') ? Promise.resolve(answer()) : real(url, init)));
+  }
+
+  async function chooseNvidia() {
+    renderAt();
+    await graph();
+    await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
+  }
+
+  it('showsTheLatestFiguresBiggestFirstWithTheirTrendAndNeverTheReceivables', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    serving(() => new Response(JSON.stringify([
+      figure('Customer A', null, 'REVENUE', 0.3, '2026-03-28'),
+      figure('Apple, Inc.', apple, 'REVENUE', 0.91, '2026-03-28'),
+      figure('Apple, Inc.', apple, 'REVENUE', 0.89, '2025-03-29'),
+      figure('Apple, Inc.', apple, 'REVENUE', 0.87, '2024-03-30'),
+      figure('Foxconn', null, 'RECEIVABLES', 0.39, '2026-03-28'),
+    ]), { status: 200 }));
+
+    await chooseNvidia();
+
+    const section = await within(inspector()).findByRole('region', { name: 'Dependence' });
+    expect(section).toHaveTextContent('Apple, 91% of Revenue');
+    expect(section).toHaveTextContent('87% → 89% → 91%');
+    expect(section).toHaveTextContent('One Customer, 30% of Revenue');
+    expect(section).not.toHaveTextContent('39%');
+    expect(section.textContent!.indexOf('Apple')).toBeLessThan(section.textContent!.indexOf('One Customer'));
+    await userEvent.click(within(section).getAllByRole('button', { name: 'Show Filing' })[0]!);
+    expect(open).toHaveBeenCalledWith('https://www.sec.gov/crus-10k.htm', '_blank', 'noopener,noreferrer');
+  });
+
+  it('showsNoDependenceSectionForACompanyWithNoFigures', async () => {
+    serving(() => new Response('[]', { status: 200 }));
+
+    await chooseNvidia();
+
+    await waitFor(() => expect(within(inspector()).queryByLabelText('Loading')).not.toBeInTheDocument());
+    expect(within(inspector()).queryByRole('region', { name: 'Dependence' })).not.toBeInTheDocument();
+  });
+
+  it('showsTheErrorWithRetryAndThenTheFigures', async () => {
+    let attempts = 0;
+    serving(() => (++attempts === 1
+      ? new Response(JSON.stringify({ message: 'The figures could not be loaded.' }), { status: 500 })
+      : new Response(JSON.stringify([figure('Apple, Inc.', apple, 'REVENUE', 0.91, '2026-03-28')]), { status: 200 })));
+
+    await chooseNvidia();
+
+    expect(await within(inspector()).findByRole('alert')).toHaveTextContent('The figures could not be loaded.');
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Retry' }));
+    expect(await within(inspector()).findByRole('region', { name: 'Dependence' })).toHaveTextContent('Apple, 91% of Revenue');
+  });
+
+  it('showsARelationshipsFigureWithItsYear', async () => {
+    backend.relationships = [{ ...sample[0]!, figure: { share: 0.91, measure: 'REVENUE', periodEnd: '2026-01-25' } }, ...backend.relationships.slice(1)];
+    renderAt();
+    await graph();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Link 1' }));
+
+    expect(inspector()).toHaveTextContent(`91% of ${sample[0]!.company.displayName}’s Revenue, Fiscal 2026`);
+  });
+});
+
 describe('a relationship both reports name', () => {
   it('showsBothSentencesEachOpeningItsOwnReport', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);

@@ -172,6 +172,11 @@ public final class Examples {
     }
 
     /** Gemini's real answer to a question the sample portfolio's data can answer (see the README). */
+    /** Gemini's real answer to "How much does Cirrus Logic depend on Apple?", asked of a record that carries the figure. */
+    public static String geminiAskFigure() {
+        return read("gemini-ask-figure.json");
+    }
+
     public static String geminiAskAnswerable() {
         return read("gemini-ask-answerable.json");
     }
