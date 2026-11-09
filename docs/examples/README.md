@@ -14,20 +14,6 @@ Real data to build and test against, so every story can start on day 1 and tests
 | `nike-10k.txt` | Nike's 10-K filed 2026-07-15 (https://www.sec.gov/Archives/edgar/data/320187/000032018726000088/nke-20260531.htm), the same way. Item 1 has sentences that mention "Item 2. Properties" | Read the Right Part of Every Report, in tests |
 | `intel-10k.txt` | Intel's 10-K filed 2026-01-23 (https://www.sec.gov/Archives/edgar/data/50863/000005086326000011/intc-20251227.htm), the same way. Its Item headings are only in a cross-reference index | Read the Right Part of Every Report, in tests |
 | `report-section-filings.json` | For 29 real annual reports (the latest 10-K or 20-F of each ticker on 8 November 2026): ticker, form, address, length, the section this design chooses (or "whole"), and every line holding "item" and a number with its position | Read the Right Part of Every Report, in tests |
-
-**Which filings `report-section-filings.json` holds (TS-229).** The audit's folder that reached us on 9 November 2026 holds the texts of only 5 reports (CRUS, QCOM, INTC, F, GM), `gold.json` and the two measuring scripts, not `filings-table.md`, `section_proto.py` or the other 24 texts, so the 29 filings were fetched again from the SEC on 8 November 2026: the latest 10-K or 20-F of each of AAPL, GM, WMT, AMZN, BA, TXN, PFE, LMT, AMAT, TM, SKM, HMC, NVO, CRUS, QCOM, INTC, UL, SHEL, NKE, SAP, SONY, TSM, HON, RIO, INFY, BABA and STM (the 27 the story names), plus F and NVDA, which were **chosen to make 29 and are not confirmed by the story's author**. Each entry's `address` and `filingDate` say which filing. Apple's (filed 2026-11-03) and Qualcomm's (2026-11-04) are newer than the audit's. So the recorded sections are what this design chooses on these filings, not the audit's recorded sections; `ReportSectionTest` checks the Java code against the same rules written again in `make_report_section_filings.py`. If the audit's `filings-table.md` and its 29 texts turn up, the file should be rebuilt from them.
-
-**How well the new text is read (TS-229, AC10).** Measured on real Gemini on 9 November 2026 with `measure_report_reading.py`, on the audit's own texts of five reports, against the audit's hand labels: **17 of 18** labelled links inside the sections were found (needed: at least 15), and **3 of 5** outside them. Samsung is counted once as a supplier and once as a customer.
-
-| Report | Characters sent | Found | Missed |
-|---|---|---|---|
-| Cirrus Logic 10-K | 163,192 | Apple, GlobalFoundries, TSMC, ASE, Amkor, STATS ChipPAC | Foxconn and Luxshare (outside the section, named only in tagged figures: story 47) |
-| Qualcomm 10-K | 183,861 | all 10 (Samsung as supplier and as customer) | none |
-| General Motors 10-K | 199,918 | LG Energy (outside the section) | Ultium Cells (inside it) |
-| Ford 10-K | 199,977 | Novelis, Ford Otosan (both outside the section) | none |
-| Intel 10-K | 199,963 | ASML | none |
-
-About 37,600 tokens in and 6,000 out (with thinking) per report. Ultium Cells is the one miss inside a section: the section alone did find it, so more text is not free of risk, as the story said. Links Gemini gave that the labels do not cover (such as Huawei for Qualcomm, SFA Semicon for Cirrus Logic and TSMC for Intel) are not scored, and have not been checked against the reports.
 | `make_report_section_filings.py` | Makes `report-section-filings.json` from the 29 filings' texts (about 17 MB, not kept here) | Read the Right Part of Every Report |
 | `measure_report_reading.py` | Sends five annual reports (CRUS, QCOM, GM, F, INTC) to Gemini as `ReportSection` really sends them, with the prompt read from `RelationshipFinder.java`, and scores the links against the hand labels in the script. From the audit, unchanged. Run it by hand from the repository root with the audit's texts: `python docs/examples/measure_report_reading.py <folder of <ticker>.txt>`. Never from a test | Read the Right Part of Every Report |
 | `SendSection.java` | Writes what the app would send the AI for one report, using `ReportSection.forAi`. Used by `measure_report_reading.py`. From the audit | Read the Right Part of Every Report |
@@ -61,6 +47,20 @@ About 37,600 tokens in and 6,000 out (with thinking) per report. Ultium Cells is
 | `sec-8k-aitx-2026-10-30.htm` | Artificial Intelligence Technology Solutions' real, unchanged 8-K of 30 October 2026 (Item 8.01), whose item only points to a press release (Exhibit 99.1) | Alerts From SEC 8-K Filings: the fall-back headline |
 | `sec-8k-amgen-2026-07-31.htm` | Amgen's real, unchanged 8-K of 31 July 2026 (Item 1.05, Material Cybersecurity Incidents): data taken from its cloud environments | Alerts From SEC 8-K Filings: an Item 1.xx 8-K read and headlined from its own text |
 | `gemini-8k-assessment.json` | Gemini's full, unchanged API response to Filter Out Noise's prompt for the three headlines built from those 8-Ks | Alerts From SEC 8-K Filings, so tests never call Gemini |
+
+**Which filings `report-section-filings.json` holds (TS-229).** The audit's folder that reached us on 9 November 2026 holds the texts of only 5 reports (CRUS, QCOM, INTC, F, GM), `gold.json` and the two measuring scripts, not `filings-table.md`, `section_proto.py` or the other 24 texts, so the 29 filings were fetched again from the SEC on 8 November 2026: the latest 10-K or 20-F of each of AAPL, GM, WMT, AMZN, BA, TXN, PFE, LMT, AMAT, TM, SKM, HMC, NVO, CRUS, QCOM, INTC, UL, SHEL, NKE, SAP, SONY, TSM, HON, RIO, INFY, BABA and STM (the 27 the story names), plus F and NVDA, which were **chosen to make 29 and are not confirmed by the story's author**. Each entry's `address` and `filingDate` say which filing. Apple's (filed 2026-11-03) and Qualcomm's (2026-11-04) are newer than the audit's. So the recorded sections are what this design chooses on these filings, not the audit's recorded sections; `ReportSectionTest` checks the Java code against the same rules written again in `make_report_section_filings.py`. If the audit's `filings-table.md` and its 29 texts turn up, the file should be rebuilt from them.
+
+**How well the new text is read (TS-229, AC10).** Measured on real Gemini on 9 November 2026 with `measure_report_reading.py`, on the audit's own texts of five reports, against the audit's hand labels: **17 of 18** labelled links inside the sections were found (needed: at least 15), and **3 of 5** outside them. Samsung is counted once as a supplier and once as a customer.
+
+| Report | Characters sent | Found | Missed |
+|---|---|---|---|
+| Cirrus Logic 10-K | 163,192 | Apple, GlobalFoundries, TSMC, ASE, Amkor, STATS ChipPAC | Foxconn and Luxshare (outside the section, named only in tagged figures: story 47) |
+| Qualcomm 10-K | 183,861 | all 10 (Samsung as supplier and as customer) | none |
+| General Motors 10-K | 199,918 | LG Energy (outside the section) | Ultium Cells (inside it) |
+| Ford 10-K | 199,977 | Novelis, Ford Otosan (both outside the section) | none |
+| Intel 10-K | 199,963 | ASML | none |
+
+About 37,600 tokens in and 6,000 out (with thinking) per report. Ultium Cells is the one miss inside a section: the section alone did find it, so more text is not free of risk, as the story said. Links Gemini gave that the labels do not cover (such as Huawei for Qualcomm, SFA Semicon for Cirrus Logic and TSMC for Intel) are not scored, and have not been checked against the reports.
 
 ## Where It Came From
 
