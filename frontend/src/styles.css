@@ -5390,3 +5390,20 @@ table.quality-table tbody th {
     display: none;
   }
 }
+
+/* The Inspector's Dependence rows: a party and its share, the trend, and Show Filing. */
+.dependence {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-block: 6px;
+}
+
+.dependence .btn:last-child {
+  margin-left: auto;
+}
+
+.figure-line {
+  color: var(--text);
+}

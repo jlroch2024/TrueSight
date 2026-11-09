@@ -19,5 +19,11 @@ public record BriefingData(
         byte[] graphPng,
         List<HoldingResponse> holdings,
         AlertsResponse alerts,
-        List<RelationshipResponse> dependencies) {
+        List<RelationshipResponse> dependencies,
+        List<BiggestDependency> biggest) {
+
+    /** A holding's largest named revenue or purchases figure, from its latest period, in the filing's own tags. */
+    public record BiggestDependency(String holding, String party, int percent, String measure, int fiscalYear,
+                                    String form, LocalDate filed) {
+    }
 }

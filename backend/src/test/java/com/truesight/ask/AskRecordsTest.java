@@ -81,7 +81,7 @@ class AskRecordsTest {
                 first.type(), first.provides(), first.evidence(), first.source(), first.foundBy(), Criticality.SOLE_SOURCE,
                 "Certain materials are available only from a sole supplier.", first.report(), ReviewStatus.APPROVED,
                 Instant.parse("2026-03-01T09:00:00Z"), "Checked against the filing.", first.confidence(),
-                first.highlights(), null);
+                first.highlights(), null, null);
 
         AskRecords.Built records = AskRecords.build(AskSample.holdings(), List.of(approved), AskSample.noAlerts());
 
@@ -156,6 +156,32 @@ class AskRecordsTest {
 
     private static String lineOf(String text, String id) {
         return text.lines().filter(line -> line.startsWith("[" + id + "] ")).findFirst().orElseThrow();
+    }
+
+    @Test
+    void aRelationshipWithATaggedFigureSaysItInItsRecord() {
+        RelationshipResponse first = AskSample.relationships().get(0);
+        RelationshipResponse tagged = new RelationshipResponse(first.id(), first.company(), first.counterparty(),
+                first.type(), first.provides(), first.evidence(), first.source(), first.foundBy(), first.criticality(),
+                first.criticalityEvidence(), first.report(), first.reviewStatus(), first.reviewedAt(), first.reviewNote(),
+                first.confidence(), first.highlights(), null,
+                new RelationshipResponse.Figure(new java.math.BigDecimal("0.9100"),
+                        com.truesight.report.ConcentrationMeasure.REVENUE, java.time.LocalDate.parse("2026-03-28")));
+
+        AskRecords.Built records = AskRecords.build(AskSample.holdings(), List.of(tagged), AskSample.noAlerts());
+
+        assertThat(lineOf(records.text(), "R1")).contains(
+                "91% of " + first.company().displayName() + "'s revenue in fiscal 2026 (tagged in its " + first.report().form() + ").");
+    }
+
+    @Test
+    void geminisRealAnswerAboutAFigureCitesTheRecordThatHoldsIt() {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var answer = mapper.readTree(mapper.readTree(com.truesight.support.Examples.geminiAskFigure())
+                .path("candidates").path(0).path("content").path("parts").path(0).path("text").asString());
+
+        assertThat(answer.path("answer").asString()).contains("91%");
+        assertThat(answer.path("sourceIds").get(0).asString()).isEqualTo("R1");
     }
 
     @Test

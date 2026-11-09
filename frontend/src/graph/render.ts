@@ -337,6 +337,7 @@ function drawEdges(context: CanvasRenderingContext2D, o: RenderOptions): Chevron
       risk: scene.risks.get(edge.relationshipId)?.severity ?? null,
       reviewed: edge.reviewed,
       critical: edge.critical,
+      share: edge.share,
       fresh: look.fresh,
       flow: scene.flow,
       still,
@@ -363,6 +364,8 @@ export type ArrowLook = {
   risk: Severity | null;
   reviewed: boolean;
   critical: boolean;
+  // The share the report tags for this link, 0 to 1, or null: thicker from 10%, up to twice as thick at 100%.
+  share?: number | null;
   // New in the year shown, 0 to 1: lit lime (see Scene.fresh). Left out, not new.
   fresh?: number;
   // How far the waves of light have travelled (Scene.flow).
@@ -373,6 +376,11 @@ export type ArrowLook = {
   k: number;
   dpr: number;
 };
+
+/** How much thicker an arrow's body is drawn for its share: the usual thickness up to 10%, twice it at 100%. */
+export function shareWidth(share: number | null | undefined): number {
+  return share == null ? 1 : 1 + Math.max(0, share - 0.1) / 0.9;
+}
 
 /**
  * Draws one arrow but its chevron, as the graph draws each of its own: also used to draw a link anywhere else on the
@@ -417,7 +425,7 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
   }
 
   // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
-  const criticalWidth = a.critical ? CRITICAL_WIDTH : 1;
+  const criticalWidth = (a.critical ? CRITICAL_WIDTH : 1) * shareWidth(a.share);
   const from = (RAIL_FROM * criticalWidth + hover * 1) / k / 2;
   const to = (RAIL_TO * criticalWidth + hover * 0.6) / k / 2;
   context.fillStyle = shade(0.16, 0.38 + hover * 0.3);

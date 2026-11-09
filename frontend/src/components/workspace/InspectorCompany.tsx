@@ -3,7 +3,8 @@
 // last analysed), its open alerts, and its suppliers and customers, each a button that chooses that relationship.
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, CircleDashed, Clock, FileText, Octagon, Package, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
-import { type CSSProperties, type FormEvent, type ReactNode, useState } from 'react';
+import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { type Concentration, concentrationApi, dependenceOf, measureLabel, partyName, percent } from '../../api/concentrations';
 import type { History } from '../../api/history';
 import type { Holding } from '../../api/portfolios';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, formatDate, openInNewTab, titleCase } from '../../format';
@@ -11,6 +12,7 @@ import { type Connection, alertsFor, connectionsOf } from '../../pages/supplyCha
 import { Count } from '../Count';
 import { EventMark, SeverityBars } from '../EventMark';
 import { Tile } from '../Tile';
+import { LoadingRows } from './HoldingsTab';
 import { State } from './status';
 import { type Chosen, type WorkspaceView, alertKey, companyIdOfNode, joinYears, namedIn } from './view';
 
@@ -154,6 +156,8 @@ export function CompanyView({
         </div>
       )}
 
+      {companyId !== null && <Dependence companyId={companyId} view={view} onChoose={onChoose} />}
+
       {named.length > 0 && (
         <section className="insp-section" aria-label="History">
           <h3>
@@ -199,6 +203,85 @@ export function CompanyView({
       <Connections title="Suppliers" list={suppliers} tone="teal" view={view} onChoose={onChoose} />
       <Connections title="Customers" list={customers} tone="lime" view={view} onChoose={onChoose} />
     </>
+  );
+}
+
+/** How much this company depends on its biggest customers and suppliers, in its own tagged figures. Nothing when it has none. */
+function Dependence({
+  companyId,
+  view,
+  onChoose,
+}: {
+  companyId: number;
+  view: WorkspaceView;
+  onChoose: (chosen: Chosen) => void;
+}) {
+  const [figures, setFigures] = useState<Concentration[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let current = true;
+    setFigures(null);
+    setError(null);
+    concentrationApi
+      .list(companyId)
+      .then((list) => {
+        if (current) setFigures(list);
+      })
+      .catch((failure: unknown) => {
+        if (current) setError(failure instanceof Error ? failure.message : 'The dependency figures could not be loaded.');
+      });
+    return () => {
+      current = false;
+    };
+  }, [companyId, attempt]);
+
+  if (error) {
+    return (
+      <section className="insp-section" aria-label="Dependence">
+        <p role="alert" className="error">{error}</p>
+        <button type="button" className="btn small" onClick={() => setAttempt((value) => value + 1)}>Retry</button>
+      </section>
+    );
+  }
+  if (figures === null) return <LoadingRows />;
+  const shown = dependenceOf(figures);
+  if (shown.length === 0) return null;
+
+  return (
+    <section className="insp-section" aria-label="Dependence">
+      <h3>
+        <span className="h3-mark lime" />
+        Dependence
+      </h3>
+      {shown.map((item) => {
+        const words = `${partyName(item)}, ${percent(item.share)} of ${measureLabel(item.measure)}`;
+        const onGraph = item.counterparty && view.nodes.some((node) => node.id === String(item.counterparty!.id));
+        return (
+          <div key={item.key} className="dependence">
+            {onGraph ? (
+              <button
+                type="button"
+                className="btn quiet small num"
+                onClick={() => onChoose({ kind: 'company', nodeId: String(item.counterparty!.id) })}
+              >
+                {words}
+              </button>
+            ) : (
+              <span className="h-name num">{words}</span>
+            )}
+            {item.trend.length > 1 && <span className="muted num">{item.trend.map(percent).join(' → ')}</span>}
+            {item.report && (
+              <button type="button" className="btn small" onClick={() => openInNewTab(item.report!.url)}>
+                <FileText size={15} />
+                Show Filing
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

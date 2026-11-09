@@ -137,6 +137,9 @@ final class AskRecords {
             line.append(" Source: ").append(relationship.report().form()).append(" filed ")
                     .append(relationship.report().filingDate()).append('.');
         }
+        if (relationship.figure() != null) {
+            line.append(' ').append(figureWords(relationship));
+        }
         line.append(' ').append(reviewWords(relationship));
         RelationshipConfidence confidence = relationship.confidence();
         if (confidence != null) {
@@ -160,6 +163,16 @@ final class AskRecords {
             line.append(" Analyst note: \"").append(oneLine(relationship.reviewNote(), LONGEST_TEXT)).append("\".");
         }
         return line.toString();
+    }
+
+    /** "91% of Cirrus Logic's revenue in fiscal 2026 (tagged in its 10-K)." The figure is of the report's own company. */
+    private static String figureWords(RelationshipResponse relationship) {
+        RelationshipResponse.Figure figure = relationship.figure();
+        int percent = figure.share().movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).intValue();
+        String measure = figure.measure() == com.truesight.report.ConcentrationMeasure.REVENUE ? "revenue" : "purchases";
+        String form = relationship.report() == null ? "annual report" : relationship.report().form();
+        return "%d%% of %s's %s in fiscal %d (tagged in its %s).".formatted(percent, relationship.company().displayName(),
+                measure, figure.periodEnd().getYear(), form);
     }
 
     private static String reviewWords(RelationshipResponse relationship) {

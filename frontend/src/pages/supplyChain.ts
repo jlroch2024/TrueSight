@@ -28,6 +28,8 @@ export type GraphEdge = {
   reviewStatus: ReviewStatus;
   criticality: Criticality | null;
   summary: string;
+  // The share the report tags for this link, 0 to 1, or null when it tags none.
+  share?: number | null;
 };
 
 const CONFIDENCE_RANK = { HIGH: 2, MEDIUM: 1, LOW: 0 } as const;
@@ -91,6 +93,7 @@ export function buildGraphElements(
         reviewStatus: relationship.reviewStatus,
         criticality: relationship.criticality,
         summary: relationshipSummary(relationship),
+        share: relationship.figure ? Number(relationship.figure.share) : null,
       },
     });
   }

@@ -8,6 +8,10 @@ import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
 import com.truesight.portfolio.Portfolio;
 import com.truesight.portfolio.PortfolioRepository;
+import com.truesight.report.Concentration;
+import com.truesight.report.ConcentrationKind;
+import com.truesight.report.ConcentrationMeasure;
+import com.truesight.report.ConcentrationRepository;
 import com.truesight.report.Report;
 import com.truesight.report.ReportRepository;
 import com.truesight.report.SecClient;
@@ -61,6 +65,7 @@ class RelationshipConfidenceIT {
     @Autowired CompanyDirectory companyDirectory;
     @Autowired ReportRepository reports;
     @Autowired RelationshipRepository relationships;
+    @Autowired ConcentrationRepository concentrations;
     @MockitoBean SecClient sec;
     @MockitoBean GeminiClient gemini;
 
@@ -164,6 +169,12 @@ class RelationshipConfidenceIT {
         Relationship inAmkors = new Relationship(amkorReport.getId(), amkor.getId(), qualcomm.getId(),
                 RelationshipType.CUSTOMER, "assembly and test", amkorSays);
         relationships.save(inAmkors);
+        concentrations.save(new Concentration(amkorReport.getId(), amkor.getId(), qualcomm.getId(), "Qualcomm",
+                ConcentrationKind.CUSTOMER, ConcentrationMeasure.RECEIVABLES, new BigDecimal("0.2000"), null,
+                LocalDate.parse("2025-12-31")));
+        concentrations.save(new Concentration(amkorReport.getId(), amkor.getId(), qualcomm.getId(), "Qualcomm",
+                ConcentrationKind.CUSTOMER, ConcentrationMeasure.REVENUE, new BigDecimal("0.1110"),
+                LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31")));
         String email = "confidence-both-" + suffix + "@example.com";
         Portfolio portfolio = portfolios.save(new Portfolio(logins.user(email).getId(), "Both Reports"));
         Holding holding = new Holding(portfolio.getId(), "QTST", new BigDecimal("10"));
@@ -180,7 +191,12 @@ class RelationshipConfidenceIT {
                 .andExpect(jsonPath("$[0].confidence.reasons[3].effect").value("RAISES"))
                 .andExpect(jsonPath("$[0].agreesWith.id").value(inAmkors.getId()))
                 .andExpect(jsonPath("$[0].agreesWith.evidence").value(amkorSays))
-                .andExpect(jsonPath("$[0].agreesWith.report.url").value("https://www.sec.gov/amkor"));
+                .andExpect(jsonPath("$[0].agreesWith.report.url").value("https://www.sec.gov/amkor"))
+                // Show the Dependency Figures: the report's own revenue figure for the pair; receivables are never shown.
+                .andExpect(jsonPath("$[0].figure").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[1].figure.share").value(0.111))
+                .andExpect(jsonPath("$[1].figure.measure").value("REVENUE"))
+                .andExpect(jsonPath("$[1].figure.periodEnd").value("2025-12-31"));
     }
 
     private Portfolio analyse(String email) throws Exception {

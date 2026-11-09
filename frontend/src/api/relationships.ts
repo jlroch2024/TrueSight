@@ -54,6 +54,8 @@ export type Relationship = {
   highlights: Highlight[];
   // The same relationship as the other company's own report states it; absent or null when only this report names it.
   agreesWith?: { id: number; evidence: string; report: ReportSummary } | null;
+  // The latest revenue or purchases share the report's own tags give for this pair; absent or null when none does.
+  figure?: { share: number; measure: 'REVENUE' | 'PURCHASES'; periodEnd: string } | null;
 };
 
 export type CompanyOption = { id: number; name: string; displayName: string };

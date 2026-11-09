@@ -248,6 +248,15 @@ describe('LivingGraph', () => {
     expect(first).toHaveAttribute('aria-pressed', 'false');
   });
 
+  it('explains a thicker arrow only when some arrow has a figure', () => {
+    const { unmount } = drawGraph({ edges: edges.map((edge, index) => (index === 0 ? { ...edge, share: 0.91 } : edge)) });
+    expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Thicker: Bigger Share');
+    unmount();
+
+    drawGraph();
+    expect(screen.queryByText('Thicker: Bigger Share')).not.toBeInTheDocument();
+  });
+
   it('explains the amber badge only when some company is shared by several holdings, keeping the key short', () => {
     const { unmount } = drawGraph({ nodes: withSharedSummaries(nodes, sharedCompanies(relationships, nodes)) });
     expect(screen.getByRole('list', { name: 'Graph key' })).toHaveTextContent('Shared Holding');

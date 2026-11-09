@@ -429,6 +429,17 @@ describe('review status on graph edges', () => {
     expect(edges).toContainEqual(expect.objectContaining({ relationshipId: source.id + 100, criticality: null }));
   });
 
+  it('carries the share a report tags onto its arrow, and leaves it null when none is tagged', () => {
+    const source = sampleRelationships[15]!;
+    const { edges } = buildGraphElements([
+      { ...source, figure: { share: 0.91, measure: 'REVENUE', periodEnd: '2026-03-28' } },
+      { ...source, id: source.id + 100, counterparty: { ...source.counterparty, id: source.counterparty.id + 1000 } },
+    ], []);
+
+    expect(edges.find((edge) => edge.relationshipId === source.id)!.share).toBe(0.91);
+    expect(edges.find((edge) => edge.relationshipId === source.id + 100)!.share).toBeNull();
+  });
+
   it('carries the relationship sentence onto its arrow', () => {
     const { edges } = buildGraphElements(sampleRelationships, sampleHoldings());
 
