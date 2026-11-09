@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 /**
@@ -21,7 +20,8 @@ import java.util.concurrent.Executor;
  *       next Analyse searches again. The filings answered already are not sent again; only the skipped ones are.</li>
  *   <li>Once the day's limit on name searches is reached ({@link ReadingLimit}), no more filings are sent and the
  *       search is not recorded, so a later Analyse carries on from where it stopped.</li>
- *   <li>Two holdings of one company never search at once: the second waits, then finds the search recorded.</li>
+ *   <li>Two holdings of one company, on any server, never send a filing twice: {@link NameSearcher#read} takes that
+ *       company's {@link com.truesight.common.DatabaseLock} and skips a filing already answered for the holding.</li>
  * </ul>
  */
 @Component
@@ -33,7 +33,6 @@ public class NameSearchJob {
     private final SecondCheckPassService secondChecks;
     private final HighlightJob highlights;
     private final Executor analysisExecutor;
-    private final ConcurrentHashMap<Long, Object> companyLocks = new ConcurrentHashMap<>();
 
     public NameSearchJob(NameSearcher searcher, SecondCheckPassService secondChecks, HighlightJob highlights,
                          @Qualifier("analysisExecutor") Executor analysisExecutor) {
@@ -52,23 +51,21 @@ public class NameSearchJob {
         try {
             NameSearcher.Holder holder = searcher.due(holdingId).orElse(null);
             if (holder == null) return;
-            synchronized (companyLocks.computeIfAbsent(holder.companyId(), ignored -> new Object())) {
-                // Searched for meanwhile, for a holding of the same company in another portfolio.
-                if (searcher.due(holder.companyId(), Instant.now()).isEmpty()) return;
-                NameSearcher.Filings filings = searcher.filingsFor(holder);
-                boolean allRead = true;
-                try {
-                    for (SecClient.SecSearchHit hit : filings.toRead()) {
-                        allRead &= readOne(holder, hit);
-                    }
-                } catch (ReadingLimit.ReachedException limit) {
-                    allRead = false;
-                    log.info("The name search for holding {} stopped at the day's limit on name searches; a later "
-                            + "Analyse carries on.", holdingId);
+            // Searched for meanwhile, for a holding of the same company in another portfolio.
+            if (searcher.due(holder.companyId(), Instant.now()).isEmpty()) return;
+            NameSearcher.Filings filings = searcher.filingsFor(holder);
+            boolean allRead = true;
+            try {
+                for (SecClient.SecSearchHit hit : filings.toRead()) {
+                    allRead &= readOne(holder, hit);
                 }
-                if (allRead) {
-                    searcher.record(holder.companyId(), filings.found(), Instant.now());
-                }
+            } catch (ReadingLimit.ReachedException limit) {
+                allRead = false;
+                log.info("The name search for holding {} stopped at the day's limit on name searches; a later "
+                        + "Analyse carries on.", holdingId);
+            }
+            if (allRead) {
+                searcher.record(holder.companyId(), filings.found(), Instant.now());
             }
             highlights.run();
         } catch (SecClient.SecAccessException exception) {
@@ -98,7 +95,7 @@ public class NameSearchJob {
         }
         if (reportId == null) return true;
         try {
-            secondChecks.check(reportId);
+            secondChecks.checkOnce(reportId);
         } catch (RuntimeException exception) {
             // The relationships stay saved with no second check; the analyst-run pass asks again.
             log.warn("The second check for report {} could not be made.", reportId, exception);
