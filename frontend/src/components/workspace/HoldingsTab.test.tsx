@@ -99,6 +99,42 @@ describe('the holdings tab', () => {
     expect(screen.queryByText(/Reading Suppliers' Reports/)).not.toBeInTheDocument();
   });
 
+  it('saysWhenTheWeightsAddUpToMoreThanHalfAPointAwayFrom100', () => {
+    render(<Drawer holdings={[weighted('AAA', 1, 60), weighted('BBB', 2, 55)]} />);
+
+    expect(screen.getByText('Weights Add Up to 115%, Not 100%')).toBeInTheDocument();
+  });
+
+  it('saysItBelow100TooAndKeepsOneDecimal', () => {
+    render(<Drawer holdings={[weighted('AAA', 1, 60.3), weighted('BBB', 2, 30)]} />);
+
+    expect(screen.getByText('Weights Add Up to 90.3%, Not 100%')).toBeInTheDocument();
+  });
+
+  it('saysNothingNewWhenTheWeightsAddUpTo100OrWithinHalfAPoint', () => {
+    for (const weights of [[60, 40], [50, 49.6], [50, 50.5], [49.5, 50]]) {
+      const { unmount } = render(<Drawer holdings={weights.map((weight, index) => weighted(`T${index}`, index + 1, weight))} />);
+
+      expect(screen.queryByText(/Weights Add Up to/)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it('saysItJustPastHalfAPoint', () => {
+    render(<Drawer holdings={[weighted('AAA', 1, 50), weighted('BBB', 2, 50.6)]} />);
+
+    expect(screen.getByText('Weights Add Up to 100.6%, Not 100%')).toBeInTheDocument();
+  });
+
+  it('saysNothingNewForAPortfolioWithoutWeightsOrWithSomeHoldingsMissingOne', () => {
+    const { rerender } = render(<Drawer holdings={[weighted('AAA', 1, null), weighted('BBB', 2, null)]} />);
+    expect(screen.queryByText(/Weights Add Up to/)).not.toBeInTheDocument();
+
+    rerender(<Drawer holdings={[weighted('AAA', 1, 80), weighted('BBB', 2, null)]} />);
+
+    expect(screen.queryByText(/Weights Add Up to/)).not.toBeInTheDocument();
+  });
+
   it('showsNothingWhenNoSupplierIsToBeRead', () => {
     render(<Drawer holdings={[weighted('AMD', 1, 10)]} />);
 
