@@ -9,6 +9,7 @@ import com.truesight.portfolio.Holding;
 import com.truesight.portfolio.HoldingRepository;
 import com.truesight.portfolio.HoldingStatus;
 import com.truesight.relationship.GeminiClient;
+import com.truesight.relationship.ReadingLimit;
 import com.truesight.relationship.RelationshipRepository;
 import com.truesight.relationship.ReviewStatus;
 import org.springframework.stereotype.Service;
@@ -101,7 +102,8 @@ public class SupplierReader {
 
     /**
      * Reads one waiting supplier's annual report, and records how it went. A supplier no longer waiting (read
-     * meanwhile for another holding) is left alone.
+     * meanwhile for another holding) is left alone. One that cannot be read today because the day's limit on
+     * reading reports is reached goes back to no status, as after an interrupted server, and Analyse tries it again.
      */
     @Transactional
     public void read(Long companyId) {
@@ -117,6 +119,13 @@ public class SupplierReader {
                 return;
             }
             record(supplier, ReportStatus.DONE, null);
+        } catch (ReadingLimit.ReachedException limit) {
+            // Over the day's limit on reading reports: the supplier is put back to no status, not Failed, and its report
+            // was not downloaded, so the next Analyse queues it again (see AnalysisService#restartSuppliers). Nothing
+            // here can fail the holding.
+            record(supplier, null, null);
+            supplier.setReportWorkerId(null);
+            return;
         } catch (SecClient.SecAccessException | GeminiClient.GeminiException exception) {
             record(supplier, ReportStatus.FAILED, exception.getMessage());
         } catch (RuntimeException exception) {

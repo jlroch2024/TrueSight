@@ -16,7 +16,7 @@ what runs where, how a merge reaches the live site, and every step used to set i
 
 Everything else the app needs is a plain environment variable on the Cloud Run service, not a secret:
 `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`, `GEMINI_MODEL`, `SEC_USER_AGENT`,
-`LOGO_DEV_TOKEN` and `ANALYST_EMAILS`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the
+`LOGO_DEV_TOKEN`, `ANALYST_EMAILS` and, optionally, `AI_DAILY_REPORT_LIMIT`. `LOGO_DEV_TOKEN` is Logo.dev's publishable key: it is made to be seen in the
 browser, which is where the graph's logos are loaded, so it is not a secret. Without it, the graph shows letters
 instead of logos. `ANALYST_EMAILS` is the comma-separated emails that are Analysts (empty means nobody is). It is read
 when the app starts, so change it on the service and let it restart.
@@ -46,6 +46,7 @@ next line. They need the Google Cloud CLI, logged in with `gcloud auth login`.
 | Pause the database to save money (the site stops working) | `gcloud sql instances patch truesight-db --activation-policy=NEVER` |
 | Start it again | `gcloud sql instances patch truesight-db --activation-policy=ALWAYS` |
 | Change a secret, e.g. a new Gemini key | Secret Manager, the secret, **New version**. Then redeploy (merge anything, or re-run the last Deploy) so the app reads it |
+| Change how many reports Gemini may read in a day | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="AI_DAILY_REPORT_LIMIT=50"`. The default is 100, counted across the whole app from midnight UTC; it is a brake on cost, not an invoice (two jobs at once may pass it by a few reports). Past it, a holding that needs a report read says Failed, and Analyse tries it again the next day. A report already read never counts. Gemini's prices double on 1 January 2027, so lower it then. A portfolio is also held to 100 holdings |
 | Set or change the Logo.dev token, for the graph's logos | `gcloud run services update truesight --region asia-southeast1 --update-env-vars="LOGO_DEV_TOKEN=pk_..."`. This starts a new revision with it, keeping every other setting |
 | Add Logo.dev's secret key, for the logos of companies without a ticker (optional) | It is a real secret, so it goes in Secret Manager: `gcloud secrets create LOGO_DEV_SECRET_KEY --data-file=<file holding sk_...>`, then `gcloud secrets add-iam-policy-binding LOGO_DEV_SECRET_KEY --member="serviceAccount:truesight-app@truesight-509715.iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"`, then `gcloud run services update truesight --region asia-southeast1 --update-secrets="LOGO_DEV_SECRET_KEY=LOGO_DEV_SECRET_KEY:latest"`. Without it, those companies show their first letter |
 
