@@ -99,6 +99,43 @@ class ReportSectionTest {
         }
     }
 
+    @Test
+    void everyChosenSectionStartsAndEndsOnItsRealItemHeadingJudgedByAPlainerCheckThanTheRules() {
+        // A check that does not use ReportSection's patterns: the text at each recorded position must read as the
+        // heading, with any kind of space made one space. It catches a section that is wrong and recorded as right.
+        JsonNode filings = JsonMapper.builder().build().readTree(Examples.reportSectionFilings());
+        List<String> whole = new java.util.ArrayList<>();
+        for (JsonNode filing : filings) {
+            String ticker = filing.get("ticker").asString();
+            if (filing.get("start").isString()) {
+                whole.add(ticker);
+                continue;
+            }
+            String text = rebuilt(filing);
+            boolean tenK = filing.get("form").asString().equals("10-K");
+            assertThat(plain(text, filing.get("start").asInt())).as(ticker + " starts on its heading")
+                    .matches(tenK ? "^item 1\\W+business.*" : "^item 3(\\W+[a-d])?\\W+key information.*");
+            assertThat(plain(text, filing.get("end").asInt())).as(ticker + " ends on its heading")
+                    .matches(tenK ? "^item 2\\W+properties.*" : "^item 5\\W+operating and financial review.*");
+        }
+        // No heading pair at all (Intel's is only in an index), or too short to be the section.
+        assertThat(whole).containsExactlyInAnyOrder("HON", "INTC", "RIO", "SHEL", "UL");
+    }
+
+    /** The 150 characters at {@code at}, lower case, with every run of spaces and line breaks made one space. */
+    private static String plain(String text, int at) {
+        return text.substring(at, Math.min(text.length(), at + 150)).replaceAll("[\\s\\u00a0\\u2009]+", " ").toLowerCase()
+                .replaceAll("^(item \\d(\\.?[a-d])?) \\.", "$1.");
+    }
+
+    @Test
+    void aTwentyFEndHeadingThatSaysAndProspectsInMixedCaseIsAHeadingNotAMention() {
+        String filler = "Plain words.\n".repeat(60);
+        String report = filler + "Item 3. Key Information\n" + filler + "Item 5. Operating and Financial Review and Prospects\nResults.";
+
+        assertThat(ReportSection.section("20-F", report)).startsWith("Item 3. Key Information").doesNotContain("Prospects");
+    }
+
     /** A text of the filing's true length, its item lines at their true places, and line breaks everywhere else. */
     private static String rebuilt(JsonNode filing) {
         char[] text = new char[filing.get("length").asInt()];

@@ -5826,8 +5826,8 @@
   "filingDate": "2026-06-18",
   "address": "https://www.sec.gov/Archives/edgar/data/715153/000119312526274991/d116494d20f.htm",
   "length": 707321,
-  "start": "whole",
-  "end": "whole",
+  "start": 9700,
+  "end": 197509,
   "itemLines": [
    {
     "position": 4834,
@@ -9589,8 +9589,8 @@
   "filingDate": "2026-06-18",
   "address": "https://www.sec.gov/Archives/edgar/data/313838/000119312526274893/d28719d20f.htm",
   "length": 905151,
-  "start": "whole",
-  "end": "whole",
+  "start": 16135,
+  "end": 154829,
   "itemLines": [
    {
     "position": 5491,
@@ -11081,8 +11081,8 @@
   "filingDate": "2026-06-15",
   "address": "https://www.sec.gov/Archives/edgar/data/1067491/000119312526270520/infy-20260331.htm",
   "length": 906835,
-  "start": "whole",
-  "end": "whole",
+  "start": 11582,
+  "end": 273938,
   "itemLines": [
    {
     "position": 10050,
@@ -12943,8 +12943,8 @@
   "filingDate": "2026-02-26",
   "address": "https://www.sec.gov/Archives/edgar/data/932787/000093278726000009/stm-20251231.htm",
   "length": 794173,
-  "start": "whole",
-  "end": "whole",
+  "start": 19836,
+  "end": 190240,
   "itemLines": [
    {
     "position": 4953,

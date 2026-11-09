@@ -18,7 +18,7 @@ FLAGS = re.IGNORECASE
 AFTER_NUMBER = r"(?:\s*\.\s*[a-d]\b)?\s*[.:\-–—]?\s*"
 HEADINGS = {
     "10-K": (r"1", r"business", r"2", r"properties"),
-    "20-F": (r"3", r"key\s+information", r"5", r"operating\s+and\s+financial\s+reviews?"),
+    "20-F": (r"3", r"key\s+information", r"5", r"operating\s+and\s+financial\s+reviews?(?:\s+and\s+prospects)?"),
 }
 MENTION_BEFORE = re.compile(r"(?:(?<![A-Za-z])[a-z]+|[,;:(\"“‘'])[ \t ’\"“]*$")
 MENTION_AFTER = re.compile(r"^(?:[ \t ]*[,;)\"”’']|[ \t ]+[a-z])")

@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  *
  * <ul>
  *   <li>10-K: from "Item 1. Business" up to "Item 2. Properties", which includes Item 1A Risk Factors.</li>
- *   <li>20-F: from "Item 3. Key Information" up to "Item 5. Operating and Financial Review(s)".</li>
+ *   <li>20-F: from "Item 3. Key Information" up to "Item 5. Operating and Financial Review(s) (and Prospects)".</li>
  * </ul>
  *
  * <p>Headings match any kind of space (a non-breaking or thin space too), and "Item 3.A". A mention of a heading in a
@@ -39,7 +39,7 @@ public final class ReportSection {
     private static final Pattern TEN_K_START = heading("1", "business");
     private static final Pattern TEN_K_END = heading("2", "properties");
     private static final Pattern TWENTY_F_START = heading("3", "key\\s+information");
-    private static final Pattern TWENTY_F_END = heading("5", "operating\\s+and\\s+financial\\s+reviews?");
+    private static final Pattern TWENTY_F_END = heading("5", "operating\\s+and\\s+financial\\s+reviews?(?:\\s+and\\s+prospects)?");
 
     /**
      * Just before a mention, on its own line: an all-lower-case word ("see"), or a comma, semicolon, colon, bracket or
