@@ -2,3 +2,8 @@ truesight:
   work:
     # Tests that need the heartbeat or the every-minute recovery turn it on with @TestPropertySource.
     scheduled: false
+  ai:
+    # The day's limit on reading reports (see ReadingLimit) is out of reach of every test but ReadingLimitIT, which sets
+    # its own small one. Calls the other tests put in the audit trail, which the database keeps for the whole run, can
+    # then never reach it.
+    daily-report-limit: 100000

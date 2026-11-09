@@ -1956,6 +1956,23 @@ svg.lucide {
   flex: 0 100 auto;
 }
 
+/* An alert card keeps its words: the event type and the age are never cut. When they do not fit on one line the age
+   drops to a line of its own. Only the Alerts tab's cards: the same classes elsewhere keep cutting with an ellipsis. */
+.a-card .a-top {
+  flex-wrap: wrap;
+  overflow: visible;
+  row-gap: 2px;
+  white-space: normal;
+}
+
+.a-card .a-top .a-type,
+.a-card .a-top .a-meta {
+  flex: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
 .icon-btn.small {
   width: 30px;
   height: 30px;

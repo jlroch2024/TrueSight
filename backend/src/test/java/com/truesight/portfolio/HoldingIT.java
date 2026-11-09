@@ -5,6 +5,7 @@ import com.truesight.support.TestLogins;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -14,10 +15,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,6 +39,9 @@ class HoldingIT {
 
     @Autowired
     PortfolioRepository portfolios;
+
+    @Autowired
+    HoldingRepository holdings;
 
     String me;
     long portfolioId;
@@ -80,6 +86,40 @@ class HoldingIT {
                 .andExpect(jsonPath("$.message").value("The file needs a ticker column."));
 
         list(portfolioId).andExpect(jsonPath("$[*].ticker", contains("IBM")));
+    }
+
+    // ---- A portfolio holds at most 100 companies -----------------------------------------------------------------
+
+    @Test
+    void aCsvOfOneHundredAndOneHoldingsIsRefusedAndThePortfolioIsUnchanged() throws Exception {
+        upload(portfolioId, "old.csv", "ticker\nIBM\nORCL\n".getBytes(StandardCharsets.UTF_8));
+
+        upload(portfolioId, "big.csv", tickers(101))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("A portfolio can hold at most 100 companies."));
+
+        list(portfolioId).andExpect(jsonPath("$[*].ticker", contains("IBM", "ORCL")));
+    }
+
+    @Test
+    void aCsvOfOneHundredHoldingsIsAccepted() throws Exception {
+        upload(portfolioId, "full.csv", tickers(100))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(100)));
+    }
+
+    @Test
+    void addingAHoldingToAPortfolioOfOneHundredIsRefusedWith400AndTheSameMessage() throws Exception {
+        upload(portfolioId, "full.csv", tickers(100)).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/portfolios/" + portfolioId + "/holdings")
+                        .header("Authorization", me)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ticker\": \"EXTRA\", \"weight\": 1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("A portfolio can hold at most 100 companies."));
+
+        assertThat(holdings.countByPortfolioId(portfolioId)).isEqualTo(100);
     }
 
     @Test
@@ -136,6 +176,15 @@ class HoldingIT {
         return mockMvc.perform(multipart("/api/portfolios/" + id + "/holdings/upload")
                 .file(csv(filename, content))
                 .header("Authorization", me));
+    }
+
+    /** A CSV of this many holdings, T1 to Tn. */
+    private static byte[] tickers(int count) {
+        StringBuilder csv = new StringBuilder("ticker\n");
+        for (int i = 1; i <= count; i++) {
+            csv.append("T").append(i).append('\n');
+        }
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private ResultActions list(long id) throws Exception {

@@ -49,6 +49,11 @@ truesight:
   gemini:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-3.8-flash}
+  ai:
+    # The most annual reports sent to Gemini in a day (midnight UTC to midnight UTC), across the whole app. Past it a
+    # holding that needs a report read says Failed, and Analyse tries again tomorrow. A brake on what reading costs;
+    # lower it if Gemini's prices rise (they double on 1 January 2027).
+    daily-report-limit: ${AI_DAILY_REPORT_LIMIT:100}
   # The emails that are Analysts, comma-separated, any capitalisation (see AnalystEmails). Not a secret.
   analyst-emails: ${ANALYST_EMAILS:}
   sec:

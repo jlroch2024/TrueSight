@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 public interface AiCallRepository extends JpaRepository<AiCall, Long>, JpaSpecificationExecutor<AiCall> {
@@ -29,6 +30,12 @@ public interface AiCallRepository extends JpaRepository<AiCall, Long>, JpaSpecif
     /** True when an answered call for this report used a prompt that contains the given text. */
     boolean existsByReportIdAndPurposeAndOutcomeAndPromptContaining(
             Long reportId, AiPurpose purpose, AiOutcome outcome, String promptText);
+
+    /**
+     * How many calls for these purposes started at or after {@code since}, whatever their outcome and whoever made
+     * them: a failed call may have cost money too. The daily limit on reading reports counts with this.
+     */
+    long countByPurposeInAndStartedAtGreaterThanEqual(Collection<AiPurpose> purposes, Instant since);
 
     /**
      * When each call in {@code [from, to)} started, how it ended and how long it took, for the AI Quality Dashboard.

@@ -422,6 +422,29 @@ describe('holdings', () => {
     expect(open).toHaveBeenCalledWith(sample[0]!.report.url, '_blank', 'noopener,noreferrer');
   });
 
+  it('saysWhenTheWeightsDoNotAddUpTo100AndNothingWhenTheyDo', async () => {
+    backend.holdings = [held(AMD, 2, { weight: 50 }), held(LAM, 6, { weight: 40 }), held(NVIDIA, 1, { weight: 25 })];
+    renderAt();
+    await graph();
+
+    expect(within(drawer()).getByText('Weights Add Up to 115%, Not 100%')).toBeInTheDocument();
+  });
+
+  it('saysNothingNewWhenTheWeightsAddUpTo100OrThereAreNone', async () => {
+    backend.holdings = [held(AMD, 2, { weight: 50 }), held(LAM, 6, { weight: 30 }), held(NVIDIA, 1, { weight: 19.6 })];
+    renderAt();
+    await graph();
+    expect(within(drawer()).queryByText(/Weights Add Up to/)).not.toBeInTheDocument();
+  });
+
+  it('saysNothingNewForAPortfolioWithoutWeights', async () => {
+    backend.holdings = [held(AMD, 2, { weight: null }), held(NVIDIA, 1, { weight: null })];
+    renderAt();
+    await graph();
+
+    expect(within(drawer()).queryByText(/Weights Add Up to/)).not.toBeInTheDocument();
+  });
+
   it('showsAHoldingNotOnTheGraphWithItsStatusAndNoShowReport', async () => {
     backend.holdings = [...backend.holdings, waiting('NEW', 30)];
     renderAt();
@@ -1041,6 +1064,20 @@ describe('the Alerts tab', () => {
     expect(card).toHaveTextContent('18%');
     expect(card).toHaveTextContent('of Portfolio');
     expect(within(card).getByTitle('NVDA · Reached Directly')).toBeInTheDocument();
+  });
+
+  it('keepsTheWholeEventTypeAndAgeOnTheCardsTopLineSoTheAgeCanDropToALineOfItsOwn', async () => {
+    const alert = sampleAlert({ id: 1, headline: 0, daysOld: 3, holdings: [tsmcSuppliesNvidia(1, 1)] });
+    backend.alerts = [{ ...alert, headline: { ...alert.headline, assessment: { ...alert.headline.assessment, eventType: 'SUPPLY_SHORTAGE' } } }];
+    renderAt('/portfolios/7?tab=alerts');
+    await graph();
+
+    const card = within(drawer()).getByRole('listitem', { name: alert.headline.article.title });
+    const top = card.querySelector('.a-top') as HTMLElement;
+    // The event type and the age are each a piece of their own, written out in full, so the page's styles can wrap
+    // the line between them without cutting either. The width itself is checked by hand.
+    expect(within(top).getByText('Supply Shortage')).toHaveClass('a-type');
+    expect(top.querySelector('.a-meta')).toHaveTextContent('· 3 Days Ago');
   });
 
   it('countsTheHoldingsReachedInAPortfolioWithoutWeights', async () => {

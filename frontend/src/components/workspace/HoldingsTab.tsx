@@ -63,6 +63,10 @@ export function HoldingsTab({
   // A list that goes away never hears the pointer leave it: its preview on the graph is let go here instead.
   useEffect(() => () => onPeek(null), [onPeek]);
   const total = holdings.reduce((sum, holding) => sum + (holding.weight ?? 0), 0);
+  // Weights that do not add up to 100% (more than half a point out) are said so, but only when every holding has one.
+  // Rounded to the four places a weight is kept to, so the sum of decimals never tips the half point by a rounding hair.
+  const weightsOff = holdings.every((holding) => holding.weight != null)
+    && Math.abs(Math.round(total * 10_000) / 10_000 - 100) > 0.5;
   const biggest = Math.max(1, ...holdings.map((holding) => holding.weight ?? 0));
   const tickerWidth = Math.ceil(Math.max(30, ...holdings.map((holding) => tickerTextWidth(holding.ticker)))) + 4;
   const failed = holdings.some((holding) => holding.status === 'FAILED');
@@ -120,6 +124,11 @@ export function HoldingsTab({
           {adding ? 'Close' : 'Add Holding'}
         </button>
       </div>
+      {weightsOff && (
+        <p className="section-note num">
+          {`Weights Add Up to ${Number(total.toFixed(1))}%, Not 100%`}
+        </p>
+      )}
       {suppliersRead < suppliersToRead && (
         <p className="section-note num" role="status">
           Reading Suppliers' Reports, {suppliersRead} of {suppliersToRead}

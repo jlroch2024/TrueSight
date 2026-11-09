@@ -43,6 +43,27 @@ describe('Log In', () => {
     expect(tokenStore.get()).toBe('new-token');
   });
 
+  it('logs in with the right password even when an old token is stored, and sends no token with the log in', async () => {
+    // The browser still holds the token from before the backend restarted: it must not ride along with the log in.
+    tokenStore.set('old-token');
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/auth/login') return Promise.resolve(answer(200, { token: 'new-token', email: 'pm@example.com' }));
+      if (url === '/api/portfolios') {
+        return Promise.resolve(answer(200, [{ id: 7, name: 'Consumer Goods', createdAt: '2026-10-01T00:00:00Z' }]));
+      }
+      return Promise.resolve(answer(200, []));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderLogIn();
+
+    await logIn('pm@example.com', 'right-password');
+
+    expect(await screen.findByRole('button', { name: 'Portfolio: Consumer Goods' })).toBeInTheDocument();
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === '/api/auth/login') as unknown as [string, RequestInit];
+    expect(new Headers(init.headers).has('Authorization')).toBe(false);
+    expect(tokenStore.get()).toBe('new-token');
+  });
+
   it('shows "Wrong email or password." when the login is refused', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(401, { message: 'Wrong email or password.' })));
     renderLogIn();
@@ -180,6 +201,23 @@ describe('Sign Up', () => {
     await signUp('new@example.com', 'long-enough');
 
     expect(await screen.findByRole('heading', { name: 'Create Your First Portfolio' })).toBeInTheDocument();
+    expect(tokenStore.get()).toBe('new-token');
+  });
+
+  it('signs up even when an old token is stored, and sends no token with the sign up', async () => {
+    tokenStore.set('old-token');
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/auth/signup') return Promise.resolve(answer(201, { token: 'new-token', email: 'new@example.com' }));
+      return Promise.resolve(answer(200, []));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSignUp();
+
+    await signUp('new@example.com', 'long-enough');
+
+    expect(await screen.findByRole('heading', { name: 'Create Your First Portfolio' })).toBeInTheDocument();
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === '/api/auth/signup') as unknown as [string, RequestInit];
+    expect(new Headers(init.headers).has('Authorization')).toBe(false);
     expect(tokenStore.get()).toBe('new-token');
   });
 
