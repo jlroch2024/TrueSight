@@ -1,0 +1,1121 @@
+{
+ "promptSha256": "192706e8024d51efd4e062f6ac134d4db3c1be077896691e66e1bfb826e8480f",
+ "cases": [
+  {
+   "set": "design",
+   "label": true,
+   "note": "table",
+   "writer": "KLA Corp",
+   "form": "10-K",
+   "filingDate": "2026-08-06",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/319201/000031920126000027/klac-20260630.htm",
+   "other": "Taiwan Semiconductor Manufacturing Company Limited (also written \"TSMC\")",
+   "type": "CUSTOMER",
+   "provides": "Semiconductor Process Control Equipment",
+   "sentence": "For the fiscal years ended June 30, 2026, 2025 and 2024, the following customers each accounted for more than 10% of total revenues, primarily in the Semiconductor Process Control segment: Year Ended June 30, 2026 2025 2024 Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited",
+   "passage": "cycles in the semiconductor industry, we have remained committed to significant engineering efforts toward both product improvement and new product development to enhance our competitive position. Customers We count among our largest customers the leading semiconductor, semiconductor-related and electronic device manufacturers in Asia, the U.S. and Europe. Our future performance depends, in part, on our ability to continue to compete successfully in Asia, one of the largest markets for our equipment. Our business depends on capital expenditures from these manufacturers which, in turn, depend on many factors including general economic conditions, anticipated market demand, evolving government regulations and capacity constraints. Our ability to compete in this region depends on the continuation of favorable trading relationships between countries in the region and the U.S., and our continuing ability to maintain satisfactory relationships with leading semiconductor companies in the region. For the fiscal years ended June 30, 2026, 2025 and 2024, the following customers each accounted for more than 10% of total revenues, primarily in the Semiconductor Process Control segment: Year Ended June 30, 2026 2025 2024 Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited 2 Table of Contents Sales, Service and Marketing Our sales, service and marketing efforts aim to build deep long-term relationships with our customers. We focus on providing comprehensive resources for the full breadth of process control, process-enabling and yield management solutions for manufacturing and testing wafers and reticles, a wide variety of ICs, PCBs, IC substrates and packaging as well as general materials research. Our revenues are derived primarily from product sales and related",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Taiwan Semiconductor Manufacturing Company Limited is listed as a customer that accounted for more than 10% of the Company's total revenues for the fiscal years ended June 30, 2026, 2025 and 2024."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "Taiwan Semiconductor Manufacturing Company Limited (also written \"TSMC\")",
+   "type": "SUPPLIER",
+   "provides": "semiconductor wafers",
+   "sentence": "We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers.",
+   "passage": "significant costs and risks associated with owning and operating manufacturing operations. While we may directly procure certain raw materials used in the production of our products, such as memory, substrates, and a variety of components, our suppliers are responsible for procurement of most raw materials used in the production of our products. As a result, we can focus our resources on product design, quality assurance, marketing, and customer support. In periods of growth, we may place non-cancellable inventory orders for certain product components in advance of our historical lead times, pay premiums, or provide deposits to secure future supply and capacity and may need to continue to do so. We have expanded our supplier relationships to build redundancy and resilience in our operations to provide long-term manufacturing capacity aligned with growing customer demand. While currently our supply chain is mainly concentrated in Asia, we are expanding into the U.S. and Latin America. We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers. We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung. We utilize CoWoS technology for semiconductor packaging. We engage with independent subcontractors and contract manufacturers such as Hon Hai Precision Industry Co., Ltd., Wistron Corporation, and Fabrinet to perform assembly, testing and packaging of our final products. Competition The market for our products is intensely competitive and is characterized by rapid technological change and evolving industry standards. We",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "NVIDIA states that it utilizes foundries such as Taiwan Semiconductor Manufacturing Company Limited (TSMC) to produce its semiconductor wafers."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "SK Hynix Inc.",
+   "type": "SUPPLIER",
+   "provides": "memory",
+   "sentence": "We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.",
+   "passage": "products, such as memory, substrates, and a variety of components, our suppliers are responsible for procurement of most raw materials used in the production of our products. As a result, we can focus our resources on product design, quality assurance, marketing, and customer support. In periods of growth, we may place non-cancellable inventory orders for certain product components in advance of our historical lead times, pay premiums, or provide deposits to secure future supply and capacity and may need to continue to do so. We have expanded our supplier relationships to build redundancy and resilience in our operations to provide long-term manufacturing capacity aligned with growing customer demand. While currently our supply chain is mainly concentrated in Asia, we are expanding into the U.S. and Latin America. We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers. We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung. We utilize CoWoS technology for semiconductor packaging. We engage with independent subcontractors and contract manufacturers such as Hon Hai Precision Industry Co., Ltd., Wistron Corporation, and Fabrinet to perform assembly, testing and packaging of our final products. Competition The market for our products is intensely competitive and is characterized by rapid technological change and evolving industry standards. We believe that the principal competitive factors in this market are performance,",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "NVIDIA Corporation states that it purchases memory from SK Hynix Inc."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "Hon Hai Precision Industry Co., Ltd.",
+   "type": "SUPPLIER",
+   "provides": "assembly, testing and packaging",
+   "sentence": "We engage with independent subcontractors and contract manufacturers such as Hon Hai Precision Industry Co., Ltd., Wistron Corporation, and Fabrinet",
+   "passage": "used in the production of our products. As a result, we can focus our resources on product design, quality assurance, marketing, and customer support. In periods of growth, we may place non-cancellable inventory orders for certain product components in advance of our historical lead times, pay premiums, or provide deposits to secure future supply and capacity and may need to continue to do so. We have expanded our supplier relationships to build redundancy and resilience in our operations to provide long-term manufacturing capacity aligned with growing customer demand. While currently our supply chain is mainly concentrated in Asia, we are expanding into the U.S. and Latin America. We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers. We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung. We utilize CoWoS technology for semiconductor packaging. We engage with independent subcontractors and contract manufacturers such as Hon Hai Precision Industry Co., Ltd., Wistron Corporation, and Fabrinet to perform assembly, testing and packaging of our final products. Competition The market for our products is intensely competitive and is characterized by rapid technological change and evolving industry standards. We believe that the principal competitive factors in this market are performance, breadth of product offerings, access to customers and partners and distribution channels, software support, conformity to industry standard APIs, manufacturing capabilities, processor pricing, and total",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "NVIDIA engages with contract manufacturers such as Hon Hai Precision Industry Co., Ltd. to perform assembly, testing, and packaging of its final products."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "Advanced Micro Devices, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-02-04",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+   "other": "Taiwan Semiconductor Manufacturing Company Limited (also written \"TSMC\")",
+   "type": "SUPPLIER",
+   "provides": "wafer production",
+   "sentence": "We utilize Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of wafers for our HPC, FPGA and adaptive SoC products",
+   "passage": "the development of our products, including design automation tools for hardware, embedded software, AI stack, and optimized software tools and libraries that extend the reach of our platforms to software and AI developers. Through our R&D efforts, we were able to introduce a number of new products and enhance our IP core offerings and software. We also work with industry leaders on process technology, design tools, intellectual property, software and other industry consortia to conduct early-stage R&D. We are also actively contributing to numerous industry open-source software initiatives and industry consortia across a broad range of technologies. We conduct product and system R&D activities for our products in the United States with additional design and development engineering teams located in various countries who undertake specific activities at the direction of our U.S. headquarters. Manufacturing Arrangements and Assembly and Test Facilities Third-Party Wafer Foundry Facilities We utilize Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of wafers for our HPC, FPGA and adaptive SoC products and GLOBALFOUNDRIES Inc. (GF), with respect to wafer purchases for our HPC products at the 12 nm and 14 nm technology nodes. Additionally, we utilize TSMC, United Microelectronics Corporation (UMC) and Samsung Electronics Co., Ltd. for the production of our ICs in the form of programmable logic devices. Other Third-Party Manufacturers We outsource board-level graphics product manufacturing to third-party manufacturers. Assembly, Test, Mark and Packaging Facilities Wafers for our products are either",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Advanced Micro Devices, Inc. utilizes Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of wafers and integrated circuits for its products."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "subject",
+   "writer": "Advanced Micro Devices, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-02-04",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+   "other": "King Yuan Electronics Company (also written \"KYEC\")",
+   "type": "SUPPLIER",
+   "provides": "ATMP services",
+   "sentence": "The ATMP JVs, Siliconware Precision Industries Ltd. (SPIL) and King Yuan Electronics Company (KYEC) provide ATMP services for our products.",
+   "passage": "Third-Party Wafer Foundry Facilities We utilize Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of wafers for our HPC, FPGA and adaptive SoC products and GLOBALFOUNDRIES Inc. (GF), with respect to wafer purchases for our HPC products at the 12 nm and 14 nm technology nodes. Additionally, we utilize TSMC, United Microelectronics Corporation (UMC) and Samsung Electronics Co., Ltd. for the production of our ICs in the form of programmable logic devices. Other Third-Party Manufacturers We outsource board-level graphics product manufacturing to third-party manufacturers. Assembly, Test, Mark and Packaging Facilities Wafers for our products are either sorted by the foundry or delivered by the foundry to our assembly, test, mark and packaging (ATMP) partners or subcontractors located in the Asia-Pacific region, who package and test our final semiconductor products. We are party to two ATMP joint ventures (collectively, the ATMP JVs) with Tongfu Microelectronics Co., Ltd. The ATMP JVs, Siliconware Precision Industries Ltd. (SPIL) and King Yuan Electronics Company (KYEC) provide ATMP services for our products. 10 Table of Contents Intellectual Property and Licensing We rely on contracts and intellectual property rights to protect our products and technologies from unauthorized third-party copying and use. Intellectual property rights include copyrights, patents, patent applications, trademarks, trade secrets and mask work rights. As of December 27, 2025, we had approximately 7,200 patents in the United States and approximately 2,200 patent applications pending in the United States. In certain cases, we",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "King Yuan Electronics Company (KYEC) provides assembly, test, mark and packaging services for AMD's products."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "agreement",
+   "writer": "Advanced Micro Devices, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-02-04",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+   "other": "OpenAI OpCo, LLC (also written \"OpenAI\")",
+   "type": "CUSTOMER",
+   "provides": "AMD GPUs",
+   "sentence": "In October 2025, we entered into a product purchase agreement with OpenAI OpCo, LLC, (OpenAI) to deploy 6 gigawatts of AMD GPUs",
+   "passage": "during the year to advance our software capabilities and enable highly optimized solutions across the stack, support co-packaged optics solutions for next-generation AI systems, and bring deep expertise in high-speed inference and reasoning-based AI technologies for large-scale deployments. 2 Table of Contents We believe that AI systems will require not only powerful chips, but also full-stack innovation across compute, networking, systems architecture and software. AMD is uniquely positioned to deliver across this stack, combining industry-leading CPUs, GPUs and adaptive SoCs with networking, software and system integration expertise. We continue to invest in software capabilities and the open ecosystem through the AMD ROCm™ platform, delivering new features for high-performance AI training and inference. In 2025, we introduced key optimizations and expanded support for frameworks and libraries, improving performance for generative AI workloads and simplifying the developer experience. In October 2025, we entered into a product purchase agreement with OpenAI OpCo, LLC, (OpenAI) to deploy 6 gigawatts of AMD GPUs, with the deployment of the first gigawatt of capacity powered by our AMD Instinct MI450 series products. This multiyear strategic partnership with OpenAI demonstrates our continued execution of hardware, software and full-stack solutions roadmaps. Our Business Beginning in the first quarter of fiscal year 2025, we combined the Client and Gaming segments into one reportable segment to align with how we manage our business. All prior period segment data were retrospectively adjusted. Our three reportable",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Advanced Micro Devices entered into a multiyear product purchase agreement with OpenAI OpCo, LLC to deploy six gigawatts of AMD GPUs."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "Broadcom Inc.",
+   "form": "10-K",
+   "filingDate": "2025-12-18",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1730168/000173016825000121/avgo-20251102.htm",
+   "other": "Amkor Technology, Inc.",
+   "type": "SUPPLIER",
+   "provides": "assembly and test operations",
+   "sentence": "We use third-party CMs for a significant majority of our assembly and test operations",
+   "passage": "software and move their VCF environments between on-premises data centers and supported cloud endpoints. We remain focused on strengthening relationships and increasing penetration within our existing core, mainframe, VMware, and Symantec endpoint customers and expanding the adoption of our enterprise software offerings with these customers. We believe our enterprise-wide license model will continue to offer our customers reduced complexity, more flexibility and an easier renewal process that will help drive revenue growth. Manufacturing We focus on maintaining an efficient global supply chain and a variable, low-cost operating model. Accordingly, we outsource a majority of our manufacturing operations, utilizing third-party foundry and assembly and test capabilities, as well as some of our corporate infrastructure functions. The majority of our front-end wafer manufacturing operations is outsourced to external foundries, including Taiwan Semiconductor Manufacturing Company Limited (“TSMC”). We use third-party CMs for a significant majority of our assembly and test operations, including TSMC, Advanced Semiconductor Engineering, Inc., Foxconn Technology Group, Amkor Technology, Inc. and Siliconware Precision Industries Co., Ltd. We use our internal fabrication facilities for products utilizing our innovative and proprietary processes, such as our FBAR filters for wireless communications and our vertical-cavity surface emitting laser and side emitting lasers based on gallium arsenide (“GaAs”) and indium phosphide (“InP”) lasers for fiber optic communications, while outsourcing",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Broadcom uses third-party contract manufacturers, including Amkor Technology, Inc., for a significant majority of its assembly and test operations."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "fiscal",
+   "writer": "Lam Research Corporation",
+   "form": "10-K",
+   "filingDate": "2026-08-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm",
+   "other": "Micron Technology, Inc.",
+   "type": "CUSTOMER",
+   "provides": "wafer fabrication equipment and services",
+   "sentence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+   "passage": "business, financial position, and results of operations and cash flows. For geographical reporting, revenue is attributed to the geographic location in which the customers’ facilities are located. Refer to Note 19 of our Consolidated Financial Statements, included in Part II, Item 8 of this 2026 Form 10-K, for the attribution of revenue by geographic region. Long-lived Assets Refer to Note 19 of our Consolidated Financial Statements, included in Part II, Item 8 of this 2026 Form 10-K, for information concerning the geographic locations of long-lived assets. Customers Our customers include many of the world’s leading semiconductor manufacturers. Customers continue to establish joint ventures, alliances, and licensing arrangements which have the potential to positively or negatively impact our competitive position and market opportunities. Refer to Note 9 of our Consolidated Financial Statements, included in Part II, Item 8 of this report, for information concerning customer concentrations. Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company. A material reduction in orders from our customers could adversely affect our results of operations and projected financial condition. Our business depends upon the expenditures of semiconductor manufacturers. Semiconductor manufacturers’ businesses, in turn, depend on many factors, including their economic capability, the current and anticipated market demand for ICs, and the availability of equipment capacity to support that demand. Manufacturing Our manufacturing operations mainly consist of assembling",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Micron Technology, Inc. was one of Lam Research Corporation's most significant customers during the fiscal year ending June 28, 2026."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "fiscal",
+   "writer": "Lam Research Corporation",
+   "form": "10-K",
+   "filingDate": "2026-08-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm",
+   "other": "Taiwan Semiconductor Manufacturing Company Limited (also written \"TSMC\")",
+   "type": "CUSTOMER",
+   "provides": "wafer fabrication equipment and services",
+   "sentence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+   "passage": "business, financial position, and results of operations and cash flows. For geographical reporting, revenue is attributed to the geographic location in which the customers’ facilities are located. Refer to Note 19 of our Consolidated Financial Statements, included in Part II, Item 8 of this 2026 Form 10-K, for the attribution of revenue by geographic region. Long-lived Assets Refer to Note 19 of our Consolidated Financial Statements, included in Part II, Item 8 of this 2026 Form 10-K, for information concerning the geographic locations of long-lived assets. Customers Our customers include many of the world’s leading semiconductor manufacturers. Customers continue to establish joint ventures, alliances, and licensing arrangements which have the potential to positively or negatively impact our competitive position and market opportunities. Refer to Note 9 of our Consolidated Financial Statements, included in Part II, Item 8 of this report, for information concerning customer concentrations. Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company. A material reduction in orders from our customers could adversely affect our results of operations and projected financial condition. Our business depends upon the expenditures of semiconductor manufacturers. Semiconductor manufacturers’ businesses, in turn, depend on many factors, including their economic capability, the current and anticipated market demand for ICs, and the availability of equipment capacity to support that demand. Manufacturing Our manufacturing operations mainly consist of assembling",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Taiwan Semiconductor Manufacturing Company is identified as one of Lam Research Corporation's most significant customers during the fiscal year ending June 28, 2026."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "Tesla, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-01-29",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm",
+   "other": "Panasonic",
+   "type": "SUPPLIER",
+   "provides": "lithium-ion battery cells",
+   "sentence": "Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells.",
+   "passage": "and there is no guarantee that they will generate additional sales or installations of our products, or that we will be able to avoid cost overruns or be able to hire additional personnel to support them. As we expand, we will also need to ensure our compliance with regulatory requirements in various jurisdictions applicable to the sale, installation and servicing of our products, the sale or dispatch of electricity related to our energy products and the operation of Superchargers. If we fail to manage our growth effectively, it may harm our brand, business, prospects, financial condition and operating results. We will need to maintain and significantly grow our access to battery cells, including through the development and manufacture of our own cells, and control our related costs. We are dependent on the continued supply of lithium-ion battery cells for our vehicles and energy storage products, and we will require substantially more cells to grow our business according to our plans. Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells. We have to date fully qualified only a very limited number of such suppliers and have limited flexibility in changing suppliers. Any disruption in the supply of battery cells from our suppliers could limit production of our vehicles and energy storage products. In the long term, we intend to supplement cells from our suppliers with cells manufactured by us, which we believe will be more efficient, manufacturable at greater volumes and more cost-effective than currently available cells. However,",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Tesla states that it currently relies on suppliers such as Panasonic for lithium-ion battery cells for its vehicles and energy storage products."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "we",
+   "writer": "ASML Holding N.V.",
+   "form": "20-F",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/937966/000162828026011378/asml-20251231.htm",
+   "other": "Carl Zeiss SMT (also written \"Zeiss\")",
+   "type": "SUPPLIER",
+   "provides": "lenses, mirrors and other optical components",
+   "sentence": "The number of lithography systems we are able to produce is limited by the production capacity of one of our key suppliers, Carl Zeiss SMT",
+   "passage": "the principle of “single sourcing, dual competence”. However, relying on a limited group of suppliers introduces several risks – including potential shortages, delays in obtaining components at acceptable costs, and reduced control over pricing and quality. Supply disruptions may arise from various causes, such as labor strikes, fires, energy shortages, infrastructure access, pandemics, flooding, cyberattacks, blockades, sabotage, or other natural or man-made disasters. Such disruptions can delay the delivery of parts and subassemblies, which in turn may delay our product shipments and negatively impact our business. For example, some suppliers have faced operational disruptions due to (raw) material shortages and cyberattacks. Persistent delays or an inability to secure timely deliveries – or any other circumstance that requires us to find alternative sources – could significantly hinder our ability to meet customer demand, damaging relationships and materially impacting our business. The number of lithography systems we are able to produce is limited by the production capacity of one of our key suppliers, Carl Zeiss SMT, our sole supplier of lenses, mirrors, illuminators, collectors and other critical optical components (which we refer to as optics). We have an exclusive arrangement with Carl Zeiss SMT. If this supplier became unable to maintain and increase production levels, we could be unable to fulfill orders. This could have a material impact on our business and damage relationships with our customers. Furthermore, if Carl Zeiss SMT were to terminate its supply relationship with us or be unable to maintain",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Carl Zeiss SMT is described as one of ASML's key suppliers and its sole supplier of critical optical components such as lenses, mirrors, illuminators, and collectors."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "fiscal",
+   "writer": "QUALCOMM Incorporated",
+   "form": "10-K",
+   "filingDate": "2025-11-05",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm",
+   "other": "Apple Inc. (also written \"Apple\")",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "In fiscal 2025, revenues from Apple, Samsung and Xiaomi each comprised 10% or more of our consolidated revenues",
+   "passage": "subsidiaries. We have developed our corporate structure in order to address various legal, regulatory, tax, contractual compliance, operational and other matters. Substantially all of our products and services businesses, including QCT, and substantially all of our engineering and research and development functions, are operated by Qualcomm Technologies, Inc. (QTI), a subsidiary of QUALCOMM Incorporated, and QTI’s subsidiaries. QTL is operated by QUALCOMM Incorporated, which owns the vast majority of our patent portfolio. Snapdragon and Qualcomm branded products are products of QTI and/or its subsidiaries. Qualcomm patents are licensed by QUALCOMM Incorporated. Neither QTI nor any of its subsidiaries has any right, power or authority to grant any licenses or other rights under or to any patents owned by QUALCOMM Incorporated. Revenue Concentrations and Significant Customers A small number of customers/licensees historically have accounted for a significant portion of our consolidated revenues. In fiscal 2025, revenues from Apple, Samsung and Xiaomi each comprised 10% or more of our consolidated revenues. Additional information regarding revenue concentrations is provided in this Annual Report in “Notes to Consolidated Financial Statements, Note 2. Composition of Certain Financial Statement Items” and “Notes to Consolidated Financial Statements, Note 8. Segment Information.” Research and Development We compete in industries that are characterized by rapid technological change, evolving industry standards and frequent new product introductions, requiring a continuous effort to enhance existing products",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Apple is identified as a significant customer/licensee whose revenues comprised 10% or more of QUALCOMM Incorporated's consolidated revenues in fiscal 2025."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "fiscal",
+   "writer": "QUALCOMM Incorporated",
+   "form": "10-K",
+   "filingDate": "2025-11-05",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm",
+   "other": "Xiaomi Corporation (also written \"Xiaomi\")",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "In fiscal 2025, revenues from Apple, Samsung and Xiaomi each comprised 10% or more of our consolidated revenues",
+   "passage": "subsidiaries. We have developed our corporate structure in order to address various legal, regulatory, tax, contractual compliance, operational and other matters. Substantially all of our products and services businesses, including QCT, and substantially all of our engineering and research and development functions, are operated by Qualcomm Technologies, Inc. (QTI), a subsidiary of QUALCOMM Incorporated, and QTI’s subsidiaries. QTL is operated by QUALCOMM Incorporated, which owns the vast majority of our patent portfolio. Snapdragon and Qualcomm branded products are products of QTI and/or its subsidiaries. Qualcomm patents are licensed by QUALCOMM Incorporated. Neither QTI nor any of its subsidiaries has any right, power or authority to grant any licenses or other rights under or to any patents owned by QUALCOMM Incorporated. Revenue Concentrations and Significant Customers A small number of customers/licensees historically have accounted for a significant portion of our consolidated revenues. In fiscal 2025, revenues from Apple, Samsung and Xiaomi each comprised 10% or more of our consolidated revenues. Additional information regarding revenue concentrations is provided in this Annual Report in “Notes to Consolidated Financial Statements, Note 2. Composition of Certain Financial Statement Items” and “Notes to Consolidated Financial Statements, Note 8. Segment Information.” Research and Development We compete in industries that are characterized by rapid technological change, evolving industry standards and frequent new product introductions, requiring a continuous effort to enhance existing products",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Xiaomi is identified as a significant customer or licensee from which revenues comprised 10% or more of QUALCOMM Incorporated's consolidated revenues in fiscal 2025."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "past tense, next sentence shows purchases",
+   "writer": "Taiwan Semiconductor Manufacturing Company Limited",
+   "form": "20-F",
+   "filingDate": "2026-04-16",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1046179/000162828026025362/tsm-20251231.htm",
+   "other": "Vanguard International Semiconductor Corporation (also written \"VIS\")",
+   "type": "SUPPLIER",
+   "provides": "wafers",
+   "sentence": "Pursuant to the terms of a manufacturing agreement between both parties, VIS was obligated to use its best commercial efforts to manufacture wafers at specified yield rates for us up to a fixed amount of reserved capacity per month, and TSMC was required to use its best commercial efforts to maintain utilization of such reserved capacity.",
+   "passage": "registered shareholders domiciled in and outside of the United States. We have no further information as to common shares held, or beneficially owned, by U.S. persons. Our major shareholders have the same voting rights as our other shareholders. For a description of the voting rights of our shareholders, see “Item 10. Additional Information – Description of Common Shares – Voting Rights”. We are currently not aware of any arrangement that may at a subsequent date result in a change of control of us. Related Party Transactions Vanguard International Semiconductor Corporation (“VIS”) In 1994, we, the R.O.C. Ministry of Economic Affairs and other investors established VIS, then an integrated DRAM manufacturer. VIS commenced commercial production in 1995 and listed its shares on the Taipei Exchange in March 1998. In 2004, VIS completely terminated its DRAM production and became a dedicated foundry company. As of February 28, 2026, we owned approximately 27.6% of the equity interest in VIS. Pursuant to the terms of a manufacturing agreement between both parties, VIS was obligated to use its best commercial efforts to manufacture wafers at specified yield rates for us up to a fixed amount of reserved capacity per month, and TSMC was required to use its best commercial efforts to maintain utilization of such reserved capacity. In 2025, we had total purchases of NT$878 million (US$28 million) from VIS, representing 0.1% of our total cost of revenue. Systems on Silicon Manufacturing Company Pte. Ltd. (“SSMC”) SSMC is a joint venture in Singapore that we established with Philips and EDB to produce integrated circuits by means of advanced submicron manufacturing processes. Following the 2006 assignment by Philips of its rights and obligations to NXP, and the subsequent purchase of EDB’s shares by NXP and us, our current ownership",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "VIS manufactures wafers for Taiwan Semiconductor Manufacturing Company Limited under a manufacturing agreement, resulting in total purchases of NT$878 million from VIS in 2025."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "subject",
+   "writer": "Taiwan Semiconductor Manufacturing Company Limited",
+   "form": "20-F",
+   "filingDate": "2026-04-16",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1046179/000162828026025362/tsm-20251231.htm",
+   "other": "Systems on Silicon Manufacturing Company Pte. Ltd. (also written \"SSMC\")",
+   "type": "SUPPLIER",
+   "provides": "wafers",
+   "sentence": "s business is exclusively dedicated to the manufacturing of wafers for us, our subsidiaries, NXP and its subsidiaries.",
+   "passage": "company. As of February 28, 2026, we owned approximately 27.6% of the equity interest in VIS. Pursuant to the terms of a manufacturing agreement between both parties, VIS was obligated to use its best commercial efforts to manufacture wafers at specified yield rates for us up to a fixed amount of reserved capacity per month, and TSMC was required to use its best commercial efforts to maintain utilization of such reserved capacity. In 2025, we had total purchases of NT$878 million (US$28 million) from VIS, representing 0.1% of our total cost of revenue. Systems on Silicon Manufacturing Company Pte. Ltd. (“SSMC”) SSMC is a joint venture in Singapore that we established with Philips and EDB to produce integrated circuits by means of advanced submicron manufacturing processes. Following the 2006 assignment by Philips of its rights and obligations to NXP, and the subsequent purchase of EDB’s shares by NXP and us, our current ownership in SSMC is 38.8%, with NXP holding the remaining 61.2%. SSMC’s business is exclusively dedicated to the manufacturing of wafers for us, our subsidiaries, NXP and its subsidiaries. We and NXP have the right to purchase up to 100% of SSMC’s annual capacity and are required in the aggregate to purchase at least 70% of its capacity. Pursuant to a technology cooperation agreement entered into between us and SSMC in 1999, SSMC bases at least a major part of its production on processes compatible with those used in our metal oxide semiconductor integrated circuits wafer volume production fabs. In return, we provide SSMC with certain technical support and limited licenses of related",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Systems on Silicon Manufacturing Company Pte. Ltd.'s business is exclusively dedicated to manufacturing wafers for TSMC, its subsidiaries, NXP, and its subsidiaries, with TSMC and NXP required in the aggregate to purchase at least 70% of its capacity."
+   }
+  },
+  {
+   "set": "design",
+   "label": true,
+   "note": "indirect",
+   "writer": "STMicroelectronics N.V.",
+   "form": "20-F",
+   "filingDate": "2026-02-26",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/932787/000093278726000009/stm-20251231.htm",
+   "other": "Amazon Web Services (also written \"AWS\")",
+   "type": "CUSTOMER",
+   "provides": "ST products and services",
+   "sentence": "The warrants will vest in tranches over the term of the agreement, with vesting substantially tied to payments for ST products and services purchased",
+   "passage": "our shareholders’ meeting may, in accordance with the legal provisions, reduce our issued capital by canceling the shares that we hold in treasury, by reducing the par value of the shares or by canceling our preference shares. Liquidation Rights (Articles 42 and 43) In the event of our dissolution and liquidation, after payment of all debts and liquidation expenses, the holders of preference shares if issued, would receive the paid up portion of the par value of their preference shares. Any assets then remaining shall be distributed among the registered holders of common shares in proportion to the par value of their shareholdings. Limitations on Right to Hold or Vote Shares There are currently no limitations imposed by Dutch law or by our Articles of Association on the right of non-resident holders to hold or vote the shares. C. Material Contracts 142 On February 6, 2026, ST issued warrants to Amazon Web Services (\"AWS\") for the acquisition of up to 24.8 million ordinary shares of ST. The warrants will vest in tranches over the term of the agreement, with vesting substantially tied to payments for ST products and services purchased by AWS and its affiliates. AWS may exercise the warrants in one or more transactions over a seven-year period from the issue date at an initial exercise price of $28.38. See “Item 19. Exhibits — Exhibit 4.1. Warrant to Purchase Ordinary Shares, dated February 6, 2026, issued to Amazon.com, Inc.\" and Note 29 to our Consolidated Financial Statements. D. Exchange Controls None. E. Taxation Dutch Taxation This section only outlines certain material Dutch tax consequences of the acquisition, holding",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "ST issued warrants to AWS under an agreement where vesting is substantially tied to payments for ST products and services purchased by AWS and its affiliates."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "Advanced Micro Devices, Inc. (also written \"AMD\")",
+   "type": "SUPPLIER",
+   "provides": "GPUs",
+   "sentence": "suppliers and licensors of hardware and software for discrete and integrated GPUs, custom chips and other accelerated computing solutions, including solutions offered for AI, such as Advanced Micro Devices, Inc., or AMD, Huawei Technologies Co. Ltd., or Huawei, and Intel Corporation, or Intel;",
+   "passage": "quality and at competitive prices. We expect competition to increase from both existing competitors and new market entrants with products that may be lower priced than ours or may provide better performance or additional features not provided by our products. In addition, it is possible that new competitors or alliances among competitors could emerge and acquire significant market share. A significant source of competition comes from companies that provide or intend to provide GPUs, CPUs, DPUs, embedded SoCs, and other accelerated, AI computing processor products, and providers of semiconductor-based high-performance interconnect products based on InfiniBand, Ethernet, Fibre Channel, and proprietary technologies. Some of our competitors may have greater marketing, financial, distribution and manufacturing resources than we do and may be more able to adapt to customers or technological changes. We expect an increasingly competitive environment in the future. Our current competitors include: •suppliers and licensors of hardware and software for discrete and integrated GPUs, custom chips and other accelerated computing solutions, including solutions offered for AI, such as Advanced Micro Devices, Inc., or AMD, Huawei Technologies Co. Ltd., or Huawei, and Intel Corporation, or Intel; •large cloud services companies with internal teams designing hardware and software that incorporate accelerated or AI computing functionality as part of their internal solutions or platforms, such as Alibaba Group, Alphabet Inc., Amazon, Inc., or Amazon, Baidu, Inc., Huawei, and Microsoft Corporation, or Microsoft; •suppliers of Arm-based CPUs and companies that incorporate hardware and software for CPUs as part of their internal solutions or platforms, such as Amazon, Huawei, and Microsoft; •suppliers",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage identifies Advanced Micro Devices, Inc., or AMD, as one of NVIDIA's current competitors."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "Microsoft Corporation (also written \"Microsoft\")",
+   "type": "CUSTOMER",
+   "provides": "accelerated computing",
+   "sentence": "large cloud services companies with internal teams designing hardware and software that incorporate accelerated or AI computing functionality as part of their internal solutions or platforms, such as Alibaba Group, Alphabet Inc., Amazon, Inc., or Amazon, Baidu, Inc., Huawei, and Microsoft Corporation, or Microsoft;",
+   "passage": "competitors or alliances among competitors could emerge and acquire significant market share. A significant source of competition comes from companies that provide or intend to provide GPUs, CPUs, DPUs, embedded SoCs, and other accelerated, AI computing processor products, and providers of semiconductor-based high-performance interconnect products based on InfiniBand, Ethernet, Fibre Channel, and proprietary technologies. Some of our competitors may have greater marketing, financial, distribution and manufacturing resources than we do and may be more able to adapt to customers or technological changes. We expect an increasingly competitive environment in the future. Our current competitors include: •suppliers and licensors of hardware and software for discrete and integrated GPUs, custom chips and other accelerated computing solutions, including solutions offered for AI, such as Advanced Micro Devices, Inc., or AMD, Huawei Technologies Co. Ltd., or Huawei, and Intel Corporation, or Intel; •large cloud services companies with internal teams designing hardware and software that incorporate accelerated or AI computing functionality as part of their internal solutions or platforms, such as Alibaba Group, Alphabet Inc., Amazon, Inc., or Amazon, Baidu, Inc., Huawei, and Microsoft Corporation, or Microsoft; •suppliers of Arm-based CPUs and companies that incorporate hardware and software for CPUs as part of their internal solutions or platforms, such as Amazon, Huawei, and Microsoft; •suppliers of hardware and software for SoC products that are used in servers or embedded into automobiles, autonomous machines, and gaming devices, such as Ambarella, Inc., AMD, Broadcom, Intel, Qualcomm Incorporated, Renesas Electronics Corporation, and Samsung, or companies with internal teams designing SoC products",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Microsoft Corporation is identified in the passage as one of NVIDIA's current competitors."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "Lam Research Corporation",
+   "form": "10-K",
+   "filingDate": "2026-08-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm",
+   "other": "Applied Materials, Inc.",
+   "type": "CUSTOMER",
+   "provides": "deposition equipment",
+   "sentence": "Our primary competitor in the dielectric and metals deposition market is Applied Materials, Inc.",
+   "passage": "requirements on a timely basis. In addition, semiconductor manufacturers must make a substantial investment to qualify and integrate new capital equipment into semiconductor production lines. As a result, once a semiconductor manufacturer has selected a particular supplier’s equipment and qualified it for production, the manufacturer generally maintains that selection for that specific production application and technology node as long as the supplier’s products demonstrate performance to specification in the installed base. Accordingly, we may experience difficulty in selling to a given customer if that customer has qualified a competitor’s equipment. We Lam Research Corporation 2026 10-K 10 Table of Contents must also continue to meet the expectations of our installed base of customers through the delivery of high-quality and cost-efficient spare parts in the presence of competition from third-party spare parts providers. We face significant competition with all of our products and services. Our primary competitor in the dielectric and metals deposition market is Applied Materials, Inc. For ALD and PECVD, we also compete against ASM International and Wonik IPS. In the etch market, our primary competitors are Applied Materials, Inc.; Hitachi, Ltd.; and Tokyo Electron, Ltd., and our primary competitors in the wet clean market are Screen Holding Co., Ltd.; Semes Co., Ltd.; and Tokyo Electron, Ltd. We face competition from a number of established and emerging equipment companies in the industry. We expect our competitors to continue to improve the design and performance of their current",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Lam Research Corporation identifies Applied Materials, Inc. as its primary competitor in both the dielectric and metals deposition market and the etch market."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "Lam Research Corporation",
+   "form": "10-K",
+   "filingDate": "2026-08-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm",
+   "other": "Tokyo Electron, Ltd.",
+   "type": "SUPPLIER",
+   "provides": "etch equipment",
+   "sentence": "In the etch market, our primary competitors are Applied Materials, Inc.; Hitachi, Ltd.; and Tokyo Electron, Ltd.",
+   "passage": "production lines. As a result, once a semiconductor manufacturer has selected a particular supplier’s equipment and qualified it for production, the manufacturer generally maintains that selection for that specific production application and technology node as long as the supplier’s products demonstrate performance to specification in the installed base. Accordingly, we may experience difficulty in selling to a given customer if that customer has qualified a competitor’s equipment. We Lam Research Corporation 2026 10-K 10 Table of Contents must also continue to meet the expectations of our installed base of customers through the delivery of high-quality and cost-efficient spare parts in the presence of competition from third-party spare parts providers. We face significant competition with all of our products and services. Our primary competitor in the dielectric and metals deposition market is Applied Materials, Inc. For ALD and PECVD, we also compete against ASM International and Wonik IPS. In the etch market, our primary competitors are Applied Materials, Inc.; Hitachi, Ltd.; and Tokyo Electron, Ltd., and our primary competitors in the wet clean market are Screen Holding Co., Ltd.; Semes Co., Ltd.; and Tokyo Electron, Ltd. We face competition from a number of established and emerging equipment companies in the industry. We expect our competitors to continue to improve the design and performance of their current products and processes, to introduce new products and processes with enhanced price/performance characteristics, and to provide more comprehensive offerings of products. If our competitors",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Tokyo Electron, Ltd. is identified as one of Lam Research Corporation's primary competitors in the etch and wet clean markets."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "Cirrus Logic, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-05-21",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/crus-20260328.htm",
+   "other": "AKM Semiconductor Inc.",
+   "type": "SUPPLIER",
+   "provides": "semiconductor components",
+   "sentence": "Our primary competitors include, but are not limited to, AKM Semiconductor Inc.",
+   "passage": "launch and production ramp. Competition Markets for our products are highly competitive, and we expect that competition will continue to increase. Our ability to compete effectively and to expand our business will depend on our ability to continue to recruit key engineering talent, execute on new product developments, partner with customers to create compelling products for their applications and provide cost efficient versions of existing products. We compete with other semiconductor suppliers that offer standard semiconductors, application-specific standard products and fully customized ICs, including embedded software, chip and board-level products. While no single company competes with us across all our product lines, we face significant competition in all markets where our products are available. We expect to face additional competition from new entrants in our markets, which may include both large domestic and international IC manufacturers, as well as smaller, emerging companies. Our primary competitors include, but are not limited to, AKM Semiconductor Inc., Analog Devices Inc., QUALCOMM Incorporated, Realtek Semiconductor Corporation, Renesas Electronics Corporation, Shanghai Awinic Technology Co., Ltd., Shenzhen Goodix Technology Co, Ltd., Skyworks Solutions Inc., ST Microelectronics N.V., Synaptics Incorporated and Texas Instruments, Inc. The principal competitive factors in our markets include: time to market; quality of hardware/software design and end-market systems expertise; price; product performance, features, quality and compatibility with",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage identifies AKM Semiconductor Inc. as one of Cirrus Logic's primary competitors."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "Cirrus Logic, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-05-21",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/772406/000077240626000018/crus-20260328.htm",
+   "other": "QUALCOMM Incorporated",
+   "type": "CUSTOMER",
+   "provides": "audio chips",
+   "sentence": "Our primary competitors include, but are not limited to, AKM Semiconductor Inc., Analog Devices Inc., QUALCOMM Incorporated",
+   "passage": "launch and production ramp. Competition Markets for our products are highly competitive, and we expect that competition will continue to increase. Our ability to compete effectively and to expand our business will depend on our ability to continue to recruit key engineering talent, execute on new product developments, partner with customers to create compelling products for their applications and provide cost efficient versions of existing products. We compete with other semiconductor suppliers that offer standard semiconductors, application-specific standard products and fully customized ICs, including embedded software, chip and board-level products. While no single company competes with us across all our product lines, we face significant competition in all markets where our products are available. We expect to face additional competition from new entrants in our markets, which may include both large domestic and international IC manufacturers, as well as smaller, emerging companies. Our primary competitors include, but are not limited to, AKM Semiconductor Inc., Analog Devices Inc., QUALCOMM Incorporated, Realtek Semiconductor Corporation, Renesas Electronics Corporation, Shanghai Awinic Technology Co., Ltd., Shenzhen Goodix Technology Co, Ltd., Skyworks Solutions Inc., ST Microelectronics N.V., Synaptics Incorporated and Texas Instruments, Inc. The principal competitive factors in our markets include: time to market; quality of hardware/software design and end-market systems expertise; price; product performance, features, quality and compatibility with standards; access to advanced process and",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Cirrus Logic lists QUALCOMM Incorporated among its primary competitors."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "competitor",
+   "writer": "Advanced Micro Devices, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-02-04",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+   "other": "Broadcom Inc. (also written \"Broadcom Corporation\")",
+   "type": "CUSTOMER",
+   "provides": "programmable logic",
+   "sentence": "competitors such as Altera, Lattice Semiconductor Corporation and Microsemi Corporation, and from ASSP vendors such as Broadcom Corporation, Marvell Technology Group, Ltd",
+   "passage": "primary competitor in the supply of CPUs and APUs is Intel. A variety of companies provide or have developed Arm-based microprocessors and platforms which could lead to further adoption of Arm-based PC solutions. 9 Table of Contents Our principal competitor in the supply of discrete graphics is Nvidia, who is the discrete GPU market share leader, and Intel, who manufactures and sells integrated graphics processors and gaming-focused discrete GPUs. With respect to integrated graphics, higher unit shipments of our APUs and Intel’s integrated graphics may drive computer manufacturers to reduce the number of systems they build paired with discrete graphics components, particularly for notebooks, because they may offer satisfactory graphics performance for most mainstream PC users at a lower cost. We are the market share leader in semi-custom game console products, where graphics performance is critical. Competition in Embedded Segment We expect continued competition from our primary FPGA competitors such as Altera, Lattice Semiconductor Corporation and Microsemi Corporation, and from ASSP vendors such as Broadcom Corporation, Marvell Technology Group, Ltd., Analog Devices, Texas Instruments Incorporated, NXP Semiconductors N.V., Qualcomm Incorporated and NVIDIA. In addition, we expect continued competition from the ASIC market, which has been ongoing since the inception of FPGAs. Intel is our main competitor for embedded CPUs. Other competitors include manufacturers of high-density programmable logic products characterized by FPGA-type architectures; high-volume and low-cost FPGAs as programmable replacements for ASICs and ASSPs; ASICs and ASSPs",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage identifies Broadcom Corporation as an ASSP vendor from which AMD expects continued competition in the Embedded Segment."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "planned",
+   "writer": "Sony Group Corporation",
+   "form": "20-F",
+   "filingDate": "2026-06-18",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/313838/000119312526274893/d28719d20f.htm",
+   "other": "Taiwan Semiconductor Manufacturing Company Limited (also written \"TSMC\")",
+   "type": "SUPPLIER",
+   "provides": "image sensors",
+   "sentence": "SSS signed a non-binding MOU with TSMC to form a strategic partnership for the development and manufacturing of next- generation image sensors.",
+   "passage": "library, and integrated ecosystem. 4. Strengthening Competitiveness in Sensor Technology that Underpins Creativity Building on the deep expertise cultivated over many years in the analog domain, Sony is strengthening the competitiveness of its sensor technology with a view to mid- to long-term business growth and value creation, while delivering the best possible imaging experience for its customers. • Sony’s image sensors have advanced to a phase beyond competition solely based on specifications. By leveraging deep analog-domain expertise cultivated over many years across areas such as pixel structure, stacking technologies, circuitry, and process technologies, Sony has established difficult-to-replicate strength that underpins its sustainable competitive advantage. • In the mobile image sensor business, which is the core of the I&SS segment, Sony is pursuing enhanced performance through the development of higher density enabled by finer process technologies and stacking technologies. • SSS signed a non-binding MOU with TSMC to form a strategic partnership for the development and manufacturing of next- generation image sensors. Under this partnership, the two companies intend to establish a joint venture, with Sony as the majority and controlling shareholder, and plan to conduct studies toward setting up development and production lines utilizing Sony’s newly constructed fab in Koshi City, Kumamoto Prefecture. 5. Navigating a Changing World Sony is carefully managing technological and geopolitical disruptions that are impacting international supply chains, including the current memory semiconductor shortage driven by surging",
+   "answer": {
+    "reading": "PLANNED",
+    "reason": "Sony's subsidiary SSS signed a non-binding MOU with TSMC to form a strategic partnership under which they intend to establish a joint venture and plan to conduct studies toward setting up development and production lines."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "joint venture",
+   "writer": "Sony Group Corporation",
+   "form": "20-F",
+   "filingDate": "2026-06-18",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/313838/000119312526274893/d28719d20f.htm",
+   "other": "TCL Electronics Holdings Limited (also written \"TCL\")",
+   "type": "CUSTOMER",
+   "provides": "home entertainment products",
+   "sentence": "As of the date of this report, mergers, acquisitions and joint ventures for which Sony has already signed definitive agreements and whose completions are subject to regulatory approvals include the establishment of a joint venture through a strategic partnership in the home entertainment field between Sony Corporation and TCL Electronics Holdings Limited and its subsidiaries (collectively, “TCL”), for which definitive agreements were signed in March 2026.",
+   "passage": "additional equity interest in Peanuts Holdings LLC (“Peanuts Holdings”). In some cases, the completion of mergers, acquisitions and joint ventures is subject to certain closing conditions, including regulatory approvals. As a result of anti-trust laws and regulations and anti-trust regulatory authorities becoming stricter, regulatory reviews following the signing of a definitive agreement may take longer than expected, or Sony may fail to obtain regulatory approvals. Also, closing conditions for mergers and acquisitions, which are set forth in definitive agreements, may not be satisfied due to unanticipated changes in - 7 - Table of Contents the strategies or financial conditions of the organizations to be merged or acquired, leading to mergers and acquisitions not proceeding as expected, or the definitive agreements being changed or terminated. As a result, Sony may lose business opportunities and may not realize some or all of the initially expected results of mergers and acquisitions. As of the date of this report, mergers, acquisitions and joint ventures for which Sony has already signed definitive agreements and whose completions are subject to regulatory approvals include the establishment of a joint venture through a strategic partnership in the home entertainment field between Sony Corporation and TCL Electronics Holdings Limited and its subsidiaries (collectively, “TCL”), for which definitive agreements were signed in March 2026. While Sony performs a comprehensive analysis and evaluation of merged or acquired organizations prior to their merger or acquisition from various perspectives such as technology, accounting, tax, finance, human resources (“HR”), and legal, Sony’s financial results may be adversely affected by factors including the significant cost of the acquisition and/or integration expenses, IT and information security risks introduced from newly merged or acquired organizations, failure to achieve initially",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Sony Corporation and TCL signed definitive agreements in March 2026 to establish a joint venture through a strategic partnership in the home entertainment field."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "investment",
+   "writer": "Sony Group Corporation",
+   "form": "20-F",
+   "filingDate": "2026-06-18",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/313838/000119312526274893/d28719d20f.htm",
+   "other": "Bandai Namco Holdings Inc. (also written \"Bandai Namco\")",
+   "type": "CUSTOMER",
+   "provides": "entertainment content",
+   "sentence": "In the fiscal year ended March 31, 2026, Sony acquired shares of Bandai Namco Holdings Inc. (“Bandai Namco”) and acquired an additional equity interest in Peanuts Holdings LLC (“Peanuts Holdings”)",
+   "passage": "application software for new products, quality control and the concentration of consumer demand in the year-end holiday season. If Sony cannot achieve the expected results from its investment in R&D, adequately manage frequent introductions of new products and services and obtain consumer acceptance of its new products and services, or if Sony is not successful in implementing its integration strategy, Sony’s reputation, operating results and financial condition may be adversely impacted. Sony’s strategic initiatives, including acquisitions, joint ventures, investments, capital expenditures and restructurings, may not be successful in achieving their strategic objectives. Sony actively engages in acquisitions, joint ventures, capital expenditures and other strategic investments to acquire new technologies, efficiently develop new businesses and enhance its business competitiveness. For example, in the fiscal year ended March 31, 2025, Sony acquired additional shares of KADOKAWA Corporation. In the fiscal year ended March 31, 2026, Sony acquired shares of Bandai Namco Holdings Inc. (“Bandai Namco”) and acquired an additional equity interest in Peanuts Holdings LLC (“Peanuts Holdings”). In some cases, the completion of mergers, acquisitions and joint ventures is subject to certain closing conditions, including regulatory approvals. As a result of anti-trust laws and regulations and anti-trust regulatory authorities becoming stricter, regulatory reviews following the signing of a definitive agreement may take longer than expected, or Sony may fail to obtain regulatory approvals. Also, closing conditions for mergers and acquisitions, which are set forth in definitive agreements,",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "In the fiscal year ended March 31, 2026, Sony acquired shares of Bandai Namco Holdings Inc."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "investment",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "Intel Corporation (also written \"Intel\")",
+   "type": "CUSTOMER",
+   "provides": "accelerated computing",
+   "sentence": "The change in Other income, net, compared to fiscal year 2025, was primarily driven by unrealized gains in non-marketable and publicly-held equity securities, including gains from our previously announced investment in Intel’s common stock.",
+   "passage": "compensation increases and a 79% increase in compute and infrastructure. 41 Table of Contents The increases in sales, general and administrative expenses for fiscal year 2026 were primarily driven by compensation and benefits expense, including stock-based compensation, reflecting employee growth and compensation increases. Total Other Income, Net Year Ended Jan 25, 2026 Jan 26, 2025 $ Change ($ in millions) Interest income $ 2,300 $ 1,786 $ 514 Interest expense (259) (247) (12) Other income, net 9,022 1,034 7,988 Total other income, net $ 11,063 $ 2,573 $ 8,490 The increase in interest income was primarily due to growth in cash, cash equivalents, and debt securities. Interest expense is primarily comprised of coupon interest and debt discount amortization related to our notes. Other income, net primarily consists of realized or unrealized gains and losses from investments in non-marketable equity securities, publicly-held equity securities, and the impact of changes in foreign currency rates. The change in Other income, net, compared to fiscal year 2025, was primarily driven by unrealized gains in non-marketable and publicly-held equity securities, including gains from our previously announced investment in Intel’s common stock. Refer to Note 7 and 8 of the Notes to the Consolidated Financial Statements in Part IV, Item 15 of this Annual Report on Form 10-K for additional information regarding our non-marketable equity securities. Income Taxes Income tax expense was $21.4 billion and $11.1 billion for fiscal years 2026 and 2025, respectively. Income tax as a percentage of income before income tax was an expense of 15.1% and 13.3% for fiscal years 2026 and 2025, respectively. The effective tax rate increased primarily due",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "The passage notes that the increase in other income was primarily driven by unrealized gains in equity securities, including gains from NVIDIA's previously announced investment in Intel’s common stock."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "acquired",
+   "writer": "Broadcom Inc.",
+   "form": "10-K",
+   "filingDate": "2025-12-18",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1730168/000173016825000121/avgo-20251102.htm",
+   "other": "VMware, Inc. (also written \"VMware\")",
+   "type": "SUPPLIER",
+   "provides": "virtualization software",
+   "sentence": "On November 22, 2023, we acquired VMware, Inc. (“VMware”) in a cash-and-stock transaction (the “VMware Merger”)",
+   "passage": "•anticipated or actual demand for AI-related products and solutions; •our distributors’ product inventory and end-user demand; •the rate at which our present and future customers and end-users adopt our solutions in our target markets, including our AI-related solutions, and the rate at which our customers' products that include our solutions are accepted in their markets; •the shift to cloud-based information technology solutions and services, such as hyperscale computing, which may adversely affect the timing and volume of sales of our solutions for use in traditional enterprise data centers; and •the timing, rescheduling or cancellation of expected customer orders. 33 Table of Contents Fiscal Year Highlights Highlights during fiscal year 2025 include the following: •We generated $27,537 million of cash from operations. •We paid $11,142 million in cash dividends. •We repurchased $2,450 million of common stock. Acquisitions and Divestitures Acquisition of VMware and Divestiture of EUC On November 22, 2023, we acquired VMware, Inc. (“VMware”) in a cash-and-stock transaction (the “VMware Merger”). The VMware stockholders received approximately $30,788 million in cash and 544 million shares of Broadcom common stock with a fair value of $53,398 million. In addition, we assumed all outstanding VMware restricted stock unit (“RSU”) awards and performance stock unit awards held by continuing employees. The assumed awards were converted into RSU awards for shares of Broadcom common stock. All outstanding RSU awards held by non-employee directors and in-the-money VMware stock options were accelerated",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "On November 22, 2023, Broadcom acquired VMware, Inc. in a cash-and-stock transaction."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "someone else's deal",
+   "writer": "Advanced Micro Devices, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-02-04",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+   "other": "Nvidia",
+   "type": "SUPPLIER",
+   "provides": "data center products",
+   "sentence": "For example, in September 2025, Nvidia announced a partnership and investment in Intel to partner on new data center and client platform products.",
+   "passage": "aggressive activities have reduced and may reduce our unit sales and average selling prices for many of our products, adversely affecting our business. Similarly, Nvidia Corporation (Nvidia) leverages its market position in data center GPU, financial resources, and proprietary software ecosystem to promote its systems and influences customers who do business with us. Our competitors’ business practices, including allocation strategies, pricing actions, product mix and introduction schedules, licensing terms, marketing arrangements, product bundling strategies, lack of software inoperability and business acquisitions can limit customers’ ability to choose alternative products, including ours. This may limit our market share and decrease our margins and profitability, which may have a material adverse effect on our business. In addition, strategic partnerships, acquisitions and business collaborations by and between our competitors may increase competition and adversely affect our business. For example, in September 2025, Nvidia announced a partnership and investment in Intel to partner on new data center and client platform products. This partnership may result in increased competition and pricing pressure for our products or could prevent us from participating in other opportunities, which could materially adversely impact our business, financial condition and margins. The semiconductor industry is highly cyclical and has experienced severe downturns that have materially adversely affected, and may continue to materially adversely affect, our business in the future. The semiconductor industry is highly cyclical and has experienced",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage identifies Nvidia as a competitor whose market position, practices, and partnership with Intel increase competition and pricing pressure against AMD."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "someone else's deal",
+   "writer": "Advanced Micro Devices, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-02-04",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/2488/000000248826000018/amd-20251227.htm",
+   "other": "Intel Corporation (also written \"Intel\")",
+   "type": "CUSTOMER",
+   "provides": "data center products",
+   "sentence": "For example, in September 2025, Nvidia announced a partnership and investment in Intel to partner on new data center and client platform products.",
+   "passage": "aggressive activities have reduced and may reduce our unit sales and average selling prices for many of our products, adversely affecting our business. Similarly, Nvidia Corporation (Nvidia) leverages its market position in data center GPU, financial resources, and proprietary software ecosystem to promote its systems and influences customers who do business with us. Our competitors’ business practices, including allocation strategies, pricing actions, product mix and introduction schedules, licensing terms, marketing arrangements, product bundling strategies, lack of software inoperability and business acquisitions can limit customers’ ability to choose alternative products, including ours. This may limit our market share and decrease our margins and profitability, which may have a material adverse effect on our business. In addition, strategic partnerships, acquisitions and business collaborations by and between our competitors may increase competition and adversely affect our business. For example, in September 2025, Nvidia announced a partnership and investment in Intel to partner on new data center and client platform products. This partnership may result in increased competition and pricing pressure for our products or could prevent us from participating in other opportunities, which could materially adversely impact our business, financial condition and margins. The semiconductor industry is highly cyclical and has experienced severe downturns that have materially adversely affected, and may continue to materially adversely affect, our business in the future. The semiconductor industry is highly cyclical and has experienced",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage identifies Intel as a competitor whose partnership and collaboration with Nvidia may increase competition and pricing pressure on the company's products."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "biography",
+   "writer": "STMicroelectronics N.V.",
+   "form": "20-F",
+   "filingDate": "2026-02-26",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/932787/000093278726000009/stm-20251231.htm",
+   "other": "Intel Corporation (also written \"Intel\")",
+   "type": "CUSTOMER",
+   "provides": "memory products",
+   "sentence": "In 2008-2010, he served as vice president and supply chain general manager at ST’s memory joint venture with Intel.",
+   "passage": "from the University of Modena, Italy, and holds an MBA from SDA Bocconi School of Management in Milan, Italy. Fabio Gualandris Fabio Gualandris is our President, Quality, Manufacturing, and Technology and has held this position since July 2023. He was responsible for the company’s back-end manufacturing and technology organization since 2016 and also led the Company’s testing council, alongside its manufacturing strategy in Asia and efforts in system-in-package technology. Mr. Gualandris is a member of ST’s Executive Committee. Mr. Gualandris joined SGS Microelettronica (now ST) R&D in 114 1984. He became R&D director of operations in 1989 and became automotive business unit director in 1996. After two years as president and chief executive officer of Semitool, he rejoined ST in 2000 as Group vice president responsible for memory products including the RAM/PSRAM and automotive flash. In 2005, Mr. Gualandris was appointed chief executive officer of ST Incard, an ST smart-card subsidiary. In 2008-2010, he served as vice president and supply chain general manager at ST’s memory joint venture with Intel. In 2011, Mr. Gualandris was appointed ST’s Executive Vice President, Product Quality Excellence. Mr. Gualandris has authored several technical and managerial papers and holds multiple international patents. He serves as chairman of Sanan ST JV, ST's manufacturing joint venture in China. Fabio Gualandris was born in Bergamo, Italy, in 1959. He holds a master’s degree in Physics from the University of Milan. Steven Rose Steven Rose is our President, Legal Counsel and Public Affairs, and has held this",
+   "answer": {
+    "reading": "NOT_STATED",
+    "reason": "The passage mentions that an executive served at ST's memory joint venture with Intel from 2008 to 2010, but it does not state any relationship between the two companies today."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "ended partner",
+   "writer": "Taiwan Semiconductor Manufacturing Company Limited",
+   "form": "20-F",
+   "filingDate": "2026-04-16",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1046179/000162828026025362/tsm-20251231.htm",
+   "other": "Philips",
+   "type": "CUSTOMER",
+   "provides": "wafers",
+   "sentence": "Following the 2006 assignment by Philips of its rights and obligations to NXP, and the subsequent purchase of EDB’s shares by NXP and us, our current ownership in SSMC is 38.8%, with NXP holding the remaining 61.2%.",
+   "passage": "integrated DRAM manufacturer. VIS commenced commercial production in 1995 and listed its shares on the Taipei Exchange in March 1998. In 2004, VIS completely terminated its DRAM production and became a dedicated foundry company. As of February 28, 2026, we owned approximately 27.6% of the equity interest in VIS. Pursuant to the terms of a manufacturing agreement between both parties, VIS was obligated to use its best commercial efforts to manufacture wafers at specified yield rates for us up to a fixed amount of reserved capacity per month, and TSMC was required to use its best commercial efforts to maintain utilization of such reserved capacity. In 2025, we had total purchases of NT$878 million (US$28 million) from VIS, representing 0.1% of our total cost of revenue. Systems on Silicon Manufacturing Company Pte. Ltd. (“SSMC”) SSMC is a joint venture in Singapore that we established with Philips and EDB to produce integrated circuits by means of advanced submicron manufacturing processes. Following the 2006 assignment by Philips of its rights and obligations to NXP, and the subsequent purchase of EDB’s shares by NXP and us, our current ownership in SSMC is 38.8%, with NXP holding the remaining 61.2%. SSMC’s business is exclusively dedicated to the manufacturing of wafers for us, our subsidiaries, NXP and its subsidiaries. We and NXP have the right to purchase up to 100% of SSMC’s annual capacity and are required in the aggregate to purchase at least 70% of its capacity. Pursuant to a technology cooperation agreement entered into between us and SSMC in 1999, SSMC bases at least a major part of its production on processes compatible with those used in our metal oxide semiconductor integrated circuits",
+   "answer": {
+    "reading": "NOT_STATED",
+    "reason": "Although the passage notes that the Company previously established the SSMC joint venture with Philips, Philips assigned its rights and obligations to NXP in 2006, leaving no stated current relationship between Philips and the Company."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "reversed",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "SK Hynix Inc.",
+   "type": "CUSTOMER",
+   "provides": "memory",
+   "sentence": "We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.",
+   "passage": "products, such as memory, substrates, and a variety of components, our suppliers are responsible for procurement of most raw materials used in the production of our products. As a result, we can focus our resources on product design, quality assurance, marketing, and customer support. In periods of growth, we may place non-cancellable inventory orders for certain product components in advance of our historical lead times, pay premiums, or provide deposits to secure future supply and capacity and may need to continue to do so. We have expanded our supplier relationships to build redundancy and resilience in our operations to provide long-term manufacturing capacity aligned with growing customer demand. While currently our supply chain is mainly concentrated in Asia, we are expanding into the U.S. and Latin America. We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers. We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung. We utilize CoWoS technology for semiconductor packaging. We engage with independent subcontractors and contract manufacturers such as Hon Hai Precision Industry Co., Ltd., Wistron Corporation, and Fabrinet to perform assembly, testing and packaging of our final products. Competition The market for our products is intensely competitive and is characterized by rapid technological change and evolving industry standards. We believe that the principal competitive factors in this market are performance,",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "NVIDIA Corporation states that it purchases memory from SK Hynix Inc."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "reversed",
+   "writer": "NVIDIA Corporation",
+   "form": "10-K",
+   "filingDate": "2026-02-25",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
+   "other": "Micron Technology, Inc.",
+   "type": "CUSTOMER",
+   "provides": "memory",
+   "sentence": "We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.",
+   "passage": "products, such as memory, substrates, and a variety of components, our suppliers are responsible for procurement of most raw materials used in the production of our products. As a result, we can focus our resources on product design, quality assurance, marketing, and customer support. In periods of growth, we may place non-cancellable inventory orders for certain product components in advance of our historical lead times, pay premiums, or provide deposits to secure future supply and capacity and may need to continue to do so. We have expanded our supplier relationships to build redundancy and resilience in our operations to provide long-term manufacturing capacity aligned with growing customer demand. While currently our supply chain is mainly concentrated in Asia, we are expanding into the U.S. and Latin America. We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited, or TSMC, and Samsung Electronics Co., Ltd., or Samsung, to produce our semiconductor wafers. We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung. We utilize CoWoS technology for semiconductor packaging. We engage with independent subcontractors and contract manufacturers such as Hon Hai Precision Industry Co., Ltd., Wistron Corporation, and Fabrinet to perform assembly, testing and packaging of our final products. Competition The market for our products is intensely competitive and is characterized by rapid technological change and evolving industry standards. We believe that the principal competitive factors in this market are performance,",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "NVIDIA Corporation states that it purchases memory from Micron Technology, Inc."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "reversed",
+   "writer": "Tesla, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-01-29",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm",
+   "other": "Panasonic",
+   "type": "CUSTOMER",
+   "provides": "lithium-ion battery cells",
+   "sentence": "Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells.",
+   "passage": "and there is no guarantee that they will generate additional sales or installations of our products, or that we will be able to avoid cost overruns or be able to hire additional personnel to support them. As we expand, we will also need to ensure our compliance with regulatory requirements in various jurisdictions applicable to the sale, installation and servicing of our products, the sale or dispatch of electricity related to our energy products and the operation of Superchargers. If we fail to manage our growth effectively, it may harm our brand, business, prospects, financial condition and operating results. We will need to maintain and significantly grow our access to battery cells, including through the development and manufacture of our own cells, and control our related costs. We are dependent on the continued supply of lithium-ion battery cells for our vehicles and energy storage products, and we will require substantially more cells to grow our business according to our plans. Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells. We have to date fully qualified only a very limited number of such suppliers and have limited flexibility in changing suppliers. Any disruption in the supply of battery cells from our suppliers could limit production of our vehicles and energy storage products. In the long term, we intend to supplement cells from our suppliers with cells manufactured by us, which we believe will be more efficient, manufacturable at greater volumes and more cost-effective than currently available cells. However,",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Tesla states that it currently relies on suppliers such as Panasonic for lithium-ion battery cells."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "reversed",
+   "writer": "Lam Research Corporation",
+   "form": "10-K",
+   "filingDate": "2026-08-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/707549/000070754926000037/lrcx-20260628.htm",
+   "other": "Micron Technology, Inc.",
+   "type": "SUPPLIER",
+   "provides": "memory",
+   "sentence": "Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company.",
+   "passage": "business, financial position, and results of operations and cash flows. For geographical reporting, revenue is attributed to the geographic location in which the customers’ facilities are located. Refer to Note 19 of our Consolidated Financial Statements, included in Part II, Item 8 of this 2026 Form 10-K, for the attribution of revenue by geographic region. Long-lived Assets Refer to Note 19 of our Consolidated Financial Statements, included in Part II, Item 8 of this 2026 Form 10-K, for information concerning the geographic locations of long-lived assets. Customers Our customers include many of the world’s leading semiconductor manufacturers. Customers continue to establish joint ventures, alliances, and licensing arrangements which have the potential to positively or negatively impact our competitive position and market opportunities. Refer to Note 9 of our Consolidated Financial Statements, included in Part II, Item 8 of this report, for information concerning customer concentrations. Our most significant customers during the fiscal years ending June 28, 2026, June 29, 2025, and June 30, 2024 included Micron Technology, Inc., Samsung Electronics Company, Ltd., SK hynix Inc., and Taiwan Semiconductor Manufacturing Company. A material reduction in orders from our customers could adversely affect our results of operations and projected financial condition. Our business depends upon the expenditures of semiconductor manufacturers. Semiconductor manufacturers’ businesses, in turn, depend on many factors, including their economic capability, the current and anticipated market demand for ICs, and the availability of equipment capacity to support that demand. Manufacturing Our manufacturing operations mainly consist of assembling",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Micron Technology, Inc. is identified as one of the Company's most significant customers during the fiscal year ending June 28, 2026."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "reversed",
+   "writer": "QUALCOMM Incorporated",
+   "form": "10-K",
+   "filingDate": "2025-11-05",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/804328/000080432825000085/qcom-20250928.htm",
+   "other": "Apple Inc. (also written \"Apple\")",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "In fiscal 2025, revenues from Apple, Samsung and Xiaomi each comprised 10% or more of our consolidated revenues",
+   "passage": "subsidiaries. We have developed our corporate structure in order to address various legal, regulatory, tax, contractual compliance, operational and other matters. Substantially all of our products and services businesses, including QCT, and substantially all of our engineering and research and development functions, are operated by Qualcomm Technologies, Inc. (QTI), a subsidiary of QUALCOMM Incorporated, and QTI’s subsidiaries. QTL is operated by QUALCOMM Incorporated, which owns the vast majority of our patent portfolio. Snapdragon and Qualcomm branded products are products of QTI and/or its subsidiaries. Qualcomm patents are licensed by QUALCOMM Incorporated. Neither QTI nor any of its subsidiaries has any right, power or authority to grant any licenses or other rights under or to any patents owned by QUALCOMM Incorporated. Revenue Concentrations and Significant Customers A small number of customers/licensees historically have accounted for a significant portion of our consolidated revenues. In fiscal 2025, revenues from Apple, Samsung and Xiaomi each comprised 10% or more of our consolidated revenues. Additional information regarding revenue concentrations is provided in this Annual Report in “Notes to Consolidated Financial Statements, Note 2. Composition of Certain Financial Statement Items” and “Notes to Consolidated Financial Statements, Note 8. Segment Information.” Research and Development We compete in industries that are characterized by rapid technological change, evolving industry standards and frequent new product introductions, requiring a continuous effort to enhance existing products",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "In fiscal 2025, Apple was a significant customer whose revenues accounted for 10% or more of Qualcomm's consolidated revenues."
+   }
+  },
+  {
+   "set": "design",
+   "label": false,
+   "note": "reversed",
+   "writer": "KLA Corp",
+   "form": "10-K",
+   "filingDate": "2026-08-06",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/319201/000031920126000027/klac-20260630.htm",
+   "other": "Taiwan Semiconductor Manufacturing Company Limited (also written \"TSMC\")",
+   "type": "SUPPLIER",
+   "provides": "wafers",
+   "sentence": "For the fiscal years ended June 30, 2026, 2025 and 2024, the following customers each accounted for more than 10% of total revenues, primarily in the Semiconductor Process Control segment: Year Ended June 30, 2026 2025 2024 Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited",
+   "passage": "cycles in the semiconductor industry, we have remained committed to significant engineering efforts toward both product improvement and new product development to enhance our competitive position. Customers We count among our largest customers the leading semiconductor, semiconductor-related and electronic device manufacturers in Asia, the U.S. and Europe. Our future performance depends, in part, on our ability to continue to compete successfully in Asia, one of the largest markets for our equipment. Our business depends on capital expenditures from these manufacturers which, in turn, depend on many factors including general economic conditions, anticipated market demand, evolving government regulations and capacity constraints. Our ability to compete in this region depends on the continuation of favorable trading relationships between countries in the region and the U.S., and our continuing ability to maintain satisfactory relationships with leading semiconductor companies in the region. For the fiscal years ended June 30, 2026, 2025 and 2024, the following customers each accounted for more than 10% of total revenues, primarily in the Semiconductor Process Control segment: Year Ended June 30, 2026 2025 2024 Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited Taiwan Semiconductor Manufacturing Company Limited 2 Table of Contents Sales, Service and Marketing Our sales, service and marketing efforts aim to build deep long-term relationships with our customers. We focus on providing comprehensive resources for the full breadth of process control, process-enabling and yield management solutions for manufacturing and testing wafers and reticles, a wide variety of ICs, PCBs, IC substrates and packaging as well as general materials research. Our revenues are derived primarily from product sales and related",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Taiwan Semiconductor Manufacturing Company Limited is identified as a customer that accounted for more than 10% of KLA Corp's total revenues for the fiscal years ended June 30, 2026, 2025, and 2024."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": true,
+   "note": "fiscal, through distributors",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Apple Inc. (also written \"Apple\")",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "In each of the fiscal years ended October 3, 2025 (“fiscal 2025”), September 27, 2024 (“fiscal 2024”), and September 29, 2023 (“fiscal 2023”), Apple, through sales to multiple distributors and contract manufacturers for multiple applications including smartphones, tablets, desktop and notebook computers, watches, and other devices, constituted more than ten percent of our net revenue.",
+   "passage": "also employ a collaborative approach in developing these relationships by combining the support of our design teams, applications engineers, manufacturing personnel, sales and marketing staff, and senior management. Lastly, we leverage our customer relationships with cross-selling opportunities across product lines in order to maximize revenue. We believe that maintaining frequent and interactive contact with our customers is paramount to our continuous efforts to provide world-class sales and service support. By listening and responding to feedback, we are able to mobilize resources to raise our level of customer satisfaction, improve our ability to anticipate future product needs, and enhance our understanding of key market dynamics. We are confident that diligently following this path positions us to participate in numerous opportunities for growth in the future. Customer Concentration A small number of OEMs historically has accounted for a significant portion of our net revenue. In each of the fiscal years ended October 3, 2025 (“fiscal 2025”), September 27, 2024 (“fiscal 2024”), and September 29, 2023 (“fiscal 2023”), Apple, through sales to multiple distributors and contract manufacturers for multiple applications including smartphones, tablets, desktop and notebook computers, watches, and other devices, constituted more than ten percent of our net revenue. Further, the Company’s three largest accounts receivable balances comprised 82% and 80% of aggregate gross accounts receivable as of 9 Table of Contents October 3, 2025 and September 27, 2024, respectively. For further information regarding customer concentrations, see Note 14 to Item 8 of this Annual Report on Form 10-K. Intellectual Property and Proprietary Rights We own or have a license to use numerous United States and foreign patents and patent applications related to our products and our",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Under the customer concentration section, the passage notes that Apple constituted more than ten percent of the company's net revenue in fiscal 2025 through sales across multiple product applications."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": true,
+   "note": "customer list",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Amazon",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi",
+   "passage": "semiconductor products and solutions for numerous applications, including aerospace, automotive, broadband, cellular infrastructure, connected home, defense, entertainment and gaming, industrial, medical, smartphone, tablet, and wearables. Over the past two decades, Skyworks has made important investments to address key network technologies, from cellular to advanced Wi-Fi ® , enhanced GPS, and Bluetooth ® , among others. Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "The passage states that Amazon is one of Skyworks Solutions, Inc.'s key customers."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": true,
+   "note": "customer list",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Tesla",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi",
+   "passage": "semiconductor products and solutions for numerous applications, including aerospace, automotive, broadband, cellular infrastructure, connected home, defense, entertainment and gaming, industrial, medical, smartphone, tablet, and wearables. Over the past two decades, Skyworks has made important investments to address key network technologies, from cellular to advanced Wi-Fi ® , enhanced GPS, and Bluetooth ® , among others. Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Skyworks Solutions, Inc. identifies Tesla as one of its key customers."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": true,
+   "note": "customer list",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Microsoft",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi",
+   "passage": "semiconductor products and solutions for numerous applications, including aerospace, automotive, broadband, cellular infrastructure, connected home, defense, entertainment and gaming, industrial, medical, smartphone, tablet, and wearables. Over the past two decades, Skyworks has made important investments to address key network technologies, from cellular to advanced Wi-Fi ® , enhanced GPS, and Bluetooth ® , among others. Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Skyworks Solutions, Inc. explicitly identifies Microsoft as one of its key customers."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": true,
+   "note": "customer list",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Samsung",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi",
+   "passage": "semiconductor products and solutions for numerous applications, including aerospace, automotive, broadband, cellular infrastructure, connected home, defense, entertainment and gaming, industrial, medical, smartphone, tablet, and wearables. Over the past two decades, Skyworks has made important investments to address key network technologies, from cellular to advanced Wi-Fi ® , enhanced GPS, and Bluetooth ® , among others. Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "The passage lists Samsung among the company's key customers."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": true,
+   "note": "sole supplier, also a joint venture",
+   "writer": "Ford Motor Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/37996/000003799626000015/f-20251231.htm",
+   "other": "Ford Otomotiv Sanayi Anonim Sirketi (also written \"Ford Otosan\")",
+   "type": "SUPPLIER",
+   "provides": "commercial vehicles",
+   "sentence": "Ford Otomotiv Sanayi Anonim Sirketi (“Ford Otosan”) — a joint venture in Türkiye among Ford (41%), the Koc Group of Türkiye (41%), and public investors (18%) that is the sole supplier to us of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe",
+   "passage": "SK On Co., Ltd. (“SK On”), and SK Battery America, Inc. (“SKBA,” a wholly owned subsidiary of SK On) formed to build and operate an EV battery plant in Tennessee and two EV battery plants in Kentucky to supply batteries to Ford and Ford affiliates. On December 9, 2025, Ford, SK On, SKBA and BOSK entered into a Joint Venture Disposition Agreement, pursuant to which Ford’s membership interest in BOSK will be redeemed and a Ford subsidiary will receive the two BOSK plants and related assets in Kentucky and will assume the related liabilities. Closing on the transactions contemplated by the Joint Venture Disposition Agreement is expected in the first half of 2026. • Changan Ford Automobile Corporation, Ltd. (“CAF”) — a 50/50 joint venture between Ford and Chongqing Changan Automobile Co., Ltd. (“Changan”). CAF operates four assembly plants, an engine plant, and a transmission plant in China where it produces and distributes a variety of Ford and Lincoln brand passenger vehicle models. • Ford Otomotiv Sanayi Anonim Sirketi (“Ford Otosan”) — a joint venture in Türkiye among Ford (41%), the Koc Group of Türkiye (41%), and public investors (18%) that is the sole supplier to us of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe and the sole distributor of Ford vehicles in Türkiye. Ford Otosan also manufactures Ford heavy trucks for global distribution, except for markets in the Americas, China, and Taiwan. The joint venture owns three plants, a parts distribution depot, and a research and development center in Türkiye, and a combined vehicle and engine plant in Romania. 35 Item 2. Properties (Continued) • JMC — a publicly-traded company in China with Ford (32%) and Nanchang Jiangling Investment Co., Ltd. (41%) as its",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Ford Otosan is the sole supplier to Ford of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": null,
+   "note": "joint venture formed to supply, being unwound",
+   "writer": "Ford Motor Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/37996/000003799626000015/f-20251231.htm",
+   "other": "BlueOval SK, LLC (also written \"BOSK\")",
+   "type": "SUPPLIER",
+   "provides": "EV batteries",
+   "sentence": "BlueOval SK, LLC (“BOSK”) — a 50/50 joint venture among Ford, SK On Co., Ltd. (“SK On”), and SK Battery America, Inc. (“SKBA,” a wholly owned subsidiary of SK On) formed to build and operate an EV battery plant in Tennessee and two EV battery plants in Kentucky to supply batteries to Ford and Ford affiliates.",
+   "passage": "between Ford (75%) and Diesel Song Cong One Member Limited Liability Company (a subsidiary of the Vietnam Engine and Agricultural Machinery Corporation, which, in turn, is majority owned (87.43%) by the State of Vietnam represented by the Ministry of Industry and Trade) (25%). Ford Vietnam Limited assembles and distributes a variety of Ford passenger and commercial vehicle models. The joint venture operates one plant in Vietnam. In addition to the plants that we operate directly or that are operated by our consolidated joint venture, additional plants that support our Ford Blue, Ford Model e, and Ford Pro segments are operated by unconsolidated joint ventures of which we are a partner. The most significant of those unconsolidated joint ventures are as follows: • AutoAlliance (Thailand) Co., Ltd. (“AAT”) — a 50/50 joint venture between Ford and Mazda that owns and operates a manufacturing plant in Rayong, Thailand. AAT produces Ford and Mazda products for domestic and export sales. • BlueOval SK, LLC (“BOSK”) — a 50/50 joint venture among Ford, SK On Co., Ltd. (“SK On”), and SK Battery America, Inc. (“SKBA,” a wholly owned subsidiary of SK On) formed to build and operate an EV battery plant in Tennessee and two EV battery plants in Kentucky to supply batteries to Ford and Ford affiliates. On December 9, 2025, Ford, SK On, SKBA and BOSK entered into a Joint Venture Disposition Agreement, pursuant to which Ford’s membership interest in BOSK will be redeemed and a Ford subsidiary will receive the two BOSK plants and related assets in Kentucky and will assume the related liabilities. Closing on the transactions contemplated by the Joint Venture Disposition Agreement is expected in the first half of 2026. • Changan Ford Automobile Corporation, Ltd. (“CAF”) — a 50/50 joint venture",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "BlueOval SK, LLC is a 50/50 joint venture formed to build and operate plants to supply EV batteries to Ford and Ford affiliates."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": null,
+   "note": "alliance with a fee",
+   "writer": "Bristol-Myers Squibb Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/14272/000001427226000004/bmy-20251231.htm",
+   "other": "Pfizer Inc. (also written \"Pfizer\")",
+   "type": "CUSTOMER",
+   "provides": "Eliquis",
+   "sentence": "Profits and losses are shared equally on a global basis except in certain countries where Pfizer commercializes Eliquis and pays BMS a sales-based fee.",
+   "passage": "in Acquired IPRD during 2024. BMS is also obligated to pay up to $ 7.6 billion upon the achievement of contingent development, regulatory and sales-based milestones. In 2025, BMS recorded a $ 250 million charge as Acquired IPRD following the achievement of a development milestone under the arrangement. The parties will jointly develop and commercialize BL-B01D1 in the U.S. and share in the profits and losses. SystImmune will be responsible for the development, commercialization, and manufacturing in Mainland China and will be responsible for manufacturing certain drug supplies for outside of Mainland China, where BMS will receive a royalty on net sales. BMS will be responsible for the development and commercialization in the rest of the world, where SystImmune will receive a royalty on net sales. Pfizer BMS and Pfizer jointly develop and commercialize Eliquis , an anticoagulant discovered by BMS. Pfizer funds between 50 % and 60 % of all development costs depending on the study. Profits and losses are shared equally on a global basis except in certain countries where Pfizer commercializes Eliquis and pays BMS a sales-based fee. The co-exclusive license rights granted to Pfizer in exchange for an upfront payment and potential milestone payments were recorded to Deferred income and are being amortized in Other (income)/expense, net, as Eliquis was not a commercial product at the commencement of the alliance. The upfront payment and any subsequent contingent milestone proceeds are amortized over the expected period of BMS's co-promotion obligation through the market exclusivity period. Both parties assumed certain",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "BMS and Pfizer have an alliance to jointly develop and commercialize the anticoagulant Eliquis, sharing development costs, profits, and losses."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "competitor",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Analog Devices",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments",
+   "passage": "Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as soon as reasonably practicable after we electronically file such material with, or furnish it to, the SEC. The information contained on our website",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage explicitly lists Analog Devices as one of the competitors of Skyworks Solutions, Inc."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "competitor",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Qualcomm",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments",
+   "passage": "Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as soon as reasonably practicable after we electronically file such material with, or furnish it to, the SEC. The information contained on our website",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "The passage identifies Qualcomm as one of the company's competitors."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "competitor",
+   "writer": "Micron Technology, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-10-09",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000023/mu-20260903.htm",
+   "other": "Samsung Electronics Co., Ltd.",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "We face intense competition in the semiconductor memory and storage markets from a number of companies, including Samsung Electronics Co., Ltd.; SK hynix Inc.; Kioxia Holdings Corporation; Sandisk Corporation; ChangXin Memory Technologies, Inc. (“CXMT”); and Yangtze Memory Technologies Co., Ltd.",
+   "passage": "Contracts with certain of our customers are short-term in duration. We also have strategic customer agreements structured as take-or-pay agreements, with binding commitments for specific contractually enforceable volumes over the multi-year contract terms. Pricing for our contracts is either fixed or periodically negotiated, with the majority of the strategic customer agreements having pricing that is subject to minimum and maximum bands. For all of our contracts, payments are generally due shortly after delivery. Under the strategic agreements, our customers have provided financial security in the form of cash deposits and letters of credit. In each of the last three years, approximately one-half of our total revenue was from our top ten customers. For other information regarding our concentrations and customers, see Part II, Item 8. Financial Statements and Supplementary Data, Notes to Consolidated Financial Statements, Note 21. Certain Concentrations. Competitive Conditions We face intense competition in the semiconductor memory and storage markets from a number of companies, including Samsung Electronics Co., Ltd.; SK hynix Inc.; Kioxia Holdings Corporation; Sandisk Corporation; ChangXin Memory Technologies, Inc. (“CXMT”); and Yangtze Memory Technologies Co., Ltd. (“YMTC”). Our competitors may use aggressive pricing to obtain market share. Some of our competitors are large corporations or conglomerates that may operate in jurisdictions with lower labor and compliance costs and may have a larger market share and greater resources to invest in technology, capitalize on growth opportunities, and withstand downturns in the semiconductor markets in which we compete. Consolidation of industry competitors could put us at a competitive disadvantage as our",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Micron Technology, Inc. states that it faces intense competition in the semiconductor memory and storage markets from companies including Samsung Electronics Co., Ltd."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "competitor",
+   "writer": "Micron Technology, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-10-09",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000023/mu-20260903.htm",
+   "other": "SK hynix Inc.",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "We face intense competition in the semiconductor memory and storage markets from a number of companies, including Samsung Electronics Co., Ltd.; SK hynix Inc.; Kioxia Holdings Corporation; Sandisk Corporation; ChangXin Memory Technologies, Inc. (“CXMT”); and Yangtze Memory Technologies Co., Ltd.",
+   "passage": "Contracts with certain of our customers are short-term in duration. We also have strategic customer agreements structured as take-or-pay agreements, with binding commitments for specific contractually enforceable volumes over the multi-year contract terms. Pricing for our contracts is either fixed or periodically negotiated, with the majority of the strategic customer agreements having pricing that is subject to minimum and maximum bands. For all of our contracts, payments are generally due shortly after delivery. Under the strategic agreements, our customers have provided financial security in the form of cash deposits and letters of credit. In each of the last three years, approximately one-half of our total revenue was from our top ten customers. For other information regarding our concentrations and customers, see Part II, Item 8. Financial Statements and Supplementary Data, Notes to Consolidated Financial Statements, Note 21. Certain Concentrations. Competitive Conditions We face intense competition in the semiconductor memory and storage markets from a number of companies, including Samsung Electronics Co., Ltd.; SK hynix Inc.; Kioxia Holdings Corporation; Sandisk Corporation; ChangXin Memory Technologies, Inc. (“CXMT”); and Yangtze Memory Technologies Co., Ltd. (“YMTC”). Our competitors may use aggressive pricing to obtain market share. Some of our competitors are large corporations or conglomerates that may operate in jurisdictions with lower labor and compliance costs and may have a larger market share and greater resources to invest in technology, capitalize on growth opportunities, and withstand downturns in the semiconductor markets in which we compete. Consolidation of industry competitors could put us at a competitive disadvantage as our",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Micron Technology, Inc. states that it faces intense competition in the semiconductor memory and storage markets from a number of companies, including SK hynix Inc."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "competitor",
+   "writer": "Micron Technology, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-10-09",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000023/mu-20260903.htm",
+   "other": "Sandisk Corporation",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "We face intense competition in the semiconductor memory and storage markets from a number of companies, including Samsung Electronics Co., Ltd.; SK hynix Inc.; Kioxia Holdings Corporation; Sandisk Corporation; ChangXin Memory Technologies, Inc. (“CXMT”); and Yangtze Memory Technologies Co., Ltd.",
+   "passage": "Contracts with certain of our customers are short-term in duration. We also have strategic customer agreements structured as take-or-pay agreements, with binding commitments for specific contractually enforceable volumes over the multi-year contract terms. Pricing for our contracts is either fixed or periodically negotiated, with the majority of the strategic customer agreements having pricing that is subject to minimum and maximum bands. For all of our contracts, payments are generally due shortly after delivery. Under the strategic agreements, our customers have provided financial security in the form of cash deposits and letters of credit. In each of the last three years, approximately one-half of our total revenue was from our top ten customers. For other information regarding our concentrations and customers, see Part II, Item 8. Financial Statements and Supplementary Data, Notes to Consolidated Financial Statements, Note 21. Certain Concentrations. Competitive Conditions We face intense competition in the semiconductor memory and storage markets from a number of companies, including Samsung Electronics Co., Ltd.; SK hynix Inc.; Kioxia Holdings Corporation; Sandisk Corporation; ChangXin Memory Technologies, Inc. (“CXMT”); and Yangtze Memory Technologies Co., Ltd. (“YMTC”). Our competitors may use aggressive pricing to obtain market share. Some of our competitors are large corporations or conglomerates that may operate in jurisdictions with lower labor and compliance costs and may have a larger market share and greater resources to invest in technology, capitalize on growth opportunities, and withstand downturns in the semiconductor markets in which we compete. Consolidation of industry competitors could put us at a competitive disadvantage as our",
+   "answer": {
+    "reading": "COMPETITOR",
+    "reason": "Micron Technology, Inc. lists Sandisk Corporation as one of the companies from which it faces intense competition in the semiconductor memory and storage markets."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "co-defendant in a lawsuit",
+   "writer": "Micron Technology, Inc.",
+   "form": "10-K",
+   "filingDate": "2026-10-09",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/723125/000072312526000023/mu-20260903.htm",
+   "other": "Samsung Electronics Co., Ltd.",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "On June 25, 2026, certain individuals and businesses filed a putative class action complaint in N.D. Cal. against Micron, Samsung Electronics Co., Ltd. and one of its subsidiaries, and SK hynix Inc. and one of its subsidiaries, on behalf of a putative class of purchasers of DRAM products, alleging that the defendants conspired to restrict the supply of, and fix prices for, DRAM products in violation of the Sherman Act",
+   "passage": "30, 2025, Advanced Memory Technologies, LLC (“AMT”) filed a patent infringement complaint against Micron in W.D. Tex. alleging that four U.S. patents are infringed by certain of our DRAM and NAND products. On November 4, 2025, AMT amended the complaint to allege that a fifth patent is infringed by certain of our DRAM products. The complaint seeks an injunction, damages, attorneys’ fees, and costs. On July 6, 2026, the case was transferred to the U.S. District Court for the District of Idaho (“D. Idaho”). On March 6, 2026, Nextech Semiconductor, LLC (“Nextech”) filed a patent infringement complaint against Micron and MSP in W.D. Tex. alleging that six U.S. patents are infringed by certain of our DRAM, NAND, and SSD products. The complaint seeks an injunction, damages, attorneys’ fees, and costs. The above lawsuits pertain to substantially all of our DRAM, NAND, and other memory and storage products we manufacture, which account for substantially all of our revenue. Antitrust Matters On June 25, 2026, certain individuals and businesses filed a putative class action complaint in N.D. Cal. against Micron, Samsung Electronics Co., Ltd. and one of its subsidiaries, and SK hynix Inc. and one of its subsidiaries, on behalf of a putative class of purchasers of DRAM products, alleging that the defendants conspired to restrict the supply of, and fix prices for, DRAM products in violation of the Sherman Act and various state antitrust and consumer protection laws, for a period beginning October 26, 2022. The complaint seeks damages, treble damages, injunctive relief, attorneys’ fees, and costs. On July 17, 2026, an individual filed a complaint containing similar allegations of conspiracy against the same defendants in the U.S. District Court for the District of Hawaii. 82 Table of Contents Other Matters On June 7, 2025, YMTC filed a complaint against Micron and DCI Group AZ, LLC in the U.S.",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Micron and Samsung Electronics Co., Ltd. are named as co-defendants in antitrust class action lawsuits alleging they conspired to restrict supply and fix prices for DRAM products."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "merger partner",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Qorvo",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "We and Qorvo each have termination rights under the Merger Agreement.",
+   "passage": "of Skyworks. Promptly following the closing, the Board of Directors will also designate a Chairman. Robert Bruggeworth, Qorvo’s current President, Chief Executive Officer and director, will be one of Qorvo’s designees upon the closing. The Mergers, which are anticipated to close early in calendar year 2027, are subject to the satisfaction or waiver of customary closing conditions, including adoption of the Merger Agreement by Qorvo’s stockholders and the approval by Skyworks’ stockholders of the issuance of Skyworks common stock included in the consideration to be paid to Qorvo stockholders, the expiration or early termination of the waiting period under the Hart-Scott-Rodino Antitrust Improvement Act of 1976, as amended, and other regulatory approvals under certain antitrust and foreign investment regimes, the absence of any order, injunction or law of such jurisdictions prohibiting the Mergers, and the effectiveness of a registration statement on Form S-4 to be filed by us. We and Qorvo each have termination rights under the Merger Agreement. Under specified circumstances, including termination by a party to accept a superior proposal or termination by the other party upon a change in such party’s board of directors’ recommendation to its stockholders, each of Qorvo and us will be required to pay the other party a termination fee of $ 298.7 million, as more fully described in the Merger Agreement. Alternatively, under certain specified circumstances, including termination following an injunction arising in connection with certain",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Skyworks and Qorvo are parties to a Merger Agreement governing their proposed merger."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "merger partner",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Qorvo",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "We and Qorvo each have termination rights under the Merger Agreement.",
+   "passage": "of Skyworks. Promptly following the closing, the Board of Directors will also designate a Chairman. Robert Bruggeworth, Qorvo’s current President, Chief Executive Officer and director, will be one of Qorvo’s designees upon the closing. The Mergers, which are anticipated to close early in calendar year 2027, are subject to the satisfaction or waiver of customary closing conditions, including adoption of the Merger Agreement by Qorvo’s stockholders and the approval by Skyworks’ stockholders of the issuance of Skyworks common stock included in the consideration to be paid to Qorvo stockholders, the expiration or early termination of the waiting period under the Hart-Scott-Rodino Antitrust Improvement Act of 1976, as amended, and other regulatory approvals under certain antitrust and foreign investment regimes, the absence of any order, injunction or law of such jurisdictions prohibiting the Mergers, and the effectiveness of a registration statement on Form S-4 to be filed by us. We and Qorvo each have termination rights under the Merger Agreement. Under specified circumstances, including termination by a party to accept a superior proposal or termination by the other party upon a change in such party’s board of directors’ recommendation to its stockholders, each of Qorvo and us will be required to pay the other party a termination fee of $ 298.7 million, as more fully described in the Merger Agreement. Alternatively, under certain specified circumstances, including termination following an injunction arising in connection with certain",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Skyworks and Qorvo have entered into a Merger Agreement under which the parties have agreed to a merger transaction and established reciprocal rights and termination fees."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "joint venture being unwound",
+   "writer": "Ford Motor Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/37996/000003799626000015/f-20251231.htm",
+   "other": "SK On Co., Ltd. (also written \"SK On\")",
+   "type": "SUPPLIER",
+   "provides": "EV batteries",
+   "sentence": "On December 9, 2025, Ford, SK On, SKBA and BOSK entered into a Joint Venture Disposition Agreement, pursuant to which Ford’s membership interest in BOSK will be redeemed and a Ford subsidiary will receive the two BOSK plants and related assets in Kentucky and will assume the related liabilities.",
+   "passage": "and distributes a variety of Ford passenger and commercial vehicle models. The joint venture operates one plant in Vietnam. In addition to the plants that we operate directly or that are operated by our consolidated joint venture, additional plants that support our Ford Blue, Ford Model e, and Ford Pro segments are operated by unconsolidated joint ventures of which we are a partner. The most significant of those unconsolidated joint ventures are as follows: • AutoAlliance (Thailand) Co., Ltd. (“AAT”) — a 50/50 joint venture between Ford and Mazda that owns and operates a manufacturing plant in Rayong, Thailand. AAT produces Ford and Mazda products for domestic and export sales. • BlueOval SK, LLC (“BOSK”) — a 50/50 joint venture among Ford, SK On Co., Ltd. (“SK On”), and SK Battery America, Inc. (“SKBA,” a wholly owned subsidiary of SK On) formed to build and operate an EV battery plant in Tennessee and two EV battery plants in Kentucky to supply batteries to Ford and Ford affiliates. On December 9, 2025, Ford, SK On, SKBA and BOSK entered into a Joint Venture Disposition Agreement, pursuant to which Ford’s membership interest in BOSK will be redeemed and a Ford subsidiary will receive the two BOSK plants and related assets in Kentucky and will assume the related liabilities. Closing on the transactions contemplated by the Joint Venture Disposition Agreement is expected in the first half of 2026. • Changan Ford Automobile Corporation, Ltd. (“CAF”) — a 50/50 joint venture between Ford and Chongqing Changan Automobile Co., Ltd. (“Changan”). CAF operates four assembly plants, an engine plant, and a transmission plant in China where it produces and distributes a variety of Ford and Lincoln brand passenger vehicle models. • Ford Otomotiv Sanayi Anonim Sirketi (“Ford",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Ford and SK On Co., Ltd. are partners in a 50/50 joint venture, BlueOval SK, LLC, and have entered into a Joint Venture Disposition Agreement expected to close in the first half of 2026."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "joint venture",
+   "writer": "Ford Motor Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/37996/000003799626000015/f-20251231.htm",
+   "other": "Mazda",
+   "type": "CUSTOMER",
+   "provides": "vehicles",
+   "sentence": "a 50/50 joint venture between Ford and Mazda that owns and operates a manufacturing plant in Rayong, Thailand. AAT produces Ford and Mazda products for domestic and export sales.",
+   "passage": "Ford Model e, and Ford Pro segments. We have one consolidated joint venture with manufacturing operations, which is in our Ford Blue segment: • Ford Vietnam Limited — a joint venture between Ford (75%) and Diesel Song Cong One Member Limited Liability Company (a subsidiary of the Vietnam Engine and Agricultural Machinery Corporation, which, in turn, is majority owned (87.43%) by the State of Vietnam represented by the Ministry of Industry and Trade) (25%). Ford Vietnam Limited assembles and distributes a variety of Ford passenger and commercial vehicle models. The joint venture operates one plant in Vietnam. In addition to the plants that we operate directly or that are operated by our consolidated joint venture, additional plants that support our Ford Blue, Ford Model e, and Ford Pro segments are operated by unconsolidated joint ventures of which we are a partner. The most significant of those unconsolidated joint ventures are as follows: • AutoAlliance (Thailand) Co., Ltd. (“AAT”) — a 50/50 joint venture between Ford and Mazda that owns and operates a manufacturing plant in Rayong, Thailand. AAT produces Ford and Mazda products for domestic and export sales. • BlueOval SK, LLC (“BOSK”) — a 50/50 joint venture among Ford, SK On Co., Ltd. (“SK On”), and SK Battery America, Inc. (“SKBA,” a wholly owned subsidiary of SK On) formed to build and operate an EV battery plant in Tennessee and two EV battery plants in Kentucky to supply batteries to Ford and Ford affiliates. On December 9, 2025, Ford, SK On, SKBA and BOSK entered into a Joint Venture Disposition Agreement, pursuant to which Ford’s membership interest in BOSK will be redeemed and a Ford",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Ford and Mazda are partners in a 50/50 joint venture, AutoAlliance (Thailand) Co., Ltd., which owns and operates a manufacturing plant in Rayong, Thailand."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "development partner in a list",
+   "writer": "Bristol-Myers Squibb Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/14272/000001427226000004/bmy-20251231.htm",
+   "other": "Zai Lab",
+   "type": "CUSTOMER",
+   "provides": "",
+   "sentence": "Development Partnerships: Anti-CCR8 + nivolumab, nivolumab + relatlimab HD, OPDIVO , YERVOY : Ono; BMS-986495: Prothena; COBENFY (KarXT), AUGTYRO : Zai Lab; pumitamig (BNT327/BMS-986545): BioNTech; iza-bren: SystImmune; milvexian: Johnson & Johnson; obexelimab: Zenas BioPharma; REBLOZYL",
+   "passage": "--Treatment of Venous Thromboembolism and Risk Reduction after Initial Therapy --Prophylaxis of Deep Vein Thrombosis after Hip or Knee Replacement Surgery 12 NEUROSCIENCE PHASE I PHASE II PHASE III APPROVED INDICATIONS Investigational Compounds BMS-986495 ª -- Neurodegenerative Diseases# BMS-986521 --Neuropsychiatric Disorders eIF2B Activator --Alzheimer's Disease KarXT Long-Acting Injectable --Schizophrenia TRPC4/5 Inhibitor --Mood and Anxiety Disorders zola-cel (CD19-targeted NEX-T) --Multiple Sclerosis --Myasthenia Gravis Investigational Compounds Anti-MTBR Tau --Alzheimer's Disease FAAH/MAGL Dual Inhibitor --Alzheimer's Disease Agitation --Multiple Sclerosis Spasticity Additional Indications COBENFY ª --Adjunctive Bipolar-I Mania --Agitation in Alzheimer's Disease --Alzheimer's Disease Cognition --Bipolar-I Mania --Pediatric Autism Irritability --Psychosis in Alzheimer's Disease COBENFY ª --Adults with Schizophrenia Note: Above pipeline excludes clinical collaborations ª Development Partnerships: Anti-CCR8 + nivolumab, nivolumab + relatlimab HD, OPDIVO , YERVOY : Ono; BMS-986495: Prothena; COBENFY (KarXT), AUGTYRO : Zai Lab; pumitamig (BNT327/BMS-986545): BioNTech; iza-bren: SystImmune; milvexian: Johnson & Johnson; obexelimab: Zenas BioPharma; REBLOZYL : Merck # Partner-run study The following are our registrational study readouts anticipated through 2026/2027: Oncology Immunology Asset Indication Trial Asset Indication Trial AR LDD mCRPC rechARge Sotyktu SjD POETYK SjS-1 Opdivo Adjuvant HCC CheckMate -9DX Sotyktu SLE POETYK SLE-1 Opdivo Peri-adjuvant MIUC CA017-078 Sotyktu SLE POETYK SLE-2 Krazati 2L CRC KRYSTAL-10* admilparant IPF ALOFT-IPF Opdivo Qvantig + Yervoy 1L NSCLC CheckMate-1533 admilparant PPF ALOFT-PPF Krazati 2L+ NSCLC",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "Zai Lab is listed as a development partner with Bristol-Myers Squibb Company for COBENFY (KarXT) and AUGTYRO, with no buying or selling stated."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "development partner in a list",
+   "writer": "Bristol-Myers Squibb Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/14272/000001427226000004/bmy-20251231.htm",
+   "other": "Johnson & Johnson",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "Development Partnerships: Anti-CCR8 + nivolumab, nivolumab + relatlimab HD, OPDIVO , YERVOY : Ono; BMS-986495: Prothena; COBENFY (KarXT), AUGTYRO : Zai Lab; pumitamig (BNT327/BMS-986545): BioNTech; iza-bren: SystImmune; milvexian: Johnson & Johnson; obexelimab: Zenas BioPharma; REBLOZYL",
+   "passage": "--Treatment of Venous Thromboembolism and Risk Reduction after Initial Therapy --Prophylaxis of Deep Vein Thrombosis after Hip or Knee Replacement Surgery 12 NEUROSCIENCE PHASE I PHASE II PHASE III APPROVED INDICATIONS Investigational Compounds BMS-986495 ª -- Neurodegenerative Diseases# BMS-986521 --Neuropsychiatric Disorders eIF2B Activator --Alzheimer's Disease KarXT Long-Acting Injectable --Schizophrenia TRPC4/5 Inhibitor --Mood and Anxiety Disorders zola-cel (CD19-targeted NEX-T) --Multiple Sclerosis --Myasthenia Gravis Investigational Compounds Anti-MTBR Tau --Alzheimer's Disease FAAH/MAGL Dual Inhibitor --Alzheimer's Disease Agitation --Multiple Sclerosis Spasticity Additional Indications COBENFY ª --Adjunctive Bipolar-I Mania --Agitation in Alzheimer's Disease --Alzheimer's Disease Cognition --Bipolar-I Mania --Pediatric Autism Irritability --Psychosis in Alzheimer's Disease COBENFY ª --Adults with Schizophrenia Note: Above pipeline excludes clinical collaborations ª Development Partnerships: Anti-CCR8 + nivolumab, nivolumab + relatlimab HD, OPDIVO , YERVOY : Ono; BMS-986495: Prothena; COBENFY (KarXT), AUGTYRO : Zai Lab; pumitamig (BNT327/BMS-986545): BioNTech; iza-bren: SystImmune; milvexian: Johnson & Johnson; obexelimab: Zenas BioPharma; REBLOZYL : Merck # Partner-run study The following are our registrational study readouts anticipated through 2026/2027: Oncology Immunology Asset Indication Trial Asset Indication Trial AR LDD mCRPC rechARge Sotyktu SjD POETYK SjS-1 Opdivo Adjuvant HCC CheckMate -9DX Sotyktu SLE POETYK SLE-1 Opdivo Peri-adjuvant MIUC CA017-078 Sotyktu SLE POETYK SLE-2 Krazati 2L CRC KRYSTAL-10* admilparant IPF ALOFT-IPF Opdivo Qvantig + Yervoy 1L NSCLC CheckMate-1533 admilparant PPF ALOFT-PPF Krazati 2L+ NSCLC",
+   "answer": {
+    "reading": "OTHER_TIE",
+    "reason": "The passage identifies Johnson & Johnson as a development partner for the compound milvexian."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "reversed",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Apple Inc. (also written \"Apple\")",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "In each of the fiscal years ended October 3, 2025 (“fiscal 2025”), September 27, 2024 (“fiscal 2024”), and September 29, 2023 (“fiscal 2023”), Apple, through sales to multiple distributors and contract manufacturers for multiple applications including smartphones, tablets, desktop and notebook computers, watches, and other devices, constituted more than ten percent of our net revenue.",
+   "passage": "also employ a collaborative approach in developing these relationships by combining the support of our design teams, applications engineers, manufacturing personnel, sales and marketing staff, and senior management. Lastly, we leverage our customer relationships with cross-selling opportunities across product lines in order to maximize revenue. We believe that maintaining frequent and interactive contact with our customers is paramount to our continuous efforts to provide world-class sales and service support. By listening and responding to feedback, we are able to mobilize resources to raise our level of customer satisfaction, improve our ability to anticipate future product needs, and enhance our understanding of key market dynamics. We are confident that diligently following this path positions us to participate in numerous opportunities for growth in the future. Customer Concentration A small number of OEMs historically has accounted for a significant portion of our net revenue. In each of the fiscal years ended October 3, 2025 (“fiscal 2025”), September 27, 2024 (“fiscal 2024”), and September 29, 2023 (“fiscal 2023”), Apple, through sales to multiple distributors and contract manufacturers for multiple applications including smartphones, tablets, desktop and notebook computers, watches, and other devices, constituted more than ten percent of our net revenue. Further, the Company’s three largest accounts receivable balances comprised 82% and 80% of aggregate gross accounts receivable as of 9 Table of Contents October 3, 2025 and September 27, 2024, respectively. For further information regarding customer concentrations, see Note 14 to Item 8 of this Annual Report on Form 10-K. Intellectual Property and Proprietary Rights We own or have a license to use numerous United States and foreign patents and patent applications related to our products and our",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Apple constituted more than ten percent of the Company's net revenue in fiscal 2025 through sales to multiple distributors and contract manufacturers for various applications."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "reversed",
+   "writer": "Skyworks Solutions, Inc.",
+   "form": "10-K",
+   "filingDate": "2025-11-07",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/4127/000000412725000085/swks-20251003.htm",
+   "other": "Tesla",
+   "type": "SUPPLIER",
+   "provides": "",
+   "sentence": "Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi",
+   "passage": "semiconductor products and solutions for numerous applications, including aerospace, automotive, broadband, cellular infrastructure, connected home, defense, entertainment and gaming, industrial, medical, smartphone, tablet, and wearables. Over the past two decades, Skyworks has made important investments to address key network technologies, from cellular to advanced Wi-Fi ® , enhanced GPS, and Bluetooth ® , among others. Capitalizing on both organic growth and strategic acquisitions, we are targeting high-growth verticals, while at the same time, seeking to diversify our revenue and customer set. Targeted investments in next-generation technology and solutions, technical talent, and fabrication capabilities have created the opportunity to expand into high-growth market segments, including electric and hybrid vehicles, industrial and motor control, power supply, 5G wireless infrastructure, optical data communication, data center, automotive, smart home, and several other applications. Our key customers include Amazon, Apple Inc. (“Apple”), Arcadyan, Arris, Bose, Ciena, Cisco, Ericsson, Fibocom, Garmin, Gemalto (a Thales company), General Electric, Google, Honeywell, Itron, Lenovo, LG Electronics, Microsoft, Motorola, NETGEAR, Nokia, Northrop Grumman, OPPO, Rockwell Collins, Sagemcom, Samsung, Schneider Electric, Sierra Wireless, Sonos, Sony, Technicolor, Telit, Tesla, TP-Link, VIVO, and Xiaomi. Our competitors include Analog Devices, Broadcom, Cirrus Logic, Murata Manufacturing, NXP Semiconductors, Qorvo, Qualcomm, and Texas Instruments. We operate worldwide with engineering, manufacturing, sales, and service facilities throughout Asia, Europe, and North America. Our Internet address is www.skyworksinc.com. We make available free of charge on our website our Annual Report on Form 10-K, quarterly reports on Form 10-Q, current reports on Form 8-K, and amendments to those reports as",
+   "answer": {
+    "reading": "BUYS_FROM_THE_WRITER",
+    "reason": "Skyworks Solutions, Inc. names Tesla as one of its key customers."
+   }
+  },
+  {
+   "set": "fresh",
+   "label": false,
+   "note": "reversed",
+   "writer": "Ford Motor Company",
+   "form": "10-K",
+   "filingDate": "2026-02-11",
+   "filingUrl": "https://www.sec.gov/Archives/edgar/data/37996/000003799626000015/f-20251231.htm",
+   "other": "Ford Otomotiv Sanayi Anonim Sirketi (also written \"Ford Otosan\")",
+   "type": "CUSTOMER",
+   "provides": "commercial vehicles",
+   "sentence": "Ford Otomotiv Sanayi Anonim Sirketi (“Ford Otosan”) — a joint venture in Türkiye among Ford (41%), the Koc Group of Türkiye (41%), and public investors (18%) that is the sole supplier to us of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe",
+   "passage": "SK On Co., Ltd. (“SK On”), and SK Battery America, Inc. (“SKBA,” a wholly owned subsidiary of SK On) formed to build and operate an EV battery plant in Tennessee and two EV battery plants in Kentucky to supply batteries to Ford and Ford affiliates. On December 9, 2025, Ford, SK On, SKBA and BOSK entered into a Joint Venture Disposition Agreement, pursuant to which Ford’s membership interest in BOSK will be redeemed and a Ford subsidiary will receive the two BOSK plants and related assets in Kentucky and will assume the related liabilities. Closing on the transactions contemplated by the Joint Venture Disposition Agreement is expected in the first half of 2026. • Changan Ford Automobile Corporation, Ltd. (“CAF”) — a 50/50 joint venture between Ford and Chongqing Changan Automobile Co., Ltd. (“Changan”). CAF operates four assembly plants, an engine plant, and a transmission plant in China where it produces and distributes a variety of Ford and Lincoln brand passenger vehicle models. • Ford Otomotiv Sanayi Anonim Sirketi (“Ford Otosan”) — a joint venture in Türkiye among Ford (41%), the Koc Group of Türkiye (41%), and public investors (18%) that is the sole supplier to us of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe and the sole distributor of Ford vehicles in Türkiye. Ford Otosan also manufactures Ford heavy trucks for global distribution, except for markets in the Americas, China, and Taiwan. The joint venture owns three plants, a parts distribution depot, and a research and development center in Türkiye, and a combined vehicle and engine plant in Romania. 35 Item 2. Properties (Continued) • JMC — a publicly-traded company in China with Ford (32%) and Nanchang Jiangling Investment Co., Ltd. (41%) as its",
+   "answer": {
+    "reading": "SUPPLIES_THE_WRITER",
+    "reason": "Ford Otosan is the sole supplier to Ford of the Transit, Transit Custom, and Transit Courier commercial vehicles and the Puma for Europe."
+   }
+  }
+ ]
+}

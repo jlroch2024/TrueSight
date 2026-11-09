@@ -8,18 +8,21 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Starts the analyst-only pass that gives every relationship without one a second check. */
+/** Starts the analyst-only passes that give relationships a second check. */
 @RestController
 @Tag(name = "Second Check")
 public class SecondCheckController {
 
     private final CurrentUser currentUser;
     private final SecondCheckPassService pass;
+    private final SecondCheckSaver saver;
     private final SecondCheckJob job;
 
-    public SecondCheckController(CurrentUser currentUser, SecondCheckPassService pass, SecondCheckJob job) {
+    public SecondCheckController(CurrentUser currentUser, SecondCheckPassService pass, SecondCheckSaver saver,
+                                 SecondCheckJob job) {
         this.currentUser = currentUser;
         this.pass = pass;
+        this.saver = saver;
         this.job = job;
     }
 
@@ -30,5 +33,14 @@ public class SecondCheckController {
         currentUser.requireAnalyst();
         var pending = pass.pendingReportIds();
         if (!pending.isEmpty()) job.run(pending);
+    }
+
+    @PostMapping("/api/relationships/second-check/again")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Have a second AI judge again every relationship no analyst has decided, which costs AI calls")
+    public void startAgain() {
+        currentUser.requireAnalyst();
+        saver.forgetUnreviewed();
+        start();
     }
 }

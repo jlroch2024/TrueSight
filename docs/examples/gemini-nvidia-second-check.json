@@ -1,13 +1,226 @@
 {
-  "candidates": [
-    {
-      "content": {
-        "parts": [
-          {
-            "text": "[\n  {\"index\": 1, \"verdict\": \"AGREES\", \"reason\": \"The sentence says TSMC produces their semiconductor wafers.\"},\n  {\"index\": 2, \"verdict\": \"AGREES\", \"reason\": \"The sentence says they purchase memory from SK Hynix, Micron, and Samsung.\"},\n  {\"index\": 3, \"verdict\": \"AGREES\", \"reason\": \"The sentence says they purchase memory from SK Hynix, Micron, and Samsung.\"},\n  {\"index\": 4, \"verdict\": \"AGREES\", \"reason\": \"The sentence says they purchase memory from SK Hynix, Micron, and Samsung.\"},\n  {\"index\": 5, \"verdict\": \"AGREES\", \"reason\": \"The sentence states that server manufacturers market their products.\"},\n  {\"index\": 6, \"verdict\": \"AGREES\", \"reason\": \"The sentence says system integrators and OEMs incorporate their products.\"},\n  {\"index\": 7, \"verdict\": \"AGREES\", \"reason\": \"The sentence says system integrators and OEMs incorporate their products.\"}\n]"
-          }
-        ]
+  "Taiwan Semiconductor Manufacturing Company Limited": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\"reading\": \"SUPPLIES_THE_WRITER\", \"reason\": \"NVIDIA states that it utilizes foundries, such as Taiwan Semiconductor Manufacturing Company Limited, to produce its semiconductor wafers.\"}",
+              "thoughtSignature": "Et0FCtoFAWkUfRPRu/7CYSbRI64mBga9zNyePC/C5fkGD+bWORVxQAF0LnkCQ/uTSfHZYThdHOiR+enbmE5pHl93UQEhRuRhXZ3ybegcM2gT+xiU8y5axDDsJR0tA9+OQU0HIQ03O65UElNKARjDq3jLHURfQaDgisR9yt+GbCOK2n/XXVl0pMm/hyzSCXqhl2PBtVq8717ifXs9W4hbTX6xdH3lyTNd73m+FWIG1rVDLkOOUViYE6/gSfr0OaZQZGt/dWGeGliibvI4Maxdr07PW9yvStswt5UEgKsrIRlIiUgmpg+uA3RqmvTaeUfEa2s2Bu2hDr5EK4B+I87nYItsjXPCtwZp38HEUsn8rfYicZXjtCPTqPNf7oKzo8ZtqfFAWYb1qxqEKFy7QdIfxkZdO0xD4bQGspfKTigMi5CqlXFbl8dq/3G7fyP4uA/IVowCEFyZP6vAWTP0mjum+uLlF8kyKJ5QWORcp+6DqOANimA3Xh9t4fOOobMkpYJK3U5W/YLFbcYSqYwxfCrbb+4/+D6UDYznPDOjgTvY4uBntaOQ1Oz4sg7RaFG+mYrJoKkeky8dcwARCaICgZ/tvd2AXeuBXQYwHUESO4piCfNVpiicSQuNfKUIzNMOMZwZ9z22dUR/stg+X9wGgv6ie6Jiom8MZ0l1F3UAcH4fV+zJ6jPLcUGkQQAzZR5JtLuWSHfFYz9ybNCS+YCgswtc/OHJlBHgqfoBDrZBgv3RlWOwix/XS9I23WHOQx02zvMINdB0uam7E1AeEJeJe48XNuQc137aIseZgOwJWzleftgfFzt64LN16dDmPwL5ButEcjVbqc6G59eIhFLi97/cZgeCkLr9uvxW1DMYEkWbLvScxysfw/wZEExGGL95mMzoFLgaa3+U7hpQipA4Ju4mE4di0IIRae8oGr2fSHtKVYQf7oIuJAazqsNzr2lBkwOH9sXifycqRPYN8kY7Ekg2AA=="
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
       }
-    }
-  ]
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 661,
+      "candidatesTokenCount": 41,
+      "totalTokenCount": 832,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 661
+        }
+      ],
+      "thoughtsTokenCount": 130,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "TSvpaqmUM4qLjuMPhO7T0Qk"
+  },
+  "Samsung Electronics Co., Ltd.": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\"reading\":\"SUPPLIES_THE_WRITER\",\"reason\":\"NVIDIA Corporation utilizes Samsung Electronics Co., Ltd. as a foundry to produce its semiconductor wafers and purchases memory from Samsung.\"}",
+              "thoughtSignature": "ErsGCrgGAWkUfRO45sHALCklN2Km3i2tISrWUcHIEvEE0WOIAOS247UoioeJJs5FZDTB4OKHkiC0mSHVw3zV/kJhU8gu7lIRzqE0rix2WiFquhzahTH28Dk8XlVdRM2bscIyTlXm2MNIFfiy9NopBtWbo0SKgRtdB/H2ZD3JBk+TP/hJafwIiS068MFB/Z7WdabIEvoWfIT4H9lFLGoa+ti3N+zj9W3TF1n68lc34GdtzvEqHWwS7ctZDqmuyGFMIV54sP/kqze6ZY5F53vXROeuAdGBm3WhE5D8+49Gda/+Fao8LDKJ56Fb2o2uPlf48KhVesqZQOMvKyMMvkO49BMgY1lw+OnggOxsKs1QddUNfGytwNAprPX6vQ+kneqmO8ruzOVllUWv7/S/gbF5L+Or1XcnWa2DGvM3IbUYf0vJBTR3DTPiB8SOFnpbqBSoXuBeojWqpP8A/1kiI6K82K7bZU5PQXiG36p8we2vzBVksd0MbhQT39pZT1IZuCzA0aocOW3i4Dmq6BZ8JJIwmuLwqGE5bepszodqcjwLLH7SnJgNFZInmZnW2fpLlNyZcacdUnTk1D+Stvz8JYRFK/HeVT5Fb/IvD109WCJW5clHDaXZDwmsnfFPmZSSQEuu9q5X3Q6OgsHDP9EKgqs6u9lhA/pPqPv+sSq7gU2yEBnaP7tzp0bJdXfqhB1OANv21MK8YFc8Ss+tftrGxc08YgYjwAVUi11RV7U8EEEjlH312axEXQFCKnWQ628EUXEmyYRyCnD3FuaYKYWowpj7VYWTan1JLL41tCrN1t1rkyNnuVj11YSOzx0aVfpTYttP7g2fTQEFfC5YiGBURkxgcTKeVDIdvTIEgYaQD6Tr1YVsDG715ZKkJNwMvkOhtWAqTTrzhuIrwsBQo82D30Ct23wcLU5+35h6gVG1qtscH6CuqzA7s2JLFN/EP7ofHjIzhUSQLTpIqBRobztViLNk/PrKIj/lFYRimnSxlPxZjqr1EbAo0eduY+EweK+hFejfd9bSE8AqoxDZ339it+mvtjOiVG703XkTWkjOrBPkRJZh7joQ9y9T8YE596VpuEPzKzgQyJZK8c+lawc+3T8="
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 661,
+      "candidatesTokenCount": 39,
+      "totalTokenCount": 861,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 661
+        }
+      ],
+      "thoughtsTokenCount": 161,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "TSvpatDAKYGqjuMPpL-F8Qk"
+  },
+  "SK Hynix Inc.": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\"reading\":\"SUPPLIES_THE_WRITER\",\"reason\":\"The passage states that NVIDIA Corporation purchases memory from SK Hynix Inc.\"}",
+              "thoughtSignature": "EuQECuEEAWkUfRPU99GDlXLqHbsD1Y7/fs/NGAksjqvNJeDFYKf5iZZaj2NhhnXXvrSUe5hycqpK8Ek9GAo/7Jjccr75z7nPAh3DxRmxZWwy2lv0T/2InO5Gfg2mbwHrpLmTmohM8uPazN3K7TwMQFaY9Aj5CqiG0XhA2SBjAf0qp3xMgYp4RLNRjQBZgctuFvcKs4x1amfwg9cIkDObzs7+//8Qyr0XiJYRJwJUeTIlvUKDzrUThrupHhjgyqVQv8zSLB4MLB6rW0924LUNjMNm7Pyk/rdBJ1CbVwUXnp8LEWR7TNcPOhXL2oAoYI77yUJ4v4eBxAbPdKK4DnZyOh4PbcAFXOLf5ep+DKUOOJZZgtKI+IQbBR+V55a6nNH63Flk8h5Xnae6UApcGDiKv0etD/VZjU8W3CKDEQWaiD4eFk8PB0EvkrfuT3IjfIWZgT77OoDYYtBWBv0wm9M+jDkyDlLEGoqt3N8aaB7oU43pDAP6jVGGEakX/aqs6FRnU58IrztTJVzREKBq3ZnTetUU2ZeOjpbZRm4JFX1SGBg7FoNxKEhl/pJh8HqVPH1TVW5C073TnIs5mkxd1/V+gNoodo2hff921GUxakhpyFupHGLFuqysxsYB+EEdULpzFwZqP65m/0sbZve8aDv5J7feYqtfJvoPmhtmkAL69HG404TxgvIoK+FH8QXtyvqi9cDQ6dhyd7Dk9m3KvSW0T2xgtk3Qx/PbOxCQxCgeIY5A0ezzjEuMikYGIubZQs79ZJnOAsazCEbpQD3mzUZS+WQKeubK2yURx2PBeYxmpg0RQPoyGti2"
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 644,
+      "candidatesTokenCount": 30,
+      "totalTokenCount": 801,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 644
+        }
+      ],
+      "thoughtsTokenCount": 127,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "TSvpao69KdzN694PjYPiyQQ"
+  },
+  "Micron Technology, Inc.": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\n  \"reading\": \"SUPPLIES_THE_WRITER\",\n  \"reason\": \"NVIDIA states that it purchases memory from Micron Technology, Inc.\"\n}",
+              "thoughtSignature": "EucDCuQDAWkUfROGCblce7V1ObGIiqIHSff5RwwmgsgP5xRIfToI8X1LHcIHElh1QApFiQsnII+x3iJgnfhcy14qIqCQgdnYraTiyU2yflsypHr3L/pq1dKqnqtZr2BwL/Gl5fIpFlV2D5ufcmNyi4op0ZXFtG7B18LBv0Vfn8kH8LxvUc7Tam3/7uazDvvJIL6l+dKvP1/Gj1HOVLyDf97fYy7mfMu/QTZZj37J1Ud8ycT5miUsRxCFObxeJ7RpKGFDlOzHnZ9iQPTQHSppOXP3xbBRktQXMXQdsbVL99BqYYzrD1EjVyJ2fXjXRG594ETBDEfbb0r5ScNh8lbjlhAqBjCtKMFkdHavInkGc4JYTLmMAc6QqO23baUAg2cW4AbsheboVYEJkawOQIB0wRKDL6ArLorqWaMMALv1IjeCZ6l6HSE2fagfwats9RtLxon/wUoDJSiQQvKXdT9tS21kiA6yM291HK4cbJECHYM1KONi+0fqcU1aCQNB6tRzt234YZZpjdOsvNsacSwj809Qxm0DrxzNuSeIaSt3n2rDEW4Jc85j1LoIaHYDwRvu9ALp3Vf0Pkl+MiYs9kNSq4+yleBm4sGdnv61kkO7ffhaOVNXgvckoHct5N99e/uwzQVESpLRaRk6zA=="
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 643,
+      "candidatesTokenCount": 37,
+      "totalTokenCount": 762,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 643
+        }
+      ],
+      "thoughtsTokenCount": 82,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "TSvpar3eMsKM694PxKDawQQ"
+  },
+  "Hon Hai Precision Industry Co., Ltd.": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\"reading\": \"SUPPLIES_THE_WRITER\", \"reason\": \"NVIDIA engages with contract manufacturers such as Hon Hai Precision Industry Co., Ltd. to perform assembly, testing and packaging of its final products.\"}",
+              "thoughtSignature": "EocHCoQHAWkUfRNTBzKOThiMaZik0bhrTT4UJn1mh+Hr/Nt/9AqvbBZVUlqg9+k4Ft4x+MyB7KlGAgk1gUBP8T1Cid9g3Qh14vV5Vnl4hhSXo8Byyd8mf8yqgI5f8eSzFPbVUNoqh83URuA5YdBLtaM36vr7pFH7QQ5l6mGYumXWXZM8ZYkji60+769rOKTy2oiXsLh6tjCGUr9s6CMdYVSD5S3HvU0YJy6mCRZTofjLSg3AQlf7g6bfZn/gUEKAfMpySfpW5InWjc/B0Vk1F8MW7sMZ47ApBGyOQJEEjSdV0Jz3R+KCrs3pQyUedkGOjDacIBET8GSj7WqDFq/jdMdqpuY2bcc73SKvTXSlaiQUt4K1o4C2qGLA/1MBlbyUr2V6yzRGf4e3ZFbuSZZEDyl7AwCTShFGXNuRWR5VJdvLimdMey+DJIGLwFra4TIhXQewhfU48JiszKOPAyPvzMfL8WGGtZYnk0nx22IIV4LNUmk8GWRbEWNpnRaUyjEEMz/YmJLXeziisYp18TmmCnOlpvVOZbb7MKKot+Qhp9mNQ0zZB8W10i/eHD0hBO8LK3Aq8Rbr2e5su6OnVJeFXSv87tb8O/hs5k49WxpPxhMd6wVstyuO30UmF79a0w47ZFH6yHINZpJfL95nR0xpnEqOBq6BUc1dyQq2c8qJ9E4s2E2ez/eO2yGAHJDZGO1VQ9XHe5mULk1CNH2IvhKs8AUYQvXDXjyIVxiEF5NvEvp3RnjQznfMe4+Izselw/Wf5gxEVDy0m4e0UIHQ7KngpUWk65oFibDk9q2frpsnpG5XGqQgDIk+obu33unSr2dmquL33dhFta2MI/GmZ4yRVeuUHQTktClzA+uWLZ0ZWpMQtxmL0Bl5/pmAdnK1/3h+/vaJZkWiw3fbDt3OrFUYNwdIXKf58CM24bkhmB2orzTfweS5Bz9fLgi5+HRrkcTyCDh4P6SYMjCbXm1efz+D9btgXl2qhfDyhcAhnCeomuUwuJFKNFUpu8V+R20lNPNhwyLlEIpLzd6IERECthE0RESrtkmYodXV13gpP/YBsZ3Fas5MPF96VJMhruXJDvZB5X+/looz/1uvWnrbVQwdi/bKCLhCom/vXoGAac8n7kGtT6lTsTJ/5ffAA+ORhFhLEba07BvoVRw4l22MPKtC9HHJ2jVlY5sx5T1b9NjEbrN5lpzro+px9tC1"
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 668,
+      "candidatesTokenCount": 46,
+      "totalTokenCount": 876,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 668
+        }
+      ],
+      "thoughtsTokenCount": 162,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "UCvpasblEp6z694PnIvMSQ"
+  },
+  "Wistron Corporation": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\n  \"reading\": \"SUPPLIES_THE_WRITER\",\n  \"reason\": \"NVIDIA engages with Wistron Corporation as an independent subcontractor and contract manufacturer to perform assembly, testing, and packaging of its final products.\"\n}",
+              "thoughtSignature": "Ev4FCvsFAWkUfRNq+GvuFY1/dMEgekvLo9PE5e9GPbXnvKuHwYSfjw1vfdPjrYUWmL0eUwXSPkjeEWT6MEGUw2F/X0y3cOoBSxRQJyHe46sqVLGO1qrdW1TXFkzSM1rkHGwCBuECG7qXuoB70+clYgWIyVFxHUA0FY+sIs36Gk5Qd1wT+6n/wJDkr3DBYB2nO51sxeL5oX1V0NqKYzA90Mya9ZpY2lNxOECCuZENA2/PEYat6E7+kHlfJ9SJOjJTz3ghsE6pS6u68KqkaC2o+h1t+hSYNtz4H04u07HLTuCRxJFSUyYlPf7Q3anZIyhRmbAtRKI+THASuLxQi+p9acctuW8hdI9Lx0DfMAZfVCne23ezzjQq/s/IjAAwcIAQPGcbilTb7TeQSuk6ZQ/lJ/lpoxBdxFScrnIhRE528R0l8TiVdDiESLEDtGJmFKFcMuNgTLEOFCjqSsXAIUlEpMz0pNOr1gP9aaHsQioyypTSaag7v0BbkjUMLi2OsxuPZPi7kU43SBZpVgDXUK9tJ+Dc5FHXcJiyfRU2qeWdw7xgRpByAHFKQRi6+zj3B9iF7wNtoTy73xlocIeLPHoVr2r9oyq6aWBjObIBpE4S9r23oL7QGXml3B5RSGIsZn40YgU8AiOTVdVAmn5+a6gGiI4g3rBu7zQ7cLWzgIbwgVL/fn/4+DBD6baASYjpsXCk9pxxbVhubSwnih+GFINRFm7/orPOYQIpEkCGQNJRaKr97+TDq9xa6rs/RS3vPeJiYOPfKt9LJh88WOdVqFxpbc7bo+4mKCF0biNlFdj6G6wFXVh48jUWphehZpqkyrrqRKo7Ok+3M3in+fCksPSlm9QRUfA/ZnmHqa5DbGSpLw+vAk4EQMpCy7Rj4vjizBP4dC4BXkRYY00WaRi4zTzt0KHH0Yao29uID15hUWqwFc+2JtmogR8+XQl5bCclJ+ZK7JQEtNPACFwzyvX43PaxRIdel390lu8V48cWcu/hmN54w6lEbjOHRrkj1CuVpC/Xpg=="
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 665,
+      "candidatesTokenCount": 52,
+      "totalTokenCount": 846,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 665
+        }
+      ],
+      "thoughtsTokenCount": 129,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "UCvpatXCJvSbjuMP8PbAwAk"
+  },
+  "Fabrinet": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "{\"reading\":\"SUPPLIES_THE_WRITER\",\"reason\":\"NVIDIA Corporation engages Fabrinet as an independent subcontractor and contract manufacturer to perform assembly, testing, and packaging of its final products.\"}",
+              "thoughtSignature": "Ep0FCpoFAWkUfRMnB3yhT4SlemTr1gmKn0ncLl9odgGamKsmGGoacxJKGF9BUmQh0SnmzcxbV03DquKmekLjSxDm9xece5j/JYfvZ1RcDJMzo9iJvVi+tx4847dUxdFBDG43kbL11xwfSWs78WZQq3BQ27r95nh4mhNECfkEbqSQ9x5E4wSzdyUYFdFTTodrfEynOdP8Ebq+xSJcG+CC1N61NSmF+RWbbKt9Gw7TCK7ZN1JkV+xrCS+oQetl1KT/mDYtHg8SuDKGaC0rrx68hSamER1rSfgi9RGptfMQOfoe9VDJCWkaj9nWIIuDCZ5hCXaNH9VBRnKbaZlEvJkTVBY5uADnk5XUMsBItGVMokGJH4Dka2AXUIGbv6Mg6l/KOWR2bGJ3M8ciAb+43XJa8m4n7F/rBQeHmj9Y/6gAR5abb65iMrV+PZvNg0ydAKJEcEaLNLgt+vSK7NH2SyvuSjHhoL5lwTwKT9s1f3NkQM8KjTAs9Xqp2aeofWOVCFqdUrAq28c//p+6c7jre9U2EB7qVD0z59/m4LyN+/bCyoGe/9GaXuChgYLxONJWniHzO6NlByepdwHc/UGl7O1T0/QpEh4m+thqYa7QQYWFUGd7pEbzbf/8fAb64Fsv1N3idR90VunXSHsqUXMHPXSgeMMFplFtN6L736e6itLkLz76Kz6JjfLAZlPXL14XnILfwgh3w/9pN5Y9j0djXEE7ZCGOjJKJpB+WQxMxlL6yZeLcR47w0W2hv3O3K3pazY+LaCirRa9trHzlb5Gy1ikTmZC/1X0jZqaLAnnccRSPGcZMV2LuSllb0ru/vahCZ2iemOl4KX/zleYfqrh81Zn4PbyRbIyFVwyEjilw47SnIdAxWgq5oRS2lcp934ygAzTN"
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 664,
+      "candidatesTokenCount": 42,
+      "totalTokenCount": 815,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 664
+        }
+      ],
+      "thoughtsTokenCount": 109,
+      "serviceTier": "standard"
+    },
+    "modelVersion": "gemini-3.8-flash",
+    "responseId": "USvpasTdD7S3juMP3dqqwQk"
+  }
 }

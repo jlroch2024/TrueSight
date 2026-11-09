@@ -1,5 +1,8 @@
 package com.truesight.support;
 
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -86,11 +89,22 @@ public final class Examples {
     }
 
     /**
-     * Gemini's real answer when the second check was run by hand on the 7 relationships in {@link #geminiNvidia()}:
-     * one verdict, Agrees or Doubts with a reason, for each numbered claim.
+     * Gemini's real answer when the second check was run by hand on one of the 7 relationships in
+     * {@link #geminiNvidia()}: the one about the company this prompt asks about, or null if it asks about another.
      */
-    public static String geminiNvidiaSecondCheck() {
-        return read("gemini-nvidia-second-check.json");
+    public static String geminiNvidiaSecondCheckFor(String prompt) {
+        String question = prompt.substring(prompt.indexOf("what is "), prompt.indexOf("'s relationship to "));
+        for (var answer : JsonMapper.builder().build().readTree(read("gemini-nvidia-second-check.json")).properties()) {
+            if (question.contains(answer.getKey()) && prompt.contains("NVIDIA")) {
+                return answer.getValue().toString();
+            }
+        }
+        return null;
+    }
+
+    /** The claims labelled by hand from real filings, with Gemini's real readings of them. */
+    public static JsonNode secondCheckJudge() {
+        return JsonMapper.builder().build().readTree(read("second-check-judge.json"));
     }
 
     /** Gemini's real, unchanged answer to the highlights prompt, for {@link #highlightQuotes()}. */

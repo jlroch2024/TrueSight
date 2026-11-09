@@ -1,6 +1,7 @@
 package com.truesight.relationship;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -48,6 +49,13 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Long
 
     /** Every relationship whose quote has not been read for highlights yet, oldest first. */
     List<Relationship> findByHighlightedAtIsNullOrderByIdAsc();
+
+    /** Forgets the second check of every relationship no analyst has decided, so the pass judges each again. */
+    @Modifying
+    @Query("""
+            update Relationship r set r.secondCheck = null, r.secondCheckReason = null, r.secondCheckedAt = null
+            where r.reviewStatus = com.truesight.relationship.ReviewStatus.UNREVIEWED and r.secondCheck is not null""")
+    int forgetUnreviewedSecondChecks();
 
     List<Relationship> findByReviewStatus(ReviewStatus reviewStatus);
 

@@ -71,7 +71,8 @@ class RelationshipConfidenceIT {
                 NVIDIA_URL, Examples.nvidia10K()));
         when(sec.companyForTicker("NVDA")).thenReturn(new SecClient.SecCompany("NVIDIA Corporation", NVIDIA_CIK, "NVDA"));
         when(gemini.generate(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidia()));
-        when(gemini.generateSecondCheck(any(AiRequest.class))).thenReturn(answer(Examples.geminiNvidiaSecondCheck()));
+        when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(invocation ->
+                answer(Examples.geminiNvidiaSecondCheckFor(invocation.<AiRequest>getArgument(0).prompt())));
     }
 
     @Test

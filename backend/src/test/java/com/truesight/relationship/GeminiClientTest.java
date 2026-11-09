@@ -114,23 +114,21 @@ class GeminiClientTest {
     }
 
     @Test
-    void theSecondCheckAsksForAnIndexAVerdictOfAgreesOrDoubtsAndAReasonForEachClaim() {
+    void theSecondCheckAsksForOneReadingOfThePassageAndAReason() {
         server.expect(requestTo(URL))
-                .andExpect(jsonPath("$.contents[0].parts[0].text").value("The claims."))
+                .andExpect(jsonPath("$.contents[0].parts[0].text").value("The passage."))
                 .andExpect(jsonPath("$.generationConfig.temperature").value(0))
                 .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
-                .andExpect(jsonPath("$.generationConfig.responseSchema.type").value("ARRAY"))
-                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.index.type")
-                        .value("INTEGER"))
-                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.verdict.enum[0]")
-                        .value("AGREES"))
-                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.verdict.enum[1]")
-                        .value("DOUBTS"))
-                .andExpect(jsonPath("$.generationConfig.responseSchema.items.properties.reason.type")
+                .andExpect(jsonPath("$.generationConfig.responseSchema.type").value("OBJECT"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.properties.reading.enum[0]")
+                        .value("SUPPLIES_THE_WRITER"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.properties.reading.enum[7]")
+                        .value("NOT_STATED"))
+                .andExpect(jsonPath("$.generationConfig.responseSchema.properties.reason.type")
                         .value("STRING"))
                 .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
 
-        AiAnswer answer = client("test-key").generateSecondCheck(AiRequest.of(AiPurpose.SECOND_CHECK, "The claims."));
+        AiAnswer answer = client("test-key").generateSecondCheck(AiRequest.of(AiPurpose.SECOND_CHECK, "The passage."));
 
         assertThat(answer.text()).isEqualTo("{\"ok\":true}");
         server.verify();

@@ -36,8 +36,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Pattern;
-import java.util.stream.IntStream;
 
 import static com.truesight.support.FakeAi.answer;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,7 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>NVIDIA's real 10-K is saved first, as in {@code FindSuppliersAndCustomersIT}. Gemini is replaced by a fake: its
  * first call gives its real answer from {@code docs/examples/gemini-nvidia.json}, and the second check gives its real
- * answer from {@code docs/examples/gemini-nvidia-second-check.json}, which was run by hand on those seven claims.
+ * answers from {@code docs/examples/gemini-nvidia-second-check.json}, which was run by hand on those seven claims.
  * Nothing here calls the SEC or Gemini.
  *
  * <p>The database is shared by every integration test, so the pass may find relationships other tests left. The fake
@@ -78,7 +76,6 @@ class SecondCheckIT {
     /** One of the seven real sentences in gemini-nvidia.json: it marks a prompt as NVIDIA's seven claims. */
     private static final String SK_HYNIX_SENTENCE =
             "We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung.";
-    private static final Pattern CLAIM_LINE = Pattern.compile("(?m)^\\d+\\. Claim: ");
 
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;
@@ -89,7 +86,6 @@ class SecondCheckIT {
     @Autowired RelationshipRepository relationships;
     @Autowired AiCallLog aiCalls;
     @Autowired AiCallRepository aiCallRows;
-    @Autowired GeminiAnswer answers;
     @Autowired SecondCheckPassService pass;
     @Autowired @Qualifier("taskExecutor") ThreadPoolTaskExecutor background;
     @MockitoBean SecClient sec;
@@ -114,41 +110,45 @@ class SecondCheckIT {
     // ---- criterion 1 ---------------------------------------------------------------------------------------------
 
     @Test
-    void analysingAReportSendsItsQuoteCheckedClaimsForASecondCheck() throws Exception {
+    void analysingAReportAsksTheJudgeAboutEachClaimAloneToldWhoWroteItAndShownThePassage() throws Exception {
         analyse("sc-sends@example.com", HoldingStatus.DONE);
 
         ArgumentCaptor<AiRequest> sent = ArgumentCaptor.forClass(AiRequest.class);
-        verify(gemini, times(1)).generateSecondCheck(sent.capture());
-        AiRequest request = sent.getValue();
-        assertThat(request.purpose()).isEqualTo(AiPurpose.SECOND_CHECK);
-        assertThat(request.reportId()).isEqualTo(nvidiaReportId());
-        assertThat(claimsIn(request.prompt())).isEqualTo(7);
-        // Each claim reads like "Sony buys from AMD: semi-custom SoC products", and is followed by its sentence.
-        assertThat(request.prompt())
-                .contains("1. Claim: " + nvidiaName + " buys from ")
-                .contains(": semiconductor wafers\n   Sentence: " + TSMC_SENTENCE)
-                .contains("Sentence: " + SK_HYNIX_SENTENCE)
-                .contains("plan, a past relationship, a possibility, a competitor");
-        // It sees only the sentences, never the report.
-        assertThat(request.prompt()).doesNotContain("Item 1. Business").doesNotContain("Item 1A. Risk Factors");
-        assertThat(request.prompt().length()).isLessThan(5_000);
-        assertThat(request.recordedPrompt()).isEqualTo(request.prompt());
+        verify(gemini, times(7)).generateSecondCheck(sent.capture());
+        assertThat(sent.getAllValues()).allSatisfy(request -> {
+            assertThat(request.purpose()).isEqualTo(AiPurpose.SECOND_CHECK);
+            assertThat(request.reportId()).isEqualTo(nvidiaReportId());
+            assertThat(request.prompt()).contains(nvidiaName + " wrote this report: its 10-K, filed on 2026-02-25.");
+            // It reads about 1,500 characters of the report, never the whole report.
+            assertThat(request.prompt().length()).isLessThan(5_000);
+            // A report is never copied into the record.
+            assertThat(request.recordedPrompt()).contains("[report " + nvidiaReportId() + ": ")
+                    .doesNotContain(TSMC_SENTENCE).doesNotContain(SK_HYNIX_SENTENCE);
+        });
+        assertThat(sent.getAllValues()).anySatisfy(request -> assertThat(request.prompt()).contains(TSMC_SENTENCE));
+        assertThat(sent.getAllValues()).anySatisfy(request -> assertThat(request.prompt()).contains(SK_HYNIX_SENTENCE));
     }
 
     @Test
-    void theRealSecondCheckAnswerIsSavedOnEachRelationshipWithItsVerdictAndReason() throws Exception {
+    void theJudgeIsNeverToldWhatTheFirstAiClaimed() throws Exception {
+        analyse("sc-blind@example.com", HoldingStatus.DONE);
+
+        ArgumentCaptor<AiRequest> sent = ArgumentCaptor.forClass(AiRequest.class);
+        verify(gemini, times(7)).generateSecondCheck(sent.capture());
+        assertThat(sent.getAllValues()).allSatisfy(request ->
+                assertThat(request.prompt()).doesNotContain(" buys from ").doesNotContain("Claim:"));
+    }
+
+    @Test
+    void theJudgesRealReadingsAreSavedOnEachRelationshipWithItsVerdictAndReason() throws Exception {
         analyse("sc-saves@example.com", HoldingStatus.DONE);
 
-        List<GeminiAnswer.SecondCheckFound> real = answers.readSecondChecks(Examples.geminiNvidiaSecondCheck());
         List<Relationship> saved = nvidiaRelationships();
-        assertThat(saved).hasSize(7);
-        assertThat(real).extracting(GeminiAnswer.SecondCheckFound::index).containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7);
-        for (GeminiAnswer.SecondCheckFound verdict : real) {
-            Relationship relationship = saved.get(verdict.index() - 1);
-            assertThat(relationship.getSecondCheck()).isEqualTo(verdict.verdict());
-            assertThat(relationship.getSecondCheckReason()).isEqualTo(verdict.reason());
+        assertThat(saved).hasSize(7).allSatisfy(relationship -> {
+            assertThat(relationship.getSecondCheck()).isEqualTo(SecondCheckVerdict.AGREES);
+            assertThat(relationship.getSecondCheckReason()).isNotBlank();
             assertThat(relationship.getSecondCheckedAt()).isNotNull();
-        }
+        });
     }
 
     @Test
@@ -167,14 +167,14 @@ class SecondCheckIT {
     }
 
     @Test
-    void theSecondCheckIsRecordedInTheAuditTrailAgainstTheReportWithHowManyVerdictsWereKept() throws Exception {
+    void eachSecondCheckIsRecordedInTheAuditTrailAgainstTheReportWithThePassageLeftOut() throws Exception {
         // As GeminiClient would: save the call's row, and answer with its id.
         when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(invocation -> {
             AiRequest request = invocation.getArgument(0);
-            Long callId = aiCalls.record(request, "gemini-test-model", Examples.geminiNvidiaSecondCheck(),
-                    AiOutcome.ANSWERED, null, Instant.now(), 1);
+            String text = fakeSecondCheck(request);
+            Long callId = aiCalls.record(request, "gemini-test-model", text, AiOutcome.ANSWERED, null, Instant.now(), 1);
             aiCalls.attachReport(callId, request.reportId());
-            return new AiAnswer(Examples.geminiNvidiaSecondCheck(), callId);
+            return new AiAnswer(text, callId);
         });
 
         analyse("sc-audit@example.com", HoldingStatus.DONE);
@@ -183,33 +183,51 @@ class SecondCheckIT {
                 .filter(call -> call.getPurpose() == AiPurpose.SECOND_CHECK
                         && nvidiaReportId().equals(call.getReportId()))
                 .toList();
-        assertThat(calls).hasSize(1);
-        assertThat(calls.getFirst().getOutcome()).isEqualTo(AiOutcome.ANSWERED);
-        assertThat(calls.getFirst().getKept()).isEqualTo(7);
-        assertThat(calls.getFirst().getDropped()).isZero();
-        assertThat(calls.getFirst().getPrompt()).contains("Sentence: " + TSMC_SENTENCE)
-                .doesNotContain("Item 1. Business");
+        assertThat(calls).hasSize(7).allSatisfy(call -> {
+            assertThat(call.getOutcome()).isEqualTo(AiOutcome.ANSWERED);
+            assertThat(call.getKept()).isEqualTo(1);
+            assertThat(call.getDropped()).isZero();
+            assertThat(call.getPrompt()).doesNotContain(TSMC_SENTENCE).doesNotContain("Item 1. Business");
+        });
     }
 
     @Test
-    void aClaimTheAnswerLeavesOutHasNoSecondCheckUntilThePassAsksAgain() throws Exception {
-        List<Map<String, Object>> withoutTheFirst = answers.readSecondChecks(Examples.geminiNvidiaSecondCheck()).stream()
-                .filter(item -> item.index() != 1)
-                .map(item -> Map.<String, Object>of("index", item.index(), "verdict", item.verdict().name(),
-                        "reason", item.reason()))
-                .toList();
-        when(gemini.generateSecondCheck(any(AiRequest.class))).thenReturn(answer(response(withoutTheFirst)));
+    void aClaimWhoseCallFailsHasNoSecondCheckWhileTheOthersDoUntilThePassAsksAgain() throws Exception {
+        when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(invocation -> {
+            AiRequest request = invocation.getArgument(0);
+            if (request.prompt().contains("what is Fabrinet's relationship")) {
+                throw new GeminiClient.GeminiException("The AI could not be reached. Try again later.", null);
+            }
+            return answer(fakeSecondCheck(request));
+        });
         analyse("sc-left-out@example.com", HoldingStatus.DONE);
 
-        List<Relationship> saved = nvidiaRelationships();
-        assertThat(saved.get(0).getSecondCheck()).isNull();
-        assertThat(saved.subList(1, 7)).allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
+        assertThat(nvidiaRelationships()).filteredOn(relationship -> relationship.getSecondCheck() == null).hasSize(1);
 
         when(gemini.generateSecondCheck(any(AiRequest.class)))
                 .thenAnswer(invocation -> answer(fakeSecondCheck(invocation.getArgument(0))));
         pass.check(nvidiaReportId());
 
         assertThat(nvidiaRelationships()).allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
+    }
+
+    @Test
+    void aReadingThatIsNotTheClaimIsADoubtSayingSoWithTheJudgesReason() throws Exception {
+        Company holding = company("Reversed Holding");
+        Company other = company("Reversed Other");
+        Report report = reports.save(new Report(holding.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
+                "https://www.sec.gov/Archives/" + UUID.randomUUID(), "We buy wafers from them."));
+        Relationship claim = relationships.save(new Relationship(report.getId(), holding.getId(), other.getId(),
+                RelationshipType.CUSTOMER, "wafers", "We buy wafers from them."));
+        when(gemini.generateSecondCheck(any(AiRequest.class))).thenReturn(answer(response(
+                Map.of("reading", "SUPPLIES_THE_WRITER", "reason", "The passage says they buy wafers from it."))));
+
+        pass.check(report.getId());
+
+        Relationship read = relationships.findById(claim.getId()).orElseThrow();
+        assertThat(read.getSecondCheck()).isEqualTo(SecondCheckVerdict.DOUBTS);
+        assertThat(read.getSecondCheckReason())
+                .isEqualTo("Reads the Other Way Round. The passage says they buy wafers from it.");
     }
 
     // ---- criterion 3 ---------------------------------------------------------------------------------------------
@@ -256,11 +274,11 @@ class SecondCheckIT {
     }
 
     @Test
-    void aReportsClaimsGoInCallsOfAtMostThirty() throws Exception {
+    void eachOfAReportsClaimsIsItsOwnCallSoNoVerdictDependsOnTheOthers() throws Exception {
         Company holding = company("Batch Holding");
         Report report = reports.save(new Report(holding.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/Archives/" + UUID.randomUUID(), "text"));
-        for (int i = 1; i <= 31; i++) {
+        for (int i = 1; i <= 3; i++) {
             relationships.save(new Relationship(report.getId(), holding.getId(), company("Batch Supplier " + i).getId(),
                     RelationshipType.SUPPLIER, "parts", "Sentence " + i + " from the report."));
         }
@@ -269,32 +287,68 @@ class SecondCheckIT {
 
         ArgumentCaptor<AiRequest> sent = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini, atLeastOnce()).generateSecondCheck(sent.capture());
-        List<Integer> sizes = sent.getAllValues().stream()
-                .filter(request -> report.getId().equals(request.reportId()))
-                .map(request -> claimsIn(request.prompt())).toList();
-        assertThat(sizes).containsExactly(30, 1);
+        List<AiRequest> own = sent.getAllValues().stream()
+                .filter(request -> report.getId().equals(request.reportId())).toList();
+        assertThat(own).hasSize(3).allSatisfy(request -> assertThat(request.prompt()).contains("Batch Supplier ")
+                .containsPattern("(?s)PASSAGE:\\nSentence \\d from the report\\.$"));
         assertThat(relationships.findByReportIdOrderByIdAsc(report.getId()))
-                .hasSize(31).allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
+                .hasSize(3).allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
     }
 
     @Test
-    void aCustomerClaimReadsThatTheCompanySellsToTheOtherCompany() throws Exception {
-        Company holding = company("Customer Claim Holding");
-        Company customer = company("Customer Claim Buyer");
+    void thePromptGivesTheOtherNamesACompanyIsKnownBy() throws Exception {
+        Company holding = company("Names Holding");
+        Company other = companyDirectory.findOrCreate("Names Other " + UUID.randomUUID(), null, null, List.of("NMO"));
         Report report = reports.save(new Report(holding.getId(), "10-K", accession(), LocalDate.parse("2026-02-25"),
                 "https://www.sec.gov/Archives/" + UUID.randomUUID(), "text"));
-        relationships.save(new Relationship(report.getId(), holding.getId(), customer.getId(), RelationshipType.CUSTOMER,
-                "graphics processors", "Sentence from the report."));
+        relationships.save(new Relationship(report.getId(), holding.getId(), other.getId(), RelationshipType.SUPPLIER,
+                "parts", "NMO makes our parts."));
 
         pass.check(report.getId());
 
         ArgumentCaptor<AiRequest> sent = ArgumentCaptor.forClass(AiRequest.class);
         verify(gemini, atLeastOnce()).generateSecondCheck(sent.capture());
-        assertThat(sent.getAllValues()).anySatisfy(request -> {
-            assertThat(request.reportId()).isEqualTo(report.getId());
-            assertThat(request.prompt()).contains("1. Claim: " + holding.getName() + " sells to " + customer.getName()
-                    + ": graphics processors\n   Sentence: Sentence from the report.");
-        });
+        assertThat(sent.getAllValues()).anySatisfy(request ->
+                assertThat(request.prompt()).contains(other.getName() + " (also written \"NMO\")"));
+    }
+
+    // ---- judging again -------------------------------------------------------------------------------------------
+
+    @Test
+    void judgingAgainAsksAboutEveryRelationshipNoAnalystHasDecidedAndLeavesDecidedOnesAlone() throws Exception {
+        analyse("sc-again@example.com", HoldingStatus.DONE);
+        List<Relationship> saved = nvidiaRelationships();
+        Relationship decided = saved.getFirst();
+        decided.setReviewStatus(ReviewStatus.APPROVED);
+        decided.setSecondCheck(SecondCheckVerdict.DOUBTS);
+        decided.setSecondCheckReason("From the old second check.");
+        relationships.save(decided);
+        Relationship undecided = saved.get(1);
+        undecided.setSecondCheck(SecondCheckVerdict.DOUBTS);
+        undecided.setSecondCheckReason("From the old second check.");
+        relationships.save(undecided);
+
+        mockMvc.perform(post("/api/relationships/second-check/again")
+                        .header("Authorization", logins.analystBearer("sc-again-analyst@example.com")))
+                .andExpect(status().isAccepted());
+        awaitNothingPending();
+
+        assertThat(relationships.findById(decided.getId()).orElseThrow().getSecondCheckReason())
+                .isEqualTo("From the old second check.");
+        Relationship judged = relationships.findById(undecided.getId()).orElseThrow();
+        assertThat(judged.getSecondCheck()).isEqualTo(SecondCheckVerdict.AGREES);
+        assertThat(judged.getSecondCheckReason()).isNotEqualTo("From the old second check.");
+    }
+
+    @Test
+    void portfolioManagersGetForbiddenFromJudgingAgainAndNothingIsForgotten() throws Exception {
+        analyse("sc-again-manager@example.com", HoldingStatus.DONE);
+
+        mockMvc.perform(post("/api/relationships/second-check/again")
+                        .header("Authorization", logins.bearer("sc-again-manager@example.com")))
+                .andExpect(status().isForbidden());
+
+        assertThat(nvidiaRelationships()).allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNotNull());
     }
 
     // ---- criterion 4 ---------------------------------------------------------------------------------------------
@@ -344,11 +398,8 @@ class SecondCheckIT {
                 .thenAnswer(invocation -> answer(fakeSecondCheck(invocation.getArgument(0))));
         pass.check(nvidiaReportId());
 
-        List<GeminiAnswer.SecondCheckFound> real = answers.readSecondChecks(Examples.geminiNvidiaSecondCheck());
-        List<Relationship> saved = nvidiaRelationships();
-        for (GeminiAnswer.SecondCheckFound verdict : real) {
-            assertThat(saved.get(verdict.index() - 1).getSecondCheck()).isEqualTo(verdict.verdict());
-        }
+        assertThat(nvidiaRelationships()).allSatisfy(relationship ->
+                assertThat(relationship.getSecondCheck()).isEqualTo(SecondCheckVerdict.AGREES));
     }
 
     // ---- criterion 5 ---------------------------------------------------------------------------------------------
@@ -381,30 +432,19 @@ class SecondCheckIT {
     // ---- helpers -------------------------------------------------------------------------------------------------
 
     /**
-     * What the fake second check answers. NVIDIA's seven claims get Gemini's real answer from
-     * {@code docs/examples/}. Any other claims (left in the shared database by other tests) get an "Agrees" for each,
-     * so the pass can always finish.
+     * What the fake second check answers. NVIDIA's seven claims get Gemini's real answers from {@code docs/examples/}.
+     * Any other claim (left in the shared database by other tests) is read as a supplier, so the pass can always finish.
      */
     private String fakeSecondCheck(AiRequest request) throws Exception {
-        int claims = claimsIn(request.prompt());
-        if (claims == 7 && request.prompt().contains(SK_HYNIX_SENTENCE)) {
-            return Examples.geminiNvidiaSecondCheck();
-        }
-        return response(IntStream.rangeClosed(1, claims)
-                .mapToObj(index -> Map.<String, Object>of("index", index, "verdict", "AGREES",
-                        "reason", "Test reply to claim " + index + "."))
-                .toList());
+        String real = Examples.geminiNvidiaSecondCheckFor(request.prompt());
+        return real != null ? real : response(Map.of("reading", "SUPPLIES_THE_WRITER", "reason", "Test reply."));
     }
 
     /** Gemini's response around the text of an answer. */
-    private String response(List<Map<String, Object>> verdicts) throws Exception {
-        String content = json.writeValueAsString(verdicts);
+    private String response(Map<String, Object> reading) throws Exception {
+        String content = json.writeValueAsString(reading);
         return json.writeValueAsString(Map.of("candidates", List.of(Map.of(
                 "content", Map.of("parts", List.of(Map.of("text", content)))))));
-    }
-
-    private static int claimsIn(String prompt) {
-        return (int) CLAIM_LINE.matcher(prompt).results().count();
     }
 
     private Long nvidiaReportId() {

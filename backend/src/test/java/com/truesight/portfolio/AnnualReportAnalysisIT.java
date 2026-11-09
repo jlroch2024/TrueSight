@@ -294,7 +294,7 @@ class AnnualReportAnalysisIT {
         when(gemini.generateSecondCheck(any(AiRequest.class))).thenAnswer(invocation -> {
             secondCheckAsked.countDown();
             if (!release.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("The test never released the second check");
-            return recordedAnswer(invocation.getArgument(0), Examples.geminiNvidiaSecondCheck());
+            return recordedAnswer(invocation.getArgument(0), Examples.geminiNvidiaSecondCheckFor(invocation.<AiRequest>getArgument(0).prompt()));
         });
         try {
             mockMvc.perform(post("/api/portfolios/{id}/analysis", portfolio.getId())
@@ -344,9 +344,9 @@ class AnnualReportAnalysisIT {
         assertThat(holding.getStatusReason()).isNull();
         Long nvidiaId = companies.findByCik("0001045810").orElseThrow().getId();
         Long reportId = reports.findFirstByCompanyIdOrderByFilingDateDesc(nvidiaId).orElseThrow().getId();
-        // Only this report's calls are counted: the mock is shared by the whole suite, and another test's background
+        // One call per claim, and only this report's are counted: the mock is shared by the whole suite, and another test's background
         // work can still be asking the second check about its own report.
-        verify(gemini, times(1)).generateSecondCheck(argThat(request -> reportId.equals(request.reportId())));
+        verify(gemini, times(2)).generateSecondCheck(argThat(request -> reportId.equals(request.reportId())));
         // The relationships stay saved with no second check, for the analyst-run pass to ask about again.
         assertThat(relationshipsFor(reportId, nvidiaId)).hasSize(2)
                 .allSatisfy(relationship -> assertThat(relationship.getSecondCheck()).isNull());

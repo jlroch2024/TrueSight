@@ -145,24 +145,17 @@ class GeminiAnswerTest {
     }
 
     @Test
-    void readsEachVerdictOfTheSecondCheckWithItsReason() throws Exception {
-        String answer = responseWith("[{\"index\":1,\"verdict\":\"AGREES\",\"reason\":\"A current supplier.\"},"
-                + "{\"index\":2,\"verdict\":\"DOUBTS\",\"reason\":\"Only a plan.\"}]");
+    void readsTheSecondChecksReadingWithItsReason() throws Exception {
+        String answer = responseWith("{\"reading\":\"COMPETITOR\",\"reason\":\"Named as a competitor.\"}");
 
-        assertThat(answers.readSecondChecks(answer)).containsExactly(
-                new GeminiAnswer.SecondCheckFound(1, SecondCheckVerdict.AGREES, "A current supplier."),
-                new GeminiAnswer.SecondCheckFound(2, SecondCheckVerdict.DOUBTS, "Only a plan."));
+        assertThat(answers.readSecondCheck(answer))
+                .isEqualTo(new GeminiAnswer.SecondCheckFound(SecondCheckReading.COMPETITOR, "Named as a competitor."));
     }
 
     @Test
-    void aSecondCheckItemWithNoIndexOrAnUnknownVerdictIsLeftOut() throws Exception {
-        String answer = responseWith("[{\"verdict\":\"AGREES\",\"reason\":\"No index.\"},"
-                + "{\"index\":2,\"verdict\":\"MAYBE\",\"reason\":\"Not asked for.\"},"
-                + "{\"index\":\"3\",\"verdict\":\"AGREES\",\"reason\":\"Index is text.\"},"
-                + "{\"index\":4,\"verdict\":\"doubts\",\"reason\":\"Lower case is fine.\"}]");
-
-        assertThat(answers.readSecondChecks(answer)).containsExactly(
-                new GeminiAnswer.SecondCheckFound(4, SecondCheckVerdict.DOUBTS, "Lower case is fine."));
+    void aReadingInLowerCaseIsFine() throws Exception {
+        assertThat(answers.readSecondCheck(responseWith("{\"reading\":\"planned\",\"reason\":\"Only a plan.\"}")).reading())
+                .isEqualTo(SecondCheckReading.PLANNED);
     }
 
     @Test
@@ -195,11 +188,13 @@ class GeminiAnswerTest {
     }
 
     @Test
-    void aSecondCheckAnswerThatIsNotAJsonListIsUnreadable() throws Exception {
-        assertThatThrownBy(() -> answers.readSecondChecks(null)).isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
-        assertThatThrownBy(() -> answers.readSecondChecks(responseWith("[{\"index\":1,\"verdict\":\"AGREES\"")))
+    void aSecondCheckAnswerWithNoReadingItWasOfferedIsUnreadable() throws Exception {
+        assertThatThrownBy(() -> answers.readSecondCheck(null)).isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+        assertThatThrownBy(() -> answers.readSecondCheck(responseWith("{\"reading\":\"AGREES\"")))
                 .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
-        assertThatThrownBy(() -> answers.readSecondChecks(responseWith("{\"index\":1}")))
+        assertThatThrownBy(() -> answers.readSecondCheck(responseWith("{\"reading\":\"MAYBE\",\"reason\":\"Not offered.\"}")))
+                .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
+        assertThatThrownBy(() -> answers.readSecondCheck(responseWith("[]")))
                 .isInstanceOf(GeminiAnswer.UnreadableAnswerException.class);
     }
 
