@@ -39,11 +39,11 @@ export function sampleNoise(count: number): NewsArticle[] {
     .filter((part) => !part.thought)
     .map((part) => part.text ?? '')
     .join('');
-  const judgements = JSON.parse(answer) as {
+  const judgements = (JSON.parse(answer) as { assessments: {
     isEvent: boolean;
     confidence: 'LOW' | 'MEDIUM' | 'HIGH';
     reason: string;
-  }[];
+  }[] }).assessments;
   return sampleNews(count).map((article, index) => ({
     ...article,
     assessment: {
