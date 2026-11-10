@@ -60,7 +60,7 @@ function show(id, push) {
   if (!SPRINTS.some(s => s.id === id)) id = latest;
   SPRINTS.forEach(s => document.getElementById('tab-' + s.id).setAttribute('aria-selected', String(s.id === id)));
   const s = SPRINTS.find(x => x.id === id);
-  document.title = `TrueSight ${s.label} Sprint Tracker`;
+  document.title = `TrueSight ${s.label} Tracker`;
   if (frame.dataset.open !== id) { frame.srcdoc = PAGES[id]; frame.dataset.open = id; }
   if (push) { try { history.replaceState(null, '', '#' + id); } catch (e) { location.hash = id; } }
 }
