@@ -36,8 +36,8 @@ public class NewsClient {
     NewsClient(RestClient client, String baseUrl, int requestsPerSecond) {
         this.client = client;
         this.baseUrl = baseUrl;
-        // Google News is a public feed; do not exceed one request per second even if configured higher.
-        this.intervalMillis = 1100L / Math.min(1, Math.max(1, requestsPerSecond));
+        // Google News is a public feed; do not exceed two requests per second even if configured higher.
+        this.intervalMillis = 1100L / Math.min(2, Math.max(1, requestsPerSecond));
     }
 
     private static RestClient createClient(String userAgent) {

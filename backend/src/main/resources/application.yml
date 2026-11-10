@@ -67,7 +67,7 @@ truesight:
     requests-per-second: 10
   news:
     base-url: https://news.google.com/rss/search
-    requests-per-second: 1
+    requests-per-second: 2
     # Maximum Gemini headline batches judged at once; Google News fetching remains paced separately.
     parallel-batches: ${NEWS_PARALLEL_BATCHES:4}
     # The daily check is started by Google Cloud Scheduler, which sends this secret in X-Scheduler-Token.
