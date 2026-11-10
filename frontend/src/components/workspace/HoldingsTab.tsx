@@ -4,7 +4,7 @@
 // read, a line under the holdings count says how far it has got. Choosing a row shows the company in the
 // Inspector; pointing at one lights it on the graph.
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Check, Inbox, LoaderCircle, Plus, Upload } from 'lucide-react';
+import { ArrowRight, Check, Inbox, LoaderCircle, Package, Plus, ShoppingCart, Upload } from 'lucide-react';
 import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from 'react';
 import type { AlertEvent } from '../../api/alerts';
 import type { Holding } from '../../api/portfolios';
@@ -215,15 +215,17 @@ function LinkLines({ suppliers, customers }: { suppliers: number; customers: num
       </span>
     );
   }
-  const line = (kind: 'supplier' | 'customer', count: number, one: string, many: string) => (
-    <span className={`link-line ${kind}${count === 0 ? ' zero' : ''}`}>
-      <span className="link-number num">{count}</span> <span className="link-word">{count === 1 ? one : many}</span>
+  // The icons stay in one column at the right; a number of any length grows to the left of its icon.
+  const line = (kind: 'supplier' | 'customer', count: number, one: string, many: string, Icon: typeof Package) => (
+    <span className={`link-line ${kind}${count === 0 ? ' zero' : ''}`} title={`${count} ${count === 1 ? one : many}`}>
+      <span className="link-number num">{count}</span> <span className="visually-hidden">{count === 1 ? one : many}</span>
+      <Icon size={14} aria-hidden="true" />
     </span>
   );
   return (
     <span className="link-lines">
-      {line('supplier', suppliers, 'Supplier', 'Suppliers')}
-      {line('customer', customers, 'Customer', 'Customers')}
+      {line('supplier', suppliers, 'Supplier', 'Suppliers', Package)}
+      {line('customer', customers, 'Customer', 'Customers', ShoppingCart)}
     </span>
   );
 }

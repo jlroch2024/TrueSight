@@ -256,27 +256,42 @@ function Dependence({
         Dependence
       </h3>
       {shown.map((item) => {
-        const words = `${partyName(item)}, ${percent(item.share)} of ${measureLabel(item.measure)}`;
+        const words = (
+          <>
+            {partyName(item)}, <strong>{percent(item.share)}</strong> of {measureLabel(item.measure)}
+          </>
+        );
         const onGraph = item.counterparty && view.nodes.some((node) => node.id === String(item.counterparty!.id));
         return (
           <div key={item.key} className="dependence">
             {onGraph ? (
               <button
                 type="button"
-                className="btn quiet small num"
+                className="dep-name num"
                 onClick={() => onChoose({ kind: 'company', nodeId: String(item.counterparty!.id) })}
               >
                 {words}
               </button>
             ) : (
-              <span className="h-name num">{words}</span>
+              <span className="dep-name num">{words}</span>
             )}
-            {item.trend.length > 1 && <span className="muted num">{item.trend.map(percent).join(' → ')}</span>}
+            {item.trend.length > 1 && (
+              <span className="dep-trend num" aria-label={item.trend.map(percent).join(' then ')}>
+                {item.trend.map((share, index) => (
+                  <span key={index} className="dep-step">
+                    {index > 0 && <ArrowRight size={14} strokeWidth={2.75} aria-hidden="true" />}
+                    <strong>{percent(share)}</strong>
+                  </span>
+                ))}
+              </span>
+            )}
             {item.report && (
-              <button type="button" className="btn small" onClick={() => openInNewTab(item.report!.url)}>
-                <FileText size={15} />
-                Show Filing
-              </button>
+              <span className="dependence-filing">
+                <button type="button" className="btn small" onClick={() => openInNewTab(item.report!.url)}>
+                  <FileText size={15} />
+                  Show Filing
+                </button>
+              </span>
             )}
           </div>
         );

@@ -15,8 +15,8 @@
 // Below 1160px wide the same panels become one sheet at a time over the graph, chosen from a tab bar (PhoneDock.tsx): any
 // narrower and the top bar's pieces no longer fit between the drawer and the actions.
 import { AnimatePresence, MotionGlobalConfig, animate, motion, useMotionValue, useTransform } from 'motion/react';
-import { Bell, Check, ChevronsLeft, ChevronsRight, LoaderCircle, Network, Plus, Radar, ScanSearch, TriangleAlert, Upload, X } from 'lucide-react';
-import { type ChangeEvent, type DragEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Bell, Check, ChevronsLeft, ChevronsRight, LoaderCircle, Network, Plus, Radar, FileSearchCorner, TriangleAlert, Upload, X } from 'lucide-react';
+import { type CSSProperties, type ChangeEvent, type DragEvent, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { type AlertEvent, type AlertStatus, type AlertsResponse, alertApi } from '../api/alerts';
 import type { AskSource } from '../api/ask';
@@ -31,7 +31,7 @@ import { Segmented } from '../components/Segmented';
 import { LogoSettingsContext, Tile } from '../components/Tile';
 import { useLogoSettings } from '../components/useLogoSettings';
 import { type AlertFilter, AlertsTab } from '../components/workspace/AlertsTab';
-import { AskPanel } from '../components/workspace/AskPanel';
+import { type AskParty, type AskPicture, AskPanel } from '../components/workspace/AskPanel';
 import { HoldingsTab, LoadingRows } from '../components/workspace/HoldingsTab';
 import { InspectorBody, InspectorKind } from '../components/workspace/Inspector';
 import { PHONE_TABS, type PhoneTab, PhoneDock } from '../components/workspace/PhoneDock';
@@ -54,9 +54,13 @@ const BAR = 52;
 const DRAWER = 380;
 const RAIL = 60;
 const INSPECTOR = 488;
+// The analyst's bar beside the right bar, at its widest.
+const DESK_ROOM = 164;
+// The narrowest the question box can be between the key and the view's controls; the view's controls' height.
+const ASK_LEAST = 260;
 // Below this width the workspace is one sheet at a time, with a tab bar this tall.
 const COMPACT_BELOW = 1160;
-const DOCK = 64;
+const DOCK = BAR;
 // Ask TrueSight's question bar along the bottom, as tall as the top bar.
 const ASK_BAR = BAR;
 // How long the panels take to fade out and in when the window crosses that width (styles.css has the same times).
@@ -164,6 +168,20 @@ export function WorkspacePage() {
   const [phoneTab, setPhoneTab] = useState<PhoneTab>(tab === 'alerts' ? 'alerts' : 'graph');
   const [leftOpen, setLeftOpen] = useState(true);
   const [chosen, setChosen] = useState<Chosen>(null);
+  // What the user had open in the Inspector before, most recent last, for Back. Only the user's own choices are
+  // recorded (pick): a change the page makes itself is never a step back, or Back could undo it and loop. Closing the
+  // Inspector forgets the way back.
+  const [trail, setTrail] = useState<NonNullable<Chosen>[]>([]);
+  const shownNow = useRef<Chosen>(null);
+  shownNow.current = chosen;
+  const pick = useCallback((next: Chosen) => {
+    const before = shownNow.current;
+    if (before && next && JSON.stringify(before) !== JSON.stringify(next)) setTrail((all) => [...all, before].slice(-20));
+    setChosen(next);
+  }, []);
+  useEffect(() => {
+    if (!chosen) setTrail([]);
+  }, [chosen]);
   // The SEC Filing Timeline: earlier annual reports, read on request, and the years they cover.
   const timeline = useHistory(portfolioId, (holdings ?? []).filter((holding) => holding.status === 'DONE').length);
   // The last thing the Inspector showed, so a closed Inspector can be opened again where it was.
@@ -335,6 +353,52 @@ export function WorkspacePage() {
 
   // The conversation with Ask TrueSight, for the open portfolio.
   const ask = useAsk(portfolioId);
+
+  // The right bar's actions fold to icons when the timeline would otherwise run under them.
+  // The bar hugs its buttons and is measured: how wide it is now, and how wide it was last with its names showing.
+  const [actionsFolded, setActionsFolded] = useState(false);
+  const [actionsWidth, setActionsWidth] = useState(INSPECTOR);
+  const unfoldedWidth = useRef(INSPECTOR);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const isAnalyst = me?.role === 'ANALYST';
+  // Once folded, they unfold only with 40px to spare, so the fold and the top row's own folding never undo each other.
+  const barNeed = useCallback(
+    (width: number) => {
+      const room = window.innerWidth - GAP * 2 - DRAWER - GAP * 2 - unfoldedWidth.current - (isAnalyst ? DESK_ROOM : 0);
+      setActionsFolded((was) => width > room - (was ? 40 : 0));
+    },
+    [isAnalyst],
+  );
+  // Measured before the first paint, and again whenever the bar changes width (folding, a new action's words).
+  useLayoutEffect(() => {
+    const island = actionsRef.current;
+    if (!island) return;
+    const measure = () => {
+      const width = island.offsetWidth;
+      if (width === 0) return;
+      if (!island.classList.contains('folded')) unfoldedWidth.current = width;
+      setActionsWidth(width);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(island);
+    return () => observer.disconnect();
+  });
+  const [corners, setCorners] = useState({ left: 0, right: 0 });
+  // The folded question box, opened above the bottom row.
+  const [askOpen, setAskOpen] = useState(false);
+  // The window's width, so the question box's room is worked out again whenever the window is resized.
+  const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const resized = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', resized);
+    return () => window.removeEventListener('resize', resized);
+  }, []);
+  const setBottomCorners = useCallback(
+    (next: { left: number; right: number }) => setCorners((now) => (now.left === next.left && now.right === next.right ? now : next)),
+    [],
+  );
 
   // Escape closes the Inspector, unless a menu or a window is open (Escape is theirs then).
   useEffect(() => {
@@ -629,8 +693,15 @@ export function WorkspacePage() {
 
   // Choosing something from a list. On a phone the lists are sheets, so Details takes over and shows it.
   function choose(next: NonNullable<Chosen>) {
-    setChosen(next);
+    pick(next);
     if (compact) setPhoneTab('details');
+  }
+  // Back goes to what the Inspector showed before; closing it forgets the way back.
+  function goBack() {
+    const previous = trail[trail.length - 1];
+    if (!previous) return;
+    setTrail(trail.slice(0, -1));
+    setChosen(previous);
   }
 
   // A tab pressed. Pressed again, it goes back to the graph. Details opens again on what it last showed.
@@ -663,9 +734,15 @@ export function WorkspacePage() {
     : {
         top: GAP * 2 + BAR,
         right: inspectorOpen ? GAP * 2 + INSPECTOR : GAP,
-        bottom: showAsk ? GAP * 2 + ASK_BAR : GAP,
+        bottom: GAP,
         left: loaded ? GAP * 2 + (leftOpen ? DRAWER : RAIL) : GAP,
       };
+  // The question box sits on the same line as the key and the view's controls, between them; with no room there, above.
+  const between = windowWidth - insets.left - insets.right;
+  const askFolded = corners.right > 0 && between - corners.left - corners.right - GAP * 2 < ASK_LEAST;
+  const askAbove = askFolded && askOpen;
+  const askLeft = insets.left + (askAbove || corners.left === 0 ? 0 : corners.left + GAP);
+  const askRight = insets.right + (askAbove || corners.right === 0 ? 0 : corners.right + GAP);
   const chooseCompany = (nodeId: string) => choose({ kind: 'company', nodeId });
   // What an answer's source opens, as the workspace shows it: a relationship in the Inspector, a holding as its company,
   // an alert as the event that holds that alert. Null if the item is not there any more (the portfolio has moved on).
@@ -682,6 +759,27 @@ export function WorkspacePage() {
     const event = view.alerts.find((item) => item.alertIds.includes(source.id));
     return event ? { kind: 'alert', key: alertKey(event) } : null;
   };
+  const askParty = (company: { name: string; displayName: string; ticker: string | null }): AskParty => {
+    const held = view.holdings.find((holding) => holding.ticker === company.ticker);
+    // Under its tile: the ticker, or the first word of a name with none (Samsung).
+    const label = company.ticker ?? company.displayName.split(' ')[0]!;
+    return { name: company.name, displayName: company.displayName, label, ticker: company.ticker, holding: !!held, colour: held && view.colourOf.get(view.nodeIdOf(held)) };
+  };
+  const askPicture = (source: AskSource): AskPicture => {
+    if (source.kind === 'HOLDING') {
+      const holding = view.holdings.find((item) => item.id === source.id);
+      return holding ? { from: askParty({ name: holding.companyName ?? holding.ticker, displayName: holding.companyDisplayName ?? holding.ticker, ticker: holding.ticker }) } : null;
+    }
+    if (source.kind !== 'RELATIONSHIP') return null;
+    const link = view.relationships.find((item) => item.id === source.id);
+    if (!link) return null;
+    const [supplier, customer] = link.type === 'SUPPLIER' ? [link.counterparty, link.company] : [link.company, link.counterparty];
+    return { from: askParty(supplier), to: askParty(customer) };
+  };
+  const askNames = [
+    ...view.holdings.flatMap((holding) => [holding.companyDisplayName ?? holding.ticker, holding.ticker]),
+    ...view.relationships.flatMap((link) => [link.company.displayName, link.counterparty.displayName]),
+  ];
   const openSource = (source: AskSource) => {
     const target = sourceTarget(source);
     if (target) choose(target);
@@ -753,7 +851,7 @@ export function WorkspacePage() {
 
   return (
     <LogoSettingsContext.Provider value={logoSettings}>
-      <div className={`ws${compact ? ' compact' : ''}${sheetOpen ? ' sheet-open' : ''}`} data-switching={switching ?? undefined} data-analyst={me?.role === 'ANALYST' ? '' : undefined}>
+      <div className={`ws${compact ? ' compact' : ''}${sheetOpen ? ' sheet-open' : ''}`} data-switching={switching ?? undefined} data-analyst={me?.role === 'ANALYST' ? '' : undefined} style={{ '--actions': `${actionsWidth}px` } as CSSProperties}>
         <div className="ws-graph">
           {loaded && view.nodes.length > 0 && (
             <LivingGraph
@@ -768,7 +866,9 @@ export function WorkspacePage() {
               // The Open Alerts bar, the title and search follow the left island (as wide as the drawer), and stop short
               // of the right one (as wide as the Inspector).
               // On a phone the top bar is taken: they sit under it, and the Open Alerts pill is in it.
-              topBar={compact ? undefined : { left: GAP * 2 + DRAWER, right: GAP * 2 + INSPECTOR }}
+              topBar={compact ? undefined : { left: GAP * 2 + DRAWER, right: GAP * 2 + actionsWidth }}
+              onBarNeed={barNeed}
+              onBottomCorners={setBottomCorners}
               barStart={
                 compact ? undefined : (
                   <OpenAlertsBar
@@ -794,8 +894,8 @@ export function WorkspacePage() {
               }
               focus={focus}
               peekNodeId={peek}
-              onNodeSelect={(nodeId) => setChosen(nodeId ? { kind: 'company', nodeId } : null)}
-              onEdgeSelect={(relationshipId) => setChosen({ kind: 'relationship', relationshipId })}
+              onNodeSelect={(nodeId) => pick(nodeId ? { kind: 'company', nodeId } : null)}
+              onEdgeSelect={(relationshipId) => pick({ kind: 'relationship', relationshipId })}
               selectedNodeId={chosen?.kind === 'company' ? chosen.nodeId : null}
               selectedRelationshipId={chosen?.kind === 'relationship' ? chosen.relationshipId : null}
               logoToken={logoSettings.token}
@@ -840,7 +940,7 @@ export function WorkspacePage() {
             view.nodes.length === 0 && (
               <GroundCard icon={<Network size={28} />} title="No Supply Chain Yet" insets={insets}>
                 <button type="button" className={`btn primary${analysing || starting ? ' busy' : ''}`} disabled={analysing || starting} onClick={() => void startAnalysis()}>
-                  {analysing || starting ? <LoaderCircle size={16} className="spin" /> : <ScanSearch size={16} />}
+                  {analysing || starting ? <LoaderCircle size={16} className="spin" /> : <FileSearchCorner size={16} />}
                   {analysing || starting ? 'Analysing' : 'Analyse'}
                 </button>
               </GroundCard>
@@ -860,6 +960,8 @@ export function WorkspacePage() {
         />
         {compact ? null : loaded ? (
           <ActionsIsland
+            folded={actionsFolded}
+            islandRef={actionsRef}
             analysing={analysing}
             starting={starting}
             checking={checking || startingCheck}
@@ -876,7 +978,7 @@ export function WorkspacePage() {
             <AccountMenu />
           </div>
         )}
-        {!compact && <AnalystDeskButton portfolioId={portfolioId} bar />}
+        {!compact && loaded && <AnalystDeskButton portfolioId={portfolioId} bar />}
         <input
           ref={uploadInput}
           id="upload-csv"
@@ -995,6 +1097,11 @@ export function WorkspacePage() {
               transition={PANEL_MOVE}
             >
               <div className="insp-head">
+                {trail.length > 0 && (
+                  <button type="button" className="icon-btn" aria-label="Back" title="Back" onClick={goBack}>
+                    <ArrowLeft size={17} />
+                  </button>
+                )}
                 <InspectorKind chosen={chosen} />
                 <button type="button" className="icon-btn" aria-label="Close the Inspector" title="Close (Esc)" onClick={() => setChosen(null)}>
                   <X size={17} />
@@ -1055,6 +1162,11 @@ export function WorkspacePage() {
                     chosen && (
                       <>
                         <div className="insp-head">
+                          {trail.length > 0 && (
+                            <button type="button" className="icon-btn" aria-label="Back" title="Back" onClick={goBack}>
+                              <ArrowLeft size={17} />
+                            </button>
+                          )}
                           <InspectorKind chosen={chosen} />
                           <button type="button" className="icon-btn" aria-label="Close the Inspector" title="Close" onClick={() => setChosen(null)}>
                             <X size={17} />
@@ -1081,7 +1193,7 @@ export function WorkspacePage() {
                                 <Swap
                                   on={analysing || starting}
                                   busy={<><LoaderCircle size={15} className="spin" />Analysing</>}
-                                  idle={<><ScanSearch size={15} />Analyse</>}
+                                  idle={<><FileSearchCorner size={15} />Analyse</>}
                                 />
                               </button>
                             </>
@@ -1117,8 +1229,15 @@ export function WorkspacePage() {
           <AskPanel
             exchanges={ask.exchanges}
             sending={ask.sending}
-            left={insets.left}
-            right={insets.right}
+            left={askLeft}
+            right={askRight}
+            placed={!(loaded && view.nodes.length > 0) || corners.left > 0}
+            bottom={askAbove ? GAP * 2 + BAR : undefined}
+            folded={askFolded && !askOpen}
+            onUnfold={() => setAskOpen(true)}
+            onFold={() => setAskOpen(false)}
+            names={askNames}
+            picture={askPicture}
             onAsk={(question) => void ask.ask(question)}
             onRetry={ask.retry}
             canOpen={(source) => sourceTarget(source) !== null}
@@ -1132,7 +1251,7 @@ export function WorkspacePage() {
           style={{
             left: `calc(50% + ${(insets.left - insets.right) / 2}px)`,
             // Above Ask TrueSight's bar, not over it.
-            ...(showAsk ? { bottom: insets.bottom + GAP } : {}),
+            ...(showAsk ? { bottom: GAP * 3 + ASK_BAR } : {}),
           }}
           aria-live="polite"
         >

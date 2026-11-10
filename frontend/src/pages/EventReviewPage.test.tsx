@@ -93,7 +93,7 @@ describe('Events tab', () => {
     expect(screen.queryByRole('heading', { name: eventArticle!.title })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: 'Decided' }));
-    expect(await screen.findByText('No articles from the last 7 days have been decided yet.')).toBeInTheDocument();
+    expect(await screen.findByText('None Decided in the Last 7 Days')).toBeInTheDocument();
     expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
       '/api/news/assessments?filter=EVENTS',
       '/api/news/assessments?filter=NOISE',
@@ -108,7 +108,7 @@ describe('Events tab', () => {
     await userEvent.click(within(item).getByRole('button', { name: 'Approve' }));
 
     expect(sent).toEqual([{ url: '/api/news/assessments/1', body: { decision: 'CONFIRMED' } }]);
-    expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
+    expect(await screen.findByText('No Undecided Events in the Last 7 Days')).toBeInTheDocument();
   });
 
   it('rejects an event as noise only with a note', async () => {
@@ -131,7 +131,7 @@ describe('Events tab', () => {
         note: 'An earnings preview, not a disruption.',
       },
     }]);
-    expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
+    expect(await screen.findByText('No Undecided Events in the Last 7 Days')).toBeInTheDocument();
   });
 
   it('rejects noise as an event, choosing its type and severity', async () => {

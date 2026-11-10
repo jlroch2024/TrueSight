@@ -119,7 +119,7 @@ describe('Review page', () => {
     renderPage();
 
     expect(
-      await screen.findByText('Nothing to review. Analyse a portfolio to find more relationships.'),
+      await screen.findByText('Nothing to Review'),
     ).toBeInTheDocument();
   });
 
@@ -352,7 +352,7 @@ describe('Review page', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
 
     expect(
-      await screen.findByText('Nothing to review. Analyse a portfolio to find more relationships.'),
+      await screen.findByText('Nothing to Review'),
     ).toBeInTheDocument();
   });
 
@@ -392,7 +392,7 @@ describe('Review page', () => {
 
     const put = calls.find((call) => call.method === 'PUT')!;
     expect(put.body).toEqual({ decision: 'REJECTED', note: 'Planned partner, not a supplier.' });
-    expect(await screen.findByText(/Nothing to review/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing to Review/)).toBeInTheDocument();
   });
 
   it('closes the note box with Cancel and sends nothing', async () => {
@@ -474,17 +474,17 @@ describe('Review page', () => {
     renderPage();
 
     expect(
-      await screen.findByText('Nothing to review. Analyse a portfolio to find more relationships.'),
+      await screen.findByText('Nothing to Review'),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: 'Approved (0)' }));
-    expect(screen.getByText('None approved yet. Approve one from Unreviewed.')).toBeInTheDocument();
+    expect(screen.getByText('None Approved Yet')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: 'Rejected (0)' }));
-    expect(screen.getByText('None rejected yet.')).toBeInTheDocument();
+    expect(screen.getByText('None Rejected Yet')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: 'All (0)' }));
-    expect(screen.getByText('Nothing to review. Analyse a portfolio to find more relationships.')).toBeInTheDocument();
+    expect(screen.getByText('Nothing to Review')).toBeInTheDocument();
   });
 
   it('puts the cursor in the note box when Reject is pressed, and keeps Show in Report beside it', async () => {

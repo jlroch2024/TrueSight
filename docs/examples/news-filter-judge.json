@@ -1,5 +1,5 @@
 {
- "promptSha256": "d0da1d6483f7acacd82436e0279471230779273fd753cd2484254eaed9c75f8f",
+ "promptSha256": "6d87cc6e4e9fded822c578cf2a8f4df064f0453bebd2a31c10754f722597ea63",
  "cases": [
   {
    "label": "E",
@@ -14,26 +14,26 @@
      "eventType": "LABOUR_ACTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Micron's union in Taiwan is launching a one-day strike over an escalating bonus dispute.",
-     "reason": "Micron's workforce is staging a strike, which threatens disruption to production operations."
+     "summary": "Micron's union in Taiwan plans to execute a one-day strike over a bonus dispute.",
+     "reason": "A walkout by facility workers can halt or delay semiconductor fabrication and testing operations."
     },
     {
      "index": 5,
      "isEvent": true,
      "eventType": "LABOUR_ACTION",
-     "severity": "MEDIUM",
+     "severity": "LOW",
      "confidence": "HIGH",
-     "summary": "Micron's union in Taiwan plans to launch a one-day strike over a bonus dispute.",
-     "reason": "An impending strike by Micron workers directly threatens manufacturing operations."
+     "summary": "Micron's labor union in Taiwan plans to hold a one-day strike amid an escalating bonus dispute.",
+     "reason": "A walkout by production workers threatens to temporarily halt semiconductor fabrication lines and delay component deliveries."
     },
     {
      "index": 1,
      "isEvent": true,
      "eventType": "LABOUR_ACTION",
-     "severity": "MEDIUM",
+     "severity": "LOW",
      "confidence": "HIGH",
      "summary": "Micron's union in Taiwan plans to launch a one-day strike over a bonus dispute.",
-     "reason": "A strike by Micron's workforce directly risks disrupting operations and production."
+     "reason": "A walkout by workers can temporarily interrupt semiconductor manufacturing operations and delay product shipments."
     }
    ]
   },
@@ -50,8 +50,8 @@
      "eventType": "LABOUR_ACTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "A Taiwan union representing Micron workers has overwhelmingly voted to authorize a strike.",
-     "reason": "A strike authorization vote introduces immediate risk of work stoppage at Micron manufacturing operations."
+     "summary": "A labor union representing Micron workers in Taiwan voted overwhelmingly to authorize a strike.",
+     "reason": "A strike authorization threatens to halt memory chip fabrication and assembly operations across key Taiwan facilities."
     },
     {
      "index": 16,
@@ -59,8 +59,8 @@
      "eventType": "LABOUR_ACTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "A union in Taiwan voted 99% to authorize a strike against Micron.",
-     "reason": "A 99% strike authorization vote is a labour action that could halt or delay Micron's manufacturing operations."
+     "summary": "A union representing Micron workers in Taiwan voted overwhelmingly to authorize a strike.",
+     "reason": "Authorized labor action creates an imminent threat of walkouts that could halt memory chip fabrication and test operations in Taiwan."
     },
     {
      "index": 20,
@@ -68,8 +68,8 @@
      "eventType": "LABOUR_ACTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "A Taiwan union voted overwhelmingly to authorize a strike against Micron.",
-     "reason": "A strike authorization directly threatens a labor stoppage that could halt or delay semiconductor production."
+     "summary": "A labor union representing Taiwan workers at Micron overwhelmingly voted to authorize a strike.",
+     "reason": "A potential walkout poses an imminent risk of halting semiconductor manufacturing lines in Taiwan."
     }
    ]
   },
@@ -87,7 +87,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A dispute over bonuses without mention of strikes, work stoppages, or production impact is considered noise."
+     "reason": "A labor dispute over bonus pay without mention of a strike, walkout, or production stoppage does not immediately disrupt operational output."
     },
     {
      "index": 4,
@@ -96,16 +96,16 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Disputes over compensation or bonuses without an active strike or production halt are noise."
+     "reason": "A wage or bonus dispute alone does not constitute a strike or an active disruption to manufacturing or distribution."
     },
     {
      "index": 2,
      "isEvent": false,
      "eventType": "",
      "severity": "",
-     "confidence": "MEDIUM",
+     "confidence": "HIGH",
      "summary": "",
-     "reason": "Facing a labor dispute over bonuses does not explicitly state that a strike or production stoppage has occurred."
+     "reason": "An ongoing bonus dispute without an active walkout or strike does not indicate an immediate halt in operations."
     }
    ]
   },
@@ -119,29 +119,29 @@
     {
      "index": 16,
      "isEvent": true,
-     "eventType": "PRODUCTION_STOP",
+     "eventType": "OTHER_DISRUPTION",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Four people were killed following a site collapse at TSMC's Kaohsiung location.",
-     "reason": "A fatal structural collapse at a TSMC facility directly disrupts site operations and construction/production."
+     "summary": "Four workers died following a structural collapse at TSMC's Kaohsiung construction site.",
+     "reason": "A fatal industrial accident halts construction work and regulatory clearances, delaying the operational timeline for the upcoming fab."
     },
     {
      "index": 8,
      "isEvent": true,
-     "eventType": "PRODUCTION_STOP",
-     "severity": "HIGH",
+     "eventType": "OTHER_DISRUPTION",
+     "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Four people died following a collapse at TSMC's Kaohsiung site.",
-     "reason": "A fatal structural collapse at a TSMC site disrupts site operations and construction."
+     "summary": "A collapse at TSMC's Kaohsiung site resulted in four fatalities.",
+     "reason": "A fatal structural accident inevitably halts site development and postpones the commissioning of new fabrication capacity."
     },
     {
      "index": 2,
      "isEvent": true,
      "eventType": "PRODUCTION_STOP",
-     "severity": "HIGH",
+     "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Four people died following a collapse at a TSMC site in Kaohsiung.",
-     "reason": "A fatal structural collapse at a TSMC site represents a serious operational accident likely halting or delaying site activities."
+     "summary": "A fatal structural collapse at TSMC's Kaohsiung construction site left four dead.",
+     "reason": "Workplace fatalities typically trigger immediate site shutdowns and regulatory investigations, delaying the readiness and future output of the new manufacturing facility."
     }
    ]
   },
@@ -158,8 +158,8 @@
      "eventType": "OTHER_DISRUPTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "TSMC has slowed facility construction following a fatal accident that killed four people.",
-     "reason": "A fatal accident directly forced TSMC to slow its facility construction."
+     "summary": "TSMC slowed facility construction following a fatal industrial accident.",
+     "reason": "Slowing down construction threatens to delay the completion and future operational readiness of semiconductor fabrication facilities."
     },
     {
      "index": 2,
@@ -167,8 +167,8 @@
      "eventType": "OTHER_DISRUPTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "TSMC has slowed facility construction following a fatal accident that killed four workers.",
-     "reason": "Slowing construction delays the buildout of facilities and future production capacity."
+     "summary": "TSMC has slowed facility construction work following a fatal accident that killed four workers.",
+     "reason": "Construction slowdowns can delay the operational timeline of future manufacturing capacity and postpone planned production output."
     },
     {
      "index": 12,
@@ -176,8 +176,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "TSMC slowed facility construction following a fatal accident.",
-     "reason": "The headline states TSMC slowed construction following a fatal workplace accident."
+     "summary": "TSMC slowed facility construction following a fatal accident that killed four workers.",
+     "reason": "Slowing construction activities threatens to delay future manufacturing capacity and expansion timelines."
     }
    ]
   },
@@ -195,16 +195,16 @@
      "severity": "HIGH",
      "confidence": "HIGH",
      "summary": "A standoff over Nexperia chips has forced Honda to halt car production.",
-     "reason": "The headline explicitly states that a component supply issue has forced Honda to halt car production."
+     "reason": "Automotive assembly lines are stopped due to lack of essential microchips, immediately cutting factory output."
     },
     {
      "index": 11,
      "isEvent": true,
-     "eventType": "PRODUCTION_STOP",
+     "eventType": "SUPPLY_SHORTAGE",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A standoff over Nexperia chips forces Honda to halt car production.",
-     "reason": "The headline explicitly states car production has been halted at Honda due to a chip standoff."
+     "summary": "A standoff over Nexperia chips has forced Honda to halt car production.",
+     "reason": "A critical component shortage has directly stopped vehicle assembly lines."
     },
     {
      "index": 9,
@@ -212,8 +212,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Honda and Bosch were forced to halt vehicle production due to a chip supply dispute.",
-     "reason": "The headline directly reports a car production halt caused by component supply issues."
+     "summary": "Honda and Bosch have been forced to halt automobile production due to a standoff involving Nexperia chips.",
+     "reason": "Inability to procure essential semiconductor components from a supplier has caused a complete shutdown of car manufacturing operations."
     }
    ]
   },
@@ -230,26 +230,26 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Nexperia chip shipments are facing potential fresh bottlenecks.",
-     "reason": "The headline reports an active risk of shipping bottlenecks for Nexperia's chips."
+     "summary": "Nexperia chip shipments are facing potential fresh bottleneck constraints.",
+     "reason": "Shipment bottlenecks restrict the timely distribution and fulfillment of semiconductor orders to downstream customers."
     },
     {
      "index": 18,
-     "isEvent": false,
-     "eventType": "",
-     "severity": "",
-     "confidence": "HIGH",
-     "summary": "",
-     "reason": "Speculation that shipments could face bottlenecks is general commentary rather than a confirmed disruption event."
+     "isEvent": true,
+     "eventType": "OTHER_DISRUPTION",
+     "severity": "MEDIUM",
+     "confidence": "MEDIUM",
+     "summary": "Nexperia chip shipments are facing potential new logistical and supply bottlenecks.",
+     "reason": "Shipping bottlenecks threaten to delay the dispatch and delivery of finished semiconductor components to end customers."
     },
     {
      "index": 4,
      "isEvent": true,
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
-     "confidence": "HIGH",
-     "summary": "Nexperia chip shipments could face new bottleneck disruptions.",
-     "reason": "Bottlenecks affecting chip shipments directly impact the company's ability to distribute and ship its products."
+     "confidence": "MEDIUM",
+     "summary": "Nexperia warns that its semiconductor shipments could face new supply bottlenecks.",
+     "reason": "Outbound shipping bottlenecks directly impede the company's ability to fulfill customer orders and deliver products on schedule."
     }
    ]
   },
@@ -266,8 +266,8 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A German coatings firm that is a critical supplier to ASML faces a potential shutdown due to a lack of Chinese rare earths.",
-     "reason": "The headline explicitly indicates a critical supplier to ASML faces a shutdown due to lack of raw materials."
+     "summary": "A critical German coatings supplier to ASML faces a potential shutdown due to a lack of Chinese rare earths.",
+     "reason": "A shutdown of an essential coatings supplier threatens to stall the production and delivery of photolithography equipment."
     },
     {
      "index": 10,
@@ -275,8 +275,8 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A critical supplier to ASML faces a potential shutdown due to a shortage of Chinese rare earths amid ongoing sanction talks.",
-     "reason": "A critical supplier facing shutdown over scarce raw materials directly threatens ASML's supply chain."
+     "summary": "A German coatings supplier critical to ASML faces an impending shutdown due to a lack of Chinese rare earths.",
+     "reason": "The shutdown of a critical component supplier can bottleneck production of lithography systems and create severe fulfillment delays."
     },
     {
      "index": 20,
@@ -284,8 +284,8 @@
      "eventType": "TRADE_RESTRICTION",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A German coatings supplier critical to ASML faces shutdown without Chinese rare earths amid sanctions negotiations.",
-     "reason": "A critical supplier to ASML faces an immediate operational shutdown due to rare earth trade restrictions."
+     "summary": "A German coatings supplier critical to ASML faces shutdown due to lack of Chinese rare earths amid EU-China negotiations.",
+     "reason": "The potential shutdown of a critical supplier can sever essential parts procurement and stop lithography equipment production."
     }
    ]
   },
@@ -303,7 +303,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Discusses lifting sanctions to protect a supplier rather than reporting a realized stoppage or delay."
+     "reason": "The lifting of a trade sanction avoids disruption rather than creating a block on component supply."
     },
     {
      "index": 18,
@@ -312,16 +312,16 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The lifting of a sanction averts disruption rather than causing one."
+     "reason": "Removing regulatory sanctions from a component provider preserves supply chain stability and avoids procurement bottlenecks."
     },
     {
      "index": 4,
      "isEvent": false,
      "eventType": "",
      "severity": "",
-     "confidence": "MEDIUM",
+     "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses the lifting of a sanction to save a supplier, rather than an active disruption stopping or delaying supply."
+     "reason": "Lifting sanctions preserves or restores supplier access rather than creating a new supply disruption."
     }
    ]
   },
@@ -338,8 +338,8 @@
      "eventType": "NATURAL_DISASTER",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Toyota Thailand has extended production suspensions as a result of flooding.",
-     "reason": "Flooding has directly caused Toyota to extend production halts at its facilities in Thailand."
+     "summary": "Toyota Thailand extended vehicle production suspensions as a result of regional flooding.",
+     "reason": "Prolonged plant shutdowns directly halt the assembly and supply of vehicles."
     },
     {
      "index": 7,
@@ -347,8 +347,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Toyota extends production suspensions in Thailand due to ongoing flooding.",
-     "reason": "The headline directly reports that Toyota extended production suspensions due to a natural disaster."
+     "summary": "Toyota Thailand has extended manufacturing shutdowns due to persistent flooding.",
+     "reason": "Prolonged factory closures halt vehicle assembly and immediately cut manufacturing output."
     },
     {
      "index": 11,
@@ -356,8 +356,8 @@
      "eventType": "NATURAL_DISASTER",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Toyota Thailand extended production suspensions due to flooding.",
-     "reason": "Flooding has directly caused an extension of manufacturing suspensions at Toyota's facilities in Thailand."
+     "summary": "Toyota Thailand extended ongoing manufacturing plant suspensions because of flooding.",
+     "reason": "Flooding halts vehicle production directly at local assembly facilities, cutting off vehicle output and delaying customer fulfillment."
     }
    ]
   },
@@ -374,8 +374,8 @@
      "eventType": "NATURAL_DISASTER",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Toyota warned that floods in Thailand may disrupt vehicle supply to the Philippines.",
-     "reason": "Natural flooding is warned to disrupt vehicle supply for Toyota."
+     "summary": "Floods in Thailand threaten to disrupt Toyota's vehicle supply to the Philippines.",
+     "reason": "Flooding disrupts manufacturing or transit routes, leading to direct delays in delivering finished vehicles to regional markets."
     },
     {
      "index": 4,
@@ -383,17 +383,17 @@
      "eventType": "NATURAL_DISASTER",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Floods in Thailand threaten vehicle supply for Toyota in the Philippines.",
-     "reason": "Flooding is directly reported as threatening Toyota's vehicle supply."
+     "summary": "Floods in Thailand threaten vehicle supplies sent to the Philippines.",
+     "reason": "Severe flooding disrupts the regional supply chain and risks delaying automobile shipments to export markets."
     },
     {
      "index": 18,
      "isEvent": true,
      "eventType": "NATURAL_DISASTER",
-     "severity": "MEDIUM",
+     "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Toyota warned that flooding in Thailand could disrupt vehicle supply to the Philippines.",
-     "reason": "Natural disaster in Thailand is warned to threaten Toyota's vehicle supply chains."
+     "summary": "Floods in Thailand are threatening to disrupt vehicle supply to the Philippines, according to Toyota.",
+     "reason": "Severe regional flooding risks halting automotive distribution and vehicle availability across export markets."
     }
    ]
   },
@@ -409,18 +409,18 @@
      "isEvent": true,
      "eventType": "NATURAL_DISASTER",
      "severity": "HIGH",
-     "confidence": "MEDIUM",
-     "summary": "Floods have halted operations across more than 10 auto-parts manufacturing plants with restarts expected by October 12.",
-     "reason": "Reports flood-induced production halts across multiple auto-parts facilities impacting automotive supply chains."
+     "confidence": "HIGH",
+     "summary": "Floods have forced the shutdown of more than ten automotive parts manufacturing plants until mid-October.",
+     "reason": "Flooding shutdowns at multiple component suppliers directly threaten parts flow necessary to build vehicles."
     },
     {
      "index": 3,
      "isEvent": true,
      "eventType": "NATURAL_DISASTER",
-     "severity": "MEDIUM",
-     "confidence": "MEDIUM",
-     "summary": "Floods have halted operations at more than 10 auto-parts manufacturing plants with restarts expected around October 12.",
-     "reason": "Floods halting multiple component plants directly disrupts the automotive supply chain."
+     "severity": "HIGH",
+     "confidence": "HIGH",
+     "summary": "Floods have shut down more than ten auto-parts manufacturing facilities, with operations not anticipated to resume until October 12.",
+     "reason": "The temporary shutdown of parts suppliers cuts off essential automotive components and risks halting vehicle assembly."
     },
     {
      "index": 19,
@@ -428,8 +428,8 @@
      "eventType": "NATURAL_DISASTER",
      "severity": "HIGH",
      "confidence": "MEDIUM",
-     "summary": "Floods halted operations at over ten auto-parts suppliers until expected October 12 restart.",
-     "reason": "Flooding halted over 10 auto-parts manufacturing plants, impacting auto industry supply lines including Toyota."
+     "summary": "Flooding forced the shutdown of more than ten automotive parts plants with restarts anticipated around October 12.",
+     "reason": "Widespread closures of auto component suppliers can cut off essential parts needed for vehicle assembly."
     }
    ]
   },
@@ -446,8 +446,8 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Ford's Q3 sales are expected to be dented due to ongoing supplier issues affecting F-150 production.",
-     "reason": "The headline explicitly states that supplier woes will dent Q3 sales."
+     "summary": "Ford faces supplier issues that are projected to hurt third-quarter vehicle sales despite restarting F-150 assembly.",
+     "reason": "Ongoing supplier bottlenecks will restrict finished vehicle output and directly lower quarterly sales volumes."
     },
     {
      "index": 10,
@@ -455,8 +455,8 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Supplier issues are impacting Ford's Q3 sales despite resuming F-150 production.",
-     "reason": "Supplier woes are explicitly reported to dent sales, indicating an ongoing supply chain impact."
+     "summary": "Ford has restarted F-150 assembly but anticipates third-quarter sales will be hurt by ongoing supplier issues.",
+     "reason": "Persistent component bottlenecks from external vendors restrict finished vehicle inventory and reduce sales numbers."
     },
     {
      "index": 7,
@@ -464,8 +464,8 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Ford's sales are being impacted by ongoing supplier problems despite restarting truck assembly.",
-     "reason": "The headline states that supplier issues are actively harming sales."
+     "summary": "Ford is resuming F-150 production but warns that supplier issues will hurt its third-quarter sales.",
+     "reason": "Component shortages from upstream suppliers reduce total vehicle output and cut expected sales numbers for the quarter."
     }
    ]
   },
@@ -482,8 +482,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A supplier dispute has halted Boeing 777 freighter production for two months.",
-     "reason": "The headline explicitly states that a supplier dispute has halted aircraft production for two months."
+     "summary": "Boeing has halted 777 freighter production for two months due to a dispute with a supplier.",
+     "reason": "An ongoing halt directly prevents the manufacturing and delivery of commercial freighter aircraft."
     },
     {
      "index": 8,
@@ -491,17 +491,17 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A supplier dispute has halted Boeing 777 freighter production for two months.",
-     "reason": "The headline reports an active production halt on Boeing 777 freighters caused by a supplier dispute."
+     "summary": "A dispute with a supplier has halted Boeing 777 freighter production for two months.",
+     "reason": "Halting the assembly line directly prevents the manufacture and scheduled delivery of finished freighter aircraft."
     },
     {
      "index": 13,
      "isEvent": true,
-     "eventType": "SUPPLY_SHORTAGE",
+     "eventType": "PRODUCTION_STOP",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "A supplier dispute has halted Boeing's 777 freighter production for two months.",
-     "reason": "A dispute with a supplier has directly stopped production of 777 freighters."
+     "summary": "A dispute with a supplier has halted Boeing 777 freighter manufacturing for two months.",
+     "reason": "A supplier standstill directly stops aircraft assembly lines and postpones the delivery of finished commercial freighters to customers."
     }
    ]
   },
@@ -518,17 +518,17 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Stellantis Q3 shipments fell due to a production halt in North America.",
-     "reason": "Explicitly reports a production halt in North America that directly reduced shipments."
+     "summary": "Stellantis vehicle shipments declined due to production halts across its North American facilities.",
+     "reason": "Factory shutdowns directly curtail vehicle assembly and prevent finished units from shipping to dealer networks."
     },
     {
      "index": 20,
      "isEvent": true,
      "eventType": "PRODUCTION_STOP",
-     "severity": "LOW",
+     "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Stellantis Q3 shipments fell 1% due to a North America production halt.",
-     "reason": "The headline explicitly links fallen shipments to a production halt affecting Stellantis."
+     "summary": "Stellantis suffered a drop in Q3 shipments driven by a production halt in North America.",
+     "reason": "Shutting down manufacturing lines directly curbs output volumes and lowers quarterly vehicle deliveries."
     },
     {
      "index": 9,
@@ -536,8 +536,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Stellantis reported lower shipments due to a production halt in North America.",
-     "reason": "The headline explicitly mentions a North America production halt that weighed down shipments."
+     "summary": "Stellantis experienced a decline in quarterly shipments driven by a production halt in North America.",
+     "reason": "The stoppage directly reduced product assembly output and cut into vehicle deliveries across North American operations."
     }
    ]
   },
@@ -554,8 +554,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Tesla has suspended orders for cheaper Model 3 vehicles until March.",
-     "reason": "Tesla has halted taking orders/sales for a vehicle model for an extended period."
+     "summary": "Tesla has halted orders for cheaper Model 3 variants until March.",
+     "reason": "Suspending vehicle orders restricts product sales and signals an inability or choice not to meet market demand for specific trims."
     },
     {
      "index": 16,
@@ -563,17 +563,17 @@
      "eventType": "OTHER_DISRUPTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Tesla has suspended orders for cheaper Model 3 vehicles until March.",
-     "reason": "Suspending vehicle orders prevents the sale of goods."
+     "summary": "Tesla has paused order intake for less expensive Model 3 variants until March.",
+     "reason": "Halting order intake directly blocks sales of the affected vehicle variant and restricts customer fulfillment."
     },
     {
      "index": 10,
      "isEvent": true,
-     "eventType": "OTHER_DISRUPTION",
+     "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Tesla has suspended orders for cheaper Model 3 vehicles until March.",
-     "reason": "Tesla has halted sales/orders for specific vehicles, directly impacting the selling of goods."
+     "summary": "Tesla has halted customer orders for more affordable Model 3 vehicles until March.",
+     "reason": "Suspending order intake curtails product sales and delays vehicle fulfillment to consumers."
     }
    ]
   },
@@ -588,28 +588,28 @@
      "index": 17,
      "isEvent": true,
      "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
+     "confidence": "HIGH",
+     "summary": "Logitech faces anticipated supply disruptions during the holiday season.",
+     "reason": "Supply shortages impede the company's ability to fulfill customer orders and sell products during peak seasonal demand."
+    },
+    {
+     "index": 2,
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Logitech faces forecasted holiday supply disruptions that contributed to an 11.12% stock decline.",
-     "reason": "The headline explicitly forecasts a supply disruption for Logitech over the holiday period."
+     "summary": "Logitech faces projected supply disruptions for the upcoming holiday season.",
+     "reason": "Anticipated supply chain constraints risk preventing the company from shipping and fulfilling product demand during a critical sales period."
     },
     {
      "index": 2,
      "isEvent": true,
      "eventType": "SUPPLY_SHORTAGE",
-     "severity": "MEDIUM",
+     "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Logitech forecasts holiday supply disruptions impacting its operations and stock value.",
-     "reason": "The headline explicitly states a holiday supply disruption is forecast for the company."
-    },
-    {
-     "index": 2,
-     "isEvent": true,
-     "eventType": "SUPPLY_SHORTAGE",
-     "severity": "MEDIUM",
-     "confidence": "MEDIUM",
-     "summary": "Logitech faces an expected holiday supply disruption.",
-     "reason": "The headline explicitly highlights an anticipated supply disruption impacting the company."
+     "summary": "Logitech faces a forecasted holiday supply disruption that has triggered a significant drop in its stock price.",
+     "reason": "Anticipated supply chain bottlenecks during the peak holiday shopping period directly threaten the company's ability to fulfill product demand and record sales."
     }
    ]
   },
@@ -627,7 +627,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is retrospective commentary looking back one year after a past attack."
+     "reason": "A retrospective look at an attack from a year ago does not constitute a current operational disruption."
     },
     {
      "index": 20,
@@ -636,7 +636,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a retrospective commentary on a past cyberattack from a year ago."
+     "reason": "Retrospective analysis of a prior cyber incident reports no active threat or operational shutdown affecting current vehicle production."
     },
     {
      "index": 7,
@@ -645,7 +645,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a retrospective commentary reflecting on a cyberattack that occurred a year ago."
+     "reason": "Retrospective coverage of a cyberattack that occurred a year ago does not represent an active threat to vehicle production or distribution."
     }
    ]
   },
@@ -663,7 +663,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Discusses past attribution of a cyber-attack by a former minister without mentioning current production or delivery disruption."
+     "reason": "Retrospective political remarks concerning an earlier cyberattack describe a past occurrence without demonstrating current operational delays."
     },
     {
      "index": 15,
@@ -672,7 +672,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to commentary on a past cyber-attack rather than an ongoing disruption to production or supply."
+     "reason": "Retrospective political commentary regarding a past cyber incident does not indicate a present operational shutdown or new delivery delay."
     },
     {
      "index": 10,
@@ -681,7 +681,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This refers to commentary regarding a past cyberattack rather than a newly ongoing operational disruption."
+     "reason": "Government commentary detailing past responsibility for an earlier cyber incident does not indicate any current impact on automotive assembly or sales."
     }
    ]
   },
@@ -699,7 +699,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A patent probe is legal noise unless the headline confirms production or sales are disrupted."
+     "reason": "A patent probe does not establish an immediate block, suspension, or penalty affecting current production or outbound goods."
     },
     {
      "index": 12,
@@ -708,7 +708,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A patent investigation without reported impact on production or deliveries is noise."
+     "reason": "Patent investigations are legal disputes that do not demonstrate an ongoing production stoppage or supply delay."
     },
     {
      "index": 18,
@@ -717,7 +717,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Patent probes and disputes are noise unless production or shipments are confirmed to be halted."
+     "reason": "A patent investigation downplayed by the company carries no stated interruption to ongoing component assembly or shipping operations."
     }
    ]
   },
@@ -735,7 +735,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A strike that has been halted or blocked by a court does not represent an ongoing disruption."
+     "reason": "A court ruling that halts a planned union strike prevents an operational stoppage from taking place."
     },
     {
      "index": 17,
@@ -744,7 +744,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The strike was halted by a court, making it a blocked event which is noise."
+     "reason": "A court ruling that legally prevents a strike eliminates the risk of an immediate work stoppage for key production processes."
     },
     {
      "index": 11,
@@ -753,7 +753,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The strike was halted by a court, meaning the disruption was blocked."
+     "reason": "A court ruling that halts a planned union strike prevents production disruptions from taking place."
     }
    ]
   },
@@ -771,7 +771,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The court restricted and banned the union strike across key processes, averting or blocking the disruption."
+     "reason": "Legal intervention curbing and banning labor strikes stops the potential disruption of key operational processes."
     },
     {
      "index": 20,
@@ -780,7 +780,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A strike action that has been curbed and banned by court order is considered a blocked event."
+     "reason": "A judicial order prohibiting strike activity across key processes blocks labor disruption, maintaining factory continuity."
     },
     {
      "index": 16,
@@ -789,7 +789,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A court curbed the union strike and banned it across key processes, averting the disruption."
+     "reason": "Legal restrictions preventing strike actions protect normal operational workflows from work stoppages."
     }
    ]
   },
@@ -807,7 +807,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Reports of banned chips being used in China describe unauthorized end-use, not a disruption to Nvidia's operations or supply chain."
+     "reason": "Reports of unauthorized downstream GPU usage do not indicate any new halt or impediment to legitimate component manufacturing or sales."
     },
     {
      "index": 19,
@@ -816,7 +816,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Reports of unauthorized or banned GPUs in use do not describe a disruption stopping or delaying NVIDIA's operations."
+     "reason": "Reports on the presence of restricted chips in foreign server infrastructure do not interrupt active component manufacturing or legal distribution channels."
     },
     {
      "index": 13,
@@ -825,7 +825,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This reports product sightings and sanctions scrutiny without mentioning a direct supply disruption."
+     "reason": "Reports of unauthorized or restricted hardware appearing in a foreign market describe an evasion scenario rather than an operational delay or halt to company output."
     }
    ]
   },
@@ -843,7 +843,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline covers government criminalization of illegal smuggling, with no direct disruption stated to Nvidia's legal production or supply."
+     "reason": "Criminalization of third-party smuggling does not represent an interruption or barrier to the company's authorized manufacturing, procurement, or direct distribution."
     },
     {
      "index": 9,
@@ -852,16 +852,16 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline covers legislative or regulatory moves against smuggling rather than a disruption to NVIDIA's legal production or supply chain."
+     "reason": "Regulatory crackdowns on illicit smuggling by third parties do not impede the company's authorized manufacturing, procurement, or direct distribution."
     },
     {
      "index": 19,
-     "isEvent": false,
-     "eventType": "",
-     "severity": "",
+     "isEvent": true,
+     "eventType": "TRADE_RESTRICTION",
+     "severity": "LOW",
      "confidence": "HIGH",
-     "summary": "",
-     "reason": "Criminalizing smuggling acts is a legal/regulatory policy move not reporting an active disruption to Nvidia's legitimate operations."
+     "summary": "Taiwan is moving to enact criminal penalties against illicit smuggling of Nvidia AI chips into China.",
+     "reason": "New legal sanctions and trade policing restrict cross-border distribution and the unauthorized transfer of hardware."
     }
    ]
   },
@@ -879,7 +879,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Discusses market share loss to competitors, which constitutes general business performance commentary."
+     "reason": "Changes in market share and competitive dynamics represent normal commercial commentary rather than an operational supply disruption."
     },
     {
      "index": 10,
@@ -888,7 +888,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Changes in market share due to competitor actions are market commentary rather than a disruption event."
+     "reason": "Changes in market share and competitive pressure reflect sales performance rather than an acute operational stoppage or embargo."
     },
     {
      "index": 16,
@@ -897,7 +897,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Market share changes and competitive dynamics are market noise."
+     "reason": "Losing market share to competitors reflects commercial dynamics rather than an operational breakdown or supply chain halt."
     }
    ]
   },
@@ -915,7 +915,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Lawsuits and intellectual property disputes are noise unless an operational stoppage is specified."
+     "reason": "Allegations of employee poaching and intellectual property litigation constitute legal disputes without immediate disruption to manufacturing operations."
     },
     {
      "index": 9,
@@ -924,7 +924,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A dispute regarding employee poaching and intellectual property is noise."
+     "reason": "Lawsuits and engineer poaching disputes are intellectual property matters that do not halt active fabrication or product shipments."
     },
     {
      "index": 14,
@@ -933,7 +933,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Lawsuits, intellectual property theft, and poaching disputes are classified as noise unless direct operational disruption is noted."
+     "reason": "An ongoing intellectual property and poaching dispute with a competitor does not halt current memory chip manufacturing or product fulfillment."
     }
    ]
   },
@@ -951,7 +951,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline reports strong sales growth, which is general sales/financial performance noise."
+     "reason": "Surging equipment sales indicate robust commercial activity rather than a disruption to production or shipments."
     },
     {
      "index": 11,
@@ -960,7 +960,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a sales report showing growth despite export controls, representing routine commercial news."
+     "reason": "High revenue growth in a specific export market does not indicate any disruption to equipment manufacturing or fulfillment operations."
     },
     {
      "index": 16,
@@ -969,7 +969,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This covers strong sales figures and general trade policy commentary without reporting a disruption."
+     "reason": "Surging equipment sales indicate active commerce and order fulfillment rather than interrupted business activities."
     }
    ]
   },
@@ -987,7 +987,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is stock analysis and commentary ahead of earnings, which is noise."
+     "reason": "Stock valuation and earnings commentary are standard financial noise with no operational impact."
     },
     {
      "index": 7,
@@ -996,7 +996,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock valuation discussions ahead of earnings are financial commentary."
+     "reason": "Stock valuations and pre-earnings commentary do not impact the manufacturing or shipping of lithography equipment."
     },
     {
      "index": 13,
@@ -1005,7 +1005,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock valuation analysis and earnings commentary are noise."
+     "reason": "Financial commentary and stock valuations have no direct operational impact on tool manufacturing or shipments."
     }
    ]
   },
@@ -1023,7 +1023,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the geographical Amazon rainforest, not Amazon the company."
+     "reason": "Natural fires occurring in the Amazon rainforest do not pertain to the operations, distribution networks, or facilities of Amazon the corporation."
     },
     {
      "index": 3,
@@ -1032,7 +1032,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the Amazon Rainforest rather than Amazon the company."
+     "reason": "Wildfires in the Amazon rainforest do not affect the commercial operations or logistics networks of Amazon the company."
     },
     {
      "index": 17,
@@ -1041,7 +1041,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the Amazon geographic rainforest, not Amazon the company."
+     "reason": "Wildfires in the Amazon rainforest ecosystem do not concern the operational fulfillment or shipping networks of Amazon.com."
     }
    ]
   },
@@ -1059,7 +1059,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Refers to the Amazon geographic rainforest and fires, not Amazon the corporation."
+     "reason": "Fires in the South American rainforest have no relation to Amazon's e-commerce or cloud operations."
     },
     {
      "index": 16,
@@ -1068,7 +1068,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The article refers to the Amazon geographic rainforest, not the company Amazon."
+     "reason": "Environmental news about the Amazon geographical region does not pertain to the retail company's logistical operations or fulfillment."
     },
     {
      "index": 18,
@@ -1077,7 +1077,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the Amazon rainforest, not Amazon.com Inc."
+     "reason": "The report concerns the Amazon geographical rainforest and has no connection to Amazon the company."
     }
    ]
   },
@@ -1095,7 +1095,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the Amazon rainforest, not Amazon.com Inc."
+     "reason": "Wildfires in the Amazon rainforest do not pertain to the operations, logistics, or infrastructure of the e-commerce company."
     },
     {
      "index": 6,
@@ -1104,7 +1104,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the Amazon rainforest rather than Amazon the corporation."
+     "reason": "This environmental report describes wildfire smoke in the Amazon rainforest rather than an operational issue for Amazon the company."
     },
     {
      "index": 8,
@@ -1113,7 +1113,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to the Amazon rainforest, not the corporation Amazon."
+     "reason": "Wildfires in the Amazon rainforest relate to environmental issues and do not disrupt the operations of Amazon the e-commerce corporation."
     }
    ]
   },
@@ -1131,7 +1131,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Refers to the fruit apple affected by frost at a farm, not Apple the company."
+     "reason": "Agricultural crop damage at an orchard does not involve Apple Inc. or its consumer electronics supply chain."
     },
     {
      "index": 2,
@@ -1140,7 +1140,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to agricultural apple crops rather than Apple Inc."
+     "reason": "Agricultural fruit crop losses do not involve Apple Inc. or its consumer electronics supply chain."
     },
     {
      "index": 5,
@@ -1149,7 +1149,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The article is about agricultural fruit crops and does not relate to Apple Inc."
+     "reason": "Agricultural frost damage affecting orchard crops in Maryland is unrelated to the consumer technology company Apple."
     }
    ]
   },
@@ -1167,7 +1167,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline is about agricultural apple crops, not Apple Inc."
+     "reason": "The report refers to agricultural apple crops rather than Apple Inc."
     },
     {
      "index": 17,
@@ -1176,7 +1176,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to agricultural apple crops, not Apple Inc."
+     "reason": "Severe frost damage to agricultural fruit crops has no connection to Apple Inc.'s consumer hardware production or supply chain."
     },
     {
      "index": 14,
@@ -1185,7 +1185,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to agricultural apple crops, not Apple Inc."
+     "reason": "Agricultural frost damage to fruit crops does not affect Apple Inc.'s electronics supply chain."
     }
    ]
   },
@@ -1203,7 +1203,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses fruit production and market dynamics, not the consumer electronics company Apple."
+     "reason": "The article discusses agricultural fruit trade rather than Apple Inc."
     },
     {
      "index": 5,
@@ -1212,7 +1212,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to agricultural produce rather than Apple Inc."
+     "reason": "Disruptions in agricultural fruit exports have no relation to Apple Inc.'s consumer hardware business."
     },
     {
      "index": 14,
@@ -1221,7 +1221,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline concerns agricultural fruit, not Apple the tech company."
+     "reason": "The topic pertains to agricultural fruit trade rather than Apple Inc."
     }
    ]
   },
@@ -1239,7 +1239,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses military intelligence sharing rather than the company Intel."
+     "reason": "The reference is to military intelligence sharing rather than Intel Corporation."
     },
     {
      "index": 12,
@@ -1248,7 +1248,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to government intelligence sharing rather than Intel Corporation."
+     "reason": "Government threats involving military intelligence sharing do not involve the semiconductor maker Intel."
     },
     {
      "index": 4,
@@ -1257,7 +1257,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to military intelligence sharing, not the semiconductor company Intel."
+     "reason": "Government military intelligence sharing has no operational relation to Intel Corporation."
     }
    ]
   },
@@ -1275,7 +1275,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses military intelligence feeds to Ukraine, not Intel the semiconductor corporation."
+     "reason": "Military and government intelligence sharing is completely unrelated to the commercial semiconductor manufacturer."
     },
     {
      "index": 1,
@@ -1284,7 +1284,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to military intelligence feeds rather than Intel Corporation."
+     "reason": "Military and geopolitical intelligence has no connection to Intel Corporation's semiconductor manufacturing operations."
     },
     {
      "index": 12,
@@ -1293,7 +1293,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline refers to military intelligence, not Intel Corporation."
+     "reason": "The mention refers to military intelligence rather than Intel Corporation."
     }
    ]
   },
@@ -1311,7 +1311,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline uses 'target' as a verb regarding geopolitical conflict, unrelated to Target Corporation."
+     "reason": "The word target is used as a common verb in military strikes and does not involve Target Corporation."
     },
     {
      "index": 7,
@@ -1320,7 +1320,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The term target is used as a verb and does not refer to the retailer Target."
+     "reason": "This geopolitical report concerns military strikes targeting cities rather than an operational disruption to Target Corporation."
     },
     {
      "index": 12,
@@ -1329,7 +1329,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The word 'target' is used as a verb in a geopolitical conflict, unrelated to the retail company Target."
+     "reason": "The military conflict in the Middle East does not involve the retailer Target or affect its store operations and supply chains."
     }
    ]
   },
@@ -1347,7 +1347,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A consumer product review article concerning water filters, completely unrelated to Micron."
+     "reason": "Product reviews of outdoor equipment do not pertain to Micron Technology or its semiconductor manufacturing."
     },
     {
      "index": 19,
@@ -1356,7 +1356,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Micron refers to a unit of measurement for water filter pore size, not Micron Technology."
+     "reason": "Product reviews of outdoor water filtration devices have no connection to the memory manufacturer Micron Technology."
     },
     {
      "index": 16,
@@ -1365,7 +1365,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a product review article about water filters (referencing micron ratings), completely unrelated to the company Micron."
+     "reason": "A consumer guide evaluating water filtration equipment refers to measurement units rather than Micron Technology, causing zero operational impact."
     }
    ]
   },
@@ -1383,7 +1383,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A hacking demonstration at a security competition does not disrupt the manufacturing, shipping, or selling of goods."
+     "reason": "White-hat hacking demonstrations at a cybersecurity competition do not interrupt commercial manufacturing or logistics."
     },
     {
      "index": 3,
@@ -1392,7 +1392,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a security research contest (Pwn2Own) hacking demonstration and does not impact manufacturing, supply, or operations."
+     "reason": "Security vulnerabilities demonstrated at a hacking competition do not disrupt the production, shipping, or sales of devices."
     },
     {
      "index": 9,
@@ -1401,7 +1401,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Demonstrations at a hacking competition (Pwn2Own) do not indicate a disruption to Samsung's production or supply chain."
+     "reason": "Security vulnerabilities demonstrated at a hacking contest do not shut down factories or delay the distribution of consumer electronics."
     }
    ]
   },
@@ -1419,7 +1419,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Malware targeting end-user Android devices does not disrupt Samsung's manufacturing, supply chain, or sales operations."
+     "reason": "Malware targeting end-user consumer devices through fake apps does not impair internal hardware production, supply, or distribution operations."
     },
     {
      "index": 18,
@@ -1428,7 +1428,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Malware impersonating a Samsung app affecting consumers does not affect Samsung's ability to produce, buy, or sell goods."
+     "reason": "Malicious imitation apps distributed by third parties do not impair device manufacturing, hardware logistics, or direct product delivery."
     },
     {
      "index": 15,
@@ -1437,7 +1437,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Malware impersonating Samsung apps on consumer devices does not disrupt Samsung's operations or supply chain."
+     "reason": "Malware targeting end-user devices does not impede the manufacturing or shipping of hardware products."
     }
    ]
   },
@@ -1455,7 +1455,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Analyst commentary regarding competitive threats is routine market commentary and not an operational disruption."
+     "reason": "Analyst commentary on theoretical long-term competition does not reflect any current manufacturing or shipping disruption."
     },
     {
      "index": 15,
@@ -1464,7 +1464,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Analyst opinion stating an absence of threat is commentary rather than an event."
+     "reason": "Analyst opinions evaluating future market competition do not describe any physical disruption to semiconductor fabrication."
     },
     {
      "index": 14,
@@ -1473,7 +1473,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is analyst commentary regarding competitive dynamics."
+     "reason": "Analyst commentary dismissing competitive threats from a rival's future factory plan does not indicate any current supply chain friction."
     }
    ]
   },
@@ -1491,7 +1491,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Announces plans to open new plants and secure financing, representing business expansion rather than disruption."
+     "reason": "Announcements of new plant openings and future financing do not describe an active disruption to current supply chain operations."
     },
     {
      "index": 13,
@@ -1500,7 +1500,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Announcing the opening of new chip fabrication plants is business expansion, not a disruption."
+     "reason": "Announcements of future facility expansions and project financing are routine capital investments, not immediate operational disruptions."
     },
     {
      "index": 20,
@@ -1509,7 +1509,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is an announcement regarding facility expansion and financing."
+     "reason": "Securing financing to build two new fabrication plants marks future expansion and does not disrupt current production or logistics."
     }
    ]
   },
@@ -1527,7 +1527,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Focuses on share price movements and government equity stakes, which is financial noise."
+     "reason": "Stock market fluctuations and equity stake changes are financial commentary without operational disruptions."
     },
     {
      "index": 5,
@@ -1536,7 +1536,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline focuses on stock price movements and government equity stakes, which is financial noise."
+     "reason": "Changes in government equity stakes and stock price fluctuations do not halt manufacturing or physical operations."
     },
     {
      "index": 2,
@@ -1545,7 +1545,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock price movements and equity stake adjustments are financial noise without direct supply chain disruption."
+     "reason": "Equity stake changes and stock price movements do not indicate any direct delay or halt to chip production or sales."
     }
    ]
   },
@@ -1563,7 +1563,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Quarterly earnings reports and missing estimates are financial noise."
+     "reason": "Earnings misses and soft market demand are purely financial performance metrics rather than operational or supply-chain failures."
     },
     {
      "index": 9,
@@ -1572,7 +1572,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Earnings misses and financial results without reported disruption to production or supply are noise."
+     "reason": "Quarterly earnings results and financial performance metrics are routine financial reports that do not stop physical assembly or packaging operations."
     },
     {
      "index": 19,
@@ -1581,7 +1581,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Earnings reports and financial performance are considered noise."
+     "reason": "Quarterly earnings results and sector-wide demand softness represent routine financial disclosures without physical operational stoppages."
     }
    ]
   },
@@ -1599,7 +1599,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Reports business demand and expansion at a facility, not an operational disruption or supply stoppage."
+     "reason": "Customer demand and facility expansion do not constitute a supply chain disruption."
     },
     {
      "index": 5,
@@ -1608,7 +1608,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Reports positive customer demand and capacity expansion rather than a disruption."
+     "reason": "Customer demand and facility expansion represent regular commercial growth rather than a supply chain halt or delay."
     },
     {
      "index": 18,
@@ -1617,7 +1617,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This covers business demand and facility expansion rather than a disruption."
+     "reason": "Strong customer demand at an expanded processing plant indicates healthy business flow rather than an operational stoppage."
     }
    ]
   },
@@ -1635,7 +1635,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The strike was called off and averted, meaning no actual supply-chain disruption took place."
+     "reason": "The potential strike was called off following a new pay deal, preventing a disruption to operations."
     },
     {
      "index": 14,
@@ -1644,7 +1644,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline states the strike was called off, meaning the potential disruption was averted."
+     "reason": "A strike that has been officially called off eliminates the threat of ongoing operational stoppages."
     },
     {
      "index": 3,
@@ -1653,7 +1653,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The strike was called off and averted, meaning no active disruption occurred."
+     "reason": "A strike that has been officially called off following a new pay deal eliminates the immediate threat of a work stoppage."
     }
    ]
   },
@@ -1671,7 +1671,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The approval of a contract averts labor action and does not disrupt operations."
+     "reason": "The formal approval of a labor contract resolves negotiations and explicitly prevents a strike-induced work stoppage."
     },
     {
      "index": 2,
@@ -1680,7 +1680,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Workers approved a contract, indicating labour peace rather than an active disruption."
+     "reason": "Ratification of a labor agreement ends the risk of a walkout and ensures ongoing production continuity."
     },
     {
      "index": 17,
@@ -1689,7 +1689,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Workers approved a contract, resolving the dispute rather than causing a disruption."
+     "reason": "The successful approval of a labor contract averts potential strikes and preserves continuous operations."
     }
    ]
   },
@@ -1707,7 +1707,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses general investment strategy and business plans without mentioning any disruption to operations."
+     "reason": "General business investment and facility retooling updates do not indicate any halt or delay to ongoing production, purchasing, or shipments."
     },
     {
      "index": 1,
@@ -1716,7 +1716,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses general business investment and plant transition plans, not a supply chain disruption."
+     "reason": "General business investment and facility retooling plans do not indicate an active disruption to operations or supply."
     },
     {
      "index": 7,
@@ -1725,7 +1725,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "General business commentary and strategic investment plans do not indicate an active supply chain disruption."
+     "reason": "Continued investment in facility conversions reflects ongoing strategic planning rather than a supply chain halt."
     }
    ]
   },
@@ -1743,7 +1743,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Acquiring a stake in a business is an investment/business expansion, not an operational disruption."
+     "reason": "Equity investments and acquisitions reflect corporate expansion rather than an active interruption to production or supply."
     },
     {
      "index": 12,
@@ -1752,7 +1752,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "An equity investment or business acquisition is noise regarding supply chain disruption."
+     "reason": "Purchasing an equity stake in an external business is an investment transaction that does not impede operational workflows."
     },
     {
      "index": 10,
@@ -1761,7 +1761,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is an investment and business acquisition with no reported disruption."
+     "reason": "Acquiring an equity stake in a component supplier is an investment transaction that does not impede operational workflow or shipments."
     }
    ]
   },
@@ -1779,7 +1779,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A product unveiling accompanied by opinion commentary is classified as noise."
+     "reason": "A concept vehicle unveiling and opinionated commentary do not stop current manufacturing, supply, or deliveries."
     },
     {
      "index": 7,
@@ -1788,7 +1788,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Product unveils and general commentary are considered noise."
+     "reason": "Speculation surrounding an unreleased concept vehicle does not affect ongoing vehicle manufacturing, parts procurement, or retail sales."
     },
     {
      "index": 20,
@@ -1797,7 +1797,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Product launches, unveils, and commentary on potential future viability are noise."
+     "reason": "A speculative product unveil and media analysis do not create an interruption in current automotive manufacturing or vehicle deliveries."
     }
    ]
   },
@@ -1815,7 +1815,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Speculative commentary regarding a potential corporate merger without operational impact."
+     "reason": "Speculative commentary regarding corporate mergers does not stop or delay manufacturing or vehicle delivery."
     },
     {
      "index": 11,
@@ -1824,7 +1824,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Speculative commentary about a potential corporate merger is not an operational disruption."
+     "reason": "Speculation regarding potential corporate mergers constitutes strategic commentary rather than an operational bottleneck."
     },
     {
      "index": 9,
@@ -1833,7 +1833,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Speculative commentary regarding a corporate merger is noise."
+     "reason": "Speculative corporate merger discussions do not disrupt vehicle manufacturing or shipments."
     }
    ]
   },
@@ -1851,7 +1851,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Quarterly earnings results and general commodity cost notes are noise."
+     "reason": "Quarterly earnings results and commentary on commodity costs represent standard financial performance reporting."
     },
     {
      "index": 1,
@@ -1860,7 +1860,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is an earnings report with commodity cost commentary, which is classified as noise."
+     "reason": "Financial earnings announcements do not disrupt operational manufacturing or the movement of vehicle inventory."
     },
     {
      "index": 19,
@@ -1869,7 +1869,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is routine quarterly earnings and financial reporting."
+     "reason": "Quarterly earnings results and general commodity price increases reflect financial performance rather than a supply chain interruption."
     }
    ]
   },
@@ -1887,7 +1887,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Presents retrospective commentary on financial performance and overhang relief."
+     "reason": "Financial commentary on resolving historical losses does not indicate an ongoing stoppage in vehicle manufacturing or delivery."
     },
     {
      "index": 19,
@@ -1896,7 +1896,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Retrospective commentary regarding past financial overhangs is noise."
+     "reason": "Past financial overhangs and monetary losses do not indicate current manufacturing shutdowns or delivery interruptions."
     },
     {
      "index": 15,
@@ -1905,7 +1905,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "General financial commentary and stock analysis do not describe an active supply chain disruption."
+     "reason": "Financial commentary concerning the resolution of past balance-sheet overhangs does not disrupt vehicle manufacturing or logistics."
     }
    ]
   },
@@ -1923,7 +1923,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The launch or initial production at a new plant is general business operations, not a disruption."
+     "reason": "The start of production at a new facility is an expansion rather than a supply chain disruption."
     },
     {
      "index": 6,
@@ -1932,7 +1932,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Producing the first coil at a new facility is an operational milestone, not a disruption."
+     "reason": "Commissioning a new plant and rolling initial output represents normal operational expansion rather than an unplanned operational stoppage."
     },
     {
      "index": 15,
@@ -1941,7 +1941,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This announces a regular production milestone and new plant progress."
+     "reason": "Initial production runs at a newly commissioned recycling and rolling mill represent positive capacity growth rather than a disruption."
     }
    ]
   },
@@ -1959,7 +1959,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Share price drops and market selloffs constitute noise under the screening guidelines."
+     "reason": "Fluctuations in share price and market sentiment do not constitute a physical disruption to semiconductor production or logistics."
     },
     {
      "index": 14,
@@ -1968,7 +1968,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock price declines and market selloffs are financial noise."
+     "reason": "Stock price fluctuations and broader equity market selloffs do not physically hinder chip fabrication or product deliveries."
     },
     {
      "index": 11,
@@ -1977,7 +1977,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This reports stock market declines and general investor sentiment."
+     "reason": "Stock market fluctuations and broader market selloffs do not constitute an interruption to factory operations or product deliveries."
     }
    ]
   },
@@ -1995,7 +1995,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The event is a strike at Micron, not at the named company SK Hynix."
+     "reason": "The labor strike occurs at Micron rather than the named company, presenting no stated impact on SK Hynix's operations."
     },
     {
      "index": 6,
@@ -2004,7 +2004,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline describes an event at Micron, not the named company SK Hynix."
+     "reason": "Labor unrest at an external competitor does not impede SK Hynix's own manufacturing schedules or delivery commitments."
     },
     {
      "index": 10,
@@ -2013,7 +2013,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The strike involves Micron's union in Taiwan, not the named company SK Hynix."
+     "reason": "A strike involving Micron's workforce does not disrupt SK Hynix's operations."
     }
    ]
   },
@@ -2031,7 +2031,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses a labor dispute at Micron while merely referencing Samsung, with no reported disruption to Samsung."
+     "reason": "This reports a labor dispute at Micron rather than an active disruption affecting Samsung operations."
     },
     {
      "index": 10,
@@ -2040,7 +2040,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The main subject experiencing the labor dispute is Micron, and there is no reported disruption to Samsung."
+     "reason": "A labor dispute at a competitor over performance bonuses does not hinder Samsung's own manufacturing, procurement, or distribution."
     },
     {
      "index": 6,
@@ -2049,7 +2049,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline is primarily about Micron's labor dispute and does not report a current operational disruption at Samsung."
+     "reason": "A labor dispute at Micron does not disrupt production or operations at Samsung."
     }
    ]
   },
@@ -2067,7 +2067,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline concerns Stellantis production and shipments, not the named company Tesla."
+     "reason": "A production halt and shipment decline at Stellantis does not imply a disruption to Tesla's operations."
     },
     {
      "index": 14,
@@ -2076,7 +2076,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses Stellantis rather than the named company Tesla."
+     "reason": "Factory closures and shipment declines experienced by Stellantis do not affect Tesla's production lines or vehicle sales."
     },
     {
      "index": 3,
@@ -2085,7 +2085,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses Stellantis rather than the named company Tesla."
+     "reason": "Disruptions at Stellantis do not affect Tesla's manufacturing, purchasing, or vehicle deliveries."
     }
    ]
   },
@@ -2103,7 +2103,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The event concerns Toyota Thailand rather than the named company Bosch."
+     "reason": "The production suspensions concern Toyota Thailand and do not state an impact on Bosch."
     },
     {
      "index": 17,
@@ -2112,7 +2112,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The named company is Bosch, but the headline discusses Toyota's production suspensions without mentioning Bosch."
+     "reason": "Production stoppages at an external automaker do not demonstrate an operational or supply disruption for Bosch itself."
     },
     {
      "index": 1,
@@ -2121,7 +2121,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline reports a production suspension at Toyota, not named company Bosch, with no stated impact on Bosch."
+     "reason": "This disruption is at Toyota rather than Bosch, and there is no indication that Bosch's own operations or supplies are affected."
     }
    ]
   },
@@ -2137,9 +2137,9 @@
      "isEvent": false,
      "eventType": "",
      "severity": "",
-     "confidence": "HIGH",
+     "confidence": "MEDIUM",
      "summary": "",
-     "reason": "Reports a construction accident at a TSMC site without stating that Nvidia's production or supply is disrupted."
+     "reason": "A fatal accident at a foundry construction site does not specify any impact or delay on Nvidia's active chip supply."
     },
     {
      "index": 4,
@@ -2148,7 +2148,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The incident occurred at TSMC and the headline does not state that NVIDIA or its supply is affected."
+     "reason": "An industrial accident at a construction site does not state any direct disruption to Nvidia's ongoing manufacturing or component supply."
     },
     {
      "index": 8,
@@ -2157,7 +2157,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The accident occurred at TSMC, with no mention of direct impact on named company Nvidia."
+     "reason": "The industrial accident occurred at TSMC and makes no mention of affecting Nvidia's operations or immediate chip availability."
     }
    ]
   },
@@ -2171,29 +2171,29 @@
     {
      "index": 8,
      "isEvent": true,
-     "eventType": "PRODUCTION_STOP",
+     "eventType": "LABOUR_ACTION",
      "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Micron has suspended work on its 4.5 billion dollar plant in Taiwan due to a labour dispute.",
-     "reason": "Micron has directly suspended work at a major manufacturing facility due to a labour row."
+     "summary": "Micron has suspended work on its 4.5 billion dollar Taiwan plant due to a labor dispute.",
+     "reason": "Halting development work directly postpones planned facility expansion and future production capacity."
     },
     {
      "index": 13,
      "isEvent": true,
-     "eventType": "PRODUCTION_STOP",
-     "severity": "HIGH",
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Micron suspended work on a $4.5 billion Taiwan plant due to a labour dispute.",
-     "reason": "Work has been actively suspended at a major facility due to a labour dispute."
+     "summary": "Micron has halted work on a $4.5 billion Taiwan plant due to a labor dispute.",
+     "reason": "Shutting down plant activity during a labor dispute stops facility progress and postpones upcoming manufacturing output."
     },
     {
      "index": 8,
      "isEvent": true,
      "eventType": "LABOUR_ACTION",
-     "severity": "MEDIUM",
+     "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Micron halted work on its Taiwan facility due to a labor dispute.",
-     "reason": "Work on a major facility has been suspended due to an active labor dispute."
+     "summary": "Micron has suspended construction work on its $4.5 billion Taiwan facility following a labor dispute.",
+     "reason": "Halting work on a major fabrication project stalls planned capacity expansion and delays the timeline for manufacturing new chips."
     }
    ]
   },
@@ -2210,26 +2210,26 @@
      "eventType": "LABOUR_ACTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Samsung Biologics union withdrew quality control staff during a strike, raising potential quality and compliance concerns.",
-     "reason": "A strike involving quality personnel at a biologics manufacturing company presents an active labour action affecting operations."
+     "summary": "Samsung Biologics unionized quality staff have initiated a strike action.",
+     "reason": "Removing quality control personnel risks halting or delaying biomanufacturing batches and regulatory release of products."
     },
     {
      "index": 8,
      "isEvent": true,
      "eventType": "LABOUR_ACTION",
-     "severity": "MEDIUM",
+     "severity": "HIGH",
      "confidence": "HIGH",
-     "summary": "Samsung Biologics union pulls quality staff during an ongoing strike.",
-     "reason": "A strike involving the withdrawal of quality staff represents an active labor disruption impacting production operations."
+     "summary": "Samsung Biologics union withdrew quality control staff during strike action.",
+     "reason": "Withdrawing vital quality assurance personnel directly risks delaying or blocking biopharmaceutical batch releases and regulatory production compliance."
     },
     {
      "index": 5,
      "isEvent": true,
      "eventType": "LABOUR_ACTION",
-     "severity": "HIGH",
+     "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Samsung Biologics union members, including quality staff, went on strike.",
-     "reason": "A strike involving quality assurance personnel directly threatens biopharmaceutical production continuity and standards."
+     "summary": "Samsung Biologics union withdrew quality control staff during a strike while cautioning the company over manufacturing standards.",
+     "reason": "Withdrawing essential quality personnel halts regulatory release protocols and slows or halts the manufacture and delivery of biopharmaceutical batches."
     }
    ]
   },
@@ -2246,17 +2246,17 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Stellantis has extended a production pause for the Fiat 500.",
-     "reason": "The headline reports an active production halt for a specific vehicle line."
+     "summary": "Stellantis has extended its production pause for the Fiat 500.",
+     "reason": "Prolonging assembly line downtime directly halts vehicle manufacturing and delays shipments to dealers."
     },
     {
      "index": 9,
      "isEvent": true,
      "eventType": "PRODUCTION_STOP",
-     "severity": "HIGH",
+     "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Stellantis has extended its production pause for the Fiat 500.",
-     "reason": "An extended production pause directly halts vehicle manufacturing."
+     "summary": "Stellantis has lengthened the production pause for its Fiat 500 vehicle model.",
+     "reason": "Lengthening a factory shutdown directly lowers vehicle output and postpones deliveries to dealerships."
     },
     {
      "index": 4,
@@ -2264,8 +2264,8 @@
      "eventType": "PRODUCTION_STOP",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Stellantis has extended a production pause for the Fiat 500.",
-     "reason": "The headline directly reports an ongoing halt to vehicle production."
+     "summary": "Stellantis has extended an ongoing production pause for its Fiat 500 vehicle model.",
+     "reason": "Prolonging assembly line shutdowns directly limits the number of vehicles manufactured and delivered to dealerships."
     }
    ]
   },
@@ -2282,26 +2282,26 @@
      "eventType": "LABOUR_ACTION",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "POSCO's union rejected a wage deal, raising the prospect of an imminent re-strike.",
-     "reason": "Reports a wage rejection and looming strike action that threatens manufacturing operations at POSCO."
+     "summary": "The union representing POSCO workers rejected a wage deal, leading toward renewed strike action.",
+     "reason": "Impending labor walkouts risk cutting off steel production and halting shipments to industrial buyers."
     },
     {
      "index": 15,
      "isEvent": true,
      "eventType": "LABOUR_ACTION",
-     "severity": "MEDIUM",
-     "confidence": "HIGH",
-     "summary": "POSCO's union rejected a wage deal, raising the prospect of a re-strike.",
-     "reason": "A rejected wage deal with a looming strike indicates imminent labour disruption risks."
+     "severity": "LOW",
+     "confidence": "MEDIUM",
+     "summary": "POSCO's union rejected a wage offer, raising the risk of a renewed strike.",
+     "reason": "An unresolved contract vote and the threat of renewed union walkouts risk halting steel production and delaying order fulfillments."
     },
     {
      "index": 12,
-     "isEvent": false,
-     "eventType": "",
-     "severity": "",
-     "confidence": "HIGH",
-     "summary": "",
-     "reason": "The strike is only looming and has not yet disrupted operations or production."
+     "isEvent": true,
+     "eventType": "LABOUR_ACTION",
+     "severity": "MEDIUM",
+     "confidence": "MEDIUM",
+     "summary": "The POSCO labor union has rejected a proposed wage agreement, raising the threat of an impending strike.",
+     "reason": "Unresolved contract negotiations and the threat of renewed union walkouts create a major risk of steel mill shutdowns."
     }
    ]
   },
@@ -2318,17 +2318,17 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Samsung faces supply shortages of EUV lithography machines as it competes for equipment.",
-     "reason": "The headline explicitly notes equipment supply shortages affecting Samsung's acquisition of key manufacturing tools."
+     "summary": "Samsung Electronics is experiencing supply shortages while competing for EUV lithography machines.",
+     "reason": "Shortages of critical semiconductor manufacturing equipment can constrain chip production capacity and delay manufacturing expansion."
     },
     {
      "index": 11,
-     "isEvent": false,
-     "eventType": "",
-     "severity": "",
+     "isEvent": true,
+     "eventType": "SUPPLY_SHORTAGE",
+     "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "",
-     "reason": "Industry competition for equipment amid shortages represents general market commentary rather than a specific operational disruption."
+     "summary": "Samsung faces a supply shortage of critical EUV lithography machines amid intense competition.",
+     "reason": "Inadequate supply of essential lithography tools can constrain production capacity expansions and chip manufacturing timelines."
     },
     {
      "index": 5,
@@ -2336,8 +2336,8 @@
      "eventType": "SUPPLY_SHORTAGE",
      "severity": "MEDIUM",
      "confidence": "HIGH",
-     "summary": "Samsung and SK Hynix are competing for EUV lithography machines amid equipment supply shortages.",
-     "reason": "The headline explicitly reports supply shortages of critical EUV lithography manufacturing equipment."
+     "summary": "Samsung and SK Hynix are competing for EUV lithography machines amid ongoing supply shortages.",
+     "reason": "Shortages of critical lithography machinery can delay capacity expansions and advanced semiconductor fabrication."
     }
    ]
   },
@@ -2355,7 +2355,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline describes an event at Stellantis, with no mention of an effect on Toyota."
+     "reason": "The shutdown affects a competitor's vehicle model and makes no mention of Toyota's operations."
     },
     {
      "index": 15,
@@ -2364,7 +2364,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline reports a production pause at Stellantis and does not mention Toyota or its supply chain."
+     "reason": "A production halt affecting Stellantis vehicles does not report any operational impact on Toyota."
     },
     {
      "index": 8,
@@ -2373,7 +2373,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline pertains to Stellantis and Fiat, not the named company Toyota."
+     "reason": "A production pause at Stellantis does not impact Toyota's manufacturing or supply lines."
     }
    ]
   },
@@ -2391,7 +2391,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Reports on labor negotiations at POSCO without stating any supply impact on Samsung Electronics."
+     "reason": "Labor disputes at POSCO do not indicate an active operational or delivery stoppage for Samsung Electronics."
     },
     {
      "index": 1,
@@ -2400,7 +2400,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The labor dispute involves POSCO and the headline does not state any impact on Samsung Electronics or its supply chain."
+     "reason": "This labor dispute concerns POSCO and mentions no direct impact on Samsung Electronics."
     },
     {
      "index": 6,
@@ -2409,7 +2409,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "The headline discusses a labor dispute at POSCO without specifying any direct supply chain impact on Samsung Electronics."
+     "reason": "This labor dispute involves POSCO rather than Samsung Electronics, and no direct supply chain disruption to Samsung is indicated."
     }
    ]
   },
@@ -2427,7 +2427,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "An internal investigation into leadership ties does not explicitly disrupt production or sales and is considered noise."
+     "reason": "An internal or leadership-related investigation does not directly disrupt product manufacturing, shipping, or sales."
     },
     {
      "index": 6,
@@ -2436,7 +2436,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "An internal corporate investigation does not indicate a disruption to manufacturing, buying, or shipping goods."
+     "reason": "An internal investigation regarding executive conduct does not represent an immediate operational disruption or manufacturing halt."
     },
     {
      "index": 6,
@@ -2445,7 +2445,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "An internal investigation into leadership is corporate noise without reported supply or production impact."
+     "reason": "An internal investigation into executive ties is a corporate governance matter that does not explicitly halt production, buying, or shipping."
     }
    ]
   },
@@ -2463,7 +2463,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Covers stock price decline and leadership speculation, which is classified as noise."
+     "reason": "Leadership speculation and share price drops do not directly interrupt the production or shipping of chips."
     },
     {
      "index": 17,
@@ -2472,7 +2472,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock performance and leadership speculation do not report a supply chain disruption."
+     "reason": "Market share price drops and executive succession speculation do not interfere with chip packaging or client deliveries."
     },
     {
      "index": 7,
@@ -2481,7 +2481,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock movement and leadership speculation are considered noise."
+     "reason": "Share price changes and leadership uncertainty are noise without direct evidence of a breakdown in manufacturing or sales."
     }
    ]
   },
@@ -2499,7 +2499,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A regulatory investigation into vehicles is noise unless the headline indicates production, supply, or sales have been halted."
+     "reason": "A regulatory safety investigation alone does not mandate a production pause, recall, or halt in vehicle shipments."
     },
     {
      "index": 8,
@@ -2508,7 +2508,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A regulatory safety investigation without a stated recall or halt in production is noise."
+     "reason": "A regulatory safety probe into vehicle components does not halt existing manufacturing or vehicle deliveries."
     },
     {
      "index": 1,
@@ -2517,7 +2517,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "An investigation or regulatory probe without an explicit production halt or recall disruption is noise."
+     "reason": "Regulatory investigations do not directly stop manufacturing, shipments, or sales unless a formal stop-sale or recall is mandated."
     }
    ]
   },
@@ -2535,7 +2535,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a routine product launch announcement, which is considered noise."
+     "reason": "This is a product announcement and does not indicate any disruption to manufacturing or sales operations."
     },
     {
      "index": 13,
@@ -2544,7 +2544,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a standard product debut announcement and represents general marketing noise."
+     "reason": "Routine vehicle debuts and standard product line announcements do not involve supply or manufacturing interruptions."
     },
     {
      "index": 17,
@@ -2553,7 +2553,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A product debut and vehicle specifications are product launch noise."
+     "reason": "Unveiling new vehicle models and engine specifications is a standard marketing announcement that does not interrupt existing supply."
     }
    ]
   },
@@ -2571,7 +2571,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Changes to retiree health premiums do not affect Boeing's production, manufacturing, or supply chain operations."
+     "reason": "Changes to retiree healthcare premium rates relate to benefits administration and do not affect manufacturing or delivery schedules."
     },
     {
      "index": 20,
@@ -2580,7 +2580,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Changes to retiree health insurance premiums are noise and do not disrupt Boeing's manufacturing or supply chain."
+     "reason": "Adjustments to retiree medical benefits do not curtail aircraft manufacturing operations or part procurement."
     },
     {
      "index": 3,
@@ -2589,7 +2589,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Retiree health insurance premium increases do not disrupt Boeing's manufacturing or supply chain operations."
+     "reason": "Retiree health insurance premium adjustments do not impede current aircraft assembly, supply chains, or customer deliveries."
     }
    ]
   },
@@ -2607,7 +2607,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Discussions and updates regarding lawsuits constitute legal noise without reported operational disruption."
+     "reason": "Litigation regarding a past crash involves liability and damages without impeding the active manufacture or delivery of aircraft."
     },
     {
      "index": 19,
@@ -2616,7 +2616,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Legal lawsuits after an accident are noise without an explicit impact on production or sales."
+     "reason": "Ongoing litigation following an aircraft crash does not disrupt manufacturing lines, assembly operations, or delivery schedules."
     },
     {
      "index": 15,
@@ -2625,7 +2625,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Lawsuits following a past crash are legal noise without mention of ongoing operational disruption."
+     "reason": "Ongoing legal disputes over a past crash do not directly stop current manufacturing or delivery operations."
     }
    ]
   },
@@ -2643,7 +2643,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "TSMC denying plans to develop a specific technology is corporate commentary, not an operational delay or disruption."
+     "reason": "Denying product research rumors does not impact current chip manufacturing, procurement, or product shipments."
     },
     {
      "index": 4,
@@ -2652,7 +2652,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a denial of future technology exploration rumors and commentary, not a supply chain disruption."
+     "reason": "Denying research into an early-stage memory architecture has no bearing on existing semiconductor fabrication or current customer deliveries."
     },
     {
      "index": 3,
@@ -2661,7 +2661,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "TSMC denying exploration of a memory technology is general commentary and development news, not a disruption."
+     "reason": "A denial regarding future technology research plans does not disrupt present manufacturing, shipping, or sales operations."
     }
    ]
   },
@@ -2679,7 +2679,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock market performance and market commentary are treated as noise."
+     "reason": "Equity market rallies and general stock performance reflect market sentiment rather than a physical supply chain disruption."
     },
     {
      "index": 12,
@@ -2688,7 +2688,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "General stock market commentary and share price movements are classified as noise."
+     "reason": "Stock market index movements and equity rallies have no direct negative impact on semiconductor fabrication or delivery."
     },
     {
      "index": 6,
@@ -2697,7 +2697,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is general commentary on stock market gains and share prices."
+     "reason": "Stock market performance and sector gains do not disrupt manufacturing, logistics, or operational capabilities."
     }
    ]
   },
@@ -2715,7 +2715,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Addresses stock price drops and analyst price targets, which are noise."
+     "reason": "Stock price declines and analyst target updates represent market performance commentary rather than physical business disruptions."
     },
     {
      "index": 16,
@@ -2724,7 +2724,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Analysis of share price drops and price targets is financial commentary."
+     "reason": "Financial commentary regarding equity declines and price targets does not stop chip production or supply chains."
     },
     {
      "index": 17,
@@ -2733,7 +2733,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock market performance, share prices, and price targets are noise."
+     "reason": "Movements in stock valuation and changes to analyst price targets do not stop or delay semiconductor production lines or component purchasing."
     }
    ]
   },
@@ -2751,7 +2751,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Vague commentary about stock performance and unstated threats is financial noise."
+     "reason": "Vague financial speculation about stock risks does not constitute a concrete operational or supply chain event."
     },
     {
      "index": 18,
@@ -2760,7 +2760,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Generic stock market threat analysis is noise."
+     "reason": "Unspecified market threats and stock analysis represent financial commentary rather than a physical supply chain failure."
     },
     {
      "index": 5,
@@ -2769,7 +2769,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "General stock commentary and speculation is financial noise."
+     "reason": "Speculation regarding stock market risks does not point to an actual disruption in the company's manufacturing or supply activities."
     }
    ]
   },
@@ -2787,7 +2787,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Leadership and executive appointment changes are noise."
+     "reason": "Executive leadership transitions do not indicate an interruption to manufacturing, supply, or logistics."
     },
     {
      "index": 14,
@@ -2796,7 +2796,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "An executive leadership appointment is noise unless production or sales are reported as affected."
+     "reason": "An executive appointment is a standard corporate governance change with no inherent interruption to automotive manufacturing."
     },
     {
      "index": 13,
@@ -2805,7 +2805,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A routine leadership or executive appointment is noise."
+     "reason": "Routine corporate leadership appointments do not disrupt production, purchasing, or vehicle shipments."
     }
    ]
   },
@@ -2823,7 +2823,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock market price movements and commentary are considered noise."
+     "reason": "Stock market fluctuations and financial commentary do not impact the physical operations of making, shipping, or selling vehicles."
     },
     {
      "index": 13,
@@ -2832,7 +2832,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock price rallies and financial market movements are noise."
+     "reason": "Stock market performance and share price movements have no immediate bearing on manufacturing capacity or product deliveries."
     },
     {
      "index": 11,
@@ -2841,7 +2841,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "Stock price commentary is market noise."
+     "reason": "Stock market performance and commentary do not constitute an operational or supply chain event."
     }
    ]
   },
@@ -2859,7 +2859,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "A patent challenge is an intellectual property legal dispute and is considered noise."
+     "reason": "Patent disputes and legal challenges over intellectual property do not halt or delay ongoing manufacturing or sales."
     },
     {
      "index": 3,
@@ -2868,7 +2868,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a patent challenge dispute, which is classified as noise without reported operational disruption."
+     "reason": "Initiating patent challenges against a third party does not interrupt current display panel manufacturing or product shipments."
     },
     {
      "index": 1,
@@ -2877,7 +2877,7 @@
      "severity": "",
      "confidence": "HIGH",
      "summary": "",
-     "reason": "This is a patent dispute with no reported impact on production, supply, or sales."
+     "reason": "Patent disputes and legal challenges are routine intellectual property matters that do not directly halt production or product shipments."
     }
    ]
   }

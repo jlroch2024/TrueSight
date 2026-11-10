@@ -123,7 +123,8 @@ export function AlertView({
           Why It Matters
         </h3>
         <p className="prose">{assessment.reason}</p>
-        <p className="prose faint small">Based on the Headline Only</p>
+        {/* The AI judged the headline alone, never the article: said plainly, so nobody reads more into it. */}
+        <p className="basis-note">Based on the Headline Only</p>
       </section>
 
       <section className="insp-section" aria-label="How It Reaches You" style={{ '--tone': tone } as CSSProperties}>

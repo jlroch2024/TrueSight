@@ -35,9 +35,11 @@ export function useAsk(portfolioId: string) {
       const question = text.trim();
       if (!question || question.length > ASK_QUESTION_MAX || latest.current.some((exchange) => exchange.pending)) return;
       const id = nextId.current++;
-      // The last 6 questions that were answered; one that failed was never answered, so it is not context.
+      // The last 6 questions that were answered; one that failed was never answered, so it is not context. Nor is a
+      // refusal: sent back, it led Gemini to refuse the next question too, even one its records answer. A refusal is the
+      // one answer with no sources: the backend gives every other answer at least one (AskService.conclude).
       const history = latest.current
-        .filter((exchange) => exchange.answer)
+        .filter((exchange) => exchange.answer && exchange.answer.sources.length > 0)
         .slice(-ASK_HISTORY_MAX)
         .map((exchange) => ({ question: exchange.question, answer: exchange.answer!.answer }));
       const asked = portfolioId;

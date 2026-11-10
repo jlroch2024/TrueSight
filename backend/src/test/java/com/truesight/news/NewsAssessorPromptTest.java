@@ -56,6 +56,16 @@ class NewsAssessorPromptTest {
     }
 
     @Test
+    void theReasonIsTheAisOwnReadingOfWhyItMattersAndNeverTalksAboutTheHeadline() {
+        // Why It Matters is the AI's interpretation, not the facts again (What Happened gives those); and the alert already
+        // says it rests on the headline alone, so no reason mentions it.
+        assertThat(NewsAssessor.PROMPT)
+                .contains("your own reading of why this matters")
+                .contains("Do not repeat what happened")
+                .contains("never start with or mention \"the headline\".");
+    }
+
+    @Test
     void thePromptStillAsksForEveryFieldTheReaderNeeds() {
         assertThat(NewsAssessor.PROMPT)
                 .contains("- index:")
