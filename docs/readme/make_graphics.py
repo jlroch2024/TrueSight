@@ -413,3 +413,4 @@ if __name__ == "__main__":
     (OUT / "pipeline.svg").write_text(pipeline(), encoding="utf-8")
     (OUT / "button-live-site.svg").write_text(button("Open Live Site", True), encoding="utf-8")
     (OUT / "button-api-docs.svg").write_text(button("API Docs", False), encoding="utf-8")
+    (OUT / "button-sprint-tracker.svg").write_text(button("Sprint Tracker", False), encoding="utf-8")
