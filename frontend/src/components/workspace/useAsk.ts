@@ -3,7 +3,7 @@
 // Nothing is saved: closing the tab ends it.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
-import { ASK_FIXED_ANSWERS, ASK_HISTORY_MAX, ASK_QUESTION_MAX, type AskAnswer, askApi } from '../../api/ask';
+import { ASK_HISTORY_MAX, ASK_QUESTION_MAX, type AskAnswer, askApi } from '../../api/ask';
 
 export type AskExchange = {
   id: number;
@@ -36,9 +36,10 @@ export function useAsk(portfolioId: string) {
       if (!question || question.length > ASK_QUESTION_MAX || latest.current.some((exchange) => exchange.pending)) return;
       const id = nextId.current++;
       // The last 6 questions that were answered; one that failed was never answered, so it is not context. Nor is a
-      // fixed refusal: sent back, it led Gemini to refuse the next question too, even one its records answer.
+      // refusal: sent back, it led Gemini to refuse the next question too, even one its records answer. A refusal is the
+      // one answer with no sources: the backend gives every other answer at least one (AskService.conclude).
       const history = latest.current
-        .filter((exchange) => exchange.answer && !ASK_FIXED_ANSWERS.includes(exchange.answer.answer))
+        .filter((exchange) => exchange.answer && exchange.answer.sources.length > 0)
         .slice(-ASK_HISTORY_MAX)
         .map((exchange) => ({ question: exchange.question, answer: exchange.answer!.answer }));
       const asked = portfolioId;

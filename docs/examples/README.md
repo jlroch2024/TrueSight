@@ -583,18 +583,23 @@ measured: `NewsAssessorPromptTest` fails if the prompt changes without being mea
 and labelled before Gemini read them (5 events, 15 noise; two of the noise entries are a real event at another company, tagged with
 a company it does not affect).
 
-**Score, on real Gemini on 9 November 2026 (`gemini-3.8-flash`, temperature 0):**
+**Score, on real Gemini on 10 November 2026 (`gemini-3.8-flash`, temperature 0),** after the final walkthrough changed what the
+prompt asks for in `reason` (shown as Why It Matters): the AI's own reading of what the event could stop or delay for the named
+company, without repeating what happened or mentioning the headline. The verdicts were measured again because of it:
 
 | Order | Events caught, of 22 | False alarms, of 58 | Right, of 80 |
 |---|---|---|---|
 | 1 | 20 | 0 | 78 |
-| 2 | 18 | 0 | 76 |
-| 3 | 19 | 0 | 77 |
-| All three | 57 of 66 (86%) | 0 of 174 | 231 of 240 |
+| 2 | 20 | 0 | 78 |
+| 3 | 20 | 1 | 77 |
+| All three | 60 of 66 (91%) | 1 of 174 | 233 of 240 |
 
-Verdicts changed across orders on 3 of the 80. The story asks for at least 85% of events caught, and no more than 2 false alarms in
-every 50 non-events: the three orders together meet both, and order 2 on its own (82%) is under the first. Micron's labour-dispute
-headline and the sanction on an ASML supplier are missed in every order, as the story expected.
+Verdicts changed across orders on 1 of the 80. The story asks for at least 85% of events caught, and no more than 2 false alarms in
+every 50 non-events: every order meets both. Micron's labour-dispute headline and the sanction on an ASML supplier are missed in
+every order, as the story expected; the one false alarm is "Taiwan to criminalize Nvidia AI chip smuggling to China", in order 3.
+No reason in any order mentions the headline (before the change, 20 to 23 of 80 did).
+
+The run before the change (9 November 2026) caught 57 of 66 with no false alarms.
 
 **Labels.** The 60 were written in the audit and the 20 new ones while building this story, all by Claude. Claude re-read all 80 on 10 November 2026, from the headline and company alone. That is a second reading and not an independent one; the product owner accepted it in place of a teammate, as the team had none free to do it. It agrees with 79. The exception is "Floods halt over 10 auto-parts plants with Oct 12 restart expected" tagged Toyota: the headline does not name Toyota, so under the new sentence it reads as noise. It keeps its label E, because the story was measured on it and changing a label after seeing the answers would flatter nothing but the score.
 team has checked them yet.** The name of whoever does belongs here.

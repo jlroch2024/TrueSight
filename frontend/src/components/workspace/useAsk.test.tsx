@@ -8,7 +8,10 @@ import { useAsk } from './useAsk';
 type Pending = { body: { question: string; history: { question: string; answer: string }[] }; url: string; reply: (response: Response) => void };
 let requests: Pending[];
 
-const answer = (text: string) => new Response(JSON.stringify({ answer: text, sources: [] }));
+// An answer as the backend sends one: always with a source, unless it is one of its fixed refusals (refusal below).
+const answer = (text: string) =>
+  new Response(JSON.stringify({ answer: text, sources: [{ kind: 'RELATIONSHIP', id: 1, label: 'TSMC supplies NVIDIA' }] }));
+const refusal = (text: string) => new Response(JSON.stringify({ answer: text, sources: [] }));
 const failure = (message: string) => new Response(JSON.stringify({ message }), { status: 502 });
 
 beforeEach(() => {
@@ -55,7 +58,7 @@ describe('useAsk', () => {
   it('neverSendsARefusalBackAsContextSoItCannotTeachTheNextAnswerToRefuse', async () => {
     const { result } = renderHook(() => useAsk('7'));
 
-    await askAndAnswer(result.current.ask, 'Who is the biggest customer?', answer("TrueSight's data does not answer that."));
+    await askAndAnswer(result.current.ask, 'Who is the biggest customer?', refusal("TrueSight's data does not answer that."));
     await askAndAnswer(result.current.ask, 'Who supplies NVIDIA?', answer('TSMC (unreviewed).'));
     await askAndAnswer(result.current.ask, 'How many memory suppliers?', answer('Three (unreviewed).'));
 

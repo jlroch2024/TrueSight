@@ -16,12 +16,6 @@ export type AskTurn = { question: string; answer: string };
 export const ASK_QUESTION_MAX = 500;
 export const ASK_HISTORY_MAX = 6;
 
-// The backend's two fixed answers (AskGuards): they answer nothing, so they are never sent back as context.
-export const ASK_FIXED_ANSWERS = [
-  "TrueSight's data does not answer that.",
-  'TrueSight offers research support, not investment advice, so it cannot say what to trade.',
-];
-
 export const askApi = {
   ask: (portfolioId: string | number, question: string, history: AskTurn[]) =>
     api<AskAnswer>(`/portfolios/${portfolioId}/questions`, {

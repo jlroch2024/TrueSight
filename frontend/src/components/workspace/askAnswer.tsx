@@ -7,7 +7,7 @@ import { FlowLink } from '../FlowLink';
 export const SUPPLIED = '#c4f36a';
 
 // A full stop after one of these does not end a sentence.
-const NOT_AN_END = /\b(?:Inc|Corp|Co|Ltd|Plc|No|vs|U\.S|e\.g|i\.e)\.$/i;
+const NOT_AN_END = /\b(?:Inc|Corp|Co|Ltd|Plc|Pte|No|vs|U\.S|e\.g|i\.e|N\.V|S\.A|A\.G|B\.V|S\.p\.A|L\.P)\.$/i;
 
 /** The answer's lines: a new line for each sentence, and after each semicolon. */
 export function answerLines(answer: string): string[] {

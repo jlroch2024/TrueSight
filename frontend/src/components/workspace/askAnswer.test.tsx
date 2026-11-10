@@ -11,6 +11,14 @@ describe('how an answer is set out', () => {
     expect(answerLines('Apple Inc. Buys chips. It is unreviewed.')).toEqual(['Apple Inc. Buys chips.', 'It is unreviewed.']);
   });
 
+  it('doesNotEndASentenceInsideACompanysLegalEnding', () => {
+    expect(answerLines('STMicroelectronics N.V. Buys from TSMC. It is unreviewed.')).toEqual([
+      'STMicroelectronics N.V. Buys from TSMC.',
+      'It is unreviewed.',
+    ]);
+    expect(answerLines('Amkor Technology, Inc. Supplies Qualcomm.')).toEqual(['Amkor Technology, Inc. Supplies Qualcomm.']);
+  });
+
   it('drawsSuppliesAsAnArrowAndKeepsTheWordForScreenReaders', () => {
     const { container } = render(<AskAnswerText answer="TSMC supplies NVIDIA." names={['TSMC', 'NVIDIA']} />);
 

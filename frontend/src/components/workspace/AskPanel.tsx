@@ -73,12 +73,28 @@ export function AskPanel({ exchanges, sending, left, right, bottom, placed = tru
   }
 
   const showLog = exchanges.length > 0 && open;
-  // When the rows below show who supplies whom, the words need only say what they show: the answer's first line, and
-  // its note that the links are unreviewed if that comes on a line of its own.
+  const section = useRef<HTMLElement>(null);
+  // Opened from its square: a press anywhere outside it, with nothing typed, folds it back.
+  useEffect(() => {
+    if (!onFold || folded) return;
+    const pressed = (event: PointerEvent) => {
+      if (!text.trim() && section.current && !section.current.contains(event.target as Node)) onFold();
+    };
+    document.addEventListener('pointerdown', pressed);
+    return () => document.removeEventListener('pointerdown', pressed);
+  }, [onFold, folded, text]);
+  // The rows below show who supplies whom, so a line saying the same (it names a row's supplier and says it supplies)
+  // is left out. Every other line stays: the answer's own summary, an alert, a licence, the note that links are
+  // unreviewed.
   const brief = (answer: string, sources: AskSource[]) => {
-    if (!sources.some((source) => picture(source)?.to)) return answer;
-    const lines = answerLines(answer);
-    return [lines[0], ...lines.slice(1).filter((line) => /\bunreviewed\b/i.test(line) && !/\bsuppl/i.test(line))].join(' ');
+    const suppliers = sources.flatMap((source) => {
+      const drawn = picture(source);
+      return drawn?.to ? [drawn.from.displayName, drawn.from.label] : [];
+    });
+    if (suppliers.length === 0) return answer;
+    const repeats = (line: string) => /\bsuppl(?:y|ies|ied)\b/i.test(line) && suppliers.some((name) => name && line.includes(name));
+    const kept = answerLines(answer).filter((line, index) => index === 0 || !repeats(line));
+    return kept.join(' ').replace(/;$/, '.');
   };
   // It glides with the panels only once it has first appeared where it belongs.
   const [settled, setSettled] = useState(false);
@@ -89,7 +105,7 @@ export function AskPanel({ exchanges, sending, left, right, bottom, placed = tru
   }, [placed, settled]);
 
   return (
-    <section className={`ask${placed ? '' : ' unplaced'}${settled ? '' : ' still'}`} aria-label="Ask TrueSight" style={{ left, right, bottom }}>
+    <section ref={section} className={`ask${placed ? '' : ' unplaced'}${settled ? '' : ' still'}`} aria-label="Ask TrueSight" style={{ left, right, bottom }}>
       {folded ? (
         <button
           type="button"
@@ -107,9 +123,11 @@ export function AskPanel({ exchanges, sending, left, right, bottom, placed = tru
       <div
         className="ask-panel glass ticks"
         onKeyDown={keyDown}
-        // Opened from its square, it folds back once the focus leaves it with nothing typed.
+        // Opened from its square, it folds back when the keyboard takes the focus out of it with nothing typed. A press
+        // outside it is caught below; a press on its own words gives no focus to anything, so it is not leaving.
         onBlur={(event) => {
-          if (onFold && !text.trim() && !event.currentTarget.contains(event.relatedTarget as Node | null)) onFold();
+          const to = event.relatedTarget as Node | null;
+          if (onFold && to && !text.trim() && !event.currentTarget.contains(to)) onFold();
         }}
       >
         <AnimatePresence initial={false}>

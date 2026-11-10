@@ -168,19 +168,19 @@ export function WorkspacePage() {
   const [phoneTab, setPhoneTab] = useState<PhoneTab>(tab === 'alerts' ? 'alerts' : 'graph');
   const [leftOpen, setLeftOpen] = useState(true);
   const [chosen, setChosen] = useState<Chosen>(null);
-  // What the Inspector showed before, most recent last, for Back.
+  // What the user had open in the Inspector before, most recent last, for Back. Only the user's own choices are
+  // recorded (pick): a change the page makes itself is never a step back, or Back could undo it and loop. Closing the
+  // Inspector forgets the way back.
   const [trail, setTrail] = useState<NonNullable<Chosen>[]>([]);
-  const steppingBack = useRef(false);
-  const shownBefore = useRef<Chosen>(null);
+  const shownNow = useRef<Chosen>(null);
+  shownNow.current = chosen;
+  const pick = useCallback((next: Chosen) => {
+    const before = shownNow.current;
+    if (before && next && JSON.stringify(before) !== JSON.stringify(next)) setTrail((all) => [...all, before].slice(-20));
+    setChosen(next);
+  }, []);
   useEffect(() => {
-    const before = shownBefore.current;
-    shownBefore.current = chosen;
-    if (steppingBack.current) {
-      steppingBack.current = false;
-      return;
-    }
     if (!chosen) setTrail([]);
-    else if (before && JSON.stringify(before) !== JSON.stringify(chosen)) setTrail((all) => [...all, before].slice(-20));
   }, [chosen]);
   // The SEC Filing Timeline: earlier annual reports, read on request, and the years they cover.
   const timeline = useHistory(portfolioId, (holdings ?? []).filter((holding) => holding.status === 'DONE').length);
@@ -388,6 +388,13 @@ export function WorkspacePage() {
   const [corners, setCorners] = useState({ left: 0, right: 0 });
   // The folded question box, opened above the bottom row.
   const [askOpen, setAskOpen] = useState(false);
+  // The window's width, so the question box's room is worked out again whenever the window is resized.
+  const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const resized = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', resized);
+    return () => window.removeEventListener('resize', resized);
+  }, []);
   const setBottomCorners = useCallback(
     (next: { left: number; right: number }) => setCorners((now) => (now.left === next.left && now.right === next.right ? now : next)),
     [],
@@ -686,14 +693,13 @@ export function WorkspacePage() {
 
   // Choosing something from a list. On a phone the lists are sheets, so Details takes over and shows it.
   function choose(next: NonNullable<Chosen>) {
-    setChosen(next);
+    pick(next);
     if (compact) setPhoneTab('details');
   }
   // Back goes to what the Inspector showed before; closing it forgets the way back.
   function goBack() {
     const previous = trail[trail.length - 1];
     if (!previous) return;
-    steppingBack.current = true;
     setTrail(trail.slice(0, -1));
     setChosen(previous);
   }
@@ -732,7 +738,7 @@ export function WorkspacePage() {
         left: loaded ? GAP * 2 + (leftOpen ? DRAWER : RAIL) : GAP,
       };
   // The question box sits on the same line as the key and the view's controls, between them; with no room there, above.
-  const between = window.innerWidth - insets.left - insets.right;
+  const between = windowWidth - insets.left - insets.right;
   const askFolded = corners.right > 0 && between - corners.left - corners.right - GAP * 2 < ASK_LEAST;
   const askAbove = askFolded && askOpen;
   const askLeft = insets.left + (askAbove || corners.left === 0 ? 0 : corners.left + GAP);
@@ -888,8 +894,8 @@ export function WorkspacePage() {
               }
               focus={focus}
               peekNodeId={peek}
-              onNodeSelect={(nodeId) => setChosen(nodeId ? { kind: 'company', nodeId } : null)}
-              onEdgeSelect={(relationshipId) => setChosen({ kind: 'relationship', relationshipId })}
+              onNodeSelect={(nodeId) => pick(nodeId ? { kind: 'company', nodeId } : null)}
+              onEdgeSelect={(relationshipId) => pick({ kind: 'relationship', relationshipId })}
               selectedNodeId={chosen?.kind === 'company' ? chosen.nodeId : null}
               selectedRelationshipId={chosen?.kind === 'relationship' ? chosen.relationshipId : null}
               logoToken={logoSettings.token}

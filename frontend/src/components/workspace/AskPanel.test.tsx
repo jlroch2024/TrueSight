@@ -104,13 +104,14 @@ describe('Ask TrueSight panel', () => {
     expect(onOpen).toHaveBeenCalledWith(TSMC_NVIDIA);
   });
 
-  it('saysOnlyTheFirstLineInWordsWhenTheRowsShowWhoSuppliesWhom', () => {
+  it('leavesOutOnlyTheLinesTheSupplierRowsRepeat', () => {
     const tsmc = { name: 'TSMC', displayName: 'TSMC', label: 'TSM', ticker: 'TSM', holding: false };
-    panel([answered(1, 'Who?', 'Two holdings share TSMC. TSMC supplies NVIDIA and AMD. Ceva licenses to Sony.', [TSMC_NVIDIA])], {
+    panel([answered(1, 'Who?', 'Two holdings share TSMC. TSMC supplies NVIDIA and AMD. Ceva licenses to Sony. One alert is open.', [TSMC_NVIDIA])], {
       picture: () => ({ from: tsmc, to: { ...tsmc, name: 'NVIDIA', displayName: 'NVIDIA', label: 'NVDA' } }),
     });
 
-    expect(document.querySelector('.ask-answer')).toHaveTextContent(/^Two holdings share TSMC\.$/);
+    // "TSMC supplies NVIDIA and AMD." is what the row shows; the licence and the alert are not, so they stay.
+    expect(document.querySelector('.ask-answer')).toHaveTextContent(/^Two holdings share TSMC\.\s*Ceva licenses to Sony\.\s*One alert is open\.$/);
   });
 
   it('showsNoSourceListForTheAnswerThatHasNone', () => {

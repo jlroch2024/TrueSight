@@ -171,11 +171,11 @@ against the real database `health/HealthIT.java`; error test `common/GlobalExcep
   |---|---|---|
   | Top bar, left | The brand, the portfolio menu (its name and analysis ring), the Open Alerts pill | `components/workspace/TopBar.tsx` (`PortfolioIsland`) |
   | Top bar, middle | The graph's own title (with how many companies and links) and search, centred between the islands. The Sprint 4 timeline (SEC Filing Timeline) decides how it shares this place | `LivingGraph`'s `topBar` |
-  | Top bar, right | The portfolio's actions (Upload CSV, Check News, Analyse) and the account, in a bar as wide as the Inspector (488px) for every role; before it, Analyst Desk's own bar for analysts | `TopBar.tsx` (`ActionsIsland`, `AnalystDeskButton`) |
+  | Top bar, right | The portfolio's actions (Upload CSV, Check News, Analyse) and the account, in a bar that hugs its buttons with the same 7px around each (the Inspector's 488px while their words show), folding to icons when the timeline needs the room; before it, Analyst Desk's own bar for analysts | `TopBar.tsx` (`ActionsIsland`, `AnalystDeskButton`) |
   | Left drawer, Holdings tab | One row per holding, Add Holding, the shared suppliers and customers | `components/workspace/HoldingsTab.tsx` |
   | Left drawer, Alerts tab | The alerts, with Open, Closed and All | `components/workspace/AlertsTab.tsx` |
   | Inspector, right | Detail of what is chosen: a company, a relationship or an alert | `components/workspace/Inspector*.tsx` |
-  | Bottom middle | Ask TrueSight: a question box with the answers above it, each answer citing its sources as buttons. Computer layout only | `components/workspace/AskPanel.tsx` |
+  | Bottom middle | Ask TrueSight: a question box in the bottom row, between the graph's key and its view controls and as tall as them (52px), with the answers above it; supplier links it cites are drawn as rows of logos. Short of room, it folds to a square that opens above the row. Computer layout only | `components/workspace/AskPanel.tsx` |
 
   Alerts go in the drawer's Alerts tab, detail in the Inspector, analyst tools in Analyst Desk tools. Nothing is drawn
   in a kept place until its story builds it: no placeholders or pretend controls. What the graph, the drawer and the

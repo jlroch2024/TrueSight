@@ -812,7 +812,7 @@ describe('Ask TrueSight', () => {
   });
 
   it('sendsTheLastQuestionsAndAnswersBackForContext', async () => {
-    answering({ answer: 'An answer (unreviewed).', sources: [] });
+    answering({ answer: 'An answer (unreviewed).', sources: [{ kind: 'RELATIONSHIP', id: 1, label: 'TSMC supplies NVIDIA' }] });
     renderAt();
     await graph();
 

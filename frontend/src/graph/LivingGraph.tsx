@@ -1239,7 +1239,10 @@ export function LivingGraph({
     observer.observe(key);
     observer.observe(controls);
     measure();
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      bottomCorners.current?.({ left: 0, right: 0 });
+    };
   }, []);
 
   return (
