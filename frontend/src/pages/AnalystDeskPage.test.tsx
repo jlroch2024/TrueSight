@@ -179,7 +179,7 @@ describe('Analyst Desk', () => {
     renderAt('/review?tab=events');
 
     expect(tool('Events')).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByText('No undecided events from the last 7 days.')).toBeInTheDocument();
+    expect(await screen.findByText('No Undecided Events in the Last 7 Days')).toBeInTheDocument();
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/news/assessments?filter=EVENTS', expect.anything());
   });
 

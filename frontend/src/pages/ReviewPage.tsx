@@ -23,13 +23,13 @@ import { useLogoSettings } from '../components/useLogoSettings';
 import { formatDate, formatDateTime, openInNewTab, showInReportUrl, titleCase } from '../format';
 import { plural } from '../components/motion';
 
-const NOTHING_TO_REVIEW = 'Nothing to review. Analyse a portfolio to find more relationships.';
+const NOTHING_TO_REVIEW = 'Nothing to Review';
 
 // Each filter, and what its empty list says.
 const FILTERS: { value: ReviewFilter; label: string; empty: string }[] = [
   { value: 'UNREVIEWED', label: 'Unreviewed', empty: NOTHING_TO_REVIEW },
-  { value: 'APPROVED', label: 'Approved', empty: 'None approved yet. Approve one from Unreviewed.' },
-  { value: 'REJECTED', label: 'Rejected', empty: 'None rejected yet.' },
+  { value: 'APPROVED', label: 'Approved', empty: 'None Approved Yet' },
+  { value: 'REJECTED', label: 'Rejected', empty: 'None Rejected Yet' },
   { value: 'ALL', label: 'All', empty: NOTHING_TO_REVIEW },
 ];
 

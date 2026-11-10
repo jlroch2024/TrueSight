@@ -93,7 +93,8 @@ describe('room', () => {
   });
 
   it('keepsTheWorkspacesRightBarAsWideAsTheInspectorWithAnAnalystsDeskABarOfItsOwn', () => {
-    expect(styles).toMatch(/\.ws \.island\.right \{\s*width: var\(--inspector\);/);
-    expect(styles).toMatch(/\.desk-bar \{[^}]*right: calc\(var\(--gap\) \* 2 \+ var\(--inspector\)\);/);
+    // The right bar hugs its buttons (the page measures it into --actions); the Analyst Desk bar sits just before it.
+    expect(styles).toMatch(/\.ws \.island\.right \{\s*gap: 7px;\s*padding: 0 7px;/);
+    expect(styles).toMatch(/\.desk-bar \{[^}]*right: calc\(var\(--gap\) \* 2 \+ var\(--actions\)\);/);
   });
 });

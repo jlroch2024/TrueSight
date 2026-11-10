@@ -19,6 +19,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -37,7 +38,6 @@ import {
   ALERT_COLOUR,
   boxOf,
   buildLiveGraph,
-  NEUTRAL_EDGE,
   estimateWidth,
   eventLabel,
 } from './model';
@@ -54,7 +54,6 @@ import {
   mapFrame,
   render,
   renderMinimap,
-  drawArrow,
 } from './render';
 import { Scene } from './scene';
 import './livingGraph.css';
@@ -96,6 +95,10 @@ type Props = {
   barStart?: ReactNode;
   // Something of the page's to put last in that band, after the search (the workspace's Load History button).
   barEnd?: ReactNode;
+  // The least width the top row's items can take, so the page can make room for them.
+  onBarNeed?: (width: number) => void;
+  // How wide the key and the view's controls are in the bottom row, so the page can fit between them.
+  onBottomCorners?: (corners: { left: number; right: number }) => void;
   // Show only these companies and links (by node id and link id), such as one year of the history; null shows all. The
   // rest are still part of the layout, so each company keeps its place whatever is shown.
   shown?: GraphSelection | null;
@@ -135,8 +138,8 @@ const EDGE_REACH = 7;
 const DRAG_HEAT = 0.22;
 // The minimap's size on screen.
 // As wide as the view controls under it (their square buttons, the zoom and the divider: 193px inside its border).
-const MAP_WIDTH = 193;
-const MAP_HEIGHT = 123;
+const MAP_WIDTH = 251;
+const MAP_HEIGHT = 160;
 // How warm the physics may still be when the view fits around companies on their way somewhere new.
 const NEARLY_SETTLED = 0.12;
 // How much the companies are stirred when the page changes to or from its tall layout.
@@ -163,6 +166,8 @@ const FOCUS_MAX_ZOOM = 1.15;
 const FOCUS_MIN_ZOOM = 0.45;
 // Narrower than this between the page's panels, the minimap and the hint step aside so the key stays readable.
 const NARROW_BELOW = 640;
+// In a page's bars the question box shares the bottom row, so the key and minimap fold sooner.
+const NARROW_BELOW_IN_BAR = 940;
 // How long the key and minimap take to fade out and back in as they fold (livingGraph.css has the same times).
 const FOLD_OUT_MS = 140;
 const FOLD_IN_MS = 260;
@@ -329,6 +334,8 @@ export function LivingGraph({
   topBar,
   barStart,
   barEnd,
+  onBarNeed,
+  onBottomCorners,
   shown = null,
   fresh = null,
   tall = false,
@@ -381,8 +388,17 @@ export function LivingGraph({
   const [tight, setTight] = useState(false);
   // Narrow, the key folds to a button; pointed at or pressed, it opens.
   const [keyOpen, setKeyOpen] = useState(false);
+  // The key as wide as it has been at its widest, so changing year (which shows fewer marks) never changes its size.
+  const keyRef = useRef<HTMLDivElement>(null);
+  const keyWidest = useRef(0);
+  useLayoutEffect(() => {
+    const key = keyRef.current;
+    if (key && !narrow && key.offsetWidth > keyWidest.current) keyWidest.current = key.offsetWidth;
+  });
 
   // Read by the long-lived handlers, so changing them does not rebuild the graph.
+  const narrowBelow = useRef(NARROW_BELOW);
+  narrowBelow.current = topBar ? NARROW_BELOW_IN_BAR : NARROW_BELOW;
   const latest = useRef({ onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall, shownSets, freshSets });
   latest.current = { onEdgeSelect, onNodeSelect, logoToken, logoDomains, layoutKey, insets, tall, shownSets, freshSets };
   // The room to keep around the graph when fitting it in view, clear of what covers it.
@@ -580,7 +596,7 @@ export function LivingGraph({
       rig.setSize(size.width, size.height);
       sizeRef.current = { width: size.width, height: size.height };
       const covered = latest.current.insets;
-      askNarrow(latest.current.tall || size.width - covered.left - covered.right < NARROW_BELOW);
+      askNarrow(latest.current.tall || size.width - covered.left - covered.right < narrowBelow.current);
       // While a company is dragged the view waits, or the company would slide out from under the pointer.
       if (!viewChosenRef.current && !(glide && scene.draggedNode)) {
         const target = fitCamera(boundsAround(scene, graph.nodes), size.width, size.height, fitRoom());
@@ -795,7 +811,7 @@ export function LivingGraph({
     const dx = (insets.left - before.left - (insets.right - before.right)) / 2;
     const dy = (insets.top - before.top - (insets.bottom - before.bottom)) / 2;
     // Changing to or from the tall layout, the page is already fading everything.
-    askNarrow(tall || rig.width - insets.left - insets.right < NARROW_BELOW, foldedForTall.current !== tall);
+    askNarrow(tall || rig.width - insets.left - insets.right < narrowBelow.current, foldedForTall.current !== tall);
     foldedForTall.current = tall;
     if (dx === 0 && dy === 0) return;
     // A flight already under way was aimed with these insets (the panel opened because something was chosen), so it
@@ -867,7 +883,7 @@ export function LivingGraph({
       pointerRef.current = screen;
       scene.hoveredNode = node?.id ?? null;
       scene.hoveredEdge = edge?.id ?? null;
-      canvas.style.cursor = node ? 'grab' : edge ? 'pointer' : 'default';
+      canvas.style.cursor = node || edge ? 'var(--cursor-hand)' : 'var(--cursor-arrow)';
       setTip(
         node
           ? { kind: 'node', node, x: screen.x, y: screen.y }
@@ -942,11 +958,11 @@ export function LivingGraph({
           press.node.fy = at.y;
           scene.hold(press.node.id);
           scene.heat(DRAG_HEAT);
-          canvas.style.cursor = 'grabbing';
+          canvas.style.cursor = 'var(--cursor-grab)';
           setTip(null);
         } else {
           press.panning = true;
-          canvas.style.cursor = 'grabbing';
+          canvas.style.cursor = 'var(--cursor-grab)';
           setTip(null);
         }
       }
@@ -983,11 +999,11 @@ export function LivingGraph({
         // Dropped: it stays where it was put, and the web settles around it.
         scene.hold(null);
         scene.heat(0);
-        canvas.style.cursor = 'grab';
+        canvas.style.cursor = 'var(--cursor-hand)';
         remember();
       } else if (done.panning) {
         if (performance.now() - done.last.t < 80) rig.release(done.velocity);
-        canvas.style.cursor = 'default';
+        canvas.style.cursor = 'var(--cursor-arrow)';
         remember();
       } else {
         const { node, edge } = hit(local(event));
@@ -1173,11 +1189,15 @@ export function LivingGraph({
   };
 
   const inBar = topBar !== undefined;
+  const barNeed = useRef(onBarNeed);
+  barNeed.current = onBarNeed;
+  const bottomCorners = useRef(onBottomCorners);
+  bottomCorners.current = onBottomCorners;
   const hasBarStart = barStart !== undefined && barStart !== null;
   const hasBarEnd = barEnd !== undefined && barEnd !== null;
   // The room is measured as the bars move (a panel opening, the window resized) and as the page's own bar in the row
   // changes width (the Open Alerts bar opening).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const top = topRef.current;
     if (!inBar || !top || typeof ResizeObserver === 'undefined') return;
     // An item that folds when the bar is crowded is measured at its unfolded width, kept from when it was last open:
@@ -1193,11 +1213,13 @@ export function LivingGraph({
       const items = [...top.children] as HTMLElement[];
       const start = items.filter((item) => !item.classList.contains('lg-title') && !item.classList.contains('lg-search'));
       const needed = start.reduce((sum, item) => sum + openWidth(item), 0) + BAR_ITEM * 2 + gap * (start.length + 1);
-      setCrowded(top.clientWidth < needed);
+      // Once crowded, it stays so until there is 24px to spare, so folding and unfolding can never undo each other.
+      setCrowded((was) => top.clientWidth < needed + (was ? 24 : 0));
       // An item that folds to a square as soon as the bar is crowded (the page marks it history-folds, as Load History)
       // needs only that square here.
       const least = (item: HTMLElement) => (item.classList.contains('history-folds') ? BAR_SQUARE : BAR_START_LEAST);
       setTight(top.clientWidth < BAR_TITLE_LEAST + gap + BAR_SQUARE + start.reduce((sum, item) => sum + least(item) + gap, 0));
+      barNeed.current?.(start.reduce((sum, item) => sum + openWidth(item) + gap, 0) + BAR_TITLE_LEAST + gap + BAR_SQUARE);
     };
     const observer = new ResizeObserver(measure);
     observer.observe(top);
@@ -1205,6 +1227,20 @@ export function LivingGraph({
     measure();
     return () => observer.disconnect();
   }, [inBar, hasBarStart, hasBarEnd]);
+
+  // The key and the view's controls, measured as they fold and as the holdings in the key change.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const key = root?.querySelector<HTMLElement>('.lg-key-holder');
+    const controls = root?.querySelector<HTMLElement>('.lg-bottom-right');
+    if (!key || !controls || typeof ResizeObserver === 'undefined') return;
+    const measure = () => bottomCorners.current?.({ left: key.offsetWidth, right: controls.offsetWidth });
+    const observer = new ResizeObserver(measure);
+    observer.observe(key);
+    observer.observe(controls);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <>
@@ -1326,14 +1362,16 @@ export function LivingGraph({
               title="Graph Key"
               onClick={() => setKeyOpen((open) => !open)}
             >
-              <Layers size={16} />
+              <Layers size={20} />
             </button>
           )}
           <AnimatePresence initial={false}>
           {(!narrow || keyOpen) && (
           <motion.div
             key="key"
+            ref={keyRef}
             className={`lg-glass lg-key lg-mark${narrow ? ' lg-key-pop' : ''}`}
+            style={narrow ? undefined : { minWidth: keyWidest.current || undefined }}
             initial={narrow ? { opacity: 0, y: 10, scale: 0.97 } : false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             // Only the key opened from its button leaves gently. The full key folding away goes at once, or it would hold the
@@ -1372,35 +1410,17 @@ export function LivingGraph({
                 ))}
               </ul>
             )}
-            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0 || fresh || graph.edges.some((edge) => edge.share != null)) && (
+            {(graph.nodes.some((node) => node.sharedCount > 1) || risks.size > 0 || alertDots.size > 0 || fresh) && (
               <ul className="lg-legend" aria-label="Graph key">
-                {graph.edges.some((edge) => edge.share != null) && (
+                {graph.nodes.some((node) => node.sharedCount > 1) && (
                   <li>
                     <KeyMark
-                      className="lg-legend-share"
+                      className="lg-legend-badge"
                       size={18}
-                      colour={NEUTRAL_EDGE}
-                      draw={(context, dpr) => {
-                        drawArrow(context, {
-                          start: { x: 1, y: 9 },
-                          end: { x: 17, y: 9 },
-                          grow: 1,
-                          strength: 1,
-                          hover: 0,
-                          colour: NEUTRAL_EDGE,
-                          risk: null,
-                          reviewed: true,
-                          critical: false,
-                          share: 1,
-                          flow: 0,
-                          still: true,
-                          now: 0,
-                          k: 1,
-                          dpr,
-                        });
-                      }}
+                      colour={INK.amber}
+                      draw={(context) => drawSharedBadge(context, 9, 9, 2, 14)}
                     />
-                    Thicker: Bigger Share
+                    Shared Holding
                   </li>
                 )}
                 {fresh && (
@@ -1412,17 +1432,6 @@ export function LivingGraph({
                       draw={(context) => drawFreshMark(context, 9, 9, 12)}
                     />
                     New This Year
-                  </li>
-                )}
-                {graph.nodes.some((node) => node.sharedCount > 1) && (
-                  <li>
-                    <KeyMark
-                      className="lg-legend-badge"
-                      size={18}
-                      colour={INK.amber}
-                      draw={(context) => drawSharedBadge(context, 9, 9, 2, 14)}
-                    />
-                    Shared Holding
                   </li>
                 )}
                 {risks.size > 0 && (
@@ -1508,13 +1517,13 @@ export function LivingGraph({
                 aria-label="Zoom Out"
                 onClick={() => zoomBy(1 / ZOOM_STEP)}
               >
-                <Minus size={15} />
+                <Minus size={18} />
               </button>
               <span className="lg-zoom-value" aria-live="polite">
                 {Math.round(zoom * 100)}%
               </span>
               <button type="button" className="lg-zoom-button" aria-label="Zoom In" onClick={() => zoomBy(ZOOM_STEP)}>
-                <Plus size={15} />
+                <Plus size={18} />
               </button>
               <span className="lg-divider" aria-hidden="true" />
               <button
@@ -1524,7 +1533,7 @@ export function LivingGraph({
                 title="Fit to Screen (0)"
                 onClick={() => fitAll()}
               >
-                <Scan size={15} />
+                <Scan size={18} />
               </button>
               <button
                 type="button"
@@ -1533,7 +1542,7 @@ export function LivingGraph({
                 title="Reset Layout: Release Every Company You Placed"
                 onClick={resetLayout}
               >
-                <RotateCcw size={15} />
+                <RotateCcw size={18} />
               </button>
             </div>
           </div>

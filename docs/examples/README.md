@@ -121,7 +121,7 @@ Answer for every headline:
 - severity: LOW, MEDIUM or HIGH; empty when isEvent is false
 - confidence: LOW, MEDIUM or HIGH, how sure you are from the headline alone
 - summary: one sentence saying what happened; empty when isEvent is false
-- reason: one sentence explaining your decision
+- reason: one sentence giving your own reading of why this matters, or does not, to the named company itself: what it could stop, delay or cut short in its making, buying, shipping or selling. Do not repeat what happened (the summary says that), and never start with or mention "the headline".
 
 Use only the headline. Do not guess facts it does not state. Answer with JSON only.
 

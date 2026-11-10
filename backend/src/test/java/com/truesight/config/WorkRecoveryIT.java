@@ -67,7 +67,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class WorkRecoveryIT {
 
     private static final String ANALYSIS_INTERRUPTED = "The analysis was interrupted. Press Analyse to try again.";
-    private static final String NEWS_INTERRUPTED = "The news check was interrupted. Check News to try again.";
+    private static final String NEWS_INTERRUPTED = "The News Check Was Interrupted. Check News to Try Again.";
 
     @Autowired MockMvc mockMvc;
     @Autowired TestLogins logins;

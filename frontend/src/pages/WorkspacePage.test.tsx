@@ -48,6 +48,7 @@ vi.mock('../graph/LivingGraph', () => ({
     insets?: { top: number; right: number; bottom: number; left: number };
     barStart?: ReactNode;
     barEnd?: ReactNode;
+    onBarNeed?: (width: number) => void;
     shown?: { nodeIds: string[]; edgeIds: string[] } | null;
     fresh?: { nodeIds: string[]; edgeIds: string[]; tag: string } | null;
   }) => {
@@ -74,6 +75,8 @@ vi.mock('../graph/LivingGraph', () => ({
       <span data-testid="fresh-links">{props.fresh ? [...props.fresh.edgeIds].sort().join(',') : ''}</span>
       <span data-testid="fresh-tag">{props.fresh?.tag ?? ''}</span>
       {props.barEnd}
+      <button type="button" onClick={() => props.onBarNeed?.(100_000)}>Top Row Needs Room</button>
+      <button type="button" onClick={() => props.onBarNeed?.(0)}>Top Row Has Room</button>
       {props.edges.map((edge) => (
         <button key={edge.id} type="button" onClick={() => props.onEdgeSelect(edge.relationshipId)}>
           {`Link ${edge.relationshipId}`}
@@ -368,8 +371,22 @@ describe('the workspace', () => {
     expect(within(drawer()).getByRole('tab', { name: 'Alerts' })).toHaveAttribute('aria-selected', 'false');
     // The graph is the ground, edge to edge, told how much of each side the panels cover.
     expect(screen.getByTestId('bare')).toHaveTextContent('true');
-    // The bottom keeps the room Ask TrueSight's bar takes: 12 around it and 52 for it.
-    expect(insets()).toEqual({ top: 76, right: 12, bottom: 76, left: 404 });
+    // Ask TrueSight's bar shares the bottom row with the graph's own controls.
+    expect(insets()).toEqual({ top: 76, right: 12, bottom: 12, left: 404 });
+  });
+
+  it('foldsTheActionsToIconsOnlyWhenTheTimelineNeedsTheirRoomKeepingTheirNames', async () => {
+    renderAt();
+    await graph();
+    const actions = () => screen.getByRole('button', { name: 'Upload CSV' }).closest('.island')!;
+    expect(actions()).not.toHaveClass('folded');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Top Row Needs Room' }));
+    expect(actions()).toHaveClass('folded');
+    expect(screen.getByRole('button', { name: 'Analyse' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Top Row Has Room' }));
+    expect(actions()).not.toHaveClass('folded');
   });
 
   it('opensTheInspectorOnlyOnceSomethingIsChosenAndTheGraphKeepsClearOfIt', async () => {
@@ -381,6 +398,26 @@ describe('the workspace', () => {
 
     expect(within(inspector()).getByRole('heading', { name: 'NVIDIA' })).toBeInTheDocument();
     expect(insets().right).toBe(512);
+  });
+
+  it('goesBackToWhatTheInspectorShowedBeforeAndForgetsTheWayBackWhenClosed', async () => {
+    renderAt();
+    await graph();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
+    expect(within(inspector()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: `Company ${AMD.id}` }));
+    expect(screen.getByTestId('selected-node')).toHaveTextContent(String(AMD.id));
+
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Back' }));
+    expect(screen.getByTestId('selected-node')).toHaveTextContent(String(NVIDIA.id));
+    expect(within(inspector()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: `Company ${AMD.id}` }));
+    await userEvent.click(within(inspector()).getByRole('button', { name: 'Close the Inspector' }));
+    await userEvent.click(screen.getByRole('button', { name: `Company ${NVIDIA.id}` }));
+    expect(within(inspector()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 
   it('letsGoOfTheChoiceWhenTheGraphsBackgroundIsClicked', async () => {
@@ -754,7 +791,7 @@ describe('Ask TrueSight', () => {
 
     await ask('Who supplies NVIDIA?');
 
-    expect(await within(bar()).findByText('Taiwan Semiconductor Manufacturing supplies NVIDIA (unreviewed).')).toBeInTheDocument();
+    await waitFor(() => expect(bar().querySelector('.ask-answer')).toHaveTextContent('Taiwan Semiconductor Manufacturing supplies NVIDIA (unreviewed).'));
     expect(within(bar()).getByText('Who supplies NVIDIA?')).toBeInTheDocument();
     expect(sentTo('POST', '/api/portfolios/7/questions')[0]!.body).toEqual({ question: 'Who supplies NVIDIA?', history: [] });
     // The box is ready for the next question.
@@ -867,7 +904,7 @@ describe('Ask TrueSight', () => {
 
     // Escape closed the conversation, not the Inspector behind it.
     expect(inspector()).toBeInTheDocument();
-    expect(within(bar()).queryByRole('log')).not.toBeInTheDocument();
+    await waitFor(() => expect(within(bar()).queryByRole('log')).not.toBeInTheDocument());
   });
 
   it('liftsTheToastsAboveTheBar', async () => {
@@ -1067,7 +1104,8 @@ describe('the dependency figures', () => {
 
     const section = await within(inspector()).findByRole('region', { name: 'Dependence' });
     expect(section).toHaveTextContent('Apple, 91% of Revenue');
-    expect(section).toHaveTextContent('87% → 89% → 91%');
+    // The trend, oldest first, with arrows drawn between its figures.
+    expect(within(section).getByLabelText('87% then 89% then 91%')).toHaveTextContent('87%89%91%');
     expect(section).toHaveTextContent('One Customer, 30% of Revenue');
     expect(section).toHaveTextContent('Ten Largest Customers, 96% of Revenue');
     expect(section).not.toHaveTextContent('39%');
@@ -1287,6 +1325,8 @@ describe('a chosen alert', () => {
 
     expect(within(inspector()).getByRole('heading', { name: alert.headline.article.title })).toBeInTheDocument();
     expect(within(inspector()).getByText('Why It Matters')).toBeInTheDocument();
+    // The AI read only the headline, and the alert says so.
+    expect(within(inspector()).getByText('Based on the Headline Only')).toHaveClass('basis-note');
     expect(within(inspector()).getByText('The headline reports a production stoppage.')).toBeInTheDocument();
     expect(within(inspector()).getByText('Check the supplier delivery updates.')).toBeInTheDocument();
     // TSMC (11), the company it is about, and NVIDIA (1), the holding it reaches, by the link between them.

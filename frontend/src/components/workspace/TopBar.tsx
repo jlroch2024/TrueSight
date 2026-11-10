@@ -14,11 +14,11 @@ import {
   FolderCog,
   LoaderCircle,
   Radar,
-  ScanSearch,
+  FileSearchCorner,
   ShieldCheck,
   Upload,
 } from 'lucide-react';
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Severity } from '../../api/news';
 import type { Portfolio } from '../../api/portfolios';
@@ -227,6 +227,8 @@ export function ActionsIsland({
   onCheck,
   onAnalyse,
   onBriefing,
+  folded = false,
+  islandRef,
 }: {
   analysing: boolean;
   starting: boolean;
@@ -239,10 +241,14 @@ export function ActionsIsland({
   onCheck: () => void;
   onAnalyse: () => void;
   onBriefing: () => void;
+  // Icons alone, giving the timeline their room.
+  folded?: boolean;
+  // The bar itself, so the page can measure how much room it takes.
+  islandRef?: Ref<HTMLDivElement>;
 }) {
   const busy = analysing || starting;
   return (
-    <div className="island right glass ticks">
+    <div ref={islandRef} className={`island right glass ticks${folded ? ' folded' : ''}`}>
       <button type="button" className="btn quiet" disabled={uploading} aria-label="Upload CSV" title="Upload CSV" onClick={onUpload}>
         <Swap
           on={uploading}
@@ -264,11 +270,11 @@ export function ActionsIsland({
           idle={<><Radar size={16} /><span className="btn-word">Check News</span></>}
         />
       </button>
-      <button type="button" className={`btn primary${busy ? ' busy' : ''}`} disabled={busy || !hasHoldings} onClick={onAnalyse}>
+      <button type="button" className={`btn primary${busy ? ' busy' : ''}`} disabled={busy || !hasHoldings} aria-label={busy ? 'Analysing' : 'Analyse'} title={busy ? 'Analysing' : 'Analyse'} onClick={onAnalyse}>
         <Swap
           on={busy}
-          busy={<><LoaderCircle size={16} className="spin" />Analysing</>}
-          idle={<><ScanSearch size={16} />Analyse</>}
+          busy={<><LoaderCircle size={16} className="spin" /><span className="btn-word">Analysing</span></>}
+          idle={<><FileSearchCorner size={16} /><span className="btn-word">Analyse</span></>}
         />
       </button>
       <button

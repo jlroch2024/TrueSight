@@ -216,6 +216,7 @@ function Constellation({ accent }: { accent: [number, number, number] }) {
       r: i % 9 === 0 ? 2.4 : 1.2,
     }));
     const pointer = { x: 0.5, y: 0.5 };
+    const glow = { x: 0.5, y: 0.5 };
     const size = () => {
       dpr = window.devicePixelRatio || 1;
       width = canvas.clientWidth;
@@ -294,6 +295,14 @@ function Constellation({ accent }: { accent: [number, number, number] }) {
         context.fillStyle = point.r > 2 ? `rgba(${sr}, ${sg}, ${sb}, 0.75)` : 'rgba(203, 213, 225, 0.35)';
         context.fillRect(point.x * width + shiftX - point.r, point.y * height + shiftY - point.r, point.r * 2, point.r * 2);
       }
+      // A soft glow in the card's colour, following the pointer.
+      glow.x += (pointer.x - glow.x) * 0.08;
+      glow.y += (pointer.y - glow.y) * 0.08;
+      const light = context.createRadialGradient(glow.x * width, glow.y * height, 0, glow.x * width, glow.y * height, 320);
+      light.addColorStop(0, `rgba(${sr}, ${sg}, ${sb}, 0.16)`);
+      light.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      context.fillStyle = light;
+      context.fillRect(0, 0, width, height);
       // A vignette, so the card is where the eye goes.
       const vignette = context.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.2, width / 2, height / 2, Math.max(width, height) * 0.75);
       vignette.addColorStop(0, 'rgba(5, 7, 13, 0)');

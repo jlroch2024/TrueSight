@@ -52,6 +52,16 @@ describe('useAsk', () => {
     expect(result.current.exchanges[0]!.answer!.answer).toBe('TSMC (unreviewed).');
   });
 
+  it('neverSendsARefusalBackAsContextSoItCannotTeachTheNextAnswerToRefuse', async () => {
+    const { result } = renderHook(() => useAsk('7'));
+
+    await askAndAnswer(result.current.ask, 'Who is the biggest customer?', answer("TrueSight's data does not answer that."));
+    await askAndAnswer(result.current.ask, 'Who supplies NVIDIA?', answer('TSMC (unreviewed).'));
+    await askAndAnswer(result.current.ask, 'How many memory suppliers?', answer('Three (unreviewed).'));
+
+    expect(requests[2]!.body.history).toEqual([{ question: 'Who supplies NVIDIA?', answer: 'TSMC (unreviewed).' }]);
+  });
+
   it('showsAQuestionAsPendingAndBlocksAnotherUntilItIsAnswered', async () => {
     const { result } = renderHook(() => useAsk('7'));
 

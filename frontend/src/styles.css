@@ -117,8 +117,18 @@ input {
   line-height: 1;
 }
 
+:root {
+  --cursor-arrow: default;
+  --cursor-hand: pointer;
+  --cursor-grab: grabbing;
+}
+
+html {
+  cursor: var(--cursor-arrow);
+}
+
 button {
-  cursor: pointer;
+  cursor: var(--cursor-hand);
 }
 
 /* Every icon in the design language: square caps and mitred corners. */
@@ -230,7 +240,7 @@ svg.lucide {
 }
 
 .btn:disabled {
-  cursor: default;
+  cursor: var(--cursor-arrow);
   opacity: 0.5;
 }
 
@@ -815,9 +825,43 @@ svg.lucide {
 }
 
 /* The workspace's right bar is as wide as the Inspector under it, whoever is logged in. */
+/* The workspace's right bar hugs its buttons, with the same 7px around every button: above and below it, to the bar's
+   edges, and to its neighbours. The page measures it. */
 .ws .island.right {
-  width: var(--inspector);
-  justify-content: flex-end;
+  gap: 7px;
+  padding: 0 7px;
+}
+
+.ws .island.right .icon-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.ws .island.right .island-divider {
+  margin: 0;
+}
+
+.ws .island.right .btn {
+  padding: 0 9px;
+}
+
+.ws .island.right .btn-swap-face {
+  gap: 6px;
+}
+
+/* When the timeline needs the room, the actions fold to icons; their names stay as tooltips and for screen readers. */
+.ws .island.right.folded .btn {
+  width: 36px;
+  justify-content: center;
+  padding: 0;
+}
+
+.ws .island.right.folded .btn-swap-face {
+  gap: 0;
+}
+
+.ws .island.right.folded .btn-word {
+  display: none;
 }
 
 /* An analyst's way to the Analyst Desk: a bar of its own just before that one, built as that one is. As the window narrows
@@ -825,11 +869,13 @@ svg.lucide {
    title and search, keeping clear of it, can never make it change its mind. */
 .ws {
   --desk: clamp(92px, calc(92px + (100vw - 1276px) * 0.366), 152px);
+  --actions: var(--inspector);
 }
 
 .desk-bar {
-  right: calc(var(--gap) * 2 + var(--inspector));
+  right: calc(var(--gap) * 2 + var(--actions));
   width: var(--desk);
+  transition: right 0.48s var(--panel-ease);
 }
 
 .desk-bar .btn {
@@ -1128,7 +1174,7 @@ svg.lucide {
 }
 
 .avatar.static {
-  cursor: default;
+  cursor: var(--cursor-arrow);
 }
 
 /* Menus: drawn at the top of the page (see Popover), so they blur the graph behind them. */
@@ -1607,7 +1653,7 @@ svg.lucide {
    ticker's, with no gap, so they sit level with them. The number is bold in its kind's colour; a zero is all faint. */
 .link-lines {
   display: grid;
-  justify-items: start;
+  justify-items: end;
   white-space: nowrap;
 }
 
@@ -1618,8 +1664,24 @@ svg.lucide {
 }
 
 .link-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.link-line.supplier svg {
+  color: var(--lime);
+}
+
+.link-line.customer svg {
+  color: var(--teal);
+}
+
+.link-line.zero svg {
+  color: var(--faint);
 }
 
 .link-line:first-child {
@@ -1792,7 +1854,7 @@ svg.lucide {
   padding: 12px 12px 10px 14px;
   border: 1px solid var(--line);
   background: linear-gradient(100deg, color-mix(in srgb, var(--sev) 5%, transparent), rgba(255, 255, 255, 0.015) 60%);
-  cursor: pointer;
+  cursor: var(--cursor-hand);
   text-align: left;
   transition:
     background 0.2s var(--ease),
@@ -1927,12 +1989,14 @@ svg.lucide {
 }
 
 .a-foot {
-  display: flex;
+  display: grid;
   min-width: 0;
+  justify-items: start;
+  gap: 8px;
+}
+
+.a-foot .a-reach {
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px 8px;
 }
 
 .a-top {
@@ -2486,9 +2550,10 @@ svg.lucide {
 }
 
 .quote-mark.figure {
+  padding-bottom: 1px;
+  /* round: a whole number of dashes, however long the figure, so none is cut off at the end. */
+  background: linear-gradient(to right, currentColor 50%, transparent 0) left bottom / 4px 1px round no-repeat;
   color: #fff;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
 }
 
 .quote-key {
@@ -2587,6 +2652,16 @@ svg.lucide {
 .wire-chip svg {
   flex: none;
   color: var(--lime);
+}
+
+/* What a judgement rests on, under it: small, faded capitals, as a footnote. */
+.basis-note {
+  margin: 6px 0 0;
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .prose {
@@ -3430,7 +3505,7 @@ svg.lucide {
 /* As tall as the buttons beside it. */
 .quote-found {
   display: inline-flex;
-  height: 30px;
+  height: 36px;
   align-items: center;
   gap: 6px;
   padding: 0 11px;
@@ -3571,8 +3646,13 @@ svg.lucide {
 }
 
 .outcome {
+  display: inline-flex;
+  width: 96px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
   justify-self: start;
-  padding: 2px 8px;
+  padding: 0 8px;
   font-size: var(--t-11);
   font-weight: 650;
 }
@@ -3956,7 +4036,7 @@ dl.facts dd {
 .select-list li {
   padding: 9px 12px;
   border: 1px solid transparent;
-  cursor: pointer;
+  cursor: var(--cursor-hand);
   font-size: var(--t-13);
   white-space: nowrap;
 }
@@ -3978,7 +4058,7 @@ dl.facts dd {
   margin: 0;
   color: var(--text);
   font-size: var(--t-13);
-  cursor: pointer;
+  cursor: var(--cursor-hand);
 }
 
 .checkbox-box {
@@ -4052,7 +4132,7 @@ dl.facts dd {
 
 .radio-option {
   margin: 0;
-  cursor: pointer;
+  cursor: var(--cursor-hand);
 }
 
 .radio-option span {
@@ -4534,9 +4614,9 @@ button.source-row:hover {
    line up. */
 .h-links {
   display: flex;
-  min-width: 96px;
+  min-width: 44px;
   justify-content: flex-end;
-  margin-right: 8px;
+  margin-right: 12px;
 }
 
 /* Until a holding is analysed it has no links, and its status (beside its ticker) takes their room. */
@@ -4629,6 +4709,8 @@ button.source-row:hover {
 
 .lg-root .history-bar > .btn:only-child {
   height: 100%;
+  /* The graph resets its buttons' padding: the same room on both sides, so its words never meet its edge. */
+  padding: 0 16px;
 }
 
 /* Where the bar is crowded, Load History folds to a square of its icon (as Open Alerts folds to its count when the bar
@@ -4653,68 +4735,117 @@ button.source-row:hover {
   clip-path: inset(50%);
 }
 
-/* The year scrubber in the graph's top bar (Scrub the Graph Through the Years): a stop for each year, then Today, with a
-   plate that slides to the chosen one. A slider, so it has the focus ring of a control. */
-.lg-root .scrubber {
-  position: relative;
-  display: inline-grid;
+/* The year toggle in the graph's top bar: the drawer's toggle (Segmented), in teal, as tall as the bars beside it. */
+.lg-root .year-seg {
   height: 52px;
   flex: none;
   grid-auto-columns: minmax(max-content, 1fr);
-  grid-auto-flow: column;
-  align-items: stretch;
-  gap: 2px;
-  padding: 6px;
-  cursor: ew-resize;
-  touch-action: none;
-  user-select: none;
+  padding: 7px;
 }
 
-.scrubber-stop {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  min-width: 44px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 8px;
-  color: var(--muted);
-  font-size: var(--t-13);
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
-  transition: color 0.2s var(--ease);
+.lg-root .year-seg button {
+  height: 36px;
+  min-width: 52px;
+  padding: 0 12px;
 }
 
-.scrubber-stop:hover,
-.scrubber-stop[data-chosen='true'] {
+.seg-teal .seg-plate {
+  border-color: rgba(45, 212, 191, 0.55);
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.22), rgba(45, 212, 191, 0.1));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 16px rgba(45, 212, 191, 0.16);
+}
+
+.seg-teal button[aria-selected='true'] {
   color: var(--text);
 }
 
-.scrubber-plate {
-  position: absolute;
-  z-index: 0;
-  top: 0;
-  left: 0;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
-    width 0.4s cubic-bezier(0.25, 1, 0.5, 1),
-    height 0.4s cubic-bezier(0.25, 1, 0.5, 1),
-    opacity 0.2s var(--ease);
-  border: 1px solid var(--teal, #2dd4bf);
-  background: rgba(45, 212, 191, 0.14);
-}
-
-.lg-root .scrubber:focus-visible {
-  outline: 2px solid var(--teal, #2dd4bf);
+.lg-root .year-seg:focus-visible {
+  outline: 2px solid var(--teal);
   outline-offset: 2px;
 }
 
-/* Where the bar is crowded the stops come closer. */
-.lg-root.lg-bar-crowded .scrubber-stop {
-  min-width: 36px;
-  padding: 0 4px;
+.year-short {
+  display: none;
+}
+
+/* On a phone the years shorten to '23 and take only the room they need; if even that is too wide, they scroll. */
+.lg-narrow:not(.lg-in-bar) .year-seg {
+  min-width: 0;
+  flex: 0 1 auto;
+  grid-auto-columns: max-content;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lg-narrow:not(.lg-in-bar) .year-seg button {
+  min-width: 0;
+  padding: 0 7px;
+}
+
+.lg-narrow:not(.lg-in-bar) .year-seg .year-long:not(:only-child) {
+  display: none;
+}
+
+.lg-narrow:not(.lg-in-bar) .year-seg .year-short {
+  display: inline;
+}
+
+/* The top row as a container, so what is in it can give way by the room it has. */
+.lg-in-bar .lg-top {
+  container: top-row / inline-size;
+}
+
+/* Short of room even with everything folded (a window just wide enough for the computer layout): the years shorten to
+   '23, each only as wide as it needs, and Open Alerts folds to its square, as when the bar is tight. */
+@container top-row (max-width: 610px) {
+  .lg-root .year-seg {
+    grid-auto-columns: max-content;
+  }
+
+  .lg-root .year-seg button {
+    min-width: 0;
+    padding: 0 7px;
+  }
+
+  .year-seg .year-long:not(:only-child) {
+    display: none;
+  }
+
+  .year-seg .year-short {
+    display: inline;
+  }
+
+  .alert-bar-holder {
+    width: 52px !important;
+    min-width: 52px !important;
+    flex: none;
+  }
+
+  .lg-root .alert-bar {
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+  }
+
+  .alert-bar-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+  }
+
+  /* The title gives way last, cut short with an ellipsis. */
+  .lg-in-bar .lg-title {
+    min-width: 52px;
+  }
+}
+
+/* Where the bar is crowded the years come closer. */
+.lg-root.lg-bar-crowded .year-seg button {
+  min-width: 40px;
+  padding: 0 6px;
 }
 
 .history-text {
@@ -4964,7 +5095,7 @@ table.quality-table tbody th {
   bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px));
   left: var(--gap);
   display: grid;
-  height: 64px;
+  height: var(--bar);
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   padding: 5px;
@@ -4981,13 +5112,13 @@ table.quality-table tbody th {
   border: 0;
   background: transparent;
   color: var(--faint);
-  cursor: pointer;
+  cursor: var(--cursor-hand);
   transition: color 0.25s var(--ease);
 }
 
 .dock button:disabled {
   opacity: 0.35;
-  cursor: default;
+  cursor: var(--cursor-arrow);
 }
 
 .dock-plate {
@@ -5019,8 +5150,9 @@ table.quality-table tbody th {
 }
 
 .dock-label {
-  font-size: var(--t-11);
+  font-size: 10px;
   font-weight: 600;
+  line-height: 1;
 }
 
 .dock button[aria-selected='true'] {
@@ -5103,21 +5235,22 @@ table.quality-table tbody th {
   padding: 0 6px;
 }
 
-/* The title and folded search as tall as the zoom bar, the title's count under its name, with the same room around its
-   light as on a computer. While the search is open, the search needs that room. */
+/* The title folds to a square of its light and the search to a square, both as tall as every other bar (52px), so the
+   years have the row. The title's words stay as its tooltip. */
 .ws.compact .lg-root .lg-title {
-  height: 40px;
+  width: 52px;
+  height: 52px;
   flex: none;
-  gap: 14px;
-  padding: 0 16px;
+  justify-content: center;
+  padding: 0;
 }
 
 .ws.compact .lg-root .lg-search {
-  height: 40px;
+  height: 52px;
 }
 
 .ws.compact .lg-root .lg-search[data-open='false'] {
-  width: 40px;
+  width: 52px;
 }
 
 .ws.compact .lg-root .lg-title-text {
@@ -5297,24 +5430,56 @@ table.quality-table tbody th {
 
 .ask-bar {
   display: flex;
-  height: var(--bar);
+  /* The bar, with its panel's 1px border above and below, is as tall as the top bar's 52px. */
+  height: calc(var(--bar) - 2px);
   flex: none;
   align-items: center;
   gap: 10px;
   padding: 0 8px 0 14px;
 }
 
-.ask-bar label {
-  flex: none;
-  color: var(--muted);
-  font-size: var(--t-12);
-  font-weight: 550;
-  white-space: nowrap;
-}
-
-.ask-bar .input {
+/* One box: the bar is the field, and its frame lights up while it is being typed in. */
+.ask-bar .input,
+.ask-bar .input:hover,
+.ask-bar .input:focus {
   min-width: 0;
   flex: 1;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ask-panel:has(.input:focus) {
+  border-color: var(--teal);
+}
+
+.ask.unplaced {
+  visibility: hidden;
+}
+
+.ask.still {
+  transition: none;
+}
+
+/* The eye, greyed, at the start of the box, and a search icon to send. */
+.ask-eye {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.ask-send {
+  width: 36px;
+  justify-content: center;
+  padding: 0;
+}
+
+.ask-log-holder {
+  flex: none;
+  overflow: hidden;
 }
 
 .ask-log {
@@ -5342,10 +5507,197 @@ table.quality-table tbody th {
 }
 
 .ask-answer {
-  margin: 0;
+  display: grid;
+  gap: 4px;
   color: var(--soft);
   font-size: var(--t-14);
   line-height: 1.5;
+}
+
+.ask-answer p {
+  margin: 0;
+}
+
+.ask-answer strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ask-answer .ask-caveat {
+  color: var(--faint);
+  font-size: var(--t-12);
+}
+
+/* "Supplies", as the graph draws it, in the line of text. */
+.ask-arrow {
+  display: inline-block;
+  width: 34px;
+  margin: 0 5px;
+  vertical-align: middle;
+}
+
+.ask-arrow .flow {
+  min-width: 0;
+}
+
+/* A source: the supplier, the graph's arrow and the customer; a press opens it in the Inspector. */
+.ask-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    background 0.2s var(--ease),
+    border-color 0.2s var(--ease);
+}
+
+.ask-link:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.ask-link:disabled {
+  opacity: 0.45;
+  cursor: var(--cursor-arrow);
+}
+
+/* One row per supplier: the supplier and its name, the graph's arrow, and its customers. */
+.ask-sources:has(.ask-row) {
+  display: grid;
+  gap: 8px;
+}
+
+.ask-row {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ask-supplier {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.ask-supplier-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--t-13);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ask-supplier .ask-party small {
+  display: none;
+}
+
+.ask-customers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ask-party {
+  display: inline-grid;
+  justify-items: center;
+  gap: 3px;
+}
+
+.ask-party small {
+  color: var(--muted);
+  font-size: var(--t-11);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ask-row .flow {
+  min-width: 0;
+}
+
+.ask-row .ask-link,
+.ask-others .ask-link {
+  padding: 5px 6px 4px;
+}
+
+/* Holdings and alerts the answer cites on their own, in one line that wraps. */
+.ask-others {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Thinking: three squares lighting in turn, and light passing over the word. */
+.ask-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ask-dots i {
+  width: 5px;
+  height: 5px;
+  background: var(--teal);
+  opacity: 0.2;
+  animation: ask-pulse 1.1s linear infinite;
+}
+
+.ask-dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.ask-dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+/* A pulse of light that runs along the three, left to right, then waits: as along the graph's arrows. */
+@keyframes ask-pulse {
+  0% {
+    opacity: 0.2;
+    box-shadow: none;
+  }
+  18% {
+    opacity: 1;
+    background: var(--lime);
+    box-shadow: 0 0 6px var(--lime);
+  }
+  45%,
+  100% {
+    opacity: 0.2;
+    box-shadow: none;
+  }
+}
+
+/* In the send button, on its teal, the squares are white. */
+.ask-send .ask-dots i {
+  background: #fff;
+}
+
+.ask-thinking {
+  background: linear-gradient(90deg, var(--muted) 0%, var(--text) 50%, var(--muted) 100%) 0 0 / 200% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: ask-shine 1.6s linear infinite;
+}
+
+@keyframes ask-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-dots i,
+  .ask-thinking {
+    animation: none;
+  }
 }
 
 .ask-pending {
@@ -5400,8 +5752,67 @@ table.quality-table tbody th {
   padding-block: 6px;
 }
 
-.dependence .btn:last-child {
-  margin-left: auto;
+/* The company and its share: plain words that a quiet box marks as clickable on hover, as the graph's controls do. */
+.dep-name {
+  /* Its words start where Show Filing's do (1px border, then 11px). */
+  padding: 6px 10px 6px 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--t-13);
+  line-height: 1.3;
+  text-align: left;
+  transition:
+    background 0.2s var(--ease),
+    border-color 0.2s var(--ease);
+}
+
+button.dep-name {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+button.dep-name:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dep-name strong,
+.dep-trend strong {
+  font-weight: 700;
+}
+
+.dep-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.dep-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dep-step svg {
+  color: var(--faint);
+}
+
+/* Folded to a square of its icon when the bottom row has no room for the box. */
+.ask-panel.ask-fold {
+  left: 50%;
+  width: var(--bar);
+  height: var(--bar);
+  justify-content: center;
+  align-items: center;
+  color: var(--teal);
+  translate: -50% 0;
+}
+
+/* Show Filing on a line of its own, at its own width. */
+.dependence .dependence-filing {
+  flex-basis: 100%;
 }
 
 .figure-line {

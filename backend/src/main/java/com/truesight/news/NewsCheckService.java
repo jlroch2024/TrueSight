@@ -35,7 +35,7 @@ public class NewsCheckService {
     static final String ANALYSE_FIRST = "Analyse the portfolio before checking the news.";
     private static final String NOT_FOUND = "Portfolio not found.";
     /** Why a news check is Failed when its server stopped before the check ended. */
-    public static final String INTERRUPTED_REASON = "The news check was interrupted. Check News to try again.";
+    public static final String INTERRUPTED_REASON = "The News Check Was Interrupted. Check News to Try Again.";
 
     private final PortfolioRepository portfolios;
     private final HoldingRepository holdings;

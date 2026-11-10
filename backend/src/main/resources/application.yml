@@ -31,6 +31,9 @@ spring:
 server:
   # Google Cloud Run tells the app which port to use through $PORT.
   port: ${PORT:8080}
+  # Cloud Run receives https and hands the app plain http, saying so in X-Forwarded-Proto. Trusting that header makes
+  # the app know its own address is https, so the Swagger page sends its requests to https and the browser allows them.
+  forward-headers-strategy: framework
 
 springdoc:
   swagger-ui:

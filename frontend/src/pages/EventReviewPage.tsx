@@ -15,9 +15,9 @@ import { Select } from '../components/Select';
 import { EVENT_TYPE_LABELS, SEVERITY_LABELS, formatAge, formatDate, openInNewTab } from '../format';
 
 const EMPTY: Record<AssessmentFilter, string> = {
-  EVENTS: 'No undecided events from the last 7 days.',
-  NOISE: 'No undecided noise from the last 7 days.',
-  DECIDED: 'No articles from the last 7 days have been decided yet.',
+  EVENTS: 'No Undecided Events in the Last 7 Days',
+  NOISE: 'No Undecided Noise in the Last 7 Days',
+  DECIDED: 'None Decided in the Last 7 Days',
 };
 
 function messageOf(error: unknown): string {

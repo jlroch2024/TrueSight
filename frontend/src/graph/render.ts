@@ -741,7 +741,7 @@ export function drawFreshMark(context: CanvasRenderingContext2D, x: number, y: n
   context.save();
   context.shadowColor = withAlpha(INK.pin, 0.8);
   context.shadowBlur = 5;
-  boxPath(context, x, y, side, side * CHAMFER);
+  boxPath(context, x, y, side, 0);
   context.strokeStyle = INK.pin;
   context.lineWidth = 1.5;
   context.stroke();
@@ -841,8 +841,8 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
       context.save();
       context.shadowColor = withAlpha(INK.pin, (0.6 + breath * 0.3) * look.fresh);
       context.shadowBlur = (12 + breath * 8) * k * dpr;
-      // The same cut as a holding's ring, whatever the tile: a plain tile's ring would otherwise have only a sliver.
-      boxPath(context, x, y, size + 10, size * CHAMFER + 5 * (2 - Math.SQRT2));
+      // Square, 5 out from the tile all round: a cut corner would leave a square logo's corner poking through it.
+      boxPath(context, x, y, size + 10, 0);
       context.strokeStyle = withAlpha(INK.pin, 0.95 * look.fresh);
       context.lineWidth = 2;
       context.stroke();
@@ -940,12 +940,12 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
           : INK.muted;
       context.fillText(node.subtitle, sx, top + (TITLE_LINE + 11) * scale);
     }
-    // New in the year shown: its tag, under the label ("New in 2025").
+    // New in the year shown: its tag, under the label, in capitals ("NEW IN 2025").
     if (look.fresh > 0.01 && scene.fresh) {
       context.globalAlpha = alpha * look.fresh;
       context.font = `600 ${10.5 * scale}px ${FONT}`;
       context.fillStyle = INK.pin;
-      context.fillText(scene.fresh.tag, sx, top + (TITLE_LINE + (node.subtitle ? 24 : 11)) * scale);
+      context.fillText(scene.fresh.tag.toUpperCase(), sx, top + (TITLE_LINE + (node.subtitle ? 24 : 11)) * scale);
     }
   }
   context.shadowBlur = 0;
