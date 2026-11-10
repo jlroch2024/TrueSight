@@ -239,16 +239,15 @@ function Constellation({ accent }: { accent: [number, number, number] }) {
       const [sr, sg, sb] = shown.map(Math.round);
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.clearRect(0, 0, width, height);
-      // The aurora, drifting.
-      const aurora = context.createRadialGradient(
-        width * (0.3 + Math.sin(now / 9000) * 0.08),
-        height * 0.2,
-        0,
-        width * 0.4,
-        height * 0.3,
-        Math.max(width, height) * 0.7,
-      );
-      aurora.addColorStop(0, `rgba(${sr}, ${sg}, ${sb}, 0.10)`);
+      // The aurora: a large glow in the top-left corner, drifting, and easing away from the pointer.
+      glow.x += (pointer.x - glow.x) * 0.04;
+      glow.y += (pointer.y - glow.y) * 0.04;
+      const awayX = (0.5 - glow.x) * 0.16;
+      const awayY = (0.5 - glow.y) * 0.16;
+      const auroraX = width * (0.18 + (still ? 0 : Math.sin(now / 9000) * 0.06) + awayX);
+      const auroraY = height * (0.16 + awayY);
+      const aurora = context.createRadialGradient(auroraX, auroraY, 0, auroraX, auroraY, Math.max(width, height) * 0.7);
+      aurora.addColorStop(0, `rgba(${sr}, ${sg}, ${sb}, 0.16)`);
       aurora.addColorStop(1, 'rgba(0, 0, 0, 0)');
       context.fillStyle = aurora;
       context.fillRect(0, 0, width, height);
@@ -295,14 +294,6 @@ function Constellation({ accent }: { accent: [number, number, number] }) {
         context.fillStyle = point.r > 2 ? `rgba(${sr}, ${sg}, ${sb}, 0.75)` : 'rgba(203, 213, 225, 0.35)';
         context.fillRect(point.x * width + shiftX - point.r, point.y * height + shiftY - point.r, point.r * 2, point.r * 2);
       }
-      // A soft glow in the card's colour, following the pointer.
-      glow.x += (pointer.x - glow.x) * 0.08;
-      glow.y += (pointer.y - glow.y) * 0.08;
-      const light = context.createRadialGradient(glow.x * width, glow.y * height, 0, glow.x * width, glow.y * height, 320);
-      light.addColorStop(0, `rgba(${sr}, ${sg}, ${sb}, 0.16)`);
-      light.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      context.fillStyle = light;
-      context.fillRect(0, 0, width, height);
       // A vignette, so the card is where the eye goes.
       const vignette = context.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.2, width / 2, height / 2, Math.max(width, height) * 0.75);
       vignette.addColorStop(0, 'rgba(5, 7, 13, 0)');
