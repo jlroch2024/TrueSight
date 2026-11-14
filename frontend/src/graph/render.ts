@@ -821,10 +821,23 @@ export function cornerReach(isHolding: boolean, size: number): number {
   return isHolding ? size / 2 + 6 : size / 2;
 }
 
-// A tile's resting shadow, drawn once for each size and zoom, then copied: blurring is the costliest thing the graph
-// draws, and copying a picture of it is cheap. Keyed by the tile's size and cut and the device pixels per unit.
+// A tile's resting shadow, drawn once for each size while the zoom holds still, then copied: blurring is the costliest
+// thing the graph draws, and copying a picture of it is cheap. While the view zooms every frame is a new zoom, so the
+// shadows are drawn as they always were; and a new zoom forgets the pictures of the last, so only one zoom's are kept.
 const SHADOW_REACH = 40;
 const shadows = new Map<string, HTMLCanvasElement>();
+// The zoom (device pixels per unit) the last frame was drawn at, and whether this frame's is the same.
+let shadowScale = NaN;
+let shadowSteady = false;
+
+/** Called once a frame, before the tiles: notes whether the zoom has held still since the last frame. */
+function shadowFrame(scale: number) {
+  shadowSteady = scale === shadowScale;
+  if (!shadowSteady) {
+    shadowScale = scale;
+    shadows.clear();
+  }
+}
 
 /**
  * Draws a resting tile's shadow (and the dark square under the tile, which the tile then covers) by copying it; false
@@ -832,13 +845,14 @@ const shadows = new Map<string, HTMLCanvasElement>();
  */
 function tileShadow(context: CanvasRenderingContext2D, size: number, cut: number, x: number, y: number, scale: number): boolean {
   if (typeof document === 'undefined') return false;
+  if (!shadowSteady || scale !== shadowScale) return false;
   const span = size + SHADOW_REACH * 2;
   const pixels = Math.ceil(span * scale);
-  if (pixels > 1024) return false;
-  const key = `${size.toFixed(2)} ${cut.toFixed(2)} ${scale.toFixed(3)}`;
+  if (pixels > 640) return false;
+  const key = `${size.toFixed(2)} ${cut.toFixed(2)}`;
   let picture = shadows.get(key);
   if (!picture) {
-    if (shadows.size > 400) shadows.clear();
+    if (shadows.size > 64) return false;
     picture = document.createElement('canvas');
     picture.width = pixels;
     picture.height = pixels;
@@ -861,6 +875,7 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr, now, still, logos, logoToken, logoDomains } = o;
   const k = camera.k;
   context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
+  shadowFrame(k * dpr);
   // Suppliers and customers first, then holdings, then whatever is pointed at, so the important sit on top.
   const order = [...scene.drawnNodes].sort(
     (a, b) =>
