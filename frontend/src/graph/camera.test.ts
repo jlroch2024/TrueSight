@@ -5,7 +5,7 @@ import { CameraRig, FLY_MS, between, clampZoom, easeInOut, fitCamera, toScreen, 
 import { arrowEnds, distanceToSegment, edgeAt, leaveTile, nodeAt } from './geometry';
 import { logoSource, treatmentOf } from './logos';
 import { type LiveEdge, type LiveNode, buildLiveGraph } from './model';
-import { INK, RISK_COLOUR, mix, segmentColours } from './render';
+import { INK, RISK_COLOUR, lineScale, mix, segmentColours } from './render';
 import { Scene, easeOutBack } from './scene';
 
 const node = (id: string, x: number, y: number, extra: Partial<LiveNode> = {}): LiveNode => ({
@@ -276,6 +276,15 @@ describe('the scene', () => {
   it('mixes colours for a brighter arrow under the pointer', () => {
     expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080');
     expect(mix('#185afa', '#ffffff', 0)).toBe('#185afa');
+  });
+
+  it('draws arrows wider as the view zooms in and narrower as it zooms out, more gently than the companies grow', () => {
+    expect(lineScale(1)).toBe(1);
+    expect(lineScale(2)).toBeCloseTo(Math.SQRT2);
+    expect(lineScale(0.5)).toBeCloseTo(Math.SQRT1_2);
+    // Never a bar when zoomed right in, nor a hairline zoomed right out.
+    expect(lineScale(10)).toBe(1.8);
+    expect(lineScale(0.05)).toBe(0.6);
   });
 
   it('colours a conveyor segment with exactly the text mixing then adding the alpha gives', () => {

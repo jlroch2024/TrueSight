@@ -382,14 +382,21 @@ export function shareWidth(share: number | null | undefined): number {
   return share == null ? 1 : 1 + Math.max(0, share - 0.1) / 0.9;
 }
 
+/** How much wider an arrow is drawn on screen at a zoom than at 1:1: the zoom's square root, from 0.6 to 1.8 times. */
+export function lineScale(k: number): number {
+  return Math.min(1.8, Math.max(0.6, Math.sqrt(k)));
+}
+
 /**
  * Draws one arrow but its chevron, as the graph draws each of its own: also used to draw a link anywhere else on the
  * page, so every link in the app is this one drawing. Returns its chevron, if it has grown far enough to show one.
  */
 export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chevron | null {
   const { start, grow, strength, hover, reviewed, still, now, k, dpr } = a;
-  // Zoomed out past 1:1, the chevrons shrink with the graph, as its tiles do.
-  const shrink = Math.max(k, 1);
+  // The arrow's widths are set on screen and grow with the zoom, more gently than the companies do (lineScale): wider
+  // zoomed in and narrower zoomed out, so a line keeps looking like a line beside its tiles, and its chevron is as thick
+  // as the line it ends. Divided by the zoom, as the context is scaled by it.
+  const onScreen = lineScale(k) / k;
   const full = Math.hypot(a.end.x - start.x, a.end.y - start.y);
   const along = { x: (a.end.x - start.x) / full, y: (a.end.y - start.y) / full };
   const across = { x: -along.y, y: along.x };
@@ -426,8 +433,8 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
 
   // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
   const criticalWidth = (a.critical ? CRITICAL_WIDTH : 1) * shareWidth(a.share);
-  const from = (RAIL_FROM * criticalWidth + hover * 1) / k / 2;
-  const to = (RAIL_TO * criticalWidth + hover * 0.6) / k / 2;
+  const from = (RAIL_FROM * criticalWidth + hover * 1) * onScreen / 2;
+  const to = (RAIL_TO * criticalWidth + hover * 0.6) * onScreen / 2;
   context.fillStyle = shade(0.16, 0.38 + hover * 0.3);
   context.beginPath();
   context.moveTo(start.x + across.x * from, start.y + across.y * from);
@@ -449,7 +456,7 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
     return behind < WAVE_TRAIL ? (1 - behind / WAVE_TRAIL) ** 1.6 : 0;
   };
   const head = mix(colour, '#ffffff', (risk ? 0.2 : 0.5) + hover * 0.3);
-  const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) / k;
+  const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) * onScreen;
   context.save();
   context.translate(start.x, start.y);
   context.rotate(Math.atan2(along.y, along.x));
@@ -482,11 +489,12 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
     return {
       end,
       along,
-      size: (CHEVRON + hover * 2 + flash * 2) / shrink,
+      // As thick as the conveyor it ends, and larger as the arrow is thicker, so its point still shows.
+      size: (CHEVRON * (1 + (criticalWidth - 1) / 2) + hover * 2 + flash * 2) * onScreen,
       colour: mix(deep, '#ffffff', 0.3 + flash * 0.5),
       flash,
       shown: Math.min(1, strength * ((grow - 0.85) / 0.15)),
-      width: (2.4 + hover * 0.6 + flash * 0.6) / shrink,
+      width: thick + flash * 0.6 * onScreen,
     };
   }
   return null;
@@ -517,7 +525,7 @@ export function drawChevron(context: CanvasRenderingContext2D, { end, along, siz
     context.stroke();
   };
   context.strokeStyle = withAlpha(INK.night, 0.75 * shown);
-  context.lineWidth = width + 2.6 / Math.max(k, 1);
+  context.lineWidth = width + (2.6 * lineScale(k)) / k;
   chevron();
   if (flash > 0.01) {
     context.save();
