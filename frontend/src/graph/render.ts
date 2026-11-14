@@ -453,10 +453,23 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
   context.save();
   context.translate(start.x, start.y);
   context.rotate(Math.atan2(along.y, along.x));
+  // Each segment's colour, as withAlpha(mix(dim, head, ...)) gives it, with the two colours read once for the whole
+  // arrow rather than once a segment; and the colour most segments share (no wave on them, away from the ends) is
+  // written out once.
+  const segmentColour = segmentColours(dim, head);
+  let restingGlow = NaN;
+  let restingAlpha = NaN;
+  let resting = '';
   for (let distance = SEGMENT_PITCH / 2; distance + SEGMENT_LENGTH < length - 4; distance += SEGMENT_PITCH) {
     const glow = lit(distance + SEGMENT_LENGTH);
     const ends = Math.min(1, distance / 14, (length - distance) / 14);
-    context.fillStyle = withAlpha(mix(dim, head, 0.35 + glow * 0.65), (0.3 + 0.7 * glow) * strength * ends);
+    const alpha = (0.3 + 0.7 * glow) * strength * ends;
+    if (glow !== restingGlow || alpha !== restingAlpha) {
+      restingGlow = glow;
+      restingAlpha = alpha;
+      resting = segmentColour(0.35 + glow * 0.65, alpha);
+    }
+    context.fillStyle = resting;
     context.fillRect(distance, -thick / 2, SEGMENT_LENGTH, thick);
   }
   context.restore();
@@ -559,6 +572,26 @@ function glow(
   context.lineTo(end.x, end.y + away);
   context.stroke();
   context.restore();
+}
+
+/**
+ * withAlpha(mix(a, b, share), alpha), with a and b read once: the same channels, rounded the same way, and the same
+ * text. For colours mix cannot read, it is simply that.
+ */
+export function segmentColours(a: string, b: string): (share: number, alpha: number) => string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(a) || !/^#[0-9a-fA-F]{6}$/.test(b)) {
+    return (share, alpha) => withAlpha(mix(a, b, share), alpha);
+  }
+  const x = parseInt(a.slice(1), 16);
+  const y = parseInt(b.slice(1), 16);
+  const from = [(x >> 16) & 255, (x >> 8) & 255, x & 255];
+  const to = [(y >> 16) & 255, (y >> 8) & 255, y & 255];
+  return (share, alpha) => {
+    const r = Math.round(from[0]! + (to[0]! - from[0]!) * share);
+    const g = Math.round(from[1]! + (to[1]! - from[1]!) * share);
+    const bl = Math.round(from[2]! + (to[2]! - from[2]!) * share);
+    return `rgba(${r}, ${g}, ${bl}, ${alpha})`;
+  };
 }
 
 /** Two #rrggbb colours mixed, share 0 the first, 1 the second. */
@@ -782,6 +815,42 @@ export function cornerReach(isHolding: boolean, size: number): number {
   return isHolding ? size / 2 + 6 : size / 2;
 }
 
+// A tile's resting shadow, drawn once for each size and zoom, then copied: blurring is the costliest thing the graph
+// draws, and copying a picture of it is cheap. Keyed by the tile's size and cut and the device pixels per unit.
+const SHADOW_REACH = 40;
+const shadows = new Map<string, HTMLCanvasElement>();
+
+/**
+ * Draws a resting tile's shadow (and the dark square under the tile, which the tile then covers) by copying it; false
+ * when it cannot, and it must be drawn as before. scale is device pixels per unit of the drawing.
+ */
+function tileShadow(context: CanvasRenderingContext2D, size: number, cut: number, x: number, y: number, scale: number): boolean {
+  if (typeof document === 'undefined') return false;
+  const span = size + SHADOW_REACH * 2;
+  const pixels = Math.ceil(span * scale);
+  if (pixels > 1024) return false;
+  const key = `${size.toFixed(2)} ${cut.toFixed(2)} ${scale.toFixed(3)}`;
+  let picture = shadows.get(key);
+  if (!picture) {
+    if (shadows.size > 400) shadows.clear();
+    picture = document.createElement('canvas');
+    picture.width = pixels;
+    picture.height = pixels;
+    const own = picture.getContext('2d');
+    if (!own) return false;
+    own.setTransform(scale, 0, 0, scale, 0, 0);
+    own.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    own.shadowBlur = 14 * scale;
+    own.shadowOffsetY = 6 * scale;
+    boxPath(own, span / 2, span / 2, size, cut);
+    own.fillStyle = '#0b1220';
+    own.fill();
+    shadows.set(key, picture);
+  }
+  context.drawImage(picture, x - span / 2, y - span / 2, pixels / scale, pixels / scale);
+  return true;
+}
+
 function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr, now, still, logos, logoToken, logoDomains } = o;
   const k = camera.k;
@@ -808,15 +877,19 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
       domainFallback(node, node.sourceName, logoToken),
     );
 
-    // Lifted off the page: a soft shadow under the tile.
-    context.save();
-    context.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    context.shadowBlur = (14 + look.hover * 14) * k * dpr;
-    context.shadowOffsetY = (6 + look.hover * 4) * k * dpr;
-    boxPath(context, x, y, size, cutOf(node, size));
-    context.fillStyle = '#0b1220';
-    context.fill();
-    context.restore();
+    // Lifted off the page: a soft shadow under the tile. At rest it is the same for every tile of a size, so it is
+    // copied from one drawn earlier (tileShadow); a tile under the pointer, whose shadow grows, is drawn afresh.
+    const rested = look.hover === 0 && (still || look.appear >= 1) && tileShadow(context, size, cutOf(node, size), x, y, k * dpr);
+    if (!rested) {
+      context.save();
+      context.shadowColor = 'rgba(0, 0, 0, 0.6)';
+      context.shadowBlur = (14 + look.hover * 14) * k * dpr;
+      context.shadowOffsetY = (6 + look.hover * 4) * k * dpr;
+      boxPath(context, x, y, size, cutOf(node, size));
+      context.fillStyle = '#0b1220';
+      context.fill();
+      context.restore();
+    }
 
     // A holding's ring, in its chain colour, glowing.
     if (node.isHolding) {

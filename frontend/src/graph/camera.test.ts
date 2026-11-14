@@ -5,7 +5,7 @@ import { CameraRig, FLY_MS, between, clampZoom, easeInOut, fitCamera, toScreen, 
 import { arrowEnds, distanceToSegment, edgeAt, leaveTile, nodeAt } from './geometry';
 import { logoSource, treatmentOf } from './logos';
 import { type LiveEdge, type LiveNode, buildLiveGraph } from './model';
-import { mix } from './render';
+import { INK, RISK_COLOUR, mix, segmentColours } from './render';
 import { Scene, easeOutBack } from './scene';
 
 const node = (id: string, x: number, y: number, extra: Partial<LiveNode> = {}): LiveNode => ({
@@ -276,6 +276,30 @@ describe('the scene', () => {
   it('mixes colours for a brighter arrow under the pointer', () => {
     expect(mix('#000000', '#ffffff', 0.5)).toBe('#808080');
     expect(mix('#185afa', '#ffffff', 0)).toBe('#185afa');
+  });
+
+  it('colours a conveyor segment with exactly the text mixing then adding the alpha gives', () => {
+    // As the arrow worked it out for every segment before: mix the two, then write the mix out with its alpha.
+    const before = (a: string, b: string, share: number, alpha: number) => {
+      const value = parseInt(mix(a, b, share).slice(1), 16);
+      return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+    };
+    const colours = [INK.night, INK.pin, INK.label, INK.amber, '#ffffff', '#185afa', ...Object.values(RISK_COLOUR)];
+    let checked = 0;
+    for (const a of colours) {
+      for (const b of colours) {
+        const colour = segmentColours(a, b);
+        for (const share of [0, 0.35, 0.35 + 0.37 * 0.65, 0.5, 0.999, 1]) {
+          for (const alpha of [0, 0.3 * 0.62, 0.7, 1]) {
+            expect(colour(share, alpha)).toBe(before(a, b, share, alpha));
+            checked++;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1000);
+    // A colour mix cannot read is passed on, as before.
+    expect(segmentColours('red', '#ffffff')(0.5, 0.4)).toBe('red');
   });
 });
 
