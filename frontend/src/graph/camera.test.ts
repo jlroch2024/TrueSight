@@ -5,7 +5,7 @@ import { CameraRig, FLY_MS, between, clampZoom, easeInOut, fitCamera, toScreen, 
 import { arrowEnds, distanceToSegment, edgeAt, leaveTile, nodeAt } from './geometry';
 import { logoSource, treatmentOf } from './logos';
 import { type LiveEdge, type LiveNode, buildLiveGraph, labelScale } from './model';
-import { INK, RISK_COLOUR, lineScale, mix, segmentColours } from './render';
+import { INK, RISK_COLOUR, halfPixels, lineScale, mix, segmentColours } from './render';
 import { Scene, easeOutBack } from './scene';
 
 const node = (id: string, x: number, y: number, extra: Partial<LiveNode> = {}): LiveNode => ({
@@ -287,6 +287,17 @@ describe('the scene', () => {
     expect(lineScale(0.05)).toBe(0.6);
     // Labels follow the very same rule.
     for (const k of [0.05, 0.5, 1, 2, 10]) expect(labelScale(k)).toBe(lineScale(k));
+  });
+
+  it('sizes label text in half pixels, never more than a quarter of a pixel off', () => {
+    expect(halfPixels(12)).toBe(12);
+    expect(halfPixels(12 * 1.15)).toBe(14);
+    expect(halfPixels(10.5 * Math.SQRT2)).toBe(15);
+    for (let k = 0.3; k < 3.2; k += 0.01) {
+      const exact = 12 * lineScale(k);
+      expect(Math.abs(halfPixels(exact) - exact)).toBeLessThanOrEqual(0.25);
+      expect(halfPixels(exact) * 2).toBe(Math.round(halfPixels(exact) * 2));
+    }
   });
 
   it('colours a conveyor segment with exactly the text mixing then adding the alpha gives', () => {

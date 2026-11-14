@@ -821,11 +821,18 @@ export function cornerReach(isHolding: boolean, size: number): number {
   return isHolding ? size / 2 + 6 : size / 2;
 }
 
-// A tile's resting shadow, drawn once for each size while the zoom holds still, then copied: blurring is the costliest
-// thing the graph draws, and copying a picture of it is cheap. While the view zooms every frame is a new zoom, so the
-// shadows are drawn as they always were; and a new zoom forgets the pictures of the last, so only one zoom's are kept.
+// A tile's resting shadow, painted once and then copied: blurring is the costliest thing the graph draws, and copying a
+// picture of it is cheap. While the zoom holds still, each tile size's shadow is painted at exactly that zoom. While the
+// view zooms, every frame is a new zoom, so shadows are painted at fixed steps of zoom (8 to a doubling, about 9% apart)
+// and of size (about 1.4% apart), and the nearest is stretched to fit: a soft shadow stretched a few percent looks the
+// same, and a zoom reuses the same few pictures rather than painting new ones every frame.
 const SHADOW_REACH = 40;
+// The pictures for the zoom held still, by size and cut; forgotten when the zoom moves on.
 const shadows = new Map<string, HTMLCanvasElement>();
+// The pictures painted at the fixed steps, oldest first, kept to a budget of memory.
+const steppedShadows = new Map<string, HTMLCanvasElement>();
+let steppedBytes = 0;
+const STEPPED_BUDGET = 48 * 1024 * 1024;
 // The zoom (device pixels per unit) the last frame was drawn at, and whether this frame's is the same.
 let shadowScale = NaN;
 let shadowSteady = false;
@@ -839,35 +846,68 @@ function shadowFrame(scale: number) {
   }
 }
 
+/** A tile's shadow (and the dark square under it, which the tile covers) painted on a picture of its own. */
+function paintShadow(size: number, cut: number, scale: number): HTMLCanvasElement | null {
+  const span = size + SHADOW_REACH * 2;
+  const pixels = Math.ceil(span * scale);
+  const picture = document.createElement('canvas');
+  picture.width = pixels;
+  picture.height = pixels;
+  const own = picture.getContext('2d');
+  if (!own) return null;
+  own.setTransform(scale, 0, 0, scale, 0, 0);
+  own.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  own.shadowBlur = 14 * scale;
+  own.shadowOffsetY = 6 * scale;
+  boxPath(own, span / 2, span / 2, size, cut);
+  own.fillStyle = '#0b1220';
+  own.fill();
+  return picture;
+}
+
 /**
- * Draws a resting tile's shadow (and the dark square under the tile, which the tile then covers) by copying it; false
- * when it cannot, and it must be drawn as before. scale is device pixels per unit of the drawing.
+ * Draws a resting tile's shadow by copying a picture of it; false when it cannot, and it must be drawn as before. scale
+ * is device pixels per unit of the drawing.
  */
 function tileShadow(context: CanvasRenderingContext2D, size: number, cut: number, x: number, y: number, scale: number): boolean {
   if (typeof document === 'undefined') return false;
-  if (!shadowSteady || scale !== shadowScale) return false;
-  const span = size + SHADOW_REACH * 2;
-  const pixels = Math.ceil(span * scale);
-  if (pixels > 640) return false;
-  const key = `${size.toFixed(2)} ${cut.toFixed(2)}`;
-  let picture = shadows.get(key);
-  if (!picture) {
-    if (shadows.size > 64) return false;
-    picture = document.createElement('canvas');
-    picture.width = pixels;
-    picture.height = pixels;
-    const own = picture.getContext('2d');
-    if (!own) return false;
-    own.setTransform(scale, 0, 0, scale, 0, 0);
-    own.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    own.shadowBlur = 14 * scale;
-    own.shadowOffsetY = 6 * scale;
-    boxPath(own, span / 2, span / 2, size, cut);
-    own.fillStyle = '#0b1220';
-    own.fill();
-    shadows.set(key, picture);
+  if (Math.ceil((size + SHADOW_REACH * 2) * scale) > 640) return false;
+  if (shadowSteady && scale === shadowScale) {
+    const key = `${size.toFixed(2)} ${cut.toFixed(2)}`;
+    let picture = shadows.get(key);
+    if (!picture) {
+      if (shadows.size > 64) return false;
+      picture = paintShadow(size, cut, scale) ?? undefined;
+      if (!picture) return false;
+      shadows.set(key, picture);
+    }
+    const span = size + SHADOW_REACH * 2;
+    context.drawImage(picture, x - span / 2, y - span / 2, picture.width / scale, picture.width / scale);
+    return true;
   }
-  context.drawImage(picture, x - span / 2, y - span / 2, pixels / scale, pixels / scale);
+  // Zooming: the nearest step's picture, stretched to this tile's size at this zoom.
+  const stepScale = 2 ** (Math.round(Math.log2(scale) * 8) / 8);
+  const stepSize = 2 ** (Math.round(Math.log2(size) * 50) / 50);
+  const stepCut = cut === 0 ? 0 : (cut / size) * stepSize;
+  const key = `${stepScale} ${stepSize} ${stepCut === 0 ? 0 : 1}`;
+  let picture = steppedShadows.get(key);
+  if (picture) {
+    steppedShadows.delete(key);
+  } else {
+    picture = paintShadow(stepSize, stepCut, stepScale) ?? undefined;
+    if (!picture) return false;
+    steppedBytes += picture.width * picture.height * 4;
+    for (const [oldest, old] of steppedShadows) {
+      if (steppedBytes <= STEPPED_BUDGET) break;
+      steppedBytes -= old.width * old.height * 4;
+      steppedShadows.delete(oldest);
+    }
+  }
+  steppedShadows.set(key, picture);
+  // The picture covers the step's size and reach at the step's zoom; drawn here it is stretched by size against the step.
+  const stepSpan = picture.width / stepScale;
+  const span = stepSpan * (size / stepSize);
+  context.drawImage(picture, x - span / 2, y - span / 2, span, span);
   return true;
 }
 
@@ -1000,6 +1040,15 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   context.globalAlpha = 1;
 }
 
+/**
+ * A label's text size to the nearest half pixel. Labels follow the zoom, so while the view zooms each frame would ask for
+ * a new size, and the browser would draw every label and its glow afresh; in half-pixel steps it reuses the sizes it has
+ * just drawn. A quarter of a pixel at most is too little to see.
+ */
+export function halfPixels(size: number): number {
+  return Math.round(size * 2) / 2;
+}
+
 function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr } = o;
   const k = camera.k;
@@ -1022,11 +1071,11 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
     context.globalAlpha = alpha;
     context.shadowColor = 'rgba(0, 0, 0, 0.85)';
     context.shadowBlur = 8 * dpr;
-    context.font = `${node.isHolding ? 600 : 500} ${12 * scale}px ${FONT}`;
+    context.font = `${node.isHolding ? 600 : 500} ${halfPixels(12 * scale)}px ${FONT}`;
     context.fillStyle = INK.label;
     context.fillText(node.title, sx, top + (TITLE_LINE - 3) * scale);
     if (node.subtitle) {
-      context.font = `500 ${10.5 * scale}px ${FONT}`;
+      context.font = `500 ${halfPixels(10.5 * scale)}px ${FONT}`;
       context.fillStyle = node.isHolding
         ? mix(node.colour ?? '#94a3b8', '#ffffff', 0.35)
         : node.sharedCount > 1
@@ -1037,7 +1086,7 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
     // New in the year shown: its tag, under the label, in capitals ("NEW IN 2025").
     if (look.fresh > 0.01 && scene.fresh) {
       context.globalAlpha = alpha * look.fresh;
-      context.font = `600 ${10.5 * scale}px ${FONT}`;
+      context.font = `600 ${halfPixels(10.5 * scale)}px ${FONT}`;
       context.fillStyle = INK.pin;
       context.fillText(scene.fresh.tag.toUpperCase(), sx, top + (TITLE_LINE + (node.subtitle ? 24 : 11)) * scale);
     }
