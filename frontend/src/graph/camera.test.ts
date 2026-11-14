@@ -4,7 +4,7 @@ import { pixels } from '../test/logoPixels';
 import { CameraRig, FLY_MS, between, clampZoom, easeInOut, fitCamera, toScreen, toWorld } from './camera';
 import { arrowEnds, distanceToSegment, edgeAt, leaveTile, nodeAt } from './geometry';
 import { logoSource, treatmentOf } from './logos';
-import { type LiveEdge, type LiveNode, buildLiveGraph } from './model';
+import { type LiveEdge, type LiveNode, buildLiveGraph, labelScale } from './model';
 import { INK, RISK_COLOUR, lineScale, mix, segmentColours } from './render';
 import { Scene, easeOutBack } from './scene';
 
@@ -278,13 +278,15 @@ describe('the scene', () => {
     expect(mix('#185afa', '#ffffff', 0)).toBe('#185afa');
   });
 
-  it('draws arrows wider as the view zooms in and narrower as it zooms out, more gently than the companies grow', () => {
+  it('draws labels and arrows larger as the view zooms in and smaller as it zooms out, together and more gently than the companies grow', () => {
     expect(lineScale(1)).toBe(1);
     expect(lineScale(2)).toBeCloseTo(Math.SQRT2);
     expect(lineScale(0.5)).toBeCloseTo(Math.SQRT1_2);
     // Never a bar when zoomed right in, nor a hairline zoomed right out.
     expect(lineScale(10)).toBe(1.8);
     expect(lineScale(0.05)).toBe(0.6);
+    // Labels follow the very same rule.
+    for (const k of [0.05, 0.5, 1, 2, 10]) expect(labelScale(k)).toBe(lineScale(k));
   });
 
   it('colours a conveyor segment with exactly the text mixing then adding the alpha gives', () => {

@@ -191,9 +191,13 @@ export function buildLiveGraph(
   return { nodes: liveNodes, edges: liveEdges, chains: chains.key };
 }
 
-/** How big labels are drawn at a zoom: they grow a little when zoomed in and shrink when zoomed out. */
+/**
+ * How big what is read and traced on the graph (labels, and arrows' widths and chevrons) is drawn at a zoom, against
+ * 1:1: the zoom's square root, from 0.6 to 1.8 times. Companies grow fully with the zoom; these grow more gently, so
+ * text stays readable and lines stay lines, and they all grow together.
+ */
 export function labelScale(k: number): number {
-  return Math.min(1.15, Math.max(0.7, k));
+  return Math.min(1.8, Math.max(0.6, Math.sqrt(k)));
 }
 
 /**

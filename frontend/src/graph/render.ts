@@ -382,10 +382,8 @@ export function shareWidth(share: number | null | undefined): number {
   return share == null ? 1 : 1 + Math.max(0, share - 0.1) / 0.9;
 }
 
-/** How much wider an arrow is drawn on screen at a zoom than at 1:1: the zoom's square root, from 0.6 to 1.8 times. */
-export function lineScale(k: number): number {
-  return Math.min(1.8, Math.max(0.6, Math.sqrt(k)));
-}
+/** How much wider an arrow is drawn on screen at a zoom than at 1:1: the same as its labels (labelScale). */
+export const lineScale = labelScale;
 
 /**
  * Draws one arrow but its chevron, as the graph draws each of its own: also used to draw a link anywhere else on the
