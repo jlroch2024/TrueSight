@@ -382,14 +382,19 @@ export function shareWidth(share: number | null | undefined): number {
   return share == null ? 1 : 1 + Math.max(0, share - 0.1) / 0.9;
 }
 
+/** How much wider an arrow is drawn on screen at a zoom than at 1:1: the same as its labels (labelScale). */
+export const lineScale = labelScale;
+
 /**
  * Draws one arrow but its chevron, as the graph draws each of its own: also used to draw a link anywhere else on the
  * page, so every link in the app is this one drawing. Returns its chevron, if it has grown far enough to show one.
  */
 export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chevron | null {
   const { start, grow, strength, hover, reviewed, still, now, k, dpr } = a;
-  // Zoomed out past 1:1, the chevrons shrink with the graph, as its tiles do.
-  const shrink = Math.max(k, 1);
+  // The arrow's widths are set on screen and grow with the zoom, more gently than the companies do (lineScale): wider
+  // zoomed in and narrower zoomed out, so a line keeps looking like a line beside its tiles, and its chevron is as thick
+  // as the line it ends. Divided by the zoom, as the context is scaled by it.
+  const onScreen = lineScale(k) / k;
   const full = Math.hypot(a.end.x - start.x, a.end.y - start.y);
   const along = { x: (a.end.x - start.x) / full, y: (a.end.y - start.y) / full };
   const across = { x: -along.y, y: along.x };
@@ -426,8 +431,8 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
 
   // 2. The rail: a ribbon tapering from the supplier's end to the customer's.
   const criticalWidth = (a.critical ? CRITICAL_WIDTH : 1) * shareWidth(a.share);
-  const from = (RAIL_FROM * criticalWidth + hover * 1) / k / 2;
-  const to = (RAIL_TO * criticalWidth + hover * 0.6) / k / 2;
+  const from = (RAIL_FROM * criticalWidth + hover * 1) * onScreen / 2;
+  const to = (RAIL_TO * criticalWidth + hover * 0.6) * onScreen / 2;
   context.fillStyle = shade(0.16, 0.38 + hover * 0.3);
   context.beginPath();
   context.moveTo(start.x + across.x * from, start.y + across.y * from);
@@ -449,14 +454,27 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
     return behind < WAVE_TRAIL ? (1 - behind / WAVE_TRAIL) ** 1.6 : 0;
   };
   const head = mix(colour, '#ffffff', (risk ? 0.2 : 0.5) + hover * 0.3);
-  const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) / k;
+  const thick = (TRACK_WIDTH * criticalWidth + hover * 0.6) * onScreen;
   context.save();
   context.translate(start.x, start.y);
   context.rotate(Math.atan2(along.y, along.x));
+  // Each segment's colour, as withAlpha(mix(dim, head, ...)) gives it, with the two colours read once for the whole
+  // arrow rather than once a segment; and the colour most segments share (no wave on them, away from the ends) is
+  // written out once.
+  const segmentColour = segmentColours(dim, head);
+  let restingGlow = NaN;
+  let restingAlpha = NaN;
+  let resting = '';
   for (let distance = SEGMENT_PITCH / 2; distance + SEGMENT_LENGTH < length - 4; distance += SEGMENT_PITCH) {
     const glow = lit(distance + SEGMENT_LENGTH);
     const ends = Math.min(1, distance / 14, (length - distance) / 14);
-    context.fillStyle = withAlpha(mix(dim, head, 0.35 + glow * 0.65), (0.3 + 0.7 * glow) * strength * ends);
+    const alpha = (0.3 + 0.7 * glow) * strength * ends;
+    if (glow !== restingGlow || alpha !== restingAlpha) {
+      restingGlow = glow;
+      restingAlpha = alpha;
+      resting = segmentColour(0.35 + glow * 0.65, alpha);
+    }
+    context.fillStyle = resting;
     context.fillRect(distance, -thick / 2, SEGMENT_LENGTH, thick);
   }
   context.restore();
@@ -469,11 +487,12 @@ export function drawArrow(context: CanvasRenderingContext2D, a: ArrowLook): Chev
     return {
       end,
       along,
-      size: (CHEVRON + hover * 2 + flash * 2) / shrink,
+      // As thick as the conveyor it ends, and larger as the arrow is thicker, so its point still shows.
+      size: (CHEVRON * (1 + (criticalWidth - 1) / 2) + hover * 2 + flash * 2) * onScreen,
       colour: mix(deep, '#ffffff', 0.3 + flash * 0.5),
       flash,
       shown: Math.min(1, strength * ((grow - 0.85) / 0.15)),
-      width: (2.4 + hover * 0.6 + flash * 0.6) / shrink,
+      width: thick + flash * 0.6 * onScreen,
     };
   }
   return null;
@@ -504,7 +523,7 @@ export function drawChevron(context: CanvasRenderingContext2D, { end, along, siz
     context.stroke();
   };
   context.strokeStyle = withAlpha(INK.night, 0.75 * shown);
-  context.lineWidth = width + 2.6 / Math.max(k, 1);
+  context.lineWidth = width + (2.6 * lineScale(k)) / k;
   chevron();
   if (flash > 0.01) {
     context.save();
@@ -559,6 +578,26 @@ function glow(
   context.lineTo(end.x, end.y + away);
   context.stroke();
   context.restore();
+}
+
+/**
+ * withAlpha(mix(a, b, share), alpha), with a and b read once: the same channels, rounded the same way, and the same
+ * text. For colours mix cannot read, it is simply that.
+ */
+export function segmentColours(a: string, b: string): (share: number, alpha: number) => string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(a) || !/^#[0-9a-fA-F]{6}$/.test(b)) {
+    return (share, alpha) => withAlpha(mix(a, b, share), alpha);
+  }
+  const x = parseInt(a.slice(1), 16);
+  const y = parseInt(b.slice(1), 16);
+  const from = [(x >> 16) & 255, (x >> 8) & 255, x & 255];
+  const to = [(y >> 16) & 255, (y >> 8) & 255, y & 255];
+  return (share, alpha) => {
+    const r = Math.round(from[0]! + (to[0]! - from[0]!) * share);
+    const g = Math.round(from[1]! + (to[1]! - from[1]!) * share);
+    const bl = Math.round(from[2]! + (to[2]! - from[2]!) * share);
+    return `rgba(${r}, ${g}, ${bl}, ${alpha})`;
+  };
 }
 
 /** Two #rrggbb colours mixed, share 0 the first, 1 the second. */
@@ -782,10 +821,101 @@ export function cornerReach(isHolding: boolean, size: number): number {
   return isHolding ? size / 2 + 6 : size / 2;
 }
 
+// A tile's resting shadow, painted once and then copied: blurring is the costliest thing the graph draws, and copying a
+// picture of it is cheap. While the zoom holds still, each tile size's shadow is painted at exactly that zoom. While the
+// view zooms, every frame is a new zoom, so shadows are painted at fixed steps of zoom (8 to a doubling, about 9% apart)
+// and of size (about 1.4% apart), and the nearest is stretched to fit: a soft shadow stretched a few percent looks the
+// same, and a zoom reuses the same few pictures rather than painting new ones every frame.
+const SHADOW_REACH = 40;
+// The pictures for the zoom held still, by size and cut; forgotten when the zoom moves on.
+const shadows = new Map<string, HTMLCanvasElement>();
+// The pictures painted at the fixed steps, oldest first, kept to a budget of memory.
+const steppedShadows = new Map<string, HTMLCanvasElement>();
+let steppedBytes = 0;
+const STEPPED_BUDGET = 48 * 1024 * 1024;
+// The zoom (device pixels per unit) the last frame was drawn at, and whether this frame's is the same.
+let shadowScale = NaN;
+let shadowSteady = false;
+
+/** Called once a frame, before the tiles: notes whether the zoom has held still since the last frame. */
+function shadowFrame(scale: number) {
+  shadowSteady = scale === shadowScale;
+  if (!shadowSteady) {
+    shadowScale = scale;
+    shadows.clear();
+  }
+}
+
+/** A tile's shadow (and the dark square under it, which the tile covers) painted on a picture of its own. */
+function paintShadow(size: number, cut: number, scale: number): HTMLCanvasElement | null {
+  const span = size + SHADOW_REACH * 2;
+  const pixels = Math.ceil(span * scale);
+  const picture = document.createElement('canvas');
+  picture.width = pixels;
+  picture.height = pixels;
+  const own = picture.getContext('2d');
+  if (!own) return null;
+  own.setTransform(scale, 0, 0, scale, 0, 0);
+  own.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  own.shadowBlur = 14 * scale;
+  own.shadowOffsetY = 6 * scale;
+  boxPath(own, span / 2, span / 2, size, cut);
+  own.fillStyle = '#0b1220';
+  own.fill();
+  return picture;
+}
+
+/**
+ * Draws a resting tile's shadow by copying a picture of it; false when it cannot, and it must be drawn as before. scale
+ * is device pixels per unit of the drawing.
+ */
+function tileShadow(context: CanvasRenderingContext2D, size: number, cut: number, x: number, y: number, scale: number): boolean {
+  if (typeof document === 'undefined') return false;
+  if (Math.ceil((size + SHADOW_REACH * 2) * scale) > 640) return false;
+  if (shadowSteady && scale === shadowScale) {
+    const key = `${size.toFixed(2)} ${cut.toFixed(2)}`;
+    let picture = shadows.get(key);
+    if (!picture) {
+      if (shadows.size > 64) return false;
+      picture = paintShadow(size, cut, scale) ?? undefined;
+      if (!picture) return false;
+      shadows.set(key, picture);
+    }
+    const span = size + SHADOW_REACH * 2;
+    context.drawImage(picture, x - span / 2, y - span / 2, picture.width / scale, picture.width / scale);
+    return true;
+  }
+  // Zooming: the nearest step's picture, stretched to this tile's size at this zoom.
+  const stepScale = 2 ** (Math.round(Math.log2(scale) * 8) / 8);
+  const stepSize = 2 ** (Math.round(Math.log2(size) * 50) / 50);
+  const stepCut = cut === 0 ? 0 : (cut / size) * stepSize;
+  const key = `${stepScale} ${stepSize} ${stepCut === 0 ? 0 : 1}`;
+  let picture = steppedShadows.get(key);
+  if (picture) {
+    steppedShadows.delete(key);
+  } else {
+    picture = paintShadow(stepSize, stepCut, stepScale) ?? undefined;
+    if (!picture) return false;
+    steppedBytes += picture.width * picture.height * 4;
+    for (const [oldest, old] of steppedShadows) {
+      if (steppedBytes <= STEPPED_BUDGET) break;
+      steppedBytes -= old.width * old.height * 4;
+      steppedShadows.delete(oldest);
+    }
+  }
+  steppedShadows.set(key, picture);
+  // The picture covers the step's size and reach at the step's zoom; drawn here it is stretched by size against the step.
+  const stepSpan = picture.width / stepScale;
+  const span = stepSpan * (size / stepSize);
+  context.drawImage(picture, x - span / 2, y - span / 2, span, span);
+  return true;
+}
+
 function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr, now, still, logos, logoToken, logoDomains } = o;
   const k = camera.k;
   context.setTransform(k * dpr, 0, 0, k * dpr, camera.x * dpr, camera.y * dpr);
+  shadowFrame(k * dpr);
   // Suppliers and customers first, then holdings, then whatever is pointed at, so the important sit on top.
   const order = [...scene.drawnNodes].sort(
     (a, b) =>
@@ -808,15 +938,19 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
       domainFallback(node, node.sourceName, logoToken),
     );
 
-    // Lifted off the page: a soft shadow under the tile.
-    context.save();
-    context.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    context.shadowBlur = (14 + look.hover * 14) * k * dpr;
-    context.shadowOffsetY = (6 + look.hover * 4) * k * dpr;
-    boxPath(context, x, y, size, cutOf(node, size));
-    context.fillStyle = '#0b1220';
-    context.fill();
-    context.restore();
+    // Lifted off the page: a soft shadow under the tile. At rest it is the same for every tile of a size, so it is
+    // copied from one drawn earlier (tileShadow); a tile under the pointer, whose shadow grows, is drawn afresh.
+    const rested = look.hover === 0 && (still || look.appear >= 1) && tileShadow(context, size, cutOf(node, size), x, y, k * dpr);
+    if (!rested) {
+      context.save();
+      context.shadowColor = 'rgba(0, 0, 0, 0.6)';
+      context.shadowBlur = (14 + look.hover * 14) * k * dpr;
+      context.shadowOffsetY = (6 + look.hover * 4) * k * dpr;
+      boxPath(context, x, y, size, cutOf(node, size));
+      context.fillStyle = '#0b1220';
+      context.fill();
+      context.restore();
+    }
 
     // A holding's ring, in its chain colour, glowing.
     if (node.isHolding) {
@@ -906,6 +1040,15 @@ function drawNodes(context: CanvasRenderingContext2D, o: RenderOptions) {
   context.globalAlpha = 1;
 }
 
+/**
+ * A label's text size to the nearest half pixel. Labels follow the zoom, so while the view zooms each frame would ask for
+ * a new size, and the browser would draw every label and its glow afresh; in half-pixel steps it reuses the sizes it has
+ * just drawn. A quarter of a pixel at most is too little to see.
+ */
+export function halfPixels(size: number): number {
+  return Math.round(size * 2) / 2;
+}
+
 function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { scene, camera, dpr } = o;
   const k = camera.k;
@@ -928,11 +1071,11 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
     context.globalAlpha = alpha;
     context.shadowColor = 'rgba(0, 0, 0, 0.85)';
     context.shadowBlur = 8 * dpr;
-    context.font = `${node.isHolding ? 600 : 500} ${12 * scale}px ${FONT}`;
+    context.font = `${node.isHolding ? 600 : 500} ${halfPixels(12 * scale)}px ${FONT}`;
     context.fillStyle = INK.label;
     context.fillText(node.title, sx, top + (TITLE_LINE - 3) * scale);
     if (node.subtitle) {
-      context.font = `500 ${10.5 * scale}px ${FONT}`;
+      context.font = `500 ${halfPixels(10.5 * scale)}px ${FONT}`;
       context.fillStyle = node.isHolding
         ? mix(node.colour ?? '#94a3b8', '#ffffff', 0.35)
         : node.sharedCount > 1
@@ -943,7 +1086,7 @@ function drawLabels(context: CanvasRenderingContext2D, o: RenderOptions) {
     // New in the year shown: its tag, under the label, in capitals ("NEW IN 2025").
     if (look.fresh > 0.01 && scene.fresh) {
       context.globalAlpha = alpha * look.fresh;
-      context.font = `600 ${10.5 * scale}px ${FONT}`;
+      context.font = `600 ${halfPixels(10.5 * scale)}px ${FONT}`;
       context.fillStyle = INK.pin;
       context.fillText(scene.fresh.tag.toUpperCase(), sx, top + (TITLE_LINE + (node.subtitle ? 24 : 11)) * scale);
     }

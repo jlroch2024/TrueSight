@@ -21,7 +21,18 @@ import {
   initialsOf,
   neighbourhood,
 } from './model';
-import { BREATHING_ROOM, boundsOf, createPhysics, restoreSettled, settle, settleForView, TALL_SHAPE, applyShape } from './physics';
+import {
+  BREATHING_ROOM,
+  boundsOf,
+  clearLinks,
+  clips,
+  createPhysics,
+  restoreSettled,
+  settle,
+  settleForView,
+  TALL_SHAPE,
+  applyShape,
+} from './physics';
 import { Scene } from './scene';
 import { fitCamera } from './camera';
 import { lineCrosses } from '../pages/supplyChain';
@@ -457,5 +468,138 @@ describe('the living graph physics', () => {
       }
     }
     expect(clashes).toEqual([]);
+  });
+});
+
+// The tidy-up as it was first written: every place, every link, every company, nothing skipped. The tidy-up is now built
+// to skip work, never to change an answer, so it must put every company exactly where this does.
+function clearLinksStraightforward(nodes: LiveNode[], edges: LiveEdge[], reach = 480, step = 10) {
+  const at = (node: LiveNode, x = node.x, y = node.y) => {
+    const box = boxOf(node, x, y);
+    return { x1: box.x1 - 4, y1: box.y1 - 4, x2: box.x2 + 4, y2: box.y2 + 4 };
+  };
+  const crossingsAt = (node: LiveNode, x: number, y: number) => {
+    let count = 0;
+    const box = at(node, x, y);
+    for (const edge of edges) {
+      const mine = edge.source === node || edge.target === node;
+      if (!mine) {
+        if (lineCrosses(edge.source, edge.target, box)) count++;
+        continue;
+      }
+      const from = edge.source === node ? { x, y } : edge.source;
+      const to = edge.target === node ? { x, y } : edge.target;
+      for (const other of nodes) {
+        if (other === edge.source || other === edge.target) continue;
+        if (lineCrosses(from, to, at(other))) count++;
+      }
+    }
+    return count;
+  };
+  const overlaps = (node: LiveNode, x: number, y: number) => {
+    const mine = boxOf(node, x, y);
+    const room = BREATHING_ROOM / 2;
+    return nodes.some((other) => {
+      if (other === node) return false;
+      const theirs = boxOf(other, other.x, other.y);
+      return mine.x1 < theirs.x2 + room && theirs.x1 < mine.x2 + room && mine.y1 < theirs.y2 + room && theirs.y1 < mine.y2 + room;
+    });
+  };
+  const offsets: { x: number; y: number }[] = [];
+  for (let dx = -reach; dx <= reach; dx += step) {
+    for (let dy = -reach; dy <= reach; dy += step) if (dx || dy) offsets.push({ x: dx, y: dy });
+  }
+  offsets.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y) || a.x - b.x || a.y - b.y);
+  const move = (node: LiveNode) => {
+    if (node.fx != null || node.anchorX != null) return false;
+    const now = crossingsAt(node, node.x, node.y);
+    if (now === 0) return false;
+    let best: { x: number; y: number } | null = null;
+    let fewest = now;
+    for (const offset of offsets) {
+      const x = node.x + offset.x;
+      const y = node.y + offset.y;
+      if (overlaps(node, x, y)) continue;
+      const count = crossingsAt(node, x, y);
+      if (count < fewest) {
+        fewest = count;
+        best = offset;
+        if (count === 0) break;
+      }
+    }
+    if (!best) return false;
+    node.x += best.x;
+    node.y += best.y;
+    node.vx = 0;
+    node.vy = 0;
+    return true;
+  };
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false;
+    for (const edge of edges) {
+      for (const node of nodes) {
+        if (node === edge.source || node === edge.target) continue;
+        if (!lineCrosses(edge.source, edge.target, at(node))) continue;
+        if (move(node) || move(edge.target) || move(edge.source)) moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+}
+
+type LiveNode = ReturnType<typeof sampleGraph>['nodes'][number];
+type LiveEdge = ReturnType<typeof sampleGraph>['edges'][number];
+
+describe('the tidy-up after settling', () => {
+  // The sample graph settled with its labels given room, as the view does before its tidy-up, so there is tidying to do.
+  function readyToTidy(labelRoom: number) {
+    const graph = sampleGraph();
+    const physics = createPhysics(graph.nodes, graph.edges);
+    settle(physics);
+    for (const node of graph.nodes) node.labelRoom = labelRoom;
+    physics.alpha(0.6);
+    for (let i = 0; i < 240; i++) physics.tick();
+    physics.alpha(0);
+    return graph;
+  }
+
+  it.each([1, 2.4])('puts every company where the straightforward search does, with labels given %s times their room', (labelRoom) => {
+    const expected = readyToTidy(labelRoom);
+    const before = expected.nodes.map((node) => [node.x, node.y]);
+    clearLinksStraightforward(expected.nodes, expected.edges);
+    // There was tidying to do, so the two had choices to agree on.
+    expect(expected.nodes.filter((node, i) => node.x !== before[i]![0] || node.y !== before[i]![1]).length).toBeGreaterThan(0);
+    const actual = readyToTidy(labelRoom);
+    clearLinks(actual.nodes, actual.edges);
+
+    expect(actual.nodes.map((node) => [node.id, node.x, node.y])).toEqual(
+      expected.nodes.map((node) => [node.id, node.x, node.y]),
+    );
+  });
+
+  it('stops weighing up places once it has weighed up as many as it may', () => {
+    const graph = readyToTidy(2.4);
+    const before = graph.nodes.map((node) => [node.x, node.y]);
+    clearLinks(graph.nodes, graph.edges, 480, 10, 0);
+
+    expect(graph.nodes.map((node) => [node.x, node.y])).toEqual(before);
+  });
+
+  it('answers whether a link crosses a box exactly as lineCrosses does', () => {
+    const graph = readyToTidy(1);
+    const ends = graph.nodes.map((node) => ({ x: node.x, y: node.y }));
+    // Straight across, straight down and from a point to itself, as well as the graph's own links.
+    ends.push({ x: ends[0]!.x, y: ends[1]!.y }, { x: ends[1]!.x, y: ends[0]!.y });
+    let checked = 0;
+    for (const a of ends) {
+      for (const b of ends) {
+        for (const node of graph.nodes) {
+          const box = boxOf(node, node.x, node.y);
+          expect(clips(a.x, a.y, b.x, b.y, box)).toBe(lineCrosses(a, b, box));
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(1000);
   });
 });
