@@ -4,7 +4,6 @@
 // is held there by a soft anchor, so a neighbour dragged past can still tug it, and it springs back. The graph opens
 // already settled (the physics runs out of sight first), and only moves again when the user drags a company.
 import { type Force, type Simulation, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
-import { lineCrosses } from '../pages/supplyChain';
 import { type LiveEdge, type LiveNode, LABEL_GAP, boxOf, labelScale } from './model';
 
 // How far apart the chain's columns are, in the graph's own units: the gentle left-to-right pull aims for them.
@@ -314,68 +313,239 @@ export function goLive(physics: Simulation<LiveNode, Link>) {
 }
 
 /**
+ * The most places the tidy-up may weigh up in all (places it would overlap a company at are not counted). A portfolio of
+ * 107 companies and 152 links weighs up about 510,000; this is there only so that a far bigger graph can never hold the
+ * page up.
+ */
+const MOST_PLACES_TRIED = 3_000_000;
+
+/**
+ * Whether a link from a to b passes through the box: lineCrosses, after a quick test that the link's own extent reaches
+ * the box at all. The quick test only turns away links that lie wholly beside the box, which lineCrosses would refuse
+ * too, so the answer is always the same as lineCrosses's.
+ */
+function segmentCrosses(a: { x: number; y: number }, b: { x: number; y: number }, box: { x1: number; x2: number; y1: number; y2: number }) {
+  if ((a.x < box.x1 && b.x < box.x1) || (a.x > box.x2 && b.x > box.x2)) return false;
+  if ((a.y < box.y1 && b.y < box.y1) || (a.y > box.y2 && b.y > box.y2)) return false;
+  return clips(a.x, a.y, b.x, b.y, box);
+}
+
+/**
+ * lineCrosses's own sums in the same order, without the list it builds each time: the tidy-up asks this hundreds of
+ * thousands of times. physics.test.ts checks the two always agree.
+ */
+export function clips(ax: number, ay: number, bx: number, by: number, box: { x1: number; x2: number; y1: number; y2: number }) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  let enter = 0;
+  let leave = 1;
+  const edge = (p: number, q: number) => {
+    if (p === 0) return !(q < 0);
+    const r = q / p;
+    if (p < 0) {
+      if (r > leave) return false;
+      enter = Math.max(enter, r);
+    } else {
+      if (r < enter) return false;
+      leave = Math.min(leave, r);
+    }
+    return true;
+  };
+  return edge(-dx, ax - box.x1) && edge(dx, box.x2 - ax) && edge(-dy, ay - box.y1) && edge(dy, box.y2 - ay);
+}
+
+/**
  * The last tidy-up after settling: any company a link still runs through (one it does not join) is moved the shortest
  * way, in small steps up to a reach, to the nearest place where it is part of fewer crossings (none, if there is such a
  * place) and overlaps no other company; if no place is better, one of the link's own companies moves instead. A few
  * rounds, as one move can open the way for another. Companies the user placed never move.
  */
-export function clearLinks(nodes: LiveNode[], edges: LiveEdge[], reach = 480, step = 10) {
+export function clearLinks(
+  nodes: LiveNode[],
+  edges: LiveEdge[],
+  reach = 480,
+  step = 10,
+  mostPlaces = MOST_PLACES_TRIED,
+) {
   const at = (node: LiveNode, x = node.x, y = node.y) => {
     const box = boxOf(node, x, y);
     return { x1: box.x1 - 4, y1: box.y1 - 4, x2: box.x2 + 4, y2: box.y2 + 4 };
   };
-  // How many crossings a company would be part of at a place: links running through it, and its own links running
-  // through others.
-  const crossingsAt = (node: LiveNode, x: number, y: number) => {
-    let count = 0;
-    const box = at(node, x, y);
+  // Every company's box where it stands, worked out once and again only when it moves (only a moved company's
+  // changes): padded for crossings, plain for overlaps.
+  const padded = new Map(nodes.map((node) => [node, at(node)]));
+  const plain = new Map(nodes.map((node) => [node, boxOf(node, node.x, node.y)]));
+  // The plain boxes again as rows of numbers, by company, for the overlap test that runs at every place tried.
+  const index = new Map(nodes.map((node, i) => [node, i]));
+  const left = new Float64Array(nodes.length);
+  const right = new Float64Array(nodes.length);
+  const top = new Float64Array(nodes.length);
+  const bottom = new Float64Array(nodes.length);
+  const file = (node: LiveNode) => {
+    const i = index.get(node)!;
+    const box = plain.get(node)!;
+    left[i] = box.x1;
+    right[i] = box.x2;
+    top[i] = box.y1;
+    bottom[i] = box.y2;
+  };
+  nodes.forEach(file);
+  const room = BREATHING_ROOM / 2;
+  // What could matter to a company anywhere within reach of where it stands, worked out once per search: the companies
+  // it could overlap, and for each of its own links the companies that link could run through. Each list keeps every
+  // company whose box reaches the area the company or its link could cover, so leaving the rest out changes no answer.
+  const nearOf = (node: LiveNode) => {
+    // A pixel past the reach, so rounding can never leave out a company at its very edge.
+    const far = reach + 1;
+    const box = plain.get(node)!;
+    const self = index.get(node)!;
+    const overlapping: number[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      if (i === self) continue;
+      if (
+        box.x1 - far <= right[i]! + room &&
+        left[i]! <= box.x2 + far + room &&
+        box.y1 - far <= bottom[i]! + room &&
+        top[i]! <= box.y2 + far + room
+      ) {
+        overlapping.push(i);
+      }
+    }
+    const crossed: { edge: LiveEdge; boxes: { x1: number; y1: number; x2: number; y2: number }[] }[] = [];
+    // Others' links that could run through the company somewhere within reach: their extent meets the area its padded
+    // box could cover.
+    const reachable = padded.get(node)!;
+    const passing: LiveEdge[] = [];
     for (const edge of edges) {
-      const mine = edge.source === node || edge.target === node;
-      if (!mine) {
-        if (lineCrosses(edge.source, edge.target, box)) count++;
+      if (edge.source !== node && edge.target !== node) {
+        if (
+          Math.min(edge.source.x, edge.target.x) <= reachable.x2 + far &&
+          reachable.x1 - far <= Math.max(edge.source.x, edge.target.x) &&
+          Math.min(edge.source.y, edge.target.y) <= reachable.y2 + far &&
+          reachable.y1 - far <= Math.max(edge.source.y, edge.target.y)
+        ) {
+          passing.push(edge);
+        }
         continue;
       }
-      const from = edge.source === node ? { x, y } : edge.source;
-      const to = edge.target === node ? { x, y } : edge.target;
+      const fixed = edge.source === node ? edge.target : edge.source;
+      // Its own end is somewhere within far; with a company at both ends, both are.
+      const ends = fixed === node ? [node] : [node, fixed];
+      const x1 = Math.min(...ends.map((end) => (end === node ? node.x - far : end.x)));
+      const x2 = Math.max(...ends.map((end) => (end === node ? node.x + far : end.x)));
+      const y1 = Math.min(...ends.map((end) => (end === node ? node.y - far : end.y)));
+      const y2 = Math.max(...ends.map((end) => (end === node ? node.y + far : end.y)));
+      const boxes = [];
       for (const other of nodes) {
         if (other === edge.source || other === edge.target) continue;
-        if (lineCrosses(from, to, at(other))) count++;
+        const theirs = padded.get(other)!;
+        if (theirs.x1 <= x2 && x1 <= theirs.x2 && theirs.y1 <= y2 && y1 <= theirs.y2) boxes.push(theirs);
+      }
+      crossed.push({ edge, boxes });
+    }
+    return { overlapping, crossed, passing };
+  };
+  // How many crossings a company would be part of at a place: links running through it, and its own links running
+  // through others. Counting stops at enough: a place is only wanted if it beats the best so far, so once the count
+  // reaches it the exact number no longer matters.
+  const crossingsAt = (node: LiveNode, x: number, y: number, near: ReturnType<typeof nearOf>, enough = Infinity) => {
+    let count = 0;
+    const box = at(node, x, y);
+    for (const edge of near.passing) {
+      if (segmentCrosses(edge.source, edge.target, box) && ++count >= enough) return count;
+    }
+    const here = { x, y };
+    for (const { edge, boxes } of near.crossed) {
+      const from = edge.source === node ? here : edge.source;
+      const to = edge.target === node ? here : edge.target;
+      for (const theirs of boxes) {
+        if (segmentCrosses(from, to, theirs) && ++count >= enough) return count;
       }
     }
     return count;
   };
-  const overlaps = (node: LiveNode, x: number, y: number) => {
+  const overlaps = (node: LiveNode, x: number, y: number, near: ReturnType<typeof nearOf>) => {
     const mine = boxOf(node, x, y);
-    const room = BREATHING_ROOM / 2;
-    return nodes.some((other) => {
-      if (other === node) return false;
-      const theirs = boxOf(other, other.x, other.y);
-      return (
-        mine.x1 < theirs.x2 + room &&
-        theirs.x1 < mine.x2 + room &&
-        mine.y1 < theirs.y2 + room &&
-        theirs.y1 < mine.y2 + room
-      );
-    });
+    for (const i of near.overlapping) {
+      if (mine.x1 < right[i]! + room && left[i]! < mine.x2 + room && mine.y1 < bottom[i]! + room && top[i]! < mine.y2 + room) {
+        return true;
+      }
+    }
+    return false;
   };
-  const offsets: { x: number; y: number }[] = [];
+  // How many places may still be tried, across the whole tidy-up: a guard so that no graph, however big, can hold the
+  // page up. Today's portfolios stay far below it, so their tidy-up is complete.
+  let placesLeft = mostPlaces;
+  const offsets: { x: number; y: number; cell: number }[] = [];
+  const side = Math.floor((2 * reach) / step) + 1;
   for (let dx = -reach; dx <= reach; dx += step) {
-    for (let dy = -reach; dy <= reach; dy += step) if (dx || dy) offsets.push({ x: dx, y: dy });
+    for (let dy = -reach; dy <= reach; dy += step) {
+      if (dx || dy) offsets.push({ x: dx, y: dy, cell: Math.round((dx + reach) / step) * side + Math.round((dy + reach) / step) });
+    }
   }
+  // Which places a company would overlap another at, for one search: 2 certainly, 1 too close to tell (the exact test
+  // decides), 0 certainly not. Worked out a box at a time over the places, rather than every box at every place.
+  const SURE = 0.5;
+  const blocked = new Uint8Array(side * side);
+  const blockedFor = (node: LiveNode, near: ReturnType<typeof nearOf>) => {
+    blocked.fill(0);
+    const mine = boxOf(node, node.x, node.y);
+    // The cells, along one axis, whose offset d puts the company's span [a + d, b + d] over the span lo..hi: from
+    // a + d < hi and lo < b + d, so d runs between lo - b and hi - a, open at both ends.
+    const cells = (from: number, to: number) => [
+      Math.max(0, Math.ceil((from + reach) / step)),
+      Math.min(side - 1, Math.floor((to + reach) / step)),
+    ];
+    for (const i of near.overlapping) {
+      const loX = left[i]! - room - mine.x2;
+      const hiX = right[i]! + room - mine.x1;
+      const loY = top[i]! - room - mine.y2;
+      const hiY = bottom[i]! + room - mine.y1;
+      const [maybeX1, maybeX2] = cells(loX - SURE, hiX + SURE);
+      const [maybeY1, maybeY2] = cells(loY - SURE, hiY + SURE);
+      const [sureX1, sureX2] = cells(loX + SURE, hiX - SURE);
+      const [sureY1, sureY2] = cells(loY + SURE, hiY - SURE);
+      for (let cx = maybeX1!; cx <= maybeX2!; cx++) {
+        const sureX = cx >= sureX1! && cx <= sureX2!;
+        for (let cy = maybeY1!; cy <= maybeY2!; cy++) {
+          const mark = sureX && cy >= sureY1! && cy <= sureY2! ? 2 : 1;
+          if (mark > blocked[cx * side + cy]!) blocked[cx * side + cy] = mark;
+        }
+      }
+    }
+  };
   offsets.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y) || a.x - b.x || a.y - b.y);
   // Moves a company to the nearest place where it is part of fewer crossings (none, if it can), overlapping nothing;
   // false when it is held, placed by the user, or no place is better.
+  // Companies that found no better place since the last move: nothing has changed for them, so they would find none
+  // again. Forgotten whenever any company moves.
+  const stuck = new Set<LiveNode>();
   const move = (node: LiveNode) => {
     if (node.fx != null || node.anchorX != null) return false;
-    const now = crossingsAt(node, node.x, node.y);
+    if (stuck.has(node)) return false;
+    if (!tryMove(node)) {
+      if (placesLeft > 0) stuck.add(node);
+      return false;
+    }
+    stuck.clear();
+    return true;
+  };
+  const tryMove = (node: LiveNode) => {
+    const near = nearOf(node);
+    const now = crossingsAt(node, node.x, node.y, near);
     if (now === 0) return false;
+    blockedFor(node, near);
     let best: { x: number; y: number } | null = null;
     let fewest = now;
     for (const offset of offsets) {
+      const mark = blocked[offset.cell];
+      if (mark === 2) continue;
       const x = node.x + offset.x;
       const y = node.y + offset.y;
-      if (overlaps(node, x, y)) continue;
-      const count = crossingsAt(node, x, y);
+      if (mark === 1 && overlaps(node, x, y, near)) continue;
+      if (placesLeft <= 0) break;
+      placesLeft--;
+      const count = crossingsAt(node, x, y, near, fewest);
       if (count < fewest) {
         fewest = count;
         best = offset;
@@ -387,6 +557,9 @@ export function clearLinks(nodes: LiveNode[], edges: LiveEdge[], reach = 480, st
     node.y += best.y;
     node.vx = 0;
     node.vy = 0;
+    padded.set(node, at(node));
+    plain.set(node, boxOf(node, node.x, node.y));
+    file(node);
     return true;
   };
   for (let pass = 0; pass < 4; pass++) {
@@ -394,7 +567,7 @@ export function clearLinks(nodes: LiveNode[], edges: LiveEdge[], reach = 480, st
     for (const edge of edges) {
       for (const node of nodes) {
         if (node === edge.source || node === edge.target) continue;
-        if (!lineCrosses(edge.source, edge.target, at(node))) continue;
+        if (!segmentCrosses(edge.source, edge.target, padded.get(node)!)) continue;
         // The company in the way moves; failing that (a busy one would drag its own links across others), one of the
         // link's own two companies does.
         if (move(node) || move(edge.target) || move(edge.source)) moved = true;
