@@ -15,11 +15,11 @@
   and warns you when something breaks. Every link points to the sentence that proves it.
 </p>
 
-<img src="docs/readme/demo.webp" width="100%" alt="The TrueSight workspace: clicking from the portfolio's supply chain graph through to the sentence in Tesla's 10-K that names Panasonic as a supplier.">
+<img src="docs/readme/demo.webp" width="100%" alt="The TrueSight workspace on a sample portfolio of ten chip and electronics companies: an alert that TSMC has suspended Chinese customers' access to advanced chipmaking, a simulated TSMC disruption reaching half the portfolio, the graph scrubbed back to 2023, an answer from Ask TrueSight, and Panasonic's link to Tesla with its sentence from Tesla's 10-K, the words that matter marked.">
 
 ## How It Works
 
-<img src="docs/readme/pipeline.svg" width="100%" alt="Two lines flow into your workspace. Reports: read the latest 10-K or 20-F from SEC EDGAR; Gemini names who supplies and buys, each with a quote; a quote must match the report word for word, or it is never shown. News: Google News for the companies on your chain; Gemini splits real disruptions from noise; TrueSight follows the links to the holdings an event reaches. The workspace shows each relationship with its sentence from the report, and an alert on each holding reached.">
+<img src="docs/readme/pipeline.svg" width="100%" alt="Two lines flow into your workspace. Reports: read the 10-K or 20-F, and each filing that names your holding; Gemini names who supplies and buys, each with a quote; the quote must be in the report and a second AI judges it, or it is never shown. News: Google News and SEC 8-Ks, each day, for your chain; Gemini splits real disruptions from the noise; TrueSight follows the links to the holdings an event reaches. The workspace shows each relationship with its sentence from the report, the words that matter marked, and an alert on each holding reached.">
 
 ## The AI Never Gets the Last Word
 
@@ -29,33 +29,42 @@ What you see is always the company's own sentence, never the model's. This is th
 >
 > [Tesla 10-K, filed 29 January 2026](https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm)
 
+A quote that is not in the report is dropped. A second AI then reads the passage around it as a judge, and a link it
+doubts raises no alerts. Confidence rises when both companies' reports name the link, and an analyst's decision
+overrides both AIs, for every user.
+
 ## What You Can Do
 
 <table>
-  <tr><td width="170"><strong>See the Chain</strong></td><td>A live graph of your holdings, their suppliers and customers, with shared dependencies marked</td></tr>
-  <tr><td><strong>Check the Source</strong></td><td>Show in Report opens the SEC filing, scrolled to the sentence and highlighted</td></tr>
-  <tr><td><strong>Get Warned</strong></td><td>News about every company on the chain is screened, and real disruptions become alerts on the holdings they reach</td></tr>
-  <tr><td><strong>Test a Failure</strong></td><td>What If It Stops? shows what a supplier going down would reach in your portfolio</td></tr>
-  <tr><td><strong>Correct the AI</strong></td><td>Analysts approve or reject each finding on the Analyst Desk, for every user</td></tr>
+  <tr><td width="190"><strong>See the Chain</strong></td><td>A living graph of your holdings, their suppliers and customers, and their suppliers' suppliers, read from each supplier's own report. Shared dependencies are marked, and the graph grows as results arrive</td></tr>
+  <tr><td><strong>Check the Source</strong></td><td>Each link shows its sentence with the companies, what is supplied and any figure marked. Show in Report opens the SEC filing, scrolled to the sentence and highlighted</td></tr>
+  <tr><td><strong>See How Much</strong></td><td>A customer's share of revenue, read from the filing's own XBRL tags and never from an AI: Apple was 91% of Cirrus Logic's net sales in fiscal 2026</td></tr>
+  <tr><td><strong>Find Who Names You</strong></td><td>SEC full-text search finds other companies' reports that name your holding as a supplier or customer</td></tr>
+  <tr><td><strong>Get Warned</strong></td><td>Google News and SEC 8-K filings for every company on the chain, checked each morning. Real disruptions become one alert per event, with its severity, the share of the portfolio it reaches and, once an analyst approves it, a suggested next step</td></tr>
+  <tr><td><strong>Test a Failure</strong></td><td>Simulate Disruption shows which holdings a supplier going down would reach, and how much of the portfolio that is</td></tr>
+  <tr><td><strong>Go Back in Time</strong></td><td>The SEC Filing Timeline redraws the graph from each year's reports, 2023 to today, and says which links are new and which are no longer named</td></tr>
+  <tr><td><strong>Ask TrueSight</strong></td><td>Ask about your portfolio in plain words. Answers come only from TrueSight's own data, with the links they rely on drawn beside them</td></tr>
+  <tr><td><strong>Take It With You</strong></td><td>Download Briefing makes a PDF of the holdings, open alerts, sole-source suppliers and biggest dependencies</td></tr>
+  <tr><td><strong>Correct the AI</strong></td><td>Analysts approve or reject relationships, events and suggestions on the Analyst Desk, for every user, and can read every AI call and how often analysts agree with each AI step</td></tr>
 </table>
 
-## How Much of a Busy Day Is Read
+On a phone, the workspace becomes one sheet at a time: Holdings, Alerts, Graph and Details.
 
-A holding and its direct suppliers keep their newest 30 headlines a check (8-Ks first), a supplier's supplier its
-newest 10. Checked by hand on Google News on 8 November 2026 (a Sunday, so a quiet day), with the search names
-TrueSight now uses:
+## Measured on Real Filings
 
-| Company | Headlines in the last 24 hours | Read before (10) | Read now (30) |
-|---|---|---|---|
-| Samsung Electronics | 19 | 53% | 100% |
-| Tesla | 18 | 56% | 100% |
-| Micron Technology | 4 | 100% | 100% |
-| Taiwan Semiconductor Manufacturing | 5 | 100% | 100% |
-| NVIDIA | 17 | 59% | 100% |
+Every change to an AI prompt is scored on hand-labelled real samples before it merges, and the score is saved in
+[`docs/examples/`](docs/examples/README.md).
+
+| What is measured | Score |
+|---|---|
+| Links found in the part of a report Gemini reads (5 reports, hand-labelled) | 17 of 18 |
+| Second-check judge: true links accepted, false links caught (60 claims) | 23 of 23, 37 of 37 |
+| Noise filter: real disruptions caught, false alarms (80 headlines, 3 orders) | 91%, 1 in 174 |
+| Headlines read on a busy day (Samsung, Tesla, NVIDIA: 17 to 19 in 24 hours) | All of them |
 
 ## Built With
 
-Spring Boot · Java 21 · PostgreSQL · React · TypeScript · d3-force · Gemini · SEC EDGAR · Google Cloud Run
+Spring Boot · Java 21 · PostgreSQL · React · TypeScript · d3-force · Gemini · SEC EDGAR and XBRL · Google News · OpenPDF · Google Cloud Run
 
 [Why Each Piece Is Here](docs/tech-stack.md) · [How the Live Site Is Deployed](docs/deployment.md) · [Rules for Contributors and AI Agents](AGENTS.md) · [Every Story](docs/stories/README.md)
 

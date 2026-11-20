@@ -322,15 +322,16 @@ def pipeline():
     )
     pw, ph, gap, x0 = 222, 180, 56, 40
     xs = [x0 + i * (pw + gap) for i in range(3)]
-    reports, news = 58, 372
     box_x, box_y, box_w, box_h = xs[2] + pw + gap, 40, 0, 530
     box_w = w - 40 - box_x
+    # Both lines line up with the workspace they flow into: the reports with its top, the news with its bottom.
+    reports, news = box_y, box_y + box_h - ph
 
     body = sheet(w, h)
-    body += step(xs[0], reports, pw, ph, "Read", ["The latest 10-K or", "20-F, straight from", "SEC EDGAR."], TEAL)
+    body += step(xs[0], reports, pw, ph, "Read", ["The 10-K or 20-F,", "and each filing that", "names your holding."], TEAL)
     body += step(xs[1], reports, pw, ph, "Extract", ["Gemini names who", "supplies and buys,", "each with a quote."], TEAL)
-    body += step(xs[2], reports, pw, ph, "Verify", ["A quote must match", "the report word for", "word, or it is cut."], LIME, lit=True)
-    body += step(xs[0], news, pw, ph, "Watch", ["Google News, for", "the companies on", "your chain."], MEDIUM)
+    body += step(xs[2], reports, pw, ph, "Verify", ["The quote must be", "in the report, and a", "second AI judges it."], LIME, lit=True)
+    body += step(xs[0], news, pw, ph, "Watch", ["Google News and", "SEC 8-Ks, each day,", "for your chain."], MEDIUM)
     body += step(xs[1], news, pw, ph, "Screen", ["Gemini splits real", "disruptions from", "the noise."], MEDIUM)
     body += step(xs[2], news, pw, ph, "Trace", ["Follows the links", "to the holdings an", "event reaches."], MEDIUM)
 
@@ -354,10 +355,21 @@ def pipeline():
     body += holding(tx, ay, "tesla", "Tesla", GREEN)
     qx, qy = bx + 24, by + 196
     body += f'<rect x="{qx}" y="{qy}" width="3" height="136" fill="{TEAL}"/>'
-    quote = ["Currently, we rely on suppliers such", "as Panasonic and Contemporary", "Amperex Technology Co. Limited", "(CATL) for these cells."]
+    # The words that matter are marked as the app marks them (HighlightedQuote): each company in the holding's colour,
+    # what is supplied in lime. The marks are the ones the app shows for this quote.
+    plain, company, supplied = (TEXT, 400), (GREEN, 500), (LIME, 500)
+    quote = [
+        [("Currently, we rely on suppliers such", plain)],
+        [("as ", plain), ("Panasonic", company), (" and ", plain), ("Contemporary", company)],
+        [("Amperex Technology Co. Limited", company)],
+        [("(", plain), ("CATL", company), (") for these ", plain), ("cells", supplied), (".", plain)],
+    ]
     for n, line in enumerate(quote):
-        assert width(line, 19) <= bw - 60, line
-        body += text(line, qx + 18, qy + 22 + n * 26, 19, TEXT, 400)
+        assert sum(width(words, 19, weight) for words, (_, weight) in line) <= bw - 60, line
+        x = qx + 18
+        for words, (colour, weight) in line:
+            body += text(words, x, qy + 22 + n * 26, 19, colour, weight)
+            x += width(words, 19, weight)
     body += text("From Tesla's 10-K, Filed Jan 29, 2026", qx + 18, qy + 130, 16, MUTED, 400)
     # An alert, in the disruption's colour: the beacon sends its slow signal.
     dy = by + 422
@@ -380,14 +392,16 @@ def pipeline():
         body += text(name, sx + 20, dy + 72, 18, SOFT, 500)
         sx += 20 + width(name, 18, 500) + 32
 
+    # Like the graph's own arrows, each leaves a little after its box and stops short of the next, as Panasonic's does.
+    lead, short = 4, 10
     gradients, drawn = arrows(
-        ((xs[0] + pw, reports + ph / 2), (xs[1] - 3, reports + ph / 2), TEAL),
-        ((xs[1] + pw, reports + ph / 2), (xs[2] - 3, reports + ph / 2), TEAL),
-        ((xs[2] + pw, reports + ph / 2), (bx - 3, reports + ph / 2), LIME),
+        ((xs[0] + pw + lead, reports + ph / 2), (xs[1] - short, reports + ph / 2), TEAL),
+        ((xs[1] + pw + lead, reports + ph / 2), (xs[2] - short, reports + ph / 2), TEAL),
+        ((xs[2] + pw + lead, reports + ph / 2), (bx - short, reports + ph / 2), LIME),
         ((vx, reports + ph), (vx, reports + ph + 60), HIGH, True),
-        ((xs[0] + pw, news + ph / 2), (xs[1] - 3, news + ph / 2), MEDIUM),
-        ((xs[1] + pw, news + ph / 2), (xs[2] - 3, news + ph / 2), MEDIUM),
-        ((xs[2] + pw, news + ph / 2), (bx - 3, news + ph / 2), MEDIUM),
+        ((xs[0] + pw + lead, news + ph / 2), (xs[1] - short, news + ph / 2), MEDIUM),
+        ((xs[1] + pw + lead, news + ph / 2), (xs[2] - short, news + ph / 2), MEDIUM),
+        ((xs[2] + pw + lead, news + ph / 2), (bx - short, news + ph / 2), MEDIUM),
         ((px + 34, ay), (tx - 46, ay), GREEN),
     )
     return svg(w, h, body + drawn, defs + gradients)
