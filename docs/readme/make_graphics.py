@@ -371,12 +371,17 @@ def pipeline():
             body += text(words, x, qy + 22 + n * 26, 19, colour, weight)
             x += width(words, 19, weight)
     body += text("From Tesla's 10-K, Filed Jan 29, 2026", qx + 18, qy + 130, 16, MUTED, 400)
+    # The app's one-line key under the quote, each kind named in its own colour: the two this quote uses.
+    kx = qx + 18
+    for name, (colour, weight) in (("Company", company), ("Supplied", supplied)):
+        body += text(name, kx, qy + 166, 16, colour, weight)
+        kx += width(name, 16, weight) + 18
     # An alert, in the disruption's colour: the beacon sends its slow signal.
-    dy = by + 422
+    dy = by + 436
     dx = bx + 52
     diamond = f"M{dx} {dy - 22}L{dx + 22} {dy}L{dx} {dy + 22}L{dx - 22} {dy}Z"
     body += (
-        f'<rect x="{bx + 24}" y="{dy - 54}" width="{bw - 48}" height="1" fill="#fff" fill-opacity=".13"/>'
+        f'<rect x="{bx + 24}" y="{dy - 48}" width="{bw - 48}" height="1" fill="#fff" fill-opacity=".13"/>'
         f'<path d="{diamond}" fill="{HIGH}" opacity=".5" filter="url(#bloom)">'
         '<animate attributeName="opacity" values=".2;.8;.2" dur="1.3s" repeatCount="indefinite"/></path>'
         f'<path d="{diamond}" fill="{mix(HIGH, NIGHT, 0.6)}" stroke="{HIGH}" stroke-width="2"/>'

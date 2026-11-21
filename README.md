@@ -15,7 +15,7 @@
   and warns you when something breaks. Every link points to the sentence that proves it.
 </p>
 
-<img src="docs/readme/demo.webp" width="100%" alt="The TrueSight workspace on a sample portfolio of ten chip and electronics companies: an alert that TSMC has suspended Chinese customers' access to advanced chipmaking, a simulated TSMC disruption reaching half the portfolio, the graph scrubbed back to 2023, an answer from Ask TrueSight, and Panasonic's link to Tesla with its sentence from Tesla's 10-K, the words that matter marked.">
+<img src="docs/readme/demo.avif" width="100%" alt="The TrueSight workspace on a sample portfolio of ten chip and electronics companies: an alert that TSMC has suspended Chinese customers' access to advanced chipmaking, a simulated TSMC disruption reaching half the portfolio, the graph scrubbed back to 2023, an answer from Ask TrueSight, and Panasonic's link to Tesla with its sentence from Tesla's 10-K, the words that matter marked.">
 
 ## How It Works
 
