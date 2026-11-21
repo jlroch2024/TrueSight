@@ -254,7 +254,7 @@ def hero():
     body = sheet(w, h)
     body += eye(70, 128, 84)
     body += text("TrueSight", 172, 196, 84, TEXT, 600)
-    body += text("Portfolio Supply-Chain Risk,", 72, 278, 34, SOFT, 400)
+    body += text("Portfolio Supply-Chain Risk", 72, 278, 34, SOFT, 400)
     body += text("Traced to the Source", 72, 324, 34, LIME, 500)
 
     # Real links, from the reports of NVIDIA, AMD and Qualcomm (docs/examples: relationships.json, gemini-nvidia.json and
