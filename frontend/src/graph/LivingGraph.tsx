@@ -1489,7 +1489,7 @@ export function LivingGraph({
               animate={{ opacity: 1, y: 0, transition: { delay: 1.6, duration: 0.5 } }}
               exit={{ opacity: 0, y: 8, transition: { duration: 0.25 } }}
             >
-              Drag Companies · Scroll to Zoom · Click an Arrow for Its Evidence · Press / to Search
+              Drag Companies · Scroll to Zoom · Click an Arrow for Evidence · Press / to Search
             </motion.p>
           )}
         </AnimatePresence>
@@ -1655,7 +1655,7 @@ export function LivingGraph({
                     <span className={`lg-status${tip.edge.reviewed ? ' lg-status-approved' : ''}`}>
                       {tip.edge.reviewed ? 'Approved' : 'Not Yet Reviewed'}
                     </span>
-                    Click for Its Evidence
+                    Click for Evidence
                   </p>
                 </>
               )}

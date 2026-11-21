@@ -74,6 +74,9 @@ const ARRIVAL = 34;
 const GRID_STEP = 28;
 // Every fifth grid dot is a small cross.
 const GRID_MAJOR = 5;
+// How far the grid grows and shrinks with a zoom, so its dots stay crisp and never crowd.
+const GRID_GROW_MIN = 0.6;
+const GRID_GROW_MAX = 1.5;
 // How far apart hatching's lines are, on screen.
 const HATCH_STEP = 5;
 const GRAIN_SIZE = 160;
@@ -238,6 +241,40 @@ function withAlpha(colour: string, alpha: number): string {
   return colour;
 }
 
+/** Where each canvas's grid is: its origin on screen and how much it has grown, and the camera it was last drawn for. */
+const grids = new WeakMap<CanvasRenderingContext2D, { x: number; y: number; grow: number; camera: Camera }>();
+
+/**
+ * Moves the grid as the camera has moved since the last frame. A pan slides it half as far. Any change of zoom (a
+ * scroll, a fit, a glide) keeps one point of the screen still: the grid grows about that same point, by the square root
+ * of the graph's change, so the dots under the pointer stay under it.
+ */
+function followCamera(context: CanvasRenderingContext2D, camera: Camera) {
+  const growFor = (k: number) => Math.min(GRID_GROW_MAX, Math.max(GRID_GROW_MIN, Math.sqrt(k)));
+  const last = grids.get(context);
+  if (!last) {
+    const first = { x: camera.x * 0.5, y: camera.y * 0.5, grow: growFor(camera.k), camera: { ...camera } };
+    grids.set(context, first);
+    return first;
+  }
+  const ratio = camera.k / last.camera.k;
+  if (Math.abs(ratio - 1) < 1e-9) {
+    last.x += (camera.x - last.camera.x) * 0.5;
+    last.y += (camera.y - last.camera.y) * 0.5;
+  } else {
+    // The point the zoom keeps still: x * ratio + shift = x, with the camera's shift between the two frames.
+    const stillX = (camera.x - last.camera.x * ratio) / (1 - ratio);
+    const stillY = (camera.y - last.camera.y * ratio) / (1 - ratio);
+    const grow = growFor(camera.k);
+    const change = grow / last.grow;
+    last.x = stillX - (stillX - last.x) * change;
+    last.y = stillY - (stillY - last.y) * change;
+    last.grow = grow;
+  }
+  last.camera = { ...camera };
+  return last;
+}
+
 function drawBackdrop(context: CanvasRenderingContext2D, o: RenderOptions) {
   const { width, height, dpr, camera, now, still } = o;
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -247,19 +284,24 @@ function drawBackdrop(context: CanvasRenderingContext2D, o: RenderOptions) {
   context.fillStyle = base;
   context.fillRect(0, 0, width, height);
 
+  // The backdrop follows the world point at the middle of the view, not the camera's offset: a zoom moves that offset
+  // by a lot, so the backdrop would slide sideways while the graph only grows. At a zoom of 1 the two are the same.
+  const middleX = width / 2 - (width / 2 - camera.x) / camera.k;
+  const middleY = height / 2 - (height / 2 - camera.y) / camera.k;
+
   // Two broad lights drifting slowly across the dark, following the pan a little.
   const t = still ? 0 : now / 1000;
   const reach = Math.max(width, height) * 0.75;
   const lights: [number, number, string, number][] = [
     [
-      width * (0.22 + 0.06 * Math.sin(t * 0.07)) + camera.x * 0.15,
-      height * (0.18 + 0.05 * Math.cos(t * 0.05)) + camera.y * 0.15,
+      width * (0.22 + 0.06 * Math.sin(t * 0.07)) + middleX * 0.15,
+      height * (0.18 + 0.05 * Math.cos(t * 0.05)) + middleY * 0.15,
       INK.auroraA,
       0.13,
     ],
     [
-      width * (0.82 + 0.05 * Math.cos(t * 0.06)) + camera.x * 0.15,
-      height * (0.85 + 0.06 * Math.sin(t * 0.08)) + camera.y * 0.15,
+      width * (0.82 + 0.05 * Math.cos(t * 0.06)) + middleX * 0.15,
+      height * (0.85 + 0.06 * Math.sin(t * 0.08)) + middleY * 0.15,
       INK.auroraB,
       0.12,
     ],
@@ -272,16 +314,19 @@ function drawBackdrop(context: CanvasRenderingContext2D, o: RenderOptions) {
     context.fillRect(0, 0, width, height);
   }
 
-  // The dot grid, sliding at half the pan's speed.
+  // The dot grid, a sheet further away than the graph: it slides at half the pan's speed, and grows with a zoom by its
+  // square root, about the same point the graph grows about, so it zooms with the graph rather than sliding.
   const tile = gridTile(dpr);
   const pattern = context.createPattern(tile, 'repeat');
   if (pattern) {
-    const repeat = GRID_STEP * GRID_MAJOR;
-    const offsetX = ((camera.x * 0.5) % repeat) - repeat;
-    const offsetY = ((camera.y * 0.5) % repeat) - repeat;
-    context.setTransform(1, 0, 0, 1, offsetX * dpr, offsetY * dpr);
+    const grid = followCamera(context, camera);
+    const repeat = GRID_STEP * GRID_MAJOR * grid.grow;
+    const offsetX = (grid.x % repeat) - repeat;
+    const offsetY = (grid.y % repeat) - repeat;
+    const grow = grid.grow;
+    context.setTransform(grow * dpr, 0, 0, grow * dpr, offsetX * dpr, offsetY * dpr);
     context.fillStyle = pattern;
-    context.fillRect(0, 0, (width + repeat * 2) * dpr, (height + repeat * 2) * dpr);
+    context.fillRect(0, 0, width / grow + GRID_STEP * GRID_MAJOR * 2, height / grow + GRID_STEP * GRID_MAJOR * 2);
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 }
