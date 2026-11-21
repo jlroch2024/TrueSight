@@ -11,56 +11,58 @@
 </p>
 
 <p align="center">
-  Upload your holdings. TrueSight reads each company's annual report, maps who it depends on,<br>
-  and warns you when something breaks. Every link points to the sentence that proves it.
+  TrueSight shows portfolio managers which suppliers and customers their holdings depend on. Upload a CSV of your
+  holdings, and TrueSight reads each company's annual report from the SEC, finds the suppliers and customers it names,
+  and draws them as one graph, with each link showing the sentence it came from. Every day, it also checks the news and
+  SEC filings, and warns you when an event affects your holdings.
 </p>
 
-<img src="docs/readme/demo.webp" width="100%" alt="The TrueSight workspace on a sample portfolio of ten chip and electronics companies: an alert that TSMC has suspended Chinese customers' access to advanced chipmaking, a simulated TSMC disruption reaching half the portfolio, the graph scrubbed back to 2023, an answer from Ask TrueSight, and Panasonic's link to Tesla with its sentence from Tesla's 10-K, the words that matter marked.">
+<img src="docs/readme/demo.avif" width="100%" alt="The TrueSight workspace on a sample portfolio of ten chip and electronics companies: an alert that TSMC has suspended Chinese customers' access to advanced chipmaking, a simulated TSMC disruption reaching half the portfolio, the graph moved back to 2023, an answer from Ask TrueSight, and Panasonic's link to Tesla with its sentence from Tesla's 10-K, the important words highlighted.">
 
 ## How It Works
 
-<img src="docs/readme/pipeline.svg" width="100%" alt="Two lines flow into your workspace. Reports: read the 10-K or 20-F, and each filing that names your holding; Gemini names who supplies and buys, each with a quote; the quote must be in the report and a second AI judges it, or it is never shown. News: Google News and SEC 8-Ks, each day, for your chain; Gemini splits real disruptions from the noise; TrueSight follows the links to the holdings an event reaches. The workspace shows each relationship with its sentence from the report, the words that matter marked, and an alert on each holding reached.">
+<img src="docs/readme/pipeline.svg" width="100%" alt="Two lines flow into your workspace. Reports: read the 10-K or 20-F, and each filing that names your holding; Gemini names who supplies and buys, each with a quote; the quote must be in the report and a second AI judges it, or it is never shown. News: Google News and SEC 8-Ks, each day, for your chain; Gemini splits real disruptions from the noise; TrueSight follows the links to the holdings an event reaches. The workspace shows each relationship with its sentence from the report, the important words highlighted, and an alert on each holding reached.">
 
-## The AI Never Gets the Last Word
+## How We Check the AI
 
-What you see is always the company's own sentence, never the model's. This is the link in the recording above:
+Every link shows the company's own sentence from its report, never the AI's words. This is the link at the end of the
+video above:
 
 > Currently, we rely on suppliers such as Panasonic and Contemporary Amperex Technology Co. Limited (CATL) for these cells.
 >
 > [Tesla 10-K, filed 29 January 2026](https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm)
 
-A quote that is not in the report is dropped. A second AI then reads the passage around it as a judge, and a link it
-doubts raises no alerts. Confidence rises when both companies' reports name the link, and an analyst's decision
-overrides both AIs, for every user.
+TrueSight checks every quote against the report, and drops any quote that is not there. A second AI then reads the text
+around the quote and judges whether it really describes a supplier or customer. A link it doubts raises no alerts. A
+link is trusted more when both companies' reports name it, and an analyst can approve or reject any link, for every
+user.
 
 ## What You Can Do
 
 <table>
-  <tr><td width="190"><strong>See the Chain</strong></td><td>A living graph of your holdings, their suppliers and customers, and their suppliers' suppliers, read from each supplier's own report. Shared dependencies are marked, and the graph grows as results arrive</td></tr>
-  <tr><td><strong>Check the Source</strong></td><td>Each link shows its sentence with the companies, what is supplied and any figure marked. Show in Report opens the SEC filing, scrolled to the sentence and highlighted</td></tr>
-  <tr><td><strong>See How Much</strong></td><td>A customer's share of revenue, read from the filing's own XBRL tags and never from an AI: Apple was 91% of Cirrus Logic's net sales in fiscal 2026</td></tr>
-  <tr><td><strong>Find Who Names You</strong></td><td>SEC full-text search finds other companies' reports that name your holding as a supplier or customer</td></tr>
-  <tr><td><strong>Get Warned</strong></td><td>Google News and SEC 8-K filings for every company on the chain, checked each morning. Real disruptions become one alert per event, with its severity, the share of the portfolio it reaches and, once an analyst approves it, a suggested next step</td></tr>
-  <tr><td><strong>Test a Failure</strong></td><td>Simulate Disruption shows which holdings a supplier going down would reach, and how much of the portfolio that is</td></tr>
-  <tr><td><strong>Go Back in Time</strong></td><td>The SEC Filing Timeline redraws the graph from each year's reports, 2023 to today, and says which links are new and which are no longer named</td></tr>
-  <tr><td><strong>Ask TrueSight</strong></td><td>Ask about your portfolio in plain words. Answers come only from TrueSight's own data, with the links they rely on drawn beside them</td></tr>
-  <tr><td><strong>Take It With You</strong></td><td>Download Briefing makes a PDF of the holdings, open alerts, sole-source suppliers and biggest dependencies</td></tr>
-  <tr><td><strong>Correct the AI</strong></td><td>Analysts approve or reject relationships, events and suggestions on the Analyst Desk, for every user, and can read every AI call and how often analysts agree with each AI step</td></tr>
+  <tr><td width="190"><strong>See the Chain</strong></td><td>A live graph of your holdings, their suppliers and customers, and their suppliers' suppliers. Companies that several holdings depend on are marked, and the graph grows as each report is read.</td></tr>
+  <tr><td><strong>Check the Source</strong></td><td>Click a link to read its sentence from the report, with the companies and what is supplied highlighted. Show in Report opens the filing on the SEC website, scrolled to that sentence.</td></tr>
+  <tr><td><strong>See How Much</strong></td><td>See how much of a company's revenue comes from one customer, taken from the filing's XBRL data and never from the AI. For example, Apple was 91% of Cirrus Logic's net sales in fiscal 2026.</td></tr>
+  <tr><td><strong>Find Who Names You</strong></td><td>SEC full-text search finds other companies' reports that name your holding as a supplier or customer.</td></tr>
+  <tr><td><strong>Get Warned</strong></td><td>Every morning, TrueSight checks Google News and SEC 8-K filings for every company in your supply chain. Each real disruption becomes one alert, showing how serious it is and how much of your portfolio it affects. Once an analyst approves it, the alert also suggests a next step.</td></tr>
+  <tr><td><strong>Test a Failure</strong></td><td>Simulate Disruption shows which holdings would be hit if a supplier stopped, and what share of your portfolio that is.</td></tr>
+  <tr><td><strong>Go Back in Time</strong></td><td>The SEC Filing Timeline redraws the graph from each year's reports, from 2023 to today, and shows which links are new and which have dropped off.</td></tr>
+  <tr><td><strong>Ask TrueSight</strong></td><td>Ask about your portfolio in plain English. Answers use only TrueSight's own data, and show the links they are based on.</td></tr>
+  <tr><td><strong>Take It With You</strong></td><td>Download Briefing makes a PDF of your holdings, open alerts, sole-source suppliers and biggest dependencies.</td></tr>
+  <tr><td><strong>Correct the AI</strong></td><td>Analysts approve or reject relationships, news events and suggestions on the Analyst Desk, and their decisions apply to every user. They can also see every AI call, and how often analysts agree with each AI step.</td></tr>
 </table>
-
-On a phone, the workspace becomes one sheet at a time: Holdings, Alerts, Graph and Details.
 
 ## Measured on Real Filings
 
-Every change to an AI prompt is scored on hand-labelled real samples before it merges, and the score is saved in
-[`docs/examples/`](docs/examples/README.md).
+Before any change to an AI prompt is merged, we score it on real filings and headlines whose right answers are labelled.
+The scores are saved in [`docs/examples/`](docs/examples/README.md).
 
-| What is measured | Score |
+| What Is Measured | Score |
 |---|---|
-| Links found in the part of a report Gemini reads (5 reports, hand-labelled) | 17 of 18 |
-| Second-check judge: true links accepted, false links caught (60 claims) | 23 of 23, 37 of 37 |
-| Noise filter: real disruptions caught, false alarms (80 headlines, 3 orders) | 91%, 1 in 174 |
-| Headlines read on a busy day (Samsung, Tesla, NVIDIA: 17 to 19 in 24 hours) | All of them |
+| Links Found in the Part of a Report Gemini Reads (5 Reports) | 17 of 18 |
+| Second AI Check: True Links Accepted, False Links Caught (60 Claims) | 23 of 23, 37 of 37 |
+| Noise Filter: Real Disruptions Caught, False Alarms (80 Headlines, 3 Orders) | 91%, 1 of 174 |
+| Headlines Read for a Busy Company in 24 Hours (Samsung, Tesla, NVIDIA: 17 to 19) | All of Them |
 
 ## Built With
 
@@ -73,7 +75,7 @@ Spring Boot · Java 21 · PostgreSQL · React · TypeScript · d3-force · Gemin
 
 <br>
 
-You need Git, Java 21, Node.js (LTS) and Docker Desktop, open. Copy `.env.example` to `.env` and fill in what you need.
+You need Git, Java 21, Node.js (LTS) and Docker Desktop, running. Copy `.env.example` to `.env` and fill in what you need.
 
 ```bash
 docker compose up -d
@@ -89,6 +91,6 @@ cd frontend && npm install && npm run dev
 
 Open http://localhost:5173 and log in as `demo@truesight.local` with the password `truesight-demo`. This account exists only on laptops and in tests. The API docs are at http://localhost:8080/swagger-ui.html.
 
-**Tests.** `./mvnw verify` in `backend/` (Docker must be running) and `npm test` in `frontend/`. They run on every pull request, and never call the SEC or Gemini: they use the real saved data in [`docs/examples/`](docs/examples/README.md).
+**Tests.** Run `./mvnw verify` in `backend/` (Docker must be running) and `npm test` in `frontend/`. They run on every pull request, and never call the SEC or Gemini. Instead, they use the real saved data in [`docs/examples/`](docs/examples/README.md).
 
 </details>
